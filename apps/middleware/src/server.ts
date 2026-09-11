@@ -13,6 +13,7 @@ import { installDbAuditSink, installLogAuditSink } from './services/audit.servic
 import { prisma } from './config/prisma.js';
 import { logger } from './utils/logger.js';
 import { exigirEntornoValido } from './config/validarEntorno.js';
+import { env } from './config/env.js';
 
 /**
  * Servidor del middleware.
@@ -30,9 +31,16 @@ export function createApp() {
 
   const app = express();
 
-  // Detrás de un proxy, req.ip debe ser la IP real del cliente y no la del
-  // balanceador. Importa porque de ahí salen los registros de auditoría.
-  app.set('trust proxy', 1);
+  /*
+   * Frontera de confianza para IP y user-agent (issue #52).
+   *
+   * Sin esto, `req.ip` es la del servidor de Next y no la de la persona, porque
+   * el navegador nunca llama aquí directamente. Con esto, a un par de confianza
+   * se le cree su `X-Forwarded-For`; a cualquier otro, no. Por defecto solo
+   * loopback, que es la topología de desarrollo — en EasyPanel habrá que poner
+   * la red del contenedor en TRUSTED_PROXIES.
+   */
+  app.set('trust proxy', env().TRUSTED_PROXIES);
 
   app.use(helmet());
   app.use(express.json({ limit: '256kb' }));

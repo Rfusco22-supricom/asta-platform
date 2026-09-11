@@ -1,5 +1,8 @@
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
+  sesionesRespuestaSchema,
+  type SesionActiva,
   portfolioRowSchema,
   portfolioMetaSchema,
   invoicingSummarySchema,
@@ -39,6 +42,27 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+/**
+ * ¿Es esto la excepción que usa Next para redirigir?
+ *
+ * `redirect()` funciona LANZANDO. Eso choca con las páginas, que envuelven sus
+ * llamadas en try/catch para enseñar un aviso decente cuando algo falla: sin
+ * esta comprobación, el catch se traga la redirección y el usuario se queda
+ * mirando "no se pudo cargar" en vez de ir al login.
+ *
+ * Se mira el `digest` porque es lo que Next pone en esa excepción; no hay una
+ * comprobación pública mejor. Todo catch que envuelva una llamada a la API tiene
+ * que empezar por relanzar si esto es true.
+ */
+export function esRedireccion(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    typeof (error as { digest?: unknown }).digest === 'string' &&
+    (error as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+  );
 }
 
 /** Cuando el contrato y la respuesta no coinciden. Es un bug, no un fallo de red. */
@@ -86,6 +110,23 @@ async function request<T extends z.ZodType>(
   }
 
   const body = await res.json().catch(() => null);
+
+  /*
+   * Sesión muerta: al login, no a una pantalla de error.
+   *
+   * Pasa cuando la sesión se cerró en otro sitio —desde la pantalla de sesiones
+   * activas (#52), al cambiar la contraseña, o por detección de reuso del
+   * refresh token—. La cookie local sigue existiendo, así que `requireSession()`
+   * deja pasar y es el middleware quien rechaza.
+   *
+   * Antes cada página enseñaba su propio "no se pudo cargar" con un botón de
+   * Salir: un callejón sin salida, y encima distinto en cada pantalla. Se
+   * resuelve aquí, en el único sitio por el que pasan todas.
+   *
+   * No se borra la cookie de paso: modificarla desde el render de un Server
+   * Component lo prohíbe Next. La siguiente entrada la sobrescribe igualmente.
+   */
+  if (res.status === 401) redirect('/login?error=cerrada');
 
   if (!res.ok) {
     const err = apiErrorSchema.safeParse(body);
@@ -241,4 +282,18 @@ export async function getSinAcceso(
     accessToken,
   );
   return r.data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Sesiones {
+  filas: SesionActiva[];
+  total: number;
+  otras: number;
+}
+
+/** Sesiones activas del usuario que pide (issue #52). */
+export async function getSesiones(accessToken: string): Promise<Sesiones> {
+  const r = await request('/api/v1/auth/sessions', sesionesRespuestaSchema, accessToken);
+  return { filas: r.data, total: r.meta.total, otras: r.meta.otras };
 }

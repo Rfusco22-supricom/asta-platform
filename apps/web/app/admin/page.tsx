@@ -1,6 +1,7 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireSession, clearSession } from '@/lib/session';
-import { getReconciliacion, getSinAcceso, ApiError, ContractError } from '@/lib/api';
+import { getReconciliacion, getSinAcceso, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Invitaciones } from './Invitaciones';
 
 /**
@@ -63,6 +64,9 @@ export default async function AdminPage() {
     r = rec;
     candidatos = cand;
   } catch (error) {
+    // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
+    // el usuario ve "no se pudo cargar" en vez de ir al login.
+    if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
       <Marco nombre={sesion.usuario.nombre}>
@@ -276,6 +280,11 @@ function Marco({ nombre, children }: { nombre: string; children: React.ReactNode
           <span className="who">
             <strong>{nombre}</strong>
           </span>
+          {/* La pantalla de sesiones no sirve de nada si hay que saberse la URL:
+              quien sospecha de un acceso ajeno tiene que encontrarla mirando. */}
+          <Link href="/cuenta/sesiones" className="btn-link">
+            Sesiones
+          </Link>
           <form action={salir}>
             <button type="submit" className="btn-link">
               Salir

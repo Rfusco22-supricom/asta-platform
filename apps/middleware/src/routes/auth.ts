@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
+  deleteOtherSessions,
+  deleteSession,
   getMe,
+  getSessions,
   postLogin,
   postLogout,
   postLogoutAll,
@@ -50,6 +53,18 @@ authRouter.post('/logout', postLogout);
 
 authRouter.post('/logout-all', authJwt(), postLogoutAll);
 authRouter.get('/me', authJwt(), getMe);
+
+/**
+ * Sesiones activas (issue #52).
+ *
+ * Sin `autorizar()` y a propósito, como el resto de `/auth`: no hay rol que deba
+ * ser incapaz de ver y cerrar sus propias sesiones, y el ámbito es la identidad
+ * de quien pide, no un recurso ajeno. Lo garantiza el servicio, que mete el
+ * `appUserId` DENTRO del `where` en las dos operaciones.
+ */
+authRouter.get('/sessions', authJwt(), getSessions);
+authRouter.delete('/sessions', authJwt(), deleteOtherSessions);
+authRouter.delete('/sessions/:id', authJwt(), deleteSession);
 
 /**
  * Invitaciones.
