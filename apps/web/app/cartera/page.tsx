@@ -1,0 +1,142 @@
+import { redirect } from 'next/navigation';
+import { requireSession, clearSession } from '@/lib/session';
+import { getPortfolio, ApiError, ContractError } from '@/lib/api';
+import { moneyCompact, money } from '@/lib/formato';
+import { TablaCartera } from './TablaCartera';
+
+/**
+ * Cartera del vendedor.
+ *
+ * Server Component: los datos se piden desde el servidor de Next, así que el
+ * navegador nunca habla con el middleware y el token no sale del servidor.
+ */
+
+export const dynamic = 'force-dynamic';
+
+async function salir() {
+  'use server';
+  await clearSession();
+  redirect('/login');
+}
+
+function Barra({ nombre }: { nombre: string }) {
+  return (
+    <>
+      <div className="dev-banner">
+        Sesión de desarrollo sin contraseña · autenticación real en los issues{' '}
+        <code>#51</code> y <code>#52</code>
+      </div>
+      <header className="topbar">
+        <div className="brand">
+          ASTA<span>Panel de vendedores</span>
+        </div>
+        <div className="topbar-right">
+          <span className="who">
+            <strong>{nombre}</strong>
+          </span>
+          <form action={salir}>
+            <button type="submit" className="btn-link">
+              Salir
+            </button>
+          </form>
+        </div>
+      </header>
+    </>
+  );
+}
+
+export default async function CarteraPage() {
+  const sesion = await requireSession();
+
+  let portfolio;
+  try {
+    portfolio = await getPortfolio(sesion.odooUserId);
+  } catch (error) {
+    // Odoo caído no puede dar pantalla en blanco: el vendedor tiene que
+    // entender qué pasa y si es culpa suya.
+    const esContrato = error instanceof ContractError;
+    const mensaje =
+      error instanceof ApiError
+        ? error.message
+        : esContrato
+          ? (error as ContractError).message
+          : 'Error inesperado.';
+
+    return (
+      <>
+        <Barra nombre={sesion.nombre} />
+        <main className="shell">
+          <div className="page-head">
+            <h1>Mi cartera</h1>
+          </div>
+          <div className="notice error">
+            <h2>{esContrato ? 'El panel y la API no se entienden' : 'No se pudieron cargar los datos'}</h2>
+            <p>{mensaje}</p>
+            {esContrato ? (
+              <p style={{ marginTop: 10 }}>
+                Es un fallo de programación, no de conexión: el middleware está
+                devolviendo una forma distinta a la que declara el contrato.
+              </p>
+            ) : (
+              <p style={{ marginTop: 10 }}>
+                Comprueba que el middleware esté arriba con{' '}
+                <code>pnpm dev:middleware</code> y que Odoo responda.
+              </p>
+            )}
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  const { filas, meta } = portfolio;
+  const conHistorial = filas.filter((f) => f.esCliente).length;
+  const conDeuda = filas.filter((f) => f.porCobrar > 0).length;
+  const mayor = filas.reduce<number>((m, f) => Math.max(m, f.totalFacturado), 0);
+
+  return (
+    <>
+      <Barra nombre={sesion.nombre} />
+      <main className="shell">
+        <div className="page-head">
+          <h1>Mi cartera</h1>
+          <p>
+            {meta.clientes} clientes asignados · datos en vivo desde Odoo, en moneda
+            de la compañía
+          </p>
+        </div>
+
+        <section className="stats">
+          <div className="stat">
+            <div className="stat-label">Total facturado</div>
+            <div className="stat-value">{moneyCompact(meta.totalCartera)}</div>
+            <div className="stat-sub">{money(meta.totalCartera)}</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Por cobrar</div>
+            <div className="stat-value" style={{ color: meta.porCobrarCartera > 0 ? 'var(--danger)' : undefined }}>
+              {moneyCompact(meta.porCobrarCartera)}
+            </div>
+            <div className="stat-sub">{conDeuda} clientes con saldo</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Con historial</div>
+            <div className="stat-value">{conHistorial}</div>
+            <div className="stat-sub">{filas.length - conHistorial} prospectos sin comprar</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Mayor cliente</div>
+            <div className="stat-value small">{moneyCompact(mayor)}</div>
+            <div className="stat-sub">
+              {meta.totalCartera > 0
+                ? `${((mayor / meta.totalCartera) * 100).toFixed(0)} % de la cartera`
+                : '—'}
+            </div>
+          </div>
+        </section>
+
+        <TablaCartera filas={filas} />
+      </main>
+    </>
+  );
+}

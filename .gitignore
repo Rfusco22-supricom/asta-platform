@@ -20,3 +20,11 @@ coverage/
 .vitest/
 .turbo/
 .vercel/
+
+# Next.js
+.next/
+next-env.d.ts
+
+# logs de desarrollo
+mw.log
+web.log

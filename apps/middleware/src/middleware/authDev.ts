@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { AppRole, Identity } from '@asta/shared-types';
-import { searchRead } from '../odoo/client.js';
+import { readGroup, searchRead } from '../odoo/client.js';
 
 /**
  * ATAJO DE AUTENTICACIÓN PARA DESARROLLO. NO ES authJwt().
@@ -131,6 +131,45 @@ export function authDev(): RequestHandler {
       next(error);
     }
   };
+}
+
+/**
+ * GET /api/v1/salesperson/_dev/vendedores
+ *
+ * Vendedores con cartera, para el desplegable del login provisional.
+ * Solo responde con DEV_AUTH_ENABLED=true. Desaparece al cerrar #17.
+ */
+export async function listDevSalespeople(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  if (!ENABLED) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No disponible.' } });
+    return;
+  }
+
+  try {
+    const grupos = await readGroup<{ user_id: [number, string] | false; __count: number }>(
+      'res.partner',
+      [
+        ['customer_rank', '>', 0],
+        ['user_id', '!=', false],
+        ['parent_id', '=', false],
+      ],
+      [],
+      ['user_id'],
+    );
+
+    const vendedores = grupos
+      .filter((g): g is { user_id: [number, string]; __count: number } => Boolean(g.user_id))
+      .map((g) => ({ id: g.user_id[0], nombre: g.user_id[1], clientes: g.__count }))
+      .sort((a, b) => b.clientes - a.clientes);
+
+    res.json({ data: vendedores, meta: { total: vendedores.length } });
+  } catch (error) {
+    next(error);
+  }
 }
 
 /** Aviso al arrancar, para que nadie levante el servidor sin enterarse. */
