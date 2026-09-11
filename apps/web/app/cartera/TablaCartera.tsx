@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { PortfolioRow } from '@asta/shared-types';
 import { money } from '@/lib/formato';
@@ -130,14 +131,19 @@ export function TablaCartera({ filas }: { filas: PortfolioRow[] }) {
           </thead>
           <tbody>
             {visibles.map((f) => (
-              <tr key={f.id}>
+              <tr key={f.id} className="linked">
                 <td>
-                  <div className="cliente-nombre">{f.nombre}</div>
-                  {(f.email || f.telefono) && (
-                    <div className="cliente-contacto">
-                      {[f.email, f.telefono].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
+                  {/* El enlace envuelve el contenido y no la fila: un <a> no
+                      puede contener <td>, y hacerlo con onClick rompería
+                      abrir en pestaña nueva con ctrl+clic. */}
+                  <Link href={`/cartera/${f.id}`} className="row-link">
+                    <div className="cliente-nombre">{f.nombre}</div>
+                    {(f.email || f.telefono) && (
+                      <div className="cliente-contacto">
+                        {[f.email, f.telefono].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </Link>
                 </td>
                 <td>
                   {f.esCliente ? (

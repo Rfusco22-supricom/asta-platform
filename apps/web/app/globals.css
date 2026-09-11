@@ -326,3 +326,96 @@ tbody tr:hover { background: var(--surface-2); }
   .topbar { padding: 12px 14px; }
   .stat-value { font-size: 19px; }
 }
+
+/* ── Ficha de cliente ─────────────────────────────────────────────────────── */
+
+:root { --accent-bar: #9dbcd8; --neutral: #9a9a94; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --accent-bar: #3d5f7d; --neutral: #6b6b64; }
+}
+
+.crumb { font-size: 12.5px; color: var(--text-3); margin-bottom: 6px; }
+.crumb span { margin: 0 5px; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 620;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-3);
+}
+
+/* Filtros */
+.filtros { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+.filtro-campo label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 4px;
+}
+.filtro-campo .input { flex: none; width: 165px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-2); padding-bottom: 8px; }
+.btn-inline { width: auto; padding: 7px 16px; font-size: 13.5px; }
+.filtro-aviso { margin: 0 0 16px; font-size: 12.5px; color: var(--text-3); }
+
+/* Gráfica */
+.chart-scroll { overflow-x: auto; padding-bottom: 4px; }
+.chart-scroll svg { display: block; min-width: 100%; }
+.chart-table { margin-top: 14px; }
+.chart-table summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text-2);
+  padding: 4px 0;
+  user-select: none;
+}
+.chart-table summary:hover { color: var(--text); }
+.chart-table table { margin-top: 8px; }
+
+/* Barra de estados de cobro */
+.barra-estados {
+  display: flex;
+  height: 9px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  background: var(--surface-2);
+}
+.segmento { min-width: 3px; }
+.segmento.positive { background: var(--positive); }
+.segmento.danger   { background: var(--danger); }
+.segmento.warning  { background: var(--warning); }
+.segmento.neutral  { background: var(--neutral); }
+
+.punto {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.punto.positive { background: var(--positive); }
+.punto.danger   { background: var(--danger); }
+.punto.warning  { background: var(--warning); }
+.punto.neutral  { background: var(--neutral); }
+
+/* Filas enlazadas: toda la celda es clicable, no solo el texto */
+tbody tr.linked { cursor: pointer; }
+td .row-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+td .row-link:hover { text-decoration: none; }
+tbody tr.linked:hover .cliente-nombre { color: var(--accent); }

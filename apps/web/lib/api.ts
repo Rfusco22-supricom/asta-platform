@@ -118,14 +118,27 @@ export interface ClientInvoicing {
   facturacion: InvoicingSummary;
 }
 
+export interface InvoicingOptions {
+  serieMensual?: boolean;
+  desde?: string;
+  hasta?: string;
+  incluirNotasDeCredito?: boolean;
+}
+
 export async function getClientInvoicing(
   odooUserId: number,
   partnerId: number,
-  opciones: { serieMensual?: boolean } = {},
+  opciones: InvoicingOptions = {},
 ): Promise<ClientInvoicing> {
-  const qs = opciones.serieMensual ? '?incluirSerieMensual=true' : '';
+  const qs = new URLSearchParams();
+  if (opciones.serieMensual) qs.set('incluirSerieMensual', 'true');
+  if (opciones.desde) qs.set('desde', opciones.desde);
+  if (opciones.hasta) qs.set('hasta', opciones.hasta);
+  if (opciones.incluirNotasDeCredito) qs.set('incluirNotasDeCredito', 'true');
+
+  const sufijo = qs.size > 0 ? `?${qs}` : '';
   const r = await request(
-    `/api/v1/salesperson/clients/${partnerId}/invoicing${qs}`,
+    `/api/v1/salesperson/clients/${partnerId}/invoicing${sufijo}`,
     invoicingSchema,
     odooUserId,
   );
