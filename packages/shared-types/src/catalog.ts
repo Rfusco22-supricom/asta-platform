@@ -1,0 +1,79 @@
+import { z } from 'zod';
+import { montoSchema, odooIdSchema, paginationQuerySchema } from './common.js';
+
+/**
+ * Catálogo, existencias y precios. Superficie de la API pública (Track B).
+ *
+ * Regla que atraviesa todo este archivo: el producto que sale de aquí NUNCA
+ * lleva `standard_price` (el costo) ni `list_price` crudo. El cliente ve el
+ * precio de su tarifa y nada más. Un campo de costo filtrado en una respuesta
+ * JSON es información comercial regalada a quien negocia contigo.
+ */
+
+export const stockStatusSchema = z.enum(['disponible', 'bajo', 'agotado']);
+export type StockStatus = z.infer<typeof stockStatusSchema>;
+
+export const productSchema = z.object({
+  id: odooIdSchema,
+  /** product.template.id — el que agrupa variantes. */
+  templateId: odooIdSchema,
+  sku: z.string().nullable(),
+  nombre: z.string(),
+  descripcion: z.string().nullable(),
+  marca: z.string().nullable(),
+  /**
+   * Precio ya resuelto según la tarifa del solicitante. El middleware lo calcula
+   * con `context: { pricelist }` derivado del token, jamás de la petición.
+   */
+  precio: montoSchema,
+  /** ID de la tarifa aplicada. Se expone para que el cliente pueda auditarlo. */
+  pricelistId: odooIdSchema.nullable(),
+  /**
+   * Existencia. Se publica como estado y no como número exacto salvo que el
+   * negocio decida lo contrario: la cantidad precisa es información logística
+   * que no todos los clientes deberían ver.
+   */
+  stock: stockStatusSchema,
+  cantidadDisponible: z.number().nullable(),
+  /** Rendimiento del tóner en páginas, cuando aplica. */
+  rendimientoPaginas: z.number().int().positive().nullable(),
+  color: z.string().nullable(),
+  /** Original de fábrica vs compatible/genérico. */
+  tipo: z.enum(['original', 'compatible', 'desconocido']),
+});
+
+export type Product = z.infer<typeof productSchema>;
+
+export const inventoryQuerySchema = paginationQuerySchema.extend({
+  sku: z.string().min(1).optional(),
+  /** Búsqueda libre sobre nombre y referencia. */
+  q: z.string().min(2).optional(),
+  printerId: odooIdSchema.optional(),
+  soloDisponibles: z.coerce.boolean().default(false),
+});
+
+export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
+
+/**
+ * Consulta de precios en lote.
+ *
+ * Existe en lote a propósito: sin ella, un cliente que quiere cotizar 50 SKUs
+ * hace 50 requests, que son 50 RPC contra Odoo. El límite de 100 es el punto
+ * donde una sola consulta a Odoo sigue siendo barata.
+ */
+export const pricingQuerySchema = z.object({
+  skus: z.array(z.string().min(1)).min(1).max(100),
+});
+
+export type PricingQuery = z.infer<typeof pricingQuerySchema>;
+
+export const priceQuoteSchema = z.object({
+  sku: z.string(),
+  productId: odooIdSchema.nullable(),
+  /** null cuando el SKU no existe o no está disponible para este cliente. */
+  precio: montoSchema.nullable(),
+  pricelistId: odooIdSchema.nullable(),
+  motivo: z.enum(['ok', 'sku_no_encontrado', 'sin_precio_en_tarifa']),
+});
+
+export type PriceQuote = z.infer<typeof priceQuoteSchema>;

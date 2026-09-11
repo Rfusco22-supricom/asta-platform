@@ -16,6 +16,7 @@
     "prisma:migrate": "prisma migrate dev --schema ../../prisma/schema.prisma"
   },
   "dependencies": {
+    "@asta/shared-types": "workspace:*",
     "@prisma/client": "^6.2.1",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
