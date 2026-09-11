@@ -468,3 +468,27 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
   background: transparent;
 }
 .aviso-pendiente strong { color: var(--text-2); font-weight: 600; }
+
+/* ── Enlace de invitación ─────────────────────────────────────────────────── */
+
+.enlace-copiable {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.enlace-copiable code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  /* Se parte en cualquier sitio: es un token largo sin espacios y si no,
+     desborda la tarjeta. */
+  word-break: break-all;
+  line-height: 1.45;
+  user-select: all;
+}
+.enlace-copiable .btn { width: auto; white-space: nowrap; align-self: flex-start; }

@@ -31,7 +31,9 @@ export type AuditAction =
   | 'api_key.created'
   | 'api_key.revoked'
   | 'user.role_changed'
-  | 'sync.partners';
+  | 'sync.partners'
+  | 'user.invitado'
+  | 'user.invitacion_aceptada';
 
 export interface AuditEvent {
   action: AuditAction;

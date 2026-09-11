@@ -196,3 +196,31 @@ export async function getReconciliacion(accessToken: string): Promise<Reconcilia
   const r = await request('/api/v1/admin/reconciliation', reconciliacionSchema, accessToken);
   return r.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const sinAccesoSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string(),
+      email: z.string(),
+      nombre: z.string(),
+      role: z.string(),
+      invitacionPendiente: z.boolean(),
+    }),
+  ),
+});
+
+export type CandidatoInvitacion = z.infer<typeof sinAccesoSchema>['data'][number];
+
+export async function getSinAcceso(
+  accessToken: string,
+  limite = 25,
+): Promise<CandidatoInvitacion[]> {
+  const r = await request(
+    `/api/v1/admin/users/without-access?limit=${limite}`,
+    sinAccesoSchema,
+    accessToken,
+  );
+  return r.data;
+}
