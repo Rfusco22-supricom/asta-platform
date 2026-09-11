@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
+import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
 import { prisma } from '../config/prisma.js';
 
 /**
@@ -83,3 +84,50 @@ adminRouter.get('/sync/status', autorizar('admin.sync.estado.ver'), async (_req,
     next(error);
   }
 });
+
+/**
+ * Informe de reconciliación Odoo ↔ middleware.
+ *
+ * Lee ~3000 filas de cada lado y las compara en memoria. Va con el mismo
+ * limitador que el sync: no es una consulta barata y no tiene sentido pedirla
+ * cada pocos segundos.
+ */
+adminRouter.get(
+  '/reconciliation',
+  autorizar('admin.reconciliacion.ver'),
+  limiteSync,
+  async (_req, res, next) => {
+    try {
+      res.json({ data: await reconciliar(), meta: { fuente: 'odoo:res.partner + mysql' } });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/** Resincroniza un partner suelto, para cuando alguien acaba de arreglarlo. */
+adminRouter.post(
+  '/reconciliation/resync/:partnerId',
+  autorizar('admin.sync.ejecutar'),
+  async (req, res, next) => {
+    try {
+      const partnerId = Number(req.params.partnerId);
+      if (!Number.isInteger(partnerId) || partnerId <= 0) {
+        res.status(400).json({
+          error: { code: 'INVALID_PARTNER_ID', message: 'partnerId inválido' },
+        });
+        return;
+      }
+
+      const r = await resincronizarUno(partnerId);
+      // 422 y no 400: la petición está bien formada, pero el dato en Odoo no
+      // permite crear la cuenta. Quien lo lea tiene que ir a arreglar Odoo, no
+      // a corregir su llamada.
+      res.status(r.ok ? 200 : 422).json(
+        r.ok ? { data: r } : { error: { code: 'CONFLICT', message: r.mensaje } },
+      );
+    } catch (error) {
+      next(error);
+    }
+  },
+);

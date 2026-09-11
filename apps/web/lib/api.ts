@@ -161,3 +161,38 @@ export async function getClientProfile(
   );
   return r.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Informe de reconciliación.
+ *
+ * Se tipa con `looseObject` en vez de reproducir la forma entera: es un informe
+ * de operación que va a crecer, y obligar a tocar dos sitios por cada campo
+ * nuevo no aporta nada aquí. Los contratos estrictos están donde importan —los
+ * datos de negocio que pinta el panel del vendedor.
+ */
+const reconciliacionSchema = z.object({
+  data: z.looseObject({
+    generadoEn: z.string(),
+    odoo: z.looseObject({ clientesActivos: z.number() }),
+    middleware: z.looseObject({
+      usuarios: z.number(),
+      clientes: z.number(),
+      staff: z.number(),
+    }),
+    sinCuenta: z.looseObject({ total: z.number() }),
+    sinCredenciales: z.looseObject({ total: z.number() }),
+    huerfanos: z.looseObject({ total: z.number() }),
+    desalineados: z.looseObject({ total: z.number() }),
+    nuncaSincronizados: z.looseObject({ total: z.number() }),
+    duracionMs: z.number(),
+  }),
+});
+
+export type Reconciliacion = z.infer<typeof reconciliacionSchema>['data'];
+
+export async function getReconciliacion(accessToken: string): Promise<Reconciliacion> {
+  const r = await request('/api/v1/admin/reconciliation', reconciliacionSchema, accessToken);
+  return r.data;
+}

@@ -46,6 +46,7 @@ export const accionSchema = z.enum([
   'admin.sync.ejecutar',
   'admin.sync.estado.ver',
   'admin.usuarios.gestionar',
+  'admin.reconciliacion.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -114,6 +115,11 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Crear, invitar y desactivar usuarios',
+  },
+  'admin.reconciliacion.ver': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver el informe de reconciliación con Odoo',
   },
 
   'apikeys.propias.gestionar': {
