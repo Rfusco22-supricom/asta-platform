@@ -69,7 +69,10 @@ export async function issueApiKey(params: {
       prefix,
       keyHash: hashToken(plaintext),
       lastFour: secret.slice(-4),
-      scopes: params.scopes,
+      // MySQL no tiene arrays: los scopes viven en tabla puente y se insertan
+      // en la misma transacción implícita que la key. Una key nunca existe sin
+      // sus permisos.
+      scopes: { create: params.scopes.map((scope) => ({ scope })) },
       rateLimitPerMinute: params.rateLimitPerMinute ?? 60,
       expiresAt,
       createdFrom: params.createdFromIp,
@@ -134,6 +137,10 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
 
   const [, , prefix] = match;
 
+  // Un solo round-trip: la key, su dueño, sus scopes y su lista blanca.
+  // Los dos `include` de abajo son el coste de que MySQL no tenga arrays —dos
+  // JOIN sobre índices de clave primaria— y es lo que se paga a cambio de que
+  // el motor impida guardar un scope inventado.
   const key = await prisma.apiKey.findUnique({
     where: { prefix },
     include: {
@@ -147,6 +154,8 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
           odooPricelistId: true,
         },
       },
+      scopes: { select: { scope: true } },
+      allowedIps: { select: { cidr: true } },
     },
   });
 
@@ -160,7 +169,8 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
   if (key.revokedAt) return { ok: false, reason: 'REVOKED' };
   if (key.expiresAt && key.expiresAt < new Date()) return { ok: false, reason: 'EXPIRED' };
   if (!key.user.isActive) return { ok: false, reason: 'USER_INACTIVE' };
-  if (key.allowedIps.length > 0 && ip && !key.allowedIps.includes(ip)) {
+  const allowedIps = key.allowedIps.map((row) => row.cidr);
+  if (allowedIps.length > 0 && ip && !allowedIps.includes(ip)) {
     return { ok: false, reason: 'IP_NOT_ALLOWED' };
   }
 
@@ -184,7 +194,7 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
       odooPartnerId: key.user.odooPartnerId,
       odooUserId: key.user.odooUserId,
       odooPricelistId: key.user.odooPricelistId,
-      scopes: key.scopes,
+      scopes: key.scopes.map((row) => row.scope),
       rateLimitPerMinute: key.rateLimitPerMinute,
     },
   };
@@ -198,7 +208,7 @@ export async function revokeApiKey(
   await prisma.$transaction([
     prisma.apiKey.update({
       where: { id: apiKeyId },
-      data: { revokedAt: new Date(), revokedBy: revokedByUserId, revokeReason: reason },
+      data: { revokedAt: new Date(), revokedById: revokedByUserId, revokeReason: reason },
     }),
     prisma.auditLog.create({
       data: {

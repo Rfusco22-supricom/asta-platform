@@ -26,7 +26,7 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 │  Cliente         │                  │                                       │
 └────────┬─────────┴────────┬─────────┴──────────────┬────────────────────────┘
          │                  │                        │
-    JWT Supabase       JWT + Device Token      X-API-Key: asta_live_xxx
+    JWT propio         JWT + Device Token      X-API-Key: asta_live_xxx
     cookie httpOnly    rotación diaria         header, nunca query param
          │                  │                        │
          └──────────────────┴────────────────────────┘
@@ -37,7 +37,7 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 │                                                                             │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
 │  │ 1. AUTENTICACIÓN (dual)                                               │  │
-│  │    · authJwt()     -> valida JWT Supabase -> carga AppUser            │  │
+│  │    · authJwt()     -> verifica firma del JWT -> carga AppUser         │  │
 │  │    · authApiKey()  -> prefix lookup + HMAC compare -> carga AppUser   │  │
 │  │    Ambos producen el MISMO objeto: req.identity                       │  │
 │  │    { appUserId, role, odooPartnerId, odooUserId, pricelistId, scopes }│  │
@@ -54,7 +54,7 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 │                            │                                                │
 │  ┌─────────────────────────▼─────────────────────────────────────────────┐  │
 │  │ 3. RATE LIMIT + CACHE                                                 │  │
-│  │    Rate limit por api_key_id (no por IP). Cache Redis/Postgres:       │  │
+│  │    Rate limit por api_key_id (no por IP). Cache Redis/MySQL:          │  │
 │  │    catálogo 15 min · precios 5 min · facturación 60 s · stock 60 s    │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                            │                                                │
@@ -68,14 +68,14 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
    execute_kw(db, MASTER_UID, pwd, ...)               │
            │                                          ▼
            ▼                          ┌───────────────────────────────────┐
-┌────────────────────────────┐        │  PostgreSQL / Supabase            │
-│  ODOO 17 ERP               │        │  · app_users (espejo de partner)  │
-│  · res.partner             │        │  · api_keys (hash, scopes, TTL)   │
+┌────────────────────────────┐        │  MySQL 8                          │
+│  ODOO 17 ERP               │        │  · app_users + user_credentials   │
+│  · res.partner             │        │  · api_keys + api_key_scopes      │
 │  · product.template        │        │  · api_request_logs (auditoría)   │
 │  · product.pricelist       │        │  · kiosk_devices / kiosk_sessions │
 │  · account.move            │        │  · recommendation_events          │
-│  · asta.printer.model      │        │  · odoo_entity_cache              │
-│  · x_client_tier           │        │                                   │
+│  · product.pricelist.item  │        │  · tier_pricelist_map             │
+│  · sale.order              │        │  · odoo_entity_cache              │
 └────────────────────────────┘        └───────────────────────────────────┘
              ▲
              │  Webhook (base.automation en Odoo -> Middleware)
@@ -122,7 +122,7 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 ### 3.2 Vendedor en el panel web
 
 ```
-Login Supabase -> JWT -> GET /api/v1/salesperson/clients/:partnerId/invoicing
+Login (Argon2id) -> JWT -> GET /api/v1/salesperson/clients/:partnerId/invoicing
 
   -> authJwt() carga AppUser { role: VENDEDOR, odooUserId: 23 }
   -> assertSalespersonOwnsPartner(23, partnerId)   <- lee res.partner.user_id
@@ -168,8 +168,28 @@ de un cliente abierta para el siguiente.
 | `read_group` para totales | `search_read` + sumar en Node | La agregación ocurre en Postgres: vuelve 1 fila en vez de 10.000 facturas |
 | `amount_total_signed` | `amount_total` | Está en moneda de la compañía y viene firmado (las notas de crédito restan) |
 | `child_of` en el domain | `=` sobre partner_id | Incluye sucursales y contactos hijos del cliente. Sin esto los totales salen por debajo del real |
-| Espejo de `res.partner` en Postgres | consultar Odoo en cada login | El login no puede depender de la latencia ni del uptime del ERP |
+| Espejo de `res.partner` en MySQL | consultar Odoo en cada login | El login no puede depender de la latencia ni del uptime del ERP |
 | XML-RPC | JSON-RPC (`/web/dataset/call_kw`) | XML-RPC es la vía estable y documentada de Odoo. JSON-RPC va atado a la sesión web y cambia entre versiones |
+
+---
+
+## 4.b El cambio a MySQL
+
+El diseño original usaba PostgreSQL sobre Supabase. Al pasar a **MySQL 8**, tres
+consecuencias que no son de tipos de datos:
+
+1. **La autenticación pasa a ser nuestra.** Supabase Auth aportaba login, hash de
+   contraseñas, reseteo y verificación de email. Ahora eso lo construye el
+   middleware: `user_credentials` (Argon2id), `user_sessions` (refresh tokens) y
+   `auth_tokens`. Son entre 1 y 1,5 semanas extra en la Fase 2.
+2. **Desaparece el RLS**, que era la segunda línea de defensa del issue #44. El
+   aislamiento entre clientes depende ahora **solo** del scoping del middleware,
+   lo que sube los gates #25 y #36 de importantes a críticos.
+3. **No hay arrays.** Los scopes de una API key pasan de columna a tabla puente.
+
+El DDL está en [`db/mysql/`](../db/mysql/), con el detalle de cada traducción en
+su README. `prisma/schema.prisma` genera exactamente esas 15 tablas y 131
+columnas (verificado con `prisma migrate diff`).
 
 ---
 
