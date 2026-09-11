@@ -101,11 +101,17 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 
 4. Middleware:  execute_kw('product.product', 'search_read',
                   [[['default_code','=','TN-2370'], ['sale_ok','=',true]]],
-                  { fields: [...], context: { pricelist: 7 } })
+                  { fields: [...] })
                 <- usa el UID MAESTRO, no un usuario del cliente
 
-5. Middleware:  aplica la tarifa 7 (nivel GOLD) sobre los productos
+5. Middleware:  resuelve el precio de la tarifa 7 (nivel GOLD) leyendo las
+                reglas: product.pricelist.item filtrado por pricelist_id y
+                product_tmpl_id -> fixed_price
                 -> NUNCA devuelve list_price crudo ni standard_price (costo)
+
+   OJO: `context: { pricelist: N }` NO funciona en Odoo 17 — el campo `price`
+   de product.product fue eliminado y `lst_price` ignora la tarifa. Ver
+   docs/04-HALLAZGOS-FASE-0.md para la tabla de vías probadas y descartadas.
 
 6. Middleware:  INSERT api_request_logs (key_id, endpoint, status, ms)
                 -> devuelve JSON normalizado y versionado
@@ -167,10 +173,28 @@ de un cliente abierta para el siguiente.
 
 ---
 
-## 5. Lo que hay que confirmar en Odoo antes de escribir código
+## 5. Lo que había que confirmar en Odoo — RESUELTO
 
-1. **`x_client_tier`** — ¿es un campo `selection` o un `many2one`? Si es `selection`, hacen falta los valores exactos (`bronce` / `plata` / `gold` vs `Bronce` / ...). Recomendado: `many2one` a un modelo `asta.client.tier` que lleve su `property_product_pricelist` asociado, para que la relación tier -> tarifa sea un dato y no un `if` en el código.
-2. **`asta.printer.model`** — ¿ya existe o hay que crearlo? Campos mínimos: `name`, `brand_id`, `aliases` (para que "HL2350" y "HLL2350DW" encuentren el mismo modelo), `active`.
-3. **`printer_compatibilities_ids`** — confirmar que vive en `product.template` y no en `product.product`. Si hay variantes de tóner (XL vs estándar), la compatibilidad normalmente corresponde al template.
-4. **Usuario de servicio en Odoo** — crear `api-middleware@asta` con permisos de *lectura* sobre los modelos listados y escritura solo donde haga falta. **No usar `admin` (uid 1).**
-5. **Multi-compañía** — si existe más de una `res.company`, todo domain necesita el `company_id` correcto en el contexto.
+> Reconocimiento ejecutado el **2026-09-11** contra `supricom-prod1-25424683`
+> (Odoo 17.0+e) con `pnpm probe`. **Informe completo en
+> [`04-HALLAZGOS-FASE-0.md`](./04-HALLAZGOS-FASE-0.md).**
+
+| Supuesto | Realidad |
+|---|---|
+| `x_client_tier` clasifica al cliente | ✗ **No existe.** `res.partner` no tiene ni un campo `x_*`. Recomendación: derivar el tier de `property_product_pricelist`, que es el mecanismo nativo, en vez de crear un campo paralelo |
+| Tres tarifas, una por nivel | ⚠ 18 tarifas con reglas, pero **los 2942 clientes usan la misma**. La diferenciación por nivel está al 0% y es una decisión comercial pendiente |
+| Precio vía `context: {pricelist}` | ✗ **Odoo 17 eliminó esa vía.** Hay que leer `product.pricelist.item` (34.999 de 35.000 reglas son `fixed`) |
+| `asta.printer.model` | ✗ **No existe.** Solo `pos.printer` (hardware de punto de venta) |
+| `printer_compatibilities_ids` | ✗ **No existe** en ningún modelo. Cero relaciones impresora↔tóner registradas |
+| Usuario de servicio | ✓ `webmaster02@supricom.com.ve` → uid 388, **no es admin** |
+
+**Consecuencia para el plan:** las Fases 1, 2, 3 y 4 siguen en pie tal como están
+diseñadas. La **Fase 5 (recomendador) sale del camino crítico** y pasa a ser un
+epic aparte, porque antes hay que construir el modelo en Odoo y cargar la data de
+compatibilidad.
+
+### Sigue pendiente
+
+1. **Multi-compañía** — si existe más de una `res.company`, todo domain necesita el `company_id` correcto en el contexto.
+2. **Permisos del uid 388** — confirmar que están acotados a lectura sobre los modelos necesarios.
+3. **Campos de precio personalizados** — la instancia tiene una docena (`list_price_usd`, `company_sale_price_usd`, `min_price`, `costo_reposicion_usd`...). Hay que saber cuáles están vivos antes de tocar nada relacionado con precios.
