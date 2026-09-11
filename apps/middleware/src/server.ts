@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 import { prisma } from './config/prisma.js';
 import { logger } from './utils/logger.js';
+import { exigirEntornoValido } from './config/validarEntorno.js';
 
 /**
  * Servidor del middleware.
@@ -147,6 +148,12 @@ export function createApp() {
 
 // Solo arranca al ejecutarse directamente, no al importarse desde un test.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()!)) {
+  // Lo PRIMERO, antes de abrir el puerto (issue #9). Un API_KEY_PEPPER ausente
+  // no debe descubrirse la primera vez que alguien usa una API key: el servidor
+  // habría arrancado, parecería sano y fallaría más tarde, que es justo el peor
+  // momento. Aquí se cae en el segundo 0 diciendo qué variable falta.
+  exigirEntornoValido();
+
   const app = createApp();
   const server = app.listen(PORT, () => {
     console.log(`middleware escuchando en http://localhost:${PORT}`);

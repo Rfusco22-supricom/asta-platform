@@ -19,6 +19,7 @@
     "migrate:status": "prisma migrate status --schema prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema prisma/schema.prisma",
     "postinstall": "prisma generate --schema prisma/schema.prisma",
+    "check:env": "tsx scripts/check-env.ts",
     "verify:endpoints": "tsx scripts/verify-endpoints.ts",
     "dev:middleware": "tsx watch apps/middleware/src/server.ts",
     "dev:web": "pnpm --filter @asta/web dev",
