@@ -39,6 +39,8 @@ port.json
 p.json
 
 # Salida de `pnpm probe`. Es un volcado del esquema y de datos de la
-# instancia real: incluye nombres de clientes. Se regenera cuando hace
-# falta, asi que no tiene por que estar en el control de versiones.
+# instancia real. Lo aporto Lino y tenia razon: ademas de nombres de
+# clientes, el archivo que estaba commiteado llevaba el correo y el uid del
+# usuario de servicio, el nombre del mayor cliente y precios reales. Se
+# regenera con `pnpm probe` cuando haga falta.
 docs/odoo-schema-snapshot.json

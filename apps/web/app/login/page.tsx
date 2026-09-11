@@ -71,7 +71,8 @@ export default async function LoginPage({ searchParams }: Props) {
       usuario: data.usuario,
     });
 
-    redirect('/cartera');
+    // Mismo criterio que la raíz: cada rol a su sitio.
+    redirect(data.usuario.role === 'SUPERADMIN' ? '/admin' : '/cartera');
   }
 
   const MENSAJES: Record<string, string> = {

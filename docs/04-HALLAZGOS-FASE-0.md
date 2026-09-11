@@ -3,7 +3,9 @@
 **Fecha:** 2026-09-11
 **Instancia:** `supricom2.odoo.com` · db `supricom-prod1-25424683` · **Odoo 17.0+e**
 **Usuario:** `webmaster02@supricom.com.ve` (uid 388, no es admin)
-**Snapshot crudo:** `docs/odoo-schema-snapshot.json`
+**Snapshot crudo:** se genera con `pnpm probe`; NO está en el repositorio.
+Contiene el correo y el uid del usuario de servicio, nombres de clientes y
+precios reales, así que se quedó fuera del control de versiones.
 
 ---
 
@@ -16,7 +18,7 @@ piezas del modelo de datos que todavía no existen en Odoo.
 | # | Supuesto | Realidad | Impacto |
 |---|---|---|---|
 | #3 | `x_client_tier` clasifica al cliente | **No existe.** `res.partner` no tiene ni un campo `x_*` | El modelo Bronce/Plata/Gold hay que crearlo |
-| #5 | Tres tarifas, una por nivel | **18 tarifas con reglas, pero los 2942 clientes usan la misma** | Precios por nivel: 0% implementado |
+| #5 | Tres tarifas, una por nivel | **El mecanismo funciona**, pero los 2944 clientes usan la misma tarifa | Falta ASIGNAR tarifas, no arreglarlas |
 | — | Precio vía `context: {pricelist}` | **Odoo 17 eliminó esa vía.** Hay que leer `product.pricelist.item` | Cambia el diseño del endpoint de precios |
 | #4 | `asta.printer.model` existe | **No existe.** Solo `pos.printer` (hardware de punto de venta) | El recomendador es un módulo a desarrollar |
 | #7 | Medir cobertura tóner↔impresora | **0% — el campo no existe** | La Fase 5 se pospone |
@@ -90,26 +92,41 @@ Pero al leer la tarifa asignada cliente por cliente:
   TOTAL leidos: 2942
 ```
 
-**Los 2942 clientes apuntan a la misma tarifa.** Y al comparar el precio de un
-mismo producto entre tarifas, sale igual:
+**Los 2944 clientes apuntan a la misma tarifa.**
+
+### CORRECCIÓN (Lino, rama `arreglar-probe-precios`)
+
+La primera versión de este apartado se basaba en comparar **un solo producto**,
+que resultó no tener regla en ninguna tarifa. De ahí salió un aviso —"verificar
+las reglas de tarifa"— que insinuaba que el mecanismo estaba roto. **No lo
+está.**
+
+Midiendo sobre el catálogo entero, y excluyendo las tarifas archivadas:
 
 ```
-Template 112083 · ACER NITRO LITE CI513420
-   [15866] Lista de Precios (USD)      fixed  775.3
-   [15863] Lista de Precios O (USD)    fixed  775.3
-   -> 2 tarifas, 1 precio distinto
+6 tarifas ARCHIVADAS acumulan 16.546 reglas — el 47,3% del total
+   (ruido que la medición anterior contaba como si estuviera vigente)
+
+3262 productos presentes en las 3 tarifas más pobladas
+ 510 de 513 comparables dan precios DISTINTOS entre tarifas
 ```
 
-Es decir: el mecanismo de tarifas funciona, pero **la diferenciación de precios por
-nivel de cliente está al 0%**. No es que falte configurar el middleware: falta
-definir y cargar la política comercial.
+Es decir: **las tarifas están bien cargadas y diferencian precios de verdad.**
+Lo que no existe es la asignación: los 2944 clientes apuntan al mismo sitio.
 
-### Esto es una decisión de negocio, no técnica
+La distinción importa para el plan. "Arreglar las tarifas" sería un trabajo de
+datos largo; **asignarlas** es una decisión comercial y una actualización masiva
+de `property_product_pricelist`. Es mucho menos trabajo del que parecía.
 
-Alguien tiene que responder: ¿cuánto descuento lleva Plata sobre Bronce? ¿y Gold?
-¿es un porcentaje global o por familia de producto? Sin esa respuesta, el endpoint
-de precios devuelve el mismo número a todo el mundo y la funcionalidad no existe
-aunque el código esté perfecto.
+### Sigue siendo una decisión de negocio
+
+Alguien tiene que responder qué tarifa le toca a cada cliente. Sin eso, el
+endpoint de precios devuelve el mismo número a todo el mundo y la funcionalidad
+no existe aunque el código esté perfecto.
+
+Pero la pregunta ha cambiado a mejor: ya no es "¿cuánto descuento lleva cada
+nivel y hay que cargar miles de reglas?", sino "¿cuál de las tarifas que YA
+existen le corresponde a cada cliente?".
 
 ---
 
