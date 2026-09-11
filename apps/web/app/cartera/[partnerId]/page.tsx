@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
 import { requireSession } from '@/lib/session';
-import { getClientInvoicing, ApiError, ContractError } from '@/lib/api';
+import { getClientInvoicing, getClientProfile, ApiError, ContractError } from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
 import { GraficaMensual } from './GraficaMensual';
+import { Perfil } from './Perfil';
 
 /**
  * Ficha de cliente.
@@ -44,13 +45,25 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   if (!Number.isInteger(partnerId) || partnerId <= 0) notFound();
 
   let datos;
+  let perfil = null;
   try {
-    datos = await getClientInvoicing(sesion.odooUserId, partnerId, {
-      serieMensual: true,
-      desde,
-      hasta,
-      incluirNotasDeCredito: nc === '1',
-    });
+    // En paralelo: son dos endpoints independientes y encadenarlos duplicaria
+    // la espera de una pantalla que ya tarda ~2 s contra Odoo.
+    //
+    // El perfil se degrada solo: si falla, la ficha sigue mostrando la
+    // facturacion, que es lo esencial. Perder el top de productos no justifica
+    // dejar al vendedor sin la pantalla entera.
+    const [inv, prof] = await Promise.all([
+      getClientInvoicing(sesion.odooUserId, partnerId, {
+        serieMensual: true,
+        desde,
+        hasta,
+        incluirNotasDeCredito: nc === '1',
+      }),
+      getClientProfile(sesion.odooUserId, partnerId).catch(() => null),
+    ]);
+    datos = inv;
+    perfil = prof;
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
 
@@ -173,6 +186,8 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           </div>
         </div>
       </section>
+
+      {perfil && <Perfil perfil={perfil} />}
 
       {/* ── Serie mensual ─────────────────────────────────────────────────── */}
       <section className="panel">

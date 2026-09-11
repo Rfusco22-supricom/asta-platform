@@ -9,6 +9,7 @@ import {
   getPartnersBySalesperson,
 } from '../services/partners.service.js';
 import { auditContext, recordAudit } from '../services/audit.service.js';
+import { getClientProfile } from '../services/profile.service.js';
 
 /** Un rol sin permiso para el modulo de vendedores tambien deja rastro. */
 function denegarPorRol(req: Request, res: Response): void {
@@ -162,6 +163,51 @@ export async function getPortfolio(
         clientes: filas.length,
         totalCartera: Math.round(filas.reduce((s, f) => s + f.totalFacturado, 0) * 100) / 100,
         porCobrarCartera: Math.round(filas.reduce((s, f) => s + f.porCobrar, 0) * 100) / 100,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/v1/salesperson/clients/:partnerId/profile
+ *
+ * Recencia y top de productos. Pasa por la MISMA puerta de autorización que la
+ * facturación: cualquier endpoint nuevo que no llame a
+ * `assertSalespersonOwnsPartner` es una fuga esperando a ocurrir.
+ */
+export async function getClientProfileHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params = paramsSchema.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: { code: 'INVALID_PARTNER_ID', message: 'partnerId inválido' } });
+      return;
+    }
+
+    const { partnerId } = params.data;
+    const { identity } = req;
+
+    if (identity.role !== 'SUPERADMIN') {
+      if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
+        denegarPorRol(req, res);
+        return;
+      }
+      await assertSalespersonOwnsPartner(identity.odooUserId, partnerId);
+    }
+
+    const perfil = await getClientProfile(partnerId);
+
+    res.json({
+      data: perfil,
+      meta: {
+        fuente: 'odoo:account.move.line',
+        criterio: 'subtotales sin impuestos de facturas contabilizadas',
+        consultadoEn: new Date().toISOString(),
       },
     });
   } catch (error) {

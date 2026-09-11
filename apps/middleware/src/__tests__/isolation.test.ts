@@ -297,6 +297,60 @@ describe('#25 · Aislamiento entre carteras de vendedores', () => {
   });
 });
 
+describe('#25 · El endpoint de perfil pasa por la misma puerta', () => {
+  // Cada endpoint nuevo hay que volver a probarlo. Que el de facturacion este
+  // bien protegido no dice nada del siguiente: la autorizacion no se hereda,
+  // se escribe, y por tanto se puede olvidar.
+
+  it('el vendedor SÍ ve el perfil de su cliente', async () => {
+    const r = await get(
+      `/api/v1/salesperson/clients/${fx.clienteDeA}/profile`,
+      comoVendedor(fx.vendedorA),
+    );
+    expect(r.status).toBe(200);
+  });
+
+  it('NO ve el perfil de un cliente ajeno', async () => {
+    const r = await get(
+      `/api/v1/salesperson/clients/${fx.clienteDeB}/profile`,
+      comoVendedor(fx.vendedorA),
+    );
+    expect(r.status).toBe(403);
+    expect(r.body?.error?.code).toBe('PARTNER_NOT_IN_PORTFOLIO');
+  });
+
+  it('NO ve el perfil de una SUCURSAL ajena', async () => {
+    if (fx.sucursalAjena === null) return;
+    const r = await get(
+      `/api/v1/salesperson/clients/${fx.sucursalAjena.id}/profile`,
+      comoVendedor(fx.vendedorA),
+    );
+    expect(r.status).toBe(403);
+  });
+
+  it('sin autenticación devuelve 401', async () => {
+    const r = await get(`/api/v1/salesperson/clients/${fx.clienteDeA}/profile`);
+    expect(r.status).toBe(401);
+  });
+
+  it.each(['BRONCE', 'GOLD'])('el rol %s no ve perfiles', async (rol) => {
+    const r = await get(
+      `/api/v1/salesperson/clients/${fx.clienteDeA}/profile`,
+      comoRol(fx.vendedorA, rol),
+    );
+    expect(r.status).toBe(403);
+    expect(r.body?.error?.code).toBe('ROLE_NOT_ALLOWED');
+  });
+
+  it('el intento contra un perfil ajeno también queda auditado', async () => {
+    const antes = auditados.filter((e) => e.action === 'access.denied.partner').length;
+    await get(`/api/v1/salesperson/clients/${fx.clienteDeB}/profile`, comoVendedor(fx.vendedorA));
+    const eventos = auditados.filter((e) => e.action === 'access.denied.partner');
+    expect(eventos.length).toBe(antes + 1);
+    expect(eventos[eventos.length - 1].targetId).toBe(String(fx.clienteDeB));
+  });
+});
+
 describe('#25 · Roles', () => {
   it('SUPERADMIN puede ver cualquier cliente', async () => {
     const r = await get(

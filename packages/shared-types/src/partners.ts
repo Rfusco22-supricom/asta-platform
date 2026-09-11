@@ -81,13 +81,37 @@ export const topProductSchema = z.object({
   monto: montoSchema,
 });
 
+export const recenciaSchema = z.enum(['activo', 'atencion', 'inactivo', 'sin_compras']);
+export type EstadoRecencia = z.infer<typeof recenciaSchema>;
+
 export const clientProfileSchema = z.object({
-  cliente: partnerSchema,
-  tierNormalizado: clientTierSchema.nullable(),
+  partnerId: odooIdSchema,
   /** null si nunca ha comprado. */
   diasSinComprar: z.number().int().nonnegative().nullable(),
+  ultimaCompra: z.iso.date().nullable(),
+  estadoRecencia: recenciaSchema,
+  /**
+   * Los umbrales viajan en la respuesta en vez de estar duplicados en el panel.
+   * Si mañana el area comercial decide que 60 dias son 45, se cambia en un solo
+   * sitio y el panel se entera sin desplegar.
+   */
+  umbrales: z.object({
+    atencion: z.number().int().positive(),
+    inactivo: z.number().int().positive(),
+  }),
   topProductos: z.array(topProductSchema),
+  productosDistintos: z.number().int().nonnegative(),
+  /** Suma de price_subtotal: SIN impuestos, a diferencia del total facturado. */
+  montoEnProductos: montoSchema,
   notas: z.array(clientNoteSchema),
+  /**
+   * false mientras `client_notes` no exista (#12).
+   *
+   * Se distingue de un array vacio a proposito: "este cliente no tiene notas" y
+   * "todavia no podemos guardar notas" son dos cosas distintas, y el panel debe
+   * poder decir cual de las dos.
+   */
+  notasDisponibles: z.boolean(),
 });
 
 export type ClientProfile = z.infer<typeof clientProfileSchema>;

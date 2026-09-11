@@ -3,10 +3,12 @@ import {
   portfolioRowSchema,
   portfolioMetaSchema,
   invoicingSummarySchema,
+  clientProfileSchema,
   apiErrorSchema,
   type PortfolioRow,
   type PortfolioMeta,
   type InvoicingSummary,
+  type ClientProfile,
 } from '@asta/shared-types';
 
 /**
@@ -140,6 +142,25 @@ export async function getClientInvoicing(
   const r = await request(
     `/api/v1/salesperson/clients/${partnerId}/invoicing${sufijo}`,
     invoicingSchema,
+    odooUserId,
+  );
+  return r.data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const profileSchema = z.object({
+  data: clientProfileSchema,
+  meta: z.looseObject({}),
+});
+
+export async function getClientProfile(
+  odooUserId: number,
+  partnerId: number,
+): Promise<ClientProfile> {
+  const r = await request(
+    `/api/v1/salesperson/clients/${partnerId}/profile`,
+    profileSchema,
     odooUserId,
   );
   return r.data;

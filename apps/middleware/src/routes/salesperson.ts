@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { getClientInvoicing, getPortfolio } from '../controllers/salesperson.controller.js';
+import {
+  getClientInvoicing,
+  getClientProfileHandler,
+  getPortfolio,
+} from '../controllers/salesperson.controller.js';
 import { authDev, listDevSalespeople } from '../middleware/authDev.js';
 
 /**
@@ -30,3 +34,4 @@ salespersonRouter.use(authDev());
 
 salespersonRouter.get('/portfolio', getPortfolio);
 salespersonRouter.get('/clients/:partnerId/invoicing', getClientInvoicing);
+salespersonRouter.get('/clients/:partnerId/profile', getClientProfileHandler);
