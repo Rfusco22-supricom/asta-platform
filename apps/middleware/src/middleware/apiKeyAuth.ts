@@ -70,18 +70,35 @@ export function requireScope(...required: ApiScope[]): RequestHandler {
  * propósito: es la línea que separa "API multi-tenant" de "fuga de datos".
  */
 export function scopeToOwnPartner(): RequestHandler {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Sin identidad no hay nada a lo que acotar. Antes se accedia a
+    // `req.identity.odooPartnerId` directamente —al contrario que
+    // requireScope, que usa optional chaining— asi que montar este middleware
+    // sin authApiKey() delante producia un TypeError y un 500 con traza, en vez
+    // de una denegacion limpia.
+    const identidad = req.identity;
+    if (!identidad) {
+      res.status(401).json({
+        error: {
+          code: 'MISSING_API_KEY',
+          message: 'Falta el header X-API-Key.',
+          docs: 'https://docs.asta.mx/api/autenticacion',
+        },
+      });
+      return;
+    }
+
     const requested = req.body?.partner_id ?? req.query?.partner_id;
 
-    if (requested !== undefined && Number(requested) !== req.identity.odooPartnerId) {
+    if (requested !== undefined && Number(requested) !== identidad.odooPartnerId) {
       req.log?.warn(
-        { apiKeyId: req.identity.apiKeyId, requested, actual: req.identity.odooPartnerId },
+        { apiKeyId: identidad.apiKeyId, requested, actual: identidad.odooPartnerId },
         'intento de acceso cruzado entre clientes',
       );
     }
 
-    if (req.body) req.body.partner_id = req.identity.odooPartnerId;
-    req.scopedPartnerId = req.identity.odooPartnerId;
+    if (req.body) req.body.partner_id = identidad.odooPartnerId;
+    req.scopedPartnerId = identidad.odooPartnerId;
     next();
   };
 }

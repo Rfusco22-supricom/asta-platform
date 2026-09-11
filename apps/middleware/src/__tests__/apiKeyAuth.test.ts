@@ -244,13 +244,21 @@ describe('#27 · scopeToOwnPartner', () => {
     expect(req.scopedPartnerId).toBe(1001);
   });
 
-  it.fails('deberia denegar limpiamente si falta la identidad', () => {
-    // scopeToOwnPartner accede a req.identity.odooPartnerId sin optional
-    // chaining, al contrario que requireScope. Si el orden de middleware se
-    // rompe, sale un TypeError -> 500 con traza, en vez de un 401.
+  it('deniega con 401 si falta la identidad, sin reventar', () => {
+    // ARREGLADO. Antes accedia a req.identity.odooPartnerId sin optional
+    // chaining, al contrario que requireScope: montar este middleware sin
+    // authApiKey() delante daba un TypeError -> 500 con traza.
     const req = fakeReq({ query: { partner_id: '2002' } });
+    const res = fakeRes();
 
-    expect(() => correr(scopeToOwnPartner(), req, fakeRes())).not.toThrow();
+    let paso = true;
+    expect(() => {
+      paso = correr(scopeToOwnPartner(), req, res);
+    }).not.toThrow();
+
+    expect(paso).toBe(false);
+    expect(res.codigo).toBe(401);
+    expect(req.scopedPartnerId).toBeUndefined();
   });
 
   it('un body sin partner_id no gana la propiedad de la nada... la gana', () => {
