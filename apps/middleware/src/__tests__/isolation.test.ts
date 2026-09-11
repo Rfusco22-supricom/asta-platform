@@ -1,8 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
+import type { AppRole } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
+import { prisma } from '../config/prisma.js';
+import { emitirAccessToken } from '../auth/jwt.js';
+import { caducaEnDias, hashSecreto } from '../auth/tokens.js';
 
 /**
  * Issue #25 — AISLAMIENTO ENTRE CARTERAS DE VENDEDORES
@@ -60,11 +64,112 @@ async function get(path: string, headers: Record<string, string> = {}) {
   return { status: res.status, body: body as { error?: { code?: string } } | null };
 }
 
-const comoVendedor = (uid: number) => ({ 'X-Dev-Odoo-User-Id': String(uid) });
-const comoRol = (uid: number, rol: string) => ({
-  'X-Dev-Odoo-User-Id': String(uid),
-  'X-Dev-Role': rol,
-});
+/**
+ * Sesiones REALES para los tests.
+ *
+ * Antes estos tests usaban una cabecera de desarrollo que fabricaba identidades
+ * sin verificar nada. Ese bypass está borrado (#17).
+ *
+ * Ahora se crea una fila en `user_sessions` y se firma un JWT de verdad: los
+ * tests recorren `authJwt()` completo —firma, caducidad, emisor, sesión viva en
+ * base, rol leído de la base— que es exactamente lo que corre en producción.
+ *
+ * No se pasa por `login()` a propósito. Haría falta fijar una contraseña sobre
+ * usuarios que ya existen (los del seed de desarrollo, que comparten el
+ * `odooUserId` de los vendedores reales) y el test destruiría datos que no son
+ * suyos. Lo que estos tests prueban es el SCOPING, no el formulario de login;
+ * ese tiene los suyos en auth.test.ts.
+ */
+const tokens = new Map<string, string>();
+const usuariosCreados: string[] = [];
+
+const claveDe = (rol: AppRole, sufijo = '') => `${rol}${sufijo}`;
+
+/**
+ * Los vendedores se indexan por su `res.users.id` de Odoo, no por A/B.
+ *
+ * Las fixtures se descubren de la instancia, así que el dueño de una sucursal
+ * puede ser CUALQUIER vendedor, no solo los dos de mayor cartera. Mapear "todo
+ * lo que no es A es B" hacía que dos tests mandaran el token equivocado y
+ * fallaran con un 403 que parecía un problema de scoping y era del arnés.
+ */
+const claveVendedor = (odooUserId: number) => `v:${odooUserId}`;
+
+async function prepararIdentidad(
+  rol: AppRole,
+  odooUserId: number | null,
+  partnerFicticio: number,
+  sufijo = '',
+): Promise<void> {
+  // Si ya hay un usuario con ese odooUserId (los del seed), se reutiliza: la
+  // columna es UNIQUE y crear otro fallaría.
+  let usuario =
+    odooUserId !== null
+      ? await prisma.appUser.findUnique({ where: { odooUserId } })
+      : null;
+
+  if (!usuario) {
+    const email = `test.${claveDe(rol, sufijo).toLowerCase()}@aislamiento.local`;
+    usuario = await prisma.appUser.upsert({
+      where: { email },
+      create: {
+        email,
+        fullName: `Test ${rol}${sufijo}`,
+        role: rol,
+        odooPartnerId: partnerFicticio,
+        odooUserId,
+        isActive: true,
+      },
+      update: { role: rol, isActive: true },
+    });
+    usuariosCreados.push(usuario.id);
+  } else if (usuario.role !== rol) {
+    // El del seed es VENDEDOR; si el test lo necesita con otro rol, no se toca:
+    // se crea uno aparte sin odooUserId.
+    const email = `test.${claveDe(rol, sufijo).toLowerCase()}@aislamiento.local`;
+    usuario = await prisma.appUser.upsert({
+      where: { email },
+      create: {
+        email,
+        fullName: `Test ${rol}${sufijo}`,
+        role: rol,
+        odooPartnerId: partnerFicticio,
+        odooUserId: null,
+        isActive: true,
+      },
+      update: { role: rol, isActive: true },
+    });
+    usuariosCreados.push(usuario.id);
+  }
+
+  const sesion = await prisma.userSession.create({
+    data: {
+      userId: usuario.id,
+      refreshTokenHash: hashSecreto(`test-${rol}${sufijo}-${Date.now()}-${Math.random()}`),
+      expiresAt: caducaEnDias(1),
+    },
+    select: { id: true },
+  });
+
+  tokens.set(
+    rol === 'VENDEDOR' && odooUserId !== null ? claveVendedor(odooUserId) : claveDe(rol, sufijo),
+    await emitirAccessToken({
+      sub: usuario.id,
+      role: rol,
+      odooPartnerId: usuario.odooPartnerId,
+      odooUserId: usuario.odooUserId,
+      sid: sesion.id,
+    }),
+  );
+}
+
+const bearer = (clave: string) => ({ Authorization: `Bearer ${tokens.get(clave)}` });
+
+/** Vendedor A o B, por su res.users.id de Odoo. */
+const comoVendedor = (uid: number) => bearer(claveVendedor(uid));
+
+/** Cualquier otro rol. El rol viaja en el token Y se re-lee de la base. */
+const comoRol = (_uid: number, rol: string) => bearer(rol);
 
 async function descubrirFixtures(): Promise<Fixtures> {
   const vendedores = await readGroup<{ user_id: [number, string]; __count: number }>(
@@ -169,7 +274,6 @@ async function descubrirFixtures(): Promise<Fixtures> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  process.env.DEV_AUTH_ENABLED = 'true';
   quitarSink = registerAuditSink((e) => auditados.push(e));
 
   const app = createApp();
@@ -181,11 +285,38 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${dir.port}`;
 
   fx = await descubrirFixtures();
-}, 180_000);
+
+  // Un usuario por rol. Los ids de Odoo son los de vendedores REALES para que el
+  // scoping tenga datos sobre los que decidir; los partner id son ficticios y
+  // altos, para no chocar con ninguno de la instancia.
+  // Todos los vendedores que las fixtures descubran, no solo A y B: el dueño de
+  // una sucursal puede ser cualquiera.
+  const uidsVendedores = new Set<number>([fx.vendedorA, fx.vendedorB]);
+  if (fx.sucursalAjena) uidsVendedores.add(fx.sucursalAjena.duenio);
+  if (fx.sucursalHeredada) uidsVendedores.add(fx.sucursalHeredada.vendedorDeLaMatriz);
+
+  let n = 0;
+  for (const uid of uidsVendedores) {
+    await prepararIdentidad('VENDEDOR', uid, 990_100 + n, `.${n}`);
+    n++;
+  }
+  await prepararIdentidad('SUPERADMIN', null, 990_003);
+  await prepararIdentidad('BRONCE', null, 990_004);
+  await prepararIdentidad('PLATA', null, 990_005);
+  await prepararIdentidad('GOLD', null, 990_006);
+}, 240_000);
 
 afterAll(async () => {
   quitarSink?.();
   await new Promise<void>((resolve) => server.close(() => resolve()));
+
+  // Solo se borra lo que ESTOS tests crearon. Los usuarios del seed de
+  // desarrollo se reutilizan pero no se tocan: destruirlos haría que el panel
+  // dejara de funcionar cada vez que alguien corre los tests.
+  if (usuariosCreados.length > 0) {
+    await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
+  }
+  await prisma.$disconnect();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,51 +1,58 @@
 import { z } from 'zod';
 
 /**
- * Validación de entorno al arrancar. Si falta una variable, el proceso muere en
- * el segundo 0 con un mensaje claro — no a las 3 a.m. con un `undefined` en un RPC.
+ * Configuración general del servidor.
+ *
+ * Está dividida en tres archivos a propósito —`odooEnv`, `authEnv` y este— y no
+ * en un único bloque que lo valide todo al arrancar. La razón es práctica: el
+ * módulo de Odoo no necesita saber nada de la base de datos, y atarlos obligaba
+ * a tener medio sistema montado para poder ejecutar un script de diagnóstico.
+ * En Fase 0 eso impidió correr el `odoo-probe`.
+ *
+ * Cada módulo exige solo lo que usa.
  */
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
+  LOG_LEVEL: z.string().default('info'),
 
-  // ── Odoo ──────────────────────────────────────────────────────────────────
-  ODOO_URL: z.string().url(),
-  ODOO_DB: z.string().min(1),
-  /** Usuario de SERVICIO, no `admin`. Solo lectura salvo donde haga falta escribir. */
-  ODOO_USERNAME: z.string().min(1),
-  /** API key de Odoo (Preferencias > Seguridad de la cuenta), no la contraseña. */
-  ODOO_PASSWORD: z.string().min(1),
-  ODOO_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
-  ODOO_DEFAULT_LANG: z.string().default('es_MX'),
-  ODOO_DEFAULT_TZ: z.string().default('America/Mexico_City'),
-
-  // ── Base de datos ─────────────────────────────────────────────────────────
-  DATABASE_URL: z.string().url(),
-  DIRECT_URL: z.string().url(),
-
-  // ── Seguridad ─────────────────────────────────────────────────────────────
   /**
-   * Pepper para el HMAC de las API keys. 32+ bytes aleatorios.
-   * Vive SOLO en el entorno: si se filtra la tabla api_keys, los hashes sin el
-   * pepper no permiten verificar ni un token.
-   * Rotarlo invalida todas las keys emitidas (requiere reemisión).
+   * MySQL 8.0.13+ o MariaDB 10.4+.
+   *
+   * Ojo con los caracteres especiales de la contraseña: en un DSN la `@` separa
+   * las credenciales del host, así que "Clave2015@" debe ir como "Clave2015%40".
+   * Sin codificar, el error que devuelve Prisma no apunta a la contraseña.
+   */
+  DATABASE_URL: z.string().min(1),
+
+  /**
+   * Pepper del HMAC de las API keys. Vive SOLO aquí, nunca en la base: si se
+   * filtra la tabla `api_keys`, los hashes sin el pepper no permiten verificar
+   * ni un token. Rotarlo invalida todas las keys emitidas.
    */
   API_KEY_PEPPER: z.string().min(32),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SUPABASE_JWT_SECRET: z.string().min(1),
 
-  /** Origen del panel Next.js para CORS. La API pública se sirve sin CORS. */
-  WEB_APP_ORIGIN: z.string().url(),
+  /** Origen del panel para CORS. La API pública se consume sin navegador. */
+  WEB_APP_ORIGIN: z.string().url().default('http://localhost:3000'),
 });
 
-const parsed = schema.safeParse(process.env);
+export type Env = z.infer<typeof schema>;
 
-if (!parsed.success) {
-  console.error('Configuración de entorno inválida:');
-  console.error(z.prettifyError(parsed.error));
-  process.exit(1);
+let cache: Env | null = null;
+
+/** Perezosa, igual que `authEnv`: leer al importar congela el valor demasiado pronto. */
+export function env(): Env {
+  if (cache) return cache;
+
+  const parsed = schema.safeParse(process.env);
+  if (!parsed.success) {
+    throw new Error('Configuración de entorno inválida:\n' + z.prettifyError(parsed.error));
+  }
+  cache = parsed.data;
+  return cache;
 }
 
-export const env = parsed.data;
-export type Env = typeof env;
+export function resetEnvCache(): void {
+  cache = null;
+}

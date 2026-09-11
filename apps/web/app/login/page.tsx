@@ -1,67 +1,85 @@
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
 import { setSession } from '@/lib/session';
 
 /**
- * Login PROVISIONAL.
+ * Login.
  *
- * No hay contraseña porque todavía no existe: la autenticación propia es la
- * Fase 2 (#51 login con Argon2id, #52 JWT) y depende de MySQL.
- *
- * Se elige un vendedor de una lista que sirve el middleware. Cuando esté el
- * login real, esta página pasa a ser un formulario de email y contraseña, y
- * `lib/session.ts` guarda el JWT en vez de un id — el resto del panel no se
- * entera.
+ * La llamada al middleware ocurre en el SERVIDOR de Next (server action): la
+ * contraseña nunca viaja desde el navegador a otro sitio que no sea este mismo
+ * origen, y el token de respuesta no llega al cliente.
  */
 
 const MIDDLEWARE_URL = process.env.MIDDLEWARE_URL ?? 'http://localhost:3001';
 
-const vendedoresSchema = z.object({
-  data: z.array(
-    z.object({
-      id: z.number().int().positive(),
-      nombre: z.string(),
-      clientes: z.number().int().nonnegative(),
-    }),
-  ),
-});
-
-type Vendedor = z.infer<typeof vendedoresSchema>['data'][number];
-
-async function getVendedores(): Promise<{ lista: Vendedor[]; error: string | null }> {
-  try {
-    const res = await fetch(`${MIDDLEWARE_URL}/api/v1/salesperson/_dev/vendedores`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      return {
-        lista: [],
-        error:
-          res.status === 404
-            ? 'El middleware está corriendo sin DEV_AUTH_ENABLED=true.'
-            : `El middleware devolvió ${res.status}.`,
-      };
-    }
-    const parsed = vendedoresSchema.safeParse(await res.json());
-    if (!parsed.success) return { lista: [], error: 'Respuesta inesperada del middleware.' };
-    return { lista: parsed.data.data, error: null };
-  } catch {
-    return { lista: [], error: 'No se pudo contactar con el middleware.' };
-  }
+interface Props {
+  searchParams: Promise<{ error?: string; from?: string }>;
 }
 
-export default async function LoginPage() {
-  const { lista, error } = await getVendedores();
+export default async function LoginPage({ searchParams }: Props) {
+  const { error } = await searchParams;
 
   async function entrar(formData: FormData) {
     'use server';
-    const valor = String(formData.get('vendedor') ?? '');
-    const [idRaw, ...resto] = valor.split('|');
-    const id = Number(idRaw);
-    if (!Number.isInteger(id) || id <= 0) return;
-    await setSession({ odooUserId: id, nombre: resto.join('|') || `Usuario ${id}` });
+
+    const email = String(formData.get('email') ?? '').trim();
+    const password = String(formData.get('password') ?? '');
+
+    if (!email || !password) redirect('/login?error=faltan');
+
+    let res: Response;
+    try {
+      res = await fetch(`${MIDDLEWARE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      redirect('/login?error=red');
+    }
+
+    if (!res.ok) {
+      const cuerpo = (await res.json().catch(() => null)) as
+        | { error?: { message?: string } }
+        | null;
+      const msg = cuerpo?.error?.message ?? '';
+      // El bloqueo se distingue porque el usuario necesita saber que esperar le
+      // sirve de algo. El resto de fallos comparten mensaje a propósito.
+      redirect(`/login?error=${/bloquead/i.test(msg) ? 'bloqueada' : 'credenciales'}`);
+    }
+
+    const { data } = (await res.json()) as {
+      data: {
+        accessToken: string;
+        expiraEn: number;
+        usuario: { id: string; nombre: string; role: string };
+      };
+    };
+
+    // El refresh token viene en la cookie que puso el middleware; hay que
+    // extraerlo para guardarlo en el dominio del panel.
+    const refreshToken =
+      res.headers
+        .getSetCookie?.()
+        ?.find((c) => c.startsWith('asta_rt='))
+        ?.split(';')[0]
+        ?.slice('asta_rt='.length) ?? '';
+
+    await setSession({
+      accessToken: data.accessToken,
+      refreshToken,
+      expiraEn: data.expiraEn,
+      usuario: data.usuario,
+    });
+
     redirect('/cartera');
   }
+
+  const MENSAJES: Record<string, string> = {
+    credenciales: 'Correo o contraseña incorrectos.',
+    bloqueada: 'Cuenta bloqueada temporalmente por intentos fallidos. Inténtalo en unos minutos.',
+    faltan: 'Escribe tu correo y tu contraseña.',
+    red: 'No se pudo contactar con el servidor. Comprueba que el middleware esté arriba.',
+  };
 
   return (
     <div className="login-wrap">
@@ -69,40 +87,42 @@ export default async function LoginPage() {
         <h1>ASTA · Panel de vendedores</h1>
         <p>Cartera y facturación, en vivo desde Odoo.</p>
 
-        {error ? (
-          <div className="notice error">
-            <h2>No se pudo cargar la lista de vendedores</h2>
-            <p>{error}</p>
-            <p style={{ marginTop: 10 }}>
-              Arranca el middleware con <code>pnpm dev:middleware</code> y recarga.
-            </p>
+        {error && (
+          <div className="notice error" style={{ marginBottom: 18, padding: '12px 14px' }}>
+            <p style={{ margin: 0 }}>{MENSAJES[error] ?? 'No se pudo iniciar sesión.'}</p>
           </div>
-        ) : (
-          <form action={entrar}>
-            <div className="field">
-              <label htmlFor="vendedor">Entrar como</label>
-              <select id="vendedor" name="vendedor" className="select" required defaultValue="">
-                <option value="" disabled>
-                  Elige un vendedor…
-                </option>
-                {lista.map((v) => (
-                  <option key={v.id} value={`${v.id}|${v.nombre}`}>
-                    {v.nombre} · {v.clientes} clientes
-                  </option>
-                ))}
-              </select>
-              <div className="hint">{lista.length} vendedores con cartera en Odoo.</div>
-            </div>
-
-            <button type="submit" className="btn">
-              Entrar
-            </button>
-          </form>
         )}
 
-        <p style={{ marginTop: 20, marginBottom: 0, fontSize: 12.5, color: 'var(--text-3)' }}>
-          Acceso sin contraseña. La autenticación real son los issues #51 y #52.
-        </p>
+        <form action={entrar}>
+          <div className="field">
+            <label htmlFor="email">Correo</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              className="input"
+              autoComplete="username"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="password">Contraseña</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="input"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          <button type="submit" className="btn">
+            Entrar
+          </button>
+        </form>
       </div>
     </div>
   );

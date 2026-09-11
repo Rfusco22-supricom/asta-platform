@@ -4,57 +4,92 @@ import { redirect } from 'next/navigation';
 /**
  * Sesión del panel.
  *
- * PROVISIONAL. Hoy la cookie guarda un `res.users.id` de Odoo sin verificar
- * nada: es el equivalente en el panel del `authDev` del middleware, y existe
- * por el mismo motivo — poder construir y probar la Fase 3 antes de que estén
- * la autenticación propia (#17, #51, #52) y MySQL.
+ * Los tokens viven en cookies **httpOnly**: el JavaScript del navegador no puede
+ * leerlos, así que un XSS no se los lleva. Y como solo el servidor de Next habla
+ * con el middleware, el access token nunca llega al cliente.
  *
- * Cuando exista el login real, la cookie pasa a guardar el JWT y este archivo
- * es lo único que cambia: las páginas siguen llamando a `requireSession()` sin
- * enterarse.
+ * Hay DOS cookies y no una:
  *
- * La cookie es httpOnly a propósito aunque hoy no proteja gran cosa. Es la
- * forma correcta y así el día que guarde un token de verdad ya está bien.
+ *   · `asta_at` — access token, 15 min. Es el que se manda en cada llamada.
+ *   · `asta_rt` — refresh token, 30 días. Solo lo usa `middleware.ts` para
+ *     renovar el anterior, y su `path` lo acota a esa ruta.
+ *
+ * Separarlas permite que la de refresco no viaje en cada petición del panel,
+ * que es el punto de tener un access token corto.
  */
 
-const COOKIE = 'asta_dev_session';
+export const COOKIE_ACCESS = 'asta_at';
+export const COOKIE_REFRESH = 'asta_rt';
+export const COOKIE_USER = 'asta_u';
 
 export interface Session {
-  odooUserId: number;
-  nombre: string;
+  accessToken: string;
+  usuario: { id: string; nombre: string; role: string };
 }
 
 export async function getSession(): Promise<Session | null> {
-  const raw = (await cookies()).get(COOKIE)?.value;
-  if (!raw) return null;
+  const store = await cookies();
+  const accessToken = store.get(COOKIE_ACCESS)?.value;
+  const raw = store.get(COOKIE_USER)?.value;
+  if (!accessToken || !raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as { odooUserId: unknown; nombre: unknown };
-    const id = Number(parsed.odooUserId);
-    if (!Number.isInteger(id) || id <= 0) return null;
-    return { odooUserId: id, nombre: String(parsed.nombre ?? `Usuario ${id}`) };
+    const u = JSON.parse(raw) as { id?: unknown; nombre?: unknown; role?: unknown };
+    if (typeof u.id !== 'string' || typeof u.role !== 'string') return null;
+    return {
+      accessToken,
+      usuario: { id: u.id, nombre: String(u.nombre ?? ''), role: u.role },
+    };
   } catch {
     return null;
   }
 }
 
-/** Para páginas que no tienen sentido sin sesión. */
 export async function requireSession(): Promise<Session> {
   const s = await getSession();
   if (!s) redirect('/login');
   return s;
 }
 
-export async function setSession(session: Session): Promise<void> {
-  (await cookies()).set(COOKIE, JSON.stringify(session), {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+const base = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+};
+
+export async function setSession(datos: {
+  accessToken: string;
+  refreshToken: string;
+  expiraEn: number;
+  usuario: { id: string; nombre: string; role: string };
+}): Promise<void> {
+  const store = await cookies();
+
+  // Un margen de 30 s por debajo de la caducidad real: si la cookie muriera
+  // exactamente a la vez que el token, habría una ventana en la que el panel
+  // cree tener sesión y el middleware ya la rechaza.
+  store.set(COOKIE_ACCESS, datos.accessToken, {
+    ...base,
     path: '/',
-    maxAge: 60 * 60 * 8, // una jornada
+    maxAge: Math.max(30, datos.expiraEn - 30),
+  });
+  store.set(COOKIE_REFRESH, datos.refreshToken, {
+    ...base,
+    path: '/',
+    maxAge: 30 * 86_400,
+  });
+  // Esta NO es httpOnly-crítica: solo lleva nombre y rol para pintar la barra.
+  // Aun así va httpOnly, porque el cliente no la necesita: la lee el servidor.
+  store.set(COOKIE_USER, JSON.stringify(datos.usuario), {
+    ...base,
+    path: '/',
+    maxAge: 30 * 86_400,
   });
 }
 
 export async function clearSession(): Promise<void> {
-  (await cookies()).delete(COOKIE);
+  const store = await cookies();
+  for (const c of [COOKIE_ACCESS, COOKIE_REFRESH, COOKIE_USER]) {
+    store.delete(c);
+  }
 }

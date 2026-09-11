@@ -52,17 +52,13 @@ export class ContractError extends Error {
 async function request<T extends z.ZodType>(
   path: string,
   schema: T,
-  odooUserId: number,
+  accessToken: string,
 ): Promise<z.infer<T>> {
   let res: Response;
 
   try {
     res = await fetch(`${MIDDLEWARE_URL}${path}`, {
-      headers: {
-        // PROVISIONAL: cabecera de authDev. Cuando exista #17 esto pasa a ser
-        // `Authorization: Bearer <jwt>` y es el único punto que cambia.
-        'X-Dev-Odoo-User-Id': String(odooUserId),
-      },
+      headers: { Authorization: `Bearer ${accessToken}` },
       // La cartera cambia poco dentro de una misma navegación, pero no tanto
       // como para arriesgar mostrar cifras viejas.
       next: { revalidate: 30 },
@@ -98,8 +94,8 @@ export interface Portfolio {
   meta: PortfolioMeta;
 }
 
-export async function getPortfolio(odooUserId: number): Promise<Portfolio> {
-  const r = await request('/api/v1/salesperson/portfolio', portfolioSchema, odooUserId);
+export async function getPortfolio(accessToken: string): Promise<Portfolio> {
+  const r = await request('/api/v1/salesperson/portfolio', portfolioSchema, accessToken);
   return { filas: r.data, meta: r.meta };
 }
 
@@ -128,7 +124,7 @@ export interface InvoicingOptions {
 }
 
 export async function getClientInvoicing(
-  odooUserId: number,
+  accessToken: string,
   partnerId: number,
   opciones: InvoicingOptions = {},
 ): Promise<ClientInvoicing> {
@@ -142,7 +138,7 @@ export async function getClientInvoicing(
   const r = await request(
     `/api/v1/salesperson/clients/${partnerId}/invoicing${sufijo}`,
     invoicingSchema,
-    odooUserId,
+    accessToken,
   );
   return r.data;
 }
@@ -155,13 +151,13 @@ const profileSchema = z.object({
 });
 
 export async function getClientProfile(
-  odooUserId: number,
+  accessToken: string,
   partnerId: number,
 ): Promise<ClientProfile> {
   const r = await request(
     `/api/v1/salesperson/clients/${partnerId}/profile`,
     profileSchema,
-    odooUserId,
+    accessToken,
   );
   return r.data;
 }

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
-import { requireSession } from '@/lib/session';
+import { requireSession, clearSession } from '@/lib/session';
 import { getClientInvoicing, getClientProfile, ApiError, ContractError } from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
 import { GraficaMensual } from './GraficaMensual';
@@ -54,13 +54,13 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     // facturacion, que es lo esencial. Perder el top de productos no justifica
     // dejar al vendedor sin la pantalla entera.
     const [inv, prof] = await Promise.all([
-      getClientInvoicing(sesion.odooUserId, partnerId, {
+      getClientInvoicing(sesion.accessToken, partnerId, {
         serieMensual: true,
         desde,
         hasta,
         incluirNotasDeCredito: nc === '1',
       }),
-      getClientProfile(sesion.odooUserId, partnerId).catch(() => null),
+      getClientProfile(sesion.accessToken, partnerId).catch(() => null),
     ]);
     datos = inv;
     perfil = prof;
@@ -74,7 +74,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     const esContrato = error instanceof ContractError;
 
     return (
-      <Marco nombre={sesion.nombre}>
+      <Marco nombre={sesion.usuario.nombre}>
         <div className="notice error">
           <h2>
             {esPermiso
@@ -98,7 +98,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   const hayFiltro = Boolean(desde || hasta || nc === '1');
 
   return (
-    <Marco nombre={sesion.nombre}>
+    <Marco nombre={sesion.usuario.nombre}>
       <div className="page-head">
         <div className="crumb">
           <Link href="/cartera">Mi cartera</Link> <span>/</span> {nombre}
@@ -253,13 +253,15 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   );
 }
 
+async function salir() {
+  'use server';
+  await clearSession();
+  redirect('/login');
+}
+
 function Marco({ nombre, children }: { nombre: string; children: React.ReactNode }) {
   return (
     <>
-      <div className="dev-banner">
-        Sesión de desarrollo sin contraseña · autenticación real en los issues <code>#51</code> y{' '}
-        <code>#52</code>
-      </div>
       <header className="topbar">
         <div className="brand">
           <Link href="/cartera" style={{ color: 'inherit' }}>
@@ -271,6 +273,11 @@ function Marco({ nombre, children }: { nombre: string; children: React.ReactNode
           <span className="who">
             <strong>{nombre}</strong>
           </span>
+          <form action={salir}>
+            <button type="submit" className="btn-link">
+              Salir
+            </button>
+          </form>
         </div>
       </header>
       <main className="shell">{children}</main>

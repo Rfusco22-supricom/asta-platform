@@ -2,12 +2,13 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
+import cookieParser from 'cookie-parser';
 import { odooEnv } from './config/odooEnv.js';
 import { getUid, executeKw } from './odoo/client.js';
 import { salespersonRouter } from './routes/salesperson.js';
+import { authRouter } from './routes/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { warnIfDevAuthEnabled } from './middleware/authDev.js';
-import { installLogAuditSink } from './services/audit.service.js';
+import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 
 /**
  * Servidor del middleware.
@@ -22,6 +23,7 @@ const WEB_APP_ORIGIN = process.env.WEB_APP_ORIGIN ?? 'http://localhost:3000';
 
 export function createApp() {
   installLogAuditSink();
+  installDbAuditSink();
 
   const app = express();
 
@@ -31,6 +33,7 @@ export function createApp() {
 
   app.use(helmet());
   app.use(express.json({ limit: '256kb' }));
+  app.use(cookieParser());
 
   app.use(
     pinoHttp({
@@ -52,11 +55,10 @@ export function createApp() {
 
   // CORS solo para el panel. La API pública se consume con API key desde
   // servidores, no desde navegadores, así que no lleva CORS.
-  app.use(
-    '/api/v1/salesperson',
-    cors({ origin: WEB_APP_ORIGIN, credentials: true }),
-    salespersonRouter,
-  );
+  const corsPanel = cors({ origin: WEB_APP_ORIGIN, credentials: true });
+
+  app.use('/api/v1/auth', corsPanel, authRouter);
+  app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
 
   // ── Health ────────────────────────────────────────────────────────────────
   app.get('/health', async (_req, res) => {
@@ -95,12 +97,11 @@ export function createApp() {
 
 // Solo arranca al ejecutarse directamente, no al importarse desde un test.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()!)) {
-  warnIfDevAuthEnabled();
-
   const app = createApp();
   const server = app.listen(PORT, () => {
     console.log(`middleware escuchando en http://localhost:${PORT}`);
-    console.log(`  health    GET /health`);
+    console.log(`  health    GET  /health`);
+    console.log(`  sesión    POST /api/v1/auth/login · /refresh · /logout`);
     console.log(`  vendedor  GET /api/v1/salesperson/portfolio`);
     console.log(`  vendedor  GET /api/v1/salesperson/clients/:partnerId/invoicing`);
   });

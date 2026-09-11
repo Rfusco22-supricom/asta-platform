@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import { prisma } from '../config/prisma.js';
 
 /**
  * Registro de acciones sensibles.
@@ -16,10 +17,12 @@ import type { Request } from 'express';
  *
  * ── Estado ───────────────────────────────────────────────────────────────────
  *
- * Hoy emite el evento a los sinks registrados. El sink de Postgres/MySQL
- * (`audit_logs`) se conecta cuando exista la base (#12). La separación en sinks
- * no es arquitectura de más: es lo que permite que los tests de #25 comprueben
- * que el evento SE EMITE, sin depender de una base de datos.
+ * Dos sinks en paralelo: uno escribe JSON a stdout (para el agregador de logs y
+ * las alertas de #46) y otro a la tabla `audit_logs`.
+ *
+ * Separarlos no es arquitectura de más. Permite que los tests de #25 comprueben
+ * que el evento SE EMITE sin levantar una base de datos, y que el rastro
+ * sobreviva si uno de los dos destinos falla.
  */
 
 export type AuditAction =
@@ -115,15 +118,53 @@ export function installLogAuditSink(): void {
   });
 }
 
+let dbSinkInstalado = false;
+
 /**
- * PENDIENTE (#12): sink que escribe en la tabla `audit_logs`.
+ * Sink que escribe en `audit_logs`.
  *
- * Cuando MySQL esté montado:
+ * Se instala aparte del de log porque necesita la base, y hay contextos —tests
+ * unitarios, el `odoo-probe`— donde no la hay. Separarlos permite que la
+ * auditoría funcione igual en los dos.
  *
- *   registerAuditSink((e) => {
- *     void prisma.auditLog.create({ data: { ... } }).catch(() => {});
- *   });
+ * La escritura va FUERA del camino crítico: el request no espera al INSERT.
+ * Igual que `lastUsedAt` de las API keys, el rastro no puede añadir latencia ni,
+ * mucho menos, tumbar la petición que lo originó.
  *
- * Fuera del camino crítico —igual que `lastUsedAt` de las API keys— porque el
- * rastro no debe añadir latencia a la respuesta.
+ * CONTRAPARTIDA ASUMIDA: si el proceso muere entre la respuesta y el INSERT, ese
+ * evento se pierde. Por eso el sink de log sigue instalado en paralelo — son dos
+ * destinos independientes, y que fallen a la vez es mucho menos probable.
  */
+export function installDbAuditSink(): void {
+  if (dbSinkInstalado) return;
+  dbSinkInstalado = true;
+
+  registerAuditSink((e) => {
+    void prisma.auditLog
+      .create({
+        data: {
+          actorId: e.actorId,
+          action: e.action,
+          targetType: e.targetType,
+          targetId: e.targetId,
+          // El JSON de Prisma no admite `undefined`.
+          metadata: (e.metadata ?? null) as never,
+          ip: e.ip,
+          createdAt: e.at,
+        },
+      })
+      .catch((err) => {
+        // Un fallo escribiendo auditoría NO puede romper nada, pero tampoco
+        // puede desaparecer en silencio: quedaría un hueco en el rastro sin que
+        // nadie se entere. Se grita por stderr.
+        process.stderr.write(
+          JSON.stringify({
+            level: 'error',
+            msg: 'no se pudo persistir un evento de auditoria',
+            action: e.action,
+            err: err instanceof Error ? err.message : String(err),
+          }) + '\n',
+        );
+      });
+  });
+}

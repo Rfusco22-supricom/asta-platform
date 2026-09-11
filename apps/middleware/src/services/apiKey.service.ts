@@ -36,7 +36,7 @@ export interface IssuedApiKey {
 }
 
 function hashToken(token: string): string {
-  return createHmac('sha256', env.API_KEY_PEPPER).update(token).digest('hex');
+  return createHmac('sha256', env().API_KEY_PEPPER).update(token).digest('hex');
 }
 
 export async function issueApiKey(params: {

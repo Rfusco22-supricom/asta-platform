@@ -21,7 +21,9 @@
     "dev:middleware": "tsx watch apps/middleware/src/server.ts",
     "dev:web": "pnpm --filter @asta/web dev",
     "test:isolation": "pnpm --filter @asta/middleware exec vitest run src/__tests__/isolation.test.ts",
-    "test": "pnpm --filter @asta/middleware exec vitest run"
+    "test": "pnpm --filter @asta/middleware exec vitest run",
+    "seed:dev": "tsx scripts/seed-dev.ts",
+    "db:setup": "mysql -u root -e \"CREATE DATABASE IF NOT EXISTS asta_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\" && mysql -u root asta_dev < db/mysql/001_schema.sql && mysql -u root asta_dev < db/mysql/002_seed.sql"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

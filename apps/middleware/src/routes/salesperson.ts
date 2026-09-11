@@ -4,33 +4,22 @@ import {
   getClientProfileHandler,
   getPortfolio,
 } from '../controllers/salesperson.controller.js';
-import { authDev, listDevSalespeople } from '../middleware/authDev.js';
+import { authJwt } from '../middleware/authJwt.js';
 
 /**
  * Superficie del panel de vendedores (Fase 3).
  *
- * Lee exclusivamente de Odoo: ni un SELECT contra MySQL. Por eso funciona hoy,
- * antes de que exista la base.
+ * Lee exclusivamente de Odoo: ni un SELECT contra MySQL salvo el de la propia
+ * autenticación.
  *
- * La autenticación es `authDev()` PROVISIONALMENTE. Cuando esté #17, se cambia
- * por `authJwt()` aquí —una línea— y se borra `middleware/authDev.ts`.
+ * Autenticación REAL desde el cierre de #17. `authDev.ts` —el bypass que
+ * permitió construir esta fase antes de que existiera la base de datos— está
+ * borrado. No se dejó "por si acaso": un bypass de autenticación que sobrevive
+ * es exactamente el que acaba activo en producción por accidente.
  */
 export const salespersonRouter = Router();
 
-/**
- * Lista de vendedores para la pantalla de login provisional.
- *
- * Va ANTES de authDev() porque es justo lo que se consulta para poder
- * autenticarse. Se sirve desde aquí y no desde Next consultando Odoo porque el
- * principio rector del sistema es que el middleware es el ÚNICO que habla con
- * el ERP: saltárselo "solo para una pantalla de desarrollo" es como se empiezan
- * a abrir esos agujeros.
- *
- * Desaparece con authDev.ts al cerrar #17.
- */
-salespersonRouter.get('/_dev/vendedores', listDevSalespeople);
-
-salespersonRouter.use(authDev());
+salespersonRouter.use(authJwt());
 
 salespersonRouter.get('/portfolio', getPortfolio);
 salespersonRouter.get('/clients/:partnerId/invoicing', getClientInvoicing);

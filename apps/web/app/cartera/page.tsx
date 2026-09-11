@@ -22,10 +22,6 @@ async function salir() {
 function Barra({ nombre }: { nombre: string }) {
   return (
     <>
-      <div className="dev-banner">
-        Sesión de desarrollo sin contraseña · autenticación real en los issues{' '}
-        <code>#51</code> y <code>#52</code>
-      </div>
       <header className="topbar">
         <div className="brand">
           ASTA<span>Panel de vendedores</span>
@@ -50,7 +46,7 @@ export default async function CarteraPage() {
 
   let portfolio;
   try {
-    portfolio = await getPortfolio(sesion.odooUserId);
+    portfolio = await getPortfolio(sesion.accessToken);
   } catch (error) {
     // Odoo caído no puede dar pantalla en blanco: el vendedor tiene que
     // entender qué pasa y si es culpa suya.
@@ -64,7 +60,7 @@ export default async function CarteraPage() {
 
     return (
       <>
-        <Barra nombre={sesion.nombre} />
+        <Barra nombre={sesion.usuario.nombre} />
         <main className="shell">
           <div className="page-head">
             <h1>Mi cartera</h1>
@@ -96,7 +92,7 @@ export default async function CarteraPage() {
 
   return (
     <>
-      <Barra nombre={sesion.nombre} />
+      <Barra nombre={sesion.usuario.nombre} />
       <main className="shell">
         <div className="page-head">
           <h1>Mi cartera</h1>
