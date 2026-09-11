@@ -5,22 +5,33 @@ import {
   getPortfolio,
 } from '../controllers/salesperson.controller.js';
 import { authJwt } from '../middleware/authJwt.js';
+import { autorizar } from '../middleware/autorizar.js';
 
 /**
- * Superficie del panel de vendedores (Fase 3).
+ * Panel de vendedores (Fase 3).
  *
- * Lee exclusivamente de Odoo: ni un SELECT contra MySQL salvo el de la propia
- * autenticación.
+ * Cada ruta DECLARA su acción. El rol y la pertenencia del cliente los resuelve
+ * `autorizar()` leyendo la matriz de permisos; los controladores no deciden
+ * nada sobre autorización.
  *
- * Autenticación REAL desde el cierre de #17. `authDev.ts` —el bypass que
- * permitió construir esta fase antes de que existiera la base de datos— está
- * borrado. No se dejó "por si acaso": un bypass de autenticación que sobrevive
- * es exactamente el que acaba activo en producción por accidente.
+ * Añadir un endpoint con `:partnerId` y declarar una acción de ámbito
+ * `partner-propio` basta para que quede protegido. Antes había que acordarse de
+ * dos cosas por separado, y olvidar la segunda no rompía nada visible.
  */
 export const salespersonRouter = Router();
 
 salespersonRouter.use(authJwt());
 
-salespersonRouter.get('/portfolio', getPortfolio);
-salespersonRouter.get('/clients/:partnerId/invoicing', getClientInvoicing);
-salespersonRouter.get('/clients/:partnerId/profile', getClientProfileHandler);
+salespersonRouter.get('/portfolio', autorizar('cartera.ver'), getPortfolio);
+
+salespersonRouter.get(
+  '/clients/:partnerId/invoicing',
+  autorizar('cliente.ver'),
+  getClientInvoicing,
+);
+
+salespersonRouter.get(
+  '/clients/:partnerId/profile',
+  autorizar('cliente.perfil.ver'),
+  getClientProfileHandler,
+);

@@ -4,35 +4,19 @@ import {
   getPartnerInvoicingSummary,
   getInvoicingTotalsByPartner,
 } from '../services/invoicing.service.js';
-import {
-  assertSalespersonOwnsPartner,
-  getPartnersBySalesperson,
-} from '../services/partners.service.js';
-import { recordAudit } from '../services/audit.service.js';
-import { auditContext } from '../middleware/auditContext.js';
+import { getPartnersBySalesperson } from '../services/partners.service.js';
 import { getClientProfile } from '../services/profile.service.js';
-
-/** Un rol sin permiso para el modulo de vendedores tambien deja rastro. */
-function denegarPorRol(req: Request, res: Response): void {
-  recordAudit({
-    action: 'access.denied.role',
-    ...auditContext(req),
-    targetType: 'endpoint',
-    targetId: req.path,
-    metadata: { rol: req.identity?.role ?? null },
-  });
-  res.status(403).json({
-    error: { code: 'ROLE_NOT_ALLOWED', message: 'Requiere rol de vendedor' },
-  });
-}
 
 /**
  * Controlador del módulo de vendedores.
  *
- * Invariante de seguridad de todo el archivo: el `partnerId` que llega por la URL
- * es una *petición*, no una autorización. Antes de tocar Odoo con él hay que
- * probar que el cliente pertenece a la cartera de quien pregunta. La única
- * excepción es SUPERADMIN.
+ * AQUÍ YA NO SE AUTORIZA NADA. El rol y la pertenencia del cliente los aplica
+ * `autorizar(accion)` en la ruta, guiado por la matriz de `@asta/shared-types`.
+ *
+ * Sigue en pie el invariante, solo que lo garantiza otra capa: el `partnerId`
+ * de la URL es una *petición*, no una autorización. Cuando la acción declara
+ * ámbito `partner-propio`, el middleware deja en `req.partnerAutorizado` el
+ * cliente ya verificado — si el controlador lo recibe, la comprobación pasó.
  */
 
 const paramsSchema = z.object({
@@ -72,18 +56,9 @@ export async function getClientInvoicing(
     }
 
     const { partnerId } = params.data;
-    const { identity } = req; // lo inyecta authJwt()
-
-    // ── Autorización ────────────────────────────────────────────────────────
-    let partner = null;
-    if (identity.role !== 'SUPERADMIN') {
-      if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
-        denegarPorRol(req, res);
-        return;
-      }
-      // Lanza ForbiddenPartnerAccess (403) o PartnerNotFound (404).
-      partner = await assertSalespersonOwnsPartner(identity.odooUserId, partnerId);
-    }
+    // Ya verificado por `autorizar('cliente.ver')`. Es null solo para SUPERADMIN,
+    // que se salta la comprobación de cartera porque no tiene una.
+    const partner = req.partnerAutorizado ?? null;
 
     const resumen = await getPartnerInvoicingSummary(partnerId, query.data);
 
@@ -121,8 +96,15 @@ export async function getPortfolio(
   try {
     const { identity } = req;
 
-    if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
-      denegarPorRol(req, res);
+    // `autorizar('cartera.ver')` ya garantizó el rol VENDEDOR. El odooUserId
+    // puede seguir siendo null si el usuario está mal sincronizado.
+    if (identity.odooUserId === null) {
+      res.status(409).json({
+        error: {
+          code: 'CONFLICT',
+          message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.',
+        },
+      });
       return;
     }
 
@@ -191,15 +173,6 @@ export async function getClientProfileHandler(
     }
 
     const { partnerId } = params.data;
-    const { identity } = req;
-
-    if (identity.role !== 'SUPERADMIN') {
-      if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
-        denegarPorRol(req, res);
-        return;
-      }
-      await assertSalespersonOwnsPartner(identity.odooUserId, partnerId);
-    }
 
     const perfil = await getClientProfile(partnerId);
 

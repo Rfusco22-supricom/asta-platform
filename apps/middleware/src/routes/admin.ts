@@ -1,6 +1,7 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authJwt } from '../middleware/authJwt.js';
+import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
 import { prisma } from '../config/prisma.js';
 
@@ -12,16 +13,6 @@ import { prisma } from '../config/prisma.js';
  * algo en Odoo y no quiere esperar 15 minutos.
  */
 export const adminRouter = Router();
-
-function soloSuperAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (req.identity.role !== 'SUPERADMIN') {
-    res.status(403).json({
-      error: { code: 'ROLE_NOT_ALLOWED', message: 'Requiere rol de administrador.' },
-    });
-    return;
-  }
-  next();
-}
 
 /**
  * Un límite bajo a propósito.
@@ -40,9 +31,9 @@ const limiteSync = rateLimit({
   },
 });
 
-adminRouter.use(authJwt(), soloSuperAdmin);
+adminRouter.use(authJwt());
 
-adminRouter.post('/sync/partners', limiteSync, async (req, res, next) => {
+adminRouter.post('/sync/partners', autorizar('admin.sync.ejecutar'), limiteSync, async (req, res, next) => {
   try {
     const completo = req.query.completo === 'true';
     const resumen = await sincronizarPartners({ completo });
@@ -61,7 +52,7 @@ adminRouter.post('/sync/partners', limiteSync, async (req, res, next) => {
   }
 });
 
-adminRouter.post('/sync/orphans', limiteSync, async (_req, res, next) => {
+adminRouter.post('/sync/orphans', autorizar('admin.sync.ejecutar'), limiteSync, async (_req, res, next) => {
   try {
     res.json({ data: await marcarHuerfanos() });
   } catch (error) {
@@ -70,7 +61,7 @@ adminRouter.post('/sync/orphans', limiteSync, async (_req, res, next) => {
 });
 
 /** Estado de la última sincronización, para pintarlo en el panel. */
-adminRouter.get('/sync/status', async (_req, res, next) => {
+adminRouter.get('/sync/status', autorizar('admin.sync.estado.ver'), async (_req, res, next) => {
   try {
     const [estado, porEstado] = await Promise.all([
       prisma.syncState.findUnique({ where: { entidad: 'res.partner' } }),

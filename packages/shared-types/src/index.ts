@@ -22,3 +22,4 @@ export * from './invoicing.js';
 export * from './catalog.js';
 export * from './recommender.js';
 export * from './apiKeys.js';
+export * from './permissions.js';
