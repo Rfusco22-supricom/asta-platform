@@ -5,9 +5,11 @@ build/
 .expo/
 *.tsbuildinfo
 
+# `.env.*` cubre tambien los respaldos a mano (`.env.bak`, `.env.viejo`): el
+# patron `.env` solo no casaba con ellos, y un `cp .env .env.bak` dejaba un
+# archivo de credenciales sin ignorar.
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 .DS_Store
