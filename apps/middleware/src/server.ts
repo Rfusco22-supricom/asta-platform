@@ -11,6 +11,7 @@ import { adminRouter } from './routes/admin.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 import { prisma } from './config/prisma.js';
+import { logger } from './utils/logger.js';
 
 /**
  * Servidor del middleware.
@@ -38,17 +39,10 @@ export function createApp() {
 
   app.use(
     pinoHttp({
-      level: process.env.LOG_LEVEL ?? 'info',
-      // Sin esto, las cabeceras de autenticación acaban en texto plano en el log.
-      redact: {
-        paths: [
-          'req.headers.authorization',
-          'req.headers["x-api-key"]',
-          'req.headers.cookie',
-          'req.headers["x-dev-odoo-user-id"]',
-        ],
-        remove: true,
-      },
+      // El nivel y la redacción de cabeceras viven en utils/logger.ts, que es
+      // el MISMO logger que usa el cliente de Odoo. Compartirlo es lo que
+      // permite cruzar una petición lenta con el RPC que la hizo lenta.
+      logger,
       // El health check dispara cada pocos segundos: ahogaría el log.
       autoLogging: { ignore: (req) => req.url === '/health' },
     }),

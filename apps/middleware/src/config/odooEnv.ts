@@ -48,6 +48,14 @@ const schema = z.object({
   /** API key de Odoo, no la contraseña del usuario. */
   ODOO_PASSWORD: z.string().min(1),
   ODOO_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  /**
+   * A partir de cuantos ms una llamada a Odoo se registra como lenta (`warn`).
+   *
+   * Por debajo salen en `debug`, que en produccion no se imprime. Dos segundos
+   * es lo que tarda la cartera completa; una llamada suelta que pase de ahi es
+   * lo que merece mirarse.
+   */
+  ODOO_SLOW_RPC_MS: z.coerce.number().int().positive().default(2_000),
   ODOO_DEFAULT_LANG: z.string().default('es_MX'),
   ODOO_DEFAULT_TZ: z.string().default('America/Mexico_City'),
 });
