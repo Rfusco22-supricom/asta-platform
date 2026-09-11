@@ -28,3 +28,12 @@ next-env.d.ts
 # logs de desarrollo
 mw.log
 web.log
+
+# artefactos de pruebas manuales (pueden contener tokens reales)
+cookies*.txt
+login.json
+refresh.json
+cart.json
+prof.json
+port.json
+p.json
