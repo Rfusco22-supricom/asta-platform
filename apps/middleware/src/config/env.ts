@@ -35,6 +35,25 @@ export const envSchema = z.object({
 
   /** Origen del panel para CORS. La API pública se consume sin navegador. */
   WEB_APP_ORIGIN: z.string().url().default('http://localhost:3000'),
+
+  /**
+   * Quién puede hablar en nombre del cliente final (issue #52).
+   *
+   * El navegador NUNCA llama al middleware: todo pasa por el servidor de Next.
+   * Eso es bueno para el token, pero tiene un efecto colateral — lo que el
+   * middleware ve como IP y user-agent es el servidor de Next, no la persona.
+   * La pantalla de sesiones activas quedaba inservible: todas las filas decían
+   * "Dispositivo desconocido" desde la misma IP.
+   *
+   * Con esto, a los pares de confianza se les cree el `X-Forwarded-For` y la
+   * cabecera con el user-agent real. A los demás, no: si se creyera a cualquiera,
+   * quien llamara al middleware directamente podría falsificar la IP que queda
+   * registrada, y una intrusión parecería venir de la oficina.
+   *
+   * Valores de Express: 'loopback', 'linklocal', 'uniquelocal', una lista de
+   * IPs/CIDR separada por comas, o un número de saltos.
+   */
+  TRUSTED_PROXIES: z.string().default('loopback'),
 });
 
 export type Env = z.infer<typeof envSchema>;

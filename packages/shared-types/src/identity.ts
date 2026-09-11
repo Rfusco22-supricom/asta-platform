@@ -105,6 +105,15 @@ export const identitySchema = z.object({
    * solo qué usuario.
    */
   apiKeyId: z.uuid().optional(),
+  /**
+   * Solo presente cuando el request entró con JWT. Ausente con API key.
+   *
+   * Es la simétrica de `apiKeyId`, y existe por la pantalla de sesiones activas
+   * (#52): sin saber desde qué sesión se está mirando, la lista no puede marcar
+   * cuál es "esta" — y cerrar la propia creyendo que era la de otro es
+   * exactamente el error que esa pantalla debe evitar.
+   */
+  sessionId: z.uuid().optional(),
 });
 
 export type Identity = z.infer<typeof identitySchema>;

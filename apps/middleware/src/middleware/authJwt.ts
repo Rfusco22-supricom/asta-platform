@@ -130,6 +130,7 @@ export function authJwt(): RequestHandler {
         odooUserId: sesion.user.odooUserId,
         odooPricelistId: sesion.user.odooPricelistId,
         scopes: [],
+        sessionId: claims.sid,
       };
 
       cache.set(claims.sid, { identity, expiraEn: Date.now() + TTL_MS });

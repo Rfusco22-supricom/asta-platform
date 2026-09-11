@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
 import { requireSession, clearSession } from '@/lib/session';
-import { getClientInvoicing, getClientProfile, ApiError, ContractError } from '@/lib/api';
+import { getClientInvoicing, getClientProfile, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
 import { GraficaMensual } from './GraficaMensual';
 import { Perfil } from './Perfil';
@@ -65,6 +65,9 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     datos = inv;
     perfil = prof;
   } catch (error) {
+    // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
+    // el usuario ve "no se pudo cargar" en vez de ir al login.
+    if (esRedireccion(error)) throw error;
     if (error instanceof ApiError && error.status === 404) notFound();
 
     // 403: el cliente existe pero no es de este vendedor. Se dice tal cual —
@@ -273,6 +276,11 @@ function Marco({ nombre, children }: { nombre: string; children: React.ReactNode
           <span className="who">
             <strong>{nombre}</strong>
           </span>
+          {/* La pantalla de sesiones no sirve de nada si hay que saberse la URL:
+              quien sospecha de un acceso ajeno tiene que encontrarla mirando. */}
+          <Link href="/cuenta/sesiones" className="btn-link">
+            Sesiones
+          </Link>
           <form action={salir}>
             <button type="submit" className="btn-link">
               Salir

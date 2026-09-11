@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { setSession } from '@/lib/session';
 
@@ -28,9 +29,35 @@ export default async function LoginPage({ searchParams }: Props) {
 
     let res: Response;
     try {
+      /*
+       * Se reenvían el navegador y la IP REALES de quien entra (issue #52).
+       *
+       * Sin esto, el middleware registra en la sesión lo que ve: el servidor de
+       * Next. Y como el navegador nunca le habla directamente, TODAS las
+       * sesiones salían como "Dispositivo desconocido" desde la misma IP, lo que
+       * dejaba la pantalla de sesiones activas sin nada que mirar — y esa
+       * pantalla existe justo para reconocer un acceso que no es tuyo.
+       *
+       * El middleware solo se cree estas dos cabeceras si quien llama está en su
+       * TRUSTED_PROXIES. De lo contrario cualquiera podría escribir a mano el
+       * dispositivo y la IP que quedan registrados.
+       */
+      const cabeceras = await headers();
+      const ipCliente =
+        cabeceras.get('x-forwarded-for') ?? cabeceras.get('x-real-ip') ?? '';
+
       res = await fetch(`${MIDDLEWARE_URL}/api/v1/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Asta-Client-UA': cabeceras.get('user-agent') ?? '',
+          // Se pasa la cadena TAL CUAL llegó, sin reescribirla: si delante hay
+          // otro proxy, el primer salto de la lista es el cliente real y
+          // sustituirla lo perdería. En desarrollo no hay proxy y viene vacía,
+          // así que la IP registrada será la de loopback — es lo que hay, y es
+          // preferible a inventarse una.
+          'X-Forwarded-For': ipCliente,
+        },
         body: JSON.stringify({ email, password }),
       });
     } catch {
@@ -80,6 +107,7 @@ export default async function LoginPage({ searchParams }: Props) {
     bloqueada: 'Cuenta bloqueada temporalmente por intentos fallidos. Inténtalo en unos minutos.',
     faltan: 'Escribe tu correo y tu contraseña.',
     red: 'No se pudo contactar con el servidor. Comprueba que el middleware esté arriba.',
+    cerrada: 'Tu sesión se cerró. Vuelve a entrar.',
   };
 
   return (

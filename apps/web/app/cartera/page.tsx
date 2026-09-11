@@ -1,6 +1,7 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireSession, clearSession } from '@/lib/session';
-import { getPortfolio, ApiError, ContractError } from '@/lib/api';
+import { getPortfolio, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { moneyCompact, money } from '@/lib/formato';
 import { TablaCartera } from './TablaCartera';
 
@@ -30,6 +31,11 @@ function Barra({ nombre }: { nombre: string }) {
           <span className="who">
             <strong>{nombre}</strong>
           </span>
+          {/* La pantalla de sesiones no sirve de nada si hay que saberse la URL:
+              quien sospecha de un acceso ajeno tiene que encontrarla mirando. */}
+          <Link href="/cuenta/sesiones" className="btn-link">
+            Sesiones
+          </Link>
           <form action={salir}>
             <button type="submit" className="btn-link">
               Salir
@@ -48,6 +54,9 @@ export default async function CarteraPage() {
   try {
     portfolio = await getPortfolio(sesion.accessToken);
   } catch (error) {
+    // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
+    // el usuario ve "no se pudo cargar" en vez de ir al login.
+    if (esRedireccion(error)) throw error;
     // Odoo caído no puede dar pantalla en blanco: el vendedor tiene que
     // entender qué pasa y si es culpa suya.
     const esContrato = error instanceof ContractError;
