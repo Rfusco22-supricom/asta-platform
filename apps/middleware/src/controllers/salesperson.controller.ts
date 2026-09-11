@@ -135,9 +135,11 @@ export async function getPortfolio(
         email: cliente.email,
         telefono: cliente.telefono,
         tier: cliente.tier,
+        tierDerivado: cliente.tierDerivado,
         totalFacturado: t.total,
         porCobrar: t.porCobrar,
         numeroFacturas: t.facturas,
+        esCliente: cliente.esCliente,
       };
     });
 

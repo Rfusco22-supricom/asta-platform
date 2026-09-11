@@ -56,14 +56,32 @@ export interface PartnerWithTier extends Partner {
   esCliente: boolean;
 }
 
+/**
+ * Limpia un campo de texto de Odoo.
+ *
+ * Odoo devuelve `false` para los vacíos, y los valores que sí trae vienen tal
+ * como los tecleó alguien: con espacios al final, o siendo solo espacios. De 440
+ * correos de una cartera real, 6 tenían un espacio sobrante — suficiente para
+ * que fallaran la validación aguas abajo aunque la dirección fuese correcta.
+ *
+ * Se normaliza aquí, en la frontera por donde los datos entran al sistema, y no
+ * relajando el contrato: un espacio al final no forma parte de una dirección de
+ * correo, así que el contrato tiene razón y el dato está sucio.
+ */
+function limpiar(valor: string | false): string | null {
+  if (!valor) return null;
+  const t = valor.trim();
+  return t.length > 0 ? t : null;
+}
+
 function mapPartner(row: PartnerRow): PartnerWithTier {
   const pricelistId = row.property_product_pricelist ? row.property_product_pricelist[0] : null;
 
   return {
     id: row.id,
-    nombre: row.name,
-    email: row.email || null,
-    telefono: row.phone || null,
+    nombre: row.name.trim(),
+    email: limpiar(row.email),
+    telefono: limpiar(row.phone),
     vendedorOdooUserId: row.user_id ? row.user_id[0] : null,
     vendedorNombre: row.user_id ? row.user_id[1] : null,
     commercialPartnerId: row.commercial_partner_id ? row.commercial_partner_id[0] : row.id,

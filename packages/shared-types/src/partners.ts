@@ -39,7 +39,10 @@ export const portfolioRowSchema = z.object({
   nombre: z.string(),
   email: z.email().nullable(),
   telefono: z.string().nullable(),
+  /** Nombre de la tarifa tal como viene de Odoo, sin normalizar. */
   tier: z.string().nullable(),
+  /** Nivel derivado de la tarifa (ver TierPricelistMap). Es lo que pinta el badge. */
+  tierDerivado: clientTierSchema,
   totalFacturado: montoSchema,
   porCobrar: montoSchema,
   numeroFacturas: z.number().int().nonnegative(),

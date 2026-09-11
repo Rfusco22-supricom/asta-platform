@@ -18,6 +18,8 @@
   "dependencies": {
     "@asta/shared-types": "workspace:*",
     "@prisma/client": "^6.2.1",
+    "@types/cors": "^2.8.19",
+    "cors": "^2.8.6",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
