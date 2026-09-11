@@ -15,9 +15,10 @@ import { authApiKey } from '../middleware/apiKeyAuth.js';
  * rango que no existe en Odoo (999.000.xxx) para no chocar nunca con el espejo
  * que sincroniza el job de #15.
  *
- * Igual que en apiKeyAuth.test.ts, los casos marcados con `it.fails` afirman el
- * comportamiento CORRECTO de un bug descrito en #27: pasan mientras el bug
- * viva, y empiezan a fallar en cuanto se arregle.
+ * Los tres fallos que este fichero destapo —la lista blanca fallando abierta
+ * sin IP, fallando cerrada con rangos CIDR, y el token rechazado por un espacio
+ * de mas— ya estan arreglados, asi que aqui no queda ningun `it.fails`. Los
+ * casos correspondientes llevan una nota ARREGLADO explicando que cubrian.
  */
 
 const PARTNER_OK = 999_000_101;
@@ -178,16 +179,16 @@ describe('#27 · verifyApiKey · formato del token', () => {
    * El arreglo es de una linea: recortar una vez y usar ese valor para ambas
    * cosas.
    */
-  it.fails('deberia tolerar espacios alrededor del token', async () => {
+  it('tolera espacios alrededor del token', async () => {
     const r = await verifyApiKey(`  ${tokenValido}  `);
     expect(r.ok).toBe(true);
   });
 
-  it('hoy un token con espacios se rechaza como si no existiera', async () => {
-    // Fija el sintoma: el motivo es NOT_FOUND, no MALFORMED, asi que ni
-    // siquiera el log ayuda a distinguirlo de una key inventada.
+  it('tolera un salto de linea al final, que es el caso real', async () => {
+    // Pegar un secreto largo en un .env, un curl o un gestor de secretos se
+    // lleva un \n con muchisima facilidad.
     const r = await verifyApiKey(`${tokenValido}\n`);
-    expect(r).toEqual({ ok: false, reason: 'NOT_FOUND' });
+    expect(r.ok).toBe(true);
   });
 });
 
@@ -241,9 +242,12 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
    * key se acepta. Una allowlist tiene que fallar CERRADA: si hay lista y no se
    * puede determinar el origen, se rechaza.
    */
-  it.fails('deberia rechazar cuando hay lista blanca y no se conoce la IP', async () => {
+  it('rechaza cuando hay lista blanca y no se conoce la IP', async () => {
+    // ARREGLADO. Antes el `&& ip &&` saltaba la condicion entera y aceptaba la
+    // key: una allowlist se volvia inutil justo cuando no se podia determinar
+    // el origen. Ahora falla cerrada.
     const r = await verifyApiKey(tokenConIpExacta, undefined);
-    expect(r.ok).toBe(false);
+    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED' });
   });
 
   /**
@@ -261,15 +265,24 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
    * La salida es implementar comparacion CIDR de verdad, o renombrar la columna
    * a `ip` y documentar que solo admite direcciones exactas.
    */
-  it.fails('deberia aceptar una IP dentro del rango CIDR declarado', async () => {
+  it('acepta una IP dentro del rango CIDR declarado', async () => {
+    // ARREGLADO. Antes se comparaba con includes(), igualdad exacta de cadenas,
+    // asi que "200.44.1.0/24" no coincidia con ninguna IP del rango.
     const r = await verifyApiKey(tokenConCidr, '200.44.1.77');
     expect(r.ok).toBe(true);
   });
 
-  it('hoy un CIDR rechaza incluso a los suyos (comportamiento actual)', async () => {
-    // Fija el sintoma para que el arreglo del caso de arriba sea visible aqui.
-    const r = await verifyApiKey(tokenConCidr, '200.44.1.77');
+  it('rechaza una IP fuera del rango CIDR', async () => {
+    const r = await verifyApiKey(tokenConCidr, '200.44.2.77');
     expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED' });
+  });
+
+  it('acepta una IPv4 que llega envuelta como ::ffff:', async () => {
+    // Node entrega esa forma cuando el socket es IPv6 y el cliente vino por
+    // IPv4, que es lo habitual detras de un proxy. Sin desenvolverla, la lista
+    // blanca no casaria nunca en produccion.
+    const r = await verifyApiKey(tokenConCidr, '::ffff:200.44.1.77');
+    expect(r.ok).toBe(true);
   });
 });
 

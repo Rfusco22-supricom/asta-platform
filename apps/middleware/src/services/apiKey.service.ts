@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ApiScope, ApiKeyEnv } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
+import { origenPermitido } from './ipAllowlist.js';
 
 /**
  * Emisión y verificación de API keys de cliente.
@@ -132,7 +133,14 @@ export type VerifyResult =
  * "esta key existe pero expiró".
  */
 export async function verifyApiKey(rawToken: string, ip?: string): Promise<VerifyResult> {
-  const match = TOKEN_REGEX.exec(rawToken.trim());
+  // Se recorta UNA vez y se usa ese valor para todo. Antes el formato se
+  // validaba sobre `rawToken.trim()` pero el HMAC se calculaba sobre `rawToken`:
+  // una key valida copiada con un salto de linea —al pegarla en un .env o en un
+  // curl— pasaba el formato, fallaba el hash, y se rechazaba como NOT_FOUND,
+  // indistinguible de una key inventada.
+  const token = rawToken.trim();
+
+  const match = TOKEN_REGEX.exec(token);
   if (!match) return { ok: false, reason: 'MALFORMED' };
 
   const [, , prefix] = match;
@@ -161,7 +169,7 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
 
   // Se calcula el HMAC aunque la fila no exista, para que el tiempo de respuesta
   // no revele si el prefijo es válido.
-  const candidate = Buffer.from(hashToken(rawToken), 'utf8');
+  const candidate = Buffer.from(hashToken(token), 'utf8');
   const stored = Buffer.from(key?.keyHash ?? '0'.repeat(64), 'utf8');
   const hashMatches = candidate.length === stored.length && timingSafeEqual(candidate, stored);
 
@@ -170,7 +178,7 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
   if (key.expiresAt && key.expiresAt < new Date()) return { ok: false, reason: 'EXPIRED' };
   if (!key.user.isActive) return { ok: false, reason: 'USER_INACTIVE' };
   const allowedIps = key.allowedIps.map((row) => row.cidr);
-  if (allowedIps.length > 0 && ip && !allowedIps.includes(ip)) {
+  if (!origenPermitido(allowedIps, ip)) {
     return { ok: false, reason: 'IP_NOT_ALLOWED' };
   }
 
