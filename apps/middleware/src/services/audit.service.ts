@@ -1,4 +1,3 @@
-import type { Request } from 'express';
 import { prisma } from '../config/prisma.js';
 
 /**
@@ -31,7 +30,8 @@ export type AuditAction =
   | 'access.denied.auth'
   | 'api_key.created'
   | 'api_key.revoked'
-  | 'user.role_changed';
+  | 'user.role_changed'
+  | 'sync.partners';
 
 export interface AuditEvent {
   action: AuditAction;
@@ -73,15 +73,6 @@ export function recordAudit(event: Omit<AuditEvent, 'at'>): void {
       /* un sink roto no puede afectar al request */
     }
   }
-}
-
-/** Extrae del request lo que todo evento necesita. */
-export function auditContext(req: Request): Pick<AuditEvent, 'actorId' | 'actorOdooUserId' | 'ip'> {
-  return {
-    actorId: req.identity?.appUserId ?? null,
-    actorOdooUserId: req.identity?.odooUserId ?? null,
-    ip: req.ip ?? null,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

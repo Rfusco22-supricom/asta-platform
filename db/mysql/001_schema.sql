@@ -577,6 +577,36 @@ CREATE TABLE odoo_entity_cache (
 
 
 -- -----------------------------------------------------------------------------
+-- sync_state — marca de agua de cada sincronización con Odoo.
+--
+-- Guarda el `write_date` MÁS ALTO ya procesado, para que la siguiente pasada
+-- pida solo lo que cambió. Sin esto habría que releer los 2944 clientes cada
+-- 15 minutos.
+--
+-- Se guarda el reloj de ODOO, no el nuestro: son dos máquinas distintas y su
+-- desfase, aunque sea de segundos, se traduce en registros que se saltan para
+-- siempre. La marca es un dato que Odoo nos dio, no una hora que apuntamos.
+--
+-- Se retrocede un margen de seguridad al consultar (ver sync.service.ts): dos
+-- partners modificados en el mismo segundo podrían quedar a caballo del corte.
+-- -----------------------------------------------------------------------------
+CREATE TABLE sync_state (
+  -- "res.partner", y en el futuro los demás modelos que se sincronicen.
+  entidad          VARCHAR(64)  NOT NULL,
+  -- write_date de Odoo, en su formato 'YYYY-MM-DD HH:MM:SS' (UTC).
+  ultimo_write_date VARCHAR(19)          DEFAULT NULL,
+  ultima_ejecucion DATETIME(3)           DEFAULT NULL,
+  -- Resumen de la última pasada: creados, actualizados, omitidos, fallidos.
+  resumen          JSON                  DEFAULT NULL,
+  ejecutando       BOOLEAN      NOT NULL DEFAULT FALSE,
+  -- Para que una ejecución colgada no bloquee las siguientes para siempre.
+  ejecutando_desde DATETIME(3)           DEFAULT NULL,
+
+  PRIMARY KEY (entidad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- -----------------------------------------------------------------------------
 -- audit_logs — rastro de acciones sensibles.
 --
 -- Append-only. Nunca se actualiza ni se borra: un registro de auditoría que se

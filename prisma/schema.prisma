@@ -519,6 +519,25 @@ model OdooEntityCache {
   @@map("odoo_entity_cache")
 }
 
+/// Marca de agua de cada sincronización con Odoo.
+///
+/// Guarda el `write_date` más alto ya procesado para que la siguiente pasada
+/// pida solo lo que cambió. Es el reloj de ODOO, no el nuestro: son dos
+/// máquinas y su desfase se traduciría en registros saltados para siempre.
+model SyncState {
+  entidad         String    @id @db.VarChar(64)
+  /// Formato de Odoo: 'YYYY-MM-DD HH:MM:SS' en UTC.
+  ultimoWriteDate String?   @map("ultimo_write_date") @db.VarChar(19)
+  ultimaEjecucion DateTime? @map("ultima_ejecucion") @db.DateTime(3)
+  resumen         Json?
+  /// Cerrojo: impide que dos pasadas se solapen.
+  ejecutando      Boolean   @default(false)
+  /// Para que una ejecución colgada no bloquee las siguientes para siempre.
+  ejecutandoDesde DateTime? @map("ejecutando_desde") @db.DateTime(3)
+
+  @@map("sync_state")
+}
+
 /// Rastro de acciones sensibles: emisión y revocación de keys, cambios de rol,
 /// accesos denegados.
 ///

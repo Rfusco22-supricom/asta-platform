@@ -8,7 +8,8 @@ import {
   assertSalespersonOwnsPartner,
   getPartnersBySalesperson,
 } from '../services/partners.service.js';
-import { auditContext, recordAudit } from '../services/audit.service.js';
+import { recordAudit } from '../services/audit.service.js';
+import { auditContext } from '../middleware/auditContext.js';
 import { getClientProfile } from '../services/profile.service.js';
 
 /** Un rol sin permiso para el modulo de vendedores tambien deja rastro. */

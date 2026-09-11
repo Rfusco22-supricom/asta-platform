@@ -7,6 +7,7 @@ import { odooEnv } from './config/odooEnv.js';
 import { getUid, executeKw } from './odoo/client.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
+import { adminRouter } from './routes/admin.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 
@@ -59,6 +60,7 @@ export function createApp() {
 
   app.use('/api/v1/auth', corsPanel, authRouter);
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
+  app.use('/api/v1/admin', corsPanel, adminRouter);
 
   // ── Health ────────────────────────────────────────────────────────────────
   app.get('/health', async (_req, res) => {

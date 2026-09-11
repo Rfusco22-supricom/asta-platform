@@ -2,7 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { ZodError, z } from 'zod';
 import { HTTP_STATUS_BY_ERROR, type ErrorCode } from '@asta/shared-types';
 import { OdooError } from '../odoo/client.js';
-import { auditContext, recordAudit } from '../services/audit.service.js';
+import { recordAudit } from '../services/audit.service.js';
+import { auditContext } from './auditContext.js';
 
 /**
  * Manejador de errores único.
