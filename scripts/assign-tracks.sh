@@ -19,7 +19,8 @@ DEV_B="LinoGouveia"         # Track B — API publica y Kiosco
 LABEL_A="track:A-core-vendedores"
 LABEL_B="track:B-api-kiosco"
 
-# Track A — 25 issues. Middleware core, identidad, modulo de vendedores.
+# Track A — 30 issues. Middleware core, identidad, autenticacion propia
+# (#51-#54, que Supabase cubria) y modulo de vendedores.
 ISSUES_A=(1 2 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 44 46 47 48 50 51 52 53 54)
 
 # Track B — 24 issues. Descubrimiento de catalogo, API publica, kiosco.

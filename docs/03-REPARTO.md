@@ -144,13 +144,15 @@ ocurrieron.
 
 ---
 
-## 6. Riesgo asimétrico — hay que decirlo
+## 6. Riesgo asimétrico — se materializó
 
-**Track B carga con el riesgo #1 del proyecto.** Si el issue #7 devuelve una
-cobertura de compatibilidad impresora↔tóner por debajo del 60%, la Fase 5 se
-pospone y B pierde 6 issues de su track.
+**Track B cargaba con el riesgo #1 del proyecto, y salió mal.** El issue #7
+devolvió **cobertura 0%**: no es que la data esté incompleta, es que
+`asta.printer.model` no existe en Odoo. **La Fase 5 está pospuesta** y B pierde
+6 issues de su track.
 
-**Qué pasa entonces:** B no se queda sin trabajo. Recoge:
+**Qué hace B mientras tanto:** su Fase 4 (API pública, #27–#37) sigue intacta y
+es donde debe concentrarse. Si le sobra capacidad, recoge:
 
 1. El epic de captura de datos de compatibilidad (que habría que abrir),
 2. y las issues de frontend de la Fase 3 de A (#23 ficha de cliente, #24 perfilado),
@@ -173,11 +175,8 @@ no en la 5.
 
 ## 8. Re-ejecutar el reparto
 
-Las asignaciones quedaron pendientes hasta que `LinoGouveia` acepte la invitación
-al repositorio (GitHub no permite asignar issues a quien no es colaborador). Las
-labels de track ya están aplicadas, así que el reparto es visible desde ya.
-
-Cuando acepte:
+`LinoGouveia` ya aceptó la invitación, así que los 54 issues están asignados y
+etiquetados. Para re-aplicar el reparto tras añadir issues nuevos:
 
 ```bash
 bash scripts/assign-tracks.sh Rfusco22-supricom/asta-platform
