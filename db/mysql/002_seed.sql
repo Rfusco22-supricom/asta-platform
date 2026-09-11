@@ -24,13 +24,20 @@ SET NAMES utf8mb4;
 -- descuentos (issue #5), se descomentan con los IDs reales y el nivel de cada
 -- cliente empieza a resolverse solo, sin tocar código.
 -- -----------------------------------------------------------------------------
-INSERT INTO tier_pricelist_map (odoo_pricelist_id, pricelist_name, tier, notes)
+-- `updated_at` se pasa explicito: el DDL le quito el default a proposito (ver
+-- la cabecera de 001_schema.sql) para que `prisma migrate diff` no viera
+-- divergencia, y este script inserta a mano. UTC_TIMESTAMP y no CURRENT_TIMESTAMP
+-- porque la convencion del esquema es guardar siempre UTC, y la zona del
+-- servidor puede no serlo.
+INSERT INTO tier_pricelist_map (odoo_pricelist_id, pricelist_name, tier, notes, updated_at)
 VALUES
   (15866, 'Lista de Precios (USD)', 'BRONCE',
-   'Tarifa unica en uso al 2026-09-11: los 2942 clientes apuntan aqui. Ver issue #5.')
+   'Tarifa unica en uso al 2026-09-11: los 2942 clientes apuntan aqui. Ver issue #5.',
+   UTC_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE
   pricelist_name = VALUES(pricelist_name),
-  notes          = VALUES(notes);
+  notes          = VALUES(notes),
+  updated_at     = UTC_TIMESTAMP(3);
 
 -- Pendientes de crear en Odoo (issue #5):
 -- INSERT INTO tier_pricelist_map (odoo_pricelist_id, pricelist_name, tier) VALUES
@@ -54,12 +61,18 @@ ON DUPLICATE KEY UPDATE
 -- El odoo_partner_id debe existir en res.partner: es la llave que une ambos
 -- mundos y el sync lo va a verificar.
 -- -----------------------------------------------------------------------------
-INSERT INTO app_users (email, full_name, role, odoo_partner_id, odoo_user_id, is_active, sync_status)
+-- `id` y `updated_at` van explicitos por el mismo motivo que arriba: el DDL no
+-- declara DEFAULT (UUID()) ni ON UPDATE CURRENT_TIMESTAMP. El UUID() lo genera
+-- MySQL solo en la insercion inicial; al reaplicar, el ON DUPLICATE KEY no
+-- toca el id, asi que el script sigue siendo idempotente.
+INSERT INTO app_users (id, email, full_name, role, odoo_partner_id, odoo_user_id, is_active, sync_status, updated_at)
 VALUES
-  ('webmaster02@supricom.com.ve', 'Administrador ASTA', 'SUPERADMIN', 1, 388, TRUE, 'PENDING')
+  (UUID(), 'webmaster02@supricom.com.ve', 'Administrador ASTA', 'SUPERADMIN', 1, 388, TRUE, 'PENDING',
+   UTC_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE
-  full_name = VALUES(full_name),
-  role      = VALUES(role);
+  full_name  = VALUES(full_name),
+  role       = VALUES(role),
+  updated_at = UTC_TIMESTAMP(3);
 
 
 -- -----------------------------------------------------------------------------
