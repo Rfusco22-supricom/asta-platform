@@ -33,10 +33,11 @@ datasource db {
 //    instante se leería distinto desde la tablet, el panel y la API pública.
 //    La aplicación escribe UTC y convierte al mostrar.
 //
-// 3. Prisma no gestiona colaciones.
-//    `app_users.email` necesita utf8mb4_0900_as_ci (insensible a mayúsculas,
-//    SENSIBLE a acentos) para que jose@ y josé@ no colisionen. Eso se aplica
-//    con la migración SQL; Prisma no lo expresa y tampoco lo va a revertir.
+// 3. Prisma no gestiona colaciones, y el email depende de una.
+//    `app_users.email` usa utf8mb4_bin porque NINGUNA colación _ci respeta los
+//    acentos: con cualquiera de ellas, jose@ y josé@ serían el mismo usuario.
+//    La insensibilidad a mayúsculas la aporta `normalizarEmail()`, que SIEMPRE
+//    debe aplicarse antes de insertar o buscar por email.
 //
 // 4. MySQL no tiene arrays.
 //    Lo que en PostgreSQL era `scopes ApiScope[]` ahora son las tablas puente
@@ -101,8 +102,9 @@ enum AuthTokenPurpose {
 model AppUser {
   id String @id @default(uuid()) @db.Char(36)
 
-  /// Colación utf8mb4_0900_as_ci, aplicada por migración SQL. Ver nota 3.
-  email    String  @unique @db.VarChar(255)
+  /// SIEMPRE normalizado con `normalizarEmail()` antes de escribir o buscar.
+  /// La columna es utf8mb4_bin: la base no perdona mayúsculas. Ver nota 3.
+  email    String  @unique(map: "uq_app_users_email") @db.VarChar(255)
   fullName String  @map("full_name") @db.VarChar(255)
   phone    String? @db.VarChar(50)
 
@@ -110,9 +112,9 @@ model AppUser {
 
   // ── Vínculo con Odoo ──────────────────────────────────────────────────────
   /// res.partner.id — la llave que une los dos mundos. Inmutable.
-  odooPartnerId Int  @unique @map("odoo_partner_id") @db.UnsignedInt
+  odooPartnerId Int  @unique(map: "uq_app_users_odoo_partner") @map("odoo_partner_id") @db.UnsignedInt
   /// res.users.id — solo para SUPERADMIN y VENDEDOR.
-  odooUserId    Int? @unique @map("odoo_user_id") @db.UnsignedInt
+  odooUserId    Int? @unique(map: "uq_app_users_odoo_user") @map("odoo_user_id") @db.UnsignedInt
   /// product.pricelist.id. De aquí se deriva el tier (ver TierPricelistMap).
   odooPricelistId Int? @map("odoo_pricelist_id") @db.UnsignedInt
   /// Nombre de la tarifa tal como viene de Odoo, para depurar desalineaciones.
@@ -128,7 +130,7 @@ model AppUser {
 
   // ── Vendedor asignado ─────────────────────────────────────────────────────
   assignedSalespersonId String?   @map("assigned_salesperson_id") @db.Char(36)
-  assignedSalesperson   AppUser?  @relation("SalespersonClients", fields: [assignedSalespersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  assignedSalesperson   AppUser?  @relation("SalespersonClients", fields: [assignedSalespersonId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_app_users_salesperson")
   clients               AppUser[] @relation("SalespersonClients")
 
   isActive    Boolean   @default(true) @map("is_active")
@@ -170,7 +172,7 @@ model AppUser {
 /// opuesto al de las API keys, donde el secreto son 32 bytes aleatorios.
 model UserCredential {
   userId String  @id @map("user_id") @db.Char(36)
-  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_user_credentials_user")
 
   passwordHash String @map("password_hash") @db.VarChar(255)
   /// Obliga a cambiarla en el próximo login (alta inicial, reseteo por soporte).
@@ -193,10 +195,10 @@ model UserCredential {
 model UserSession {
   id     String  @id @default(uuid()) @db.Char(36)
   userId String  @map("user_id") @db.Char(36)
-  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_user_sessions_user")
 
   /// SHA-256 en hex del refresh token.
-  refreshTokenHash String @unique @map("refresh_token_hash") @db.Char(64)
+  refreshTokenHash String @unique(map: "uq_user_sessions_token") @map("refresh_token_hash") @db.Char(64)
 
   userAgent String? @map("user_agent") @db.VarChar(500)
   /// VARCHAR(45) = longitud máxima de una IPv6 en texto. MySQL no tiene tipo
@@ -222,11 +224,11 @@ model UserSession {
 model AuthToken {
   id      String           @id @default(uuid()) @db.Char(36)
   userId  String           @map("user_id") @db.Char(36)
-  user    AppUser          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    AppUser          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_auth_tokens_user")
   purpose AuthTokenPurpose
 
   /// Igual que arriba: se guarda el hash, nunca el token que viaja por email.
-  tokenHash String @unique @map("token_hash") @db.Char(64)
+  tokenHash String @unique(map: "uq_auth_tokens_hash") @map("token_hash") @db.Char(64)
 
   expiresAt DateTime  @map("expires_at") @db.DateTime(3)
   usedAt    DateTime? @map("used_at") @db.DateTime(3)
@@ -257,7 +259,7 @@ model TierPricelistMap {
   notes           String?    @db.VarChar(500)
 
   updatedById String?  @map("updated_by") @db.Char(36)
-  updatedBy   AppUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updatedBy   AppUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_tier_map_updated_by")
   updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   @@index([tier], map: "ix_tier_pricelist_tier")
@@ -284,13 +286,13 @@ model TierPricelistMap {
 model ApiKey {
   id     String  @id @default(uuid()) @db.Char(36)
   userId String  @map("user_id") @db.Char(36)
-  user   AppUser @relation("ApiKeyOwner", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user   AppUser @relation("ApiKeyOwner", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_keys_user")
 
   name        String    @db.VarChar(60)
   environment ApiKeyEnv @default(LIVE)
 
-  prefix   String @unique @db.VarChar(16)
-  keyHash  String @unique @map("key_hash") @db.Char(64)
+  prefix   String @unique(map: "uq_api_keys_prefix") @db.VarChar(16)
+  keyHash  String @unique(map: "uq_api_keys_hash") @map("key_hash") @db.Char(64)
   lastFour String @map("last_four") @db.Char(4)
 
   rateLimitPerMinute Int @default(60) @map("rate_limit_per_minute") @db.UnsignedSmallInt
@@ -298,7 +300,7 @@ model ApiKey {
   expiresAt    DateTime? @map("expires_at") @db.DateTime(3)
   revokedAt    DateTime? @map("revoked_at") @db.DateTime(3)
   revokedById  String?   @map("revoked_by") @db.Char(36)
-  revokedBy    AppUser?  @relation("ApiKeyRevoker", fields: [revokedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  revokedBy    AppUser?  @relation("ApiKeyRevoker", fields: [revokedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_api_keys_revoked_by")
   revokeReason String?   @map("revoke_reason") @db.VarChar(200)
 
   lastUsedAt DateTime? @map("last_used_at") @db.DateTime(3)
@@ -310,7 +312,6 @@ model ApiKey {
 
   scopes      ApiKeyScope[]
   allowedIps  ApiKeyAllowedIp[]
-  requestLogs ApiRequestLog[]
 
   /// MySQL no tiene índices parciales (el `WHERE revoked_at IS NULL` de
   /// PostgreSQL). Un compuesto cumple la misma función aquí.
@@ -327,7 +328,7 @@ model ApiKey {
 /// en producción. Cuesta un JOIN por verificación de token.
 model ApiKeyScope {
   apiKeyId String   @map("api_key_id") @db.Char(36)
-  apiKey   ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  apiKey   ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_key_scopes_key")
   scope    ApiScope
 
   @@id([apiKeyId, scope])
@@ -338,7 +339,7 @@ model ApiKeyScope {
 /// Lista blanca opcional de origen. Sin filas para una key = sin restricción.
 model ApiKeyAllowedIp {
   apiKeyId String @map("api_key_id") @db.Char(36)
-  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_key_ips_key")
   /// "200.44.1.10" o "200.44.1.0/24"
   cidr     String @db.VarChar(45)
 
@@ -349,10 +350,18 @@ model ApiKeyAllowedIp {
 /// Bitácora de la API pública. Alto volumen: ver db/mysql/003_partitioning.sql.
 model ApiRequestLog {
   id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  /**
+   * SIN clave foránea a `api_keys`, a propósito.
+   *
+   * MySQL y MariaDB NO permiten particionar una tabla que tenga claves foráneas
+   * —ni salientes ni entrantes— y esta tabla se particiona por mes para poder
+   * purgarla con DROP PARTITION (ver db/mysql/003_partitioning.sql).
+   *
+   * Se puede prescindir de ella porque el registro ya guarda `odooPartnerId`
+   * desnormalizado justo para sobrevivir al borrado de la key. La integridad la
+   * mantiene la aplicación, que es la única que escribe aquí.
+   */
   apiKeyId String? @map("api_key_id") @db.Char(36)
-  /// SetNull y no Cascade: revocar y borrar una key no debe borrar su historial.
-  /// Ahí es justo donde se mira cuando algo salió mal.
-  apiKey   ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   /// Desnormalizado: si la key se borra, el registro sigue siendo auditable.
   odooPartnerId Int? @map("odoo_partner_id") @db.UnsignedInt
@@ -384,7 +393,7 @@ model KioskDevice {
   label         String  @db.VarChar(100)
   storeLocation String  @map("store_location") @db.VarChar(150)
   /// HMAC del device token, igual que las API keys.
-  tokenHash     String  @unique @map("token_hash") @db.Char(64)
+  tokenHash     String  @unique(map: "uq_kiosk_devices_token") @map("token_hash") @db.Char(64)
   isActive      Boolean @default(true) @map("is_active")
 
   appVersion String?   @map("app_version") @db.VarChar(20)
@@ -406,11 +415,11 @@ model KioskDevice {
 model KioskSession {
   id       String      @id @default(uuid()) @db.Char(36)
   deviceId String      @map("device_id") @db.Char(36)
-  device   KioskDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  device   KioskDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_kiosk_sessions_device")
 
   /// null = visitante anónimo: ve precio público, no tarifa de nivel.
   userId String?  @map("user_id") @db.Char(36)
-  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_kiosk_sessions_user")
 
   startedAt      DateTime  @default(now()) @map("started_at") @db.DateTime(3)
   lastActivityAt DateTime  @default(now()) @map("last_activity_at") @db.DateTime(3)
@@ -432,10 +441,10 @@ model KioskSession {
 model RecommendationEvent {
   id       BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
   deviceId String?      @map("device_id") @db.Char(36)
-  device   KioskDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  device   KioskDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_reco_device")
 
   userId String?  @map("user_id") @db.Char(36)
-  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_reco_user")
 
   /// El texto CRUDO que tecleó el cliente, sin normalizar. Los errores de tipeo
   /// son el dato: enseñan qué alias le faltan a cada modelo de impresora.
@@ -472,7 +481,7 @@ model ClientNote {
   odooPartnerId Int @map("odoo_partner_id") @db.UnsignedInt
 
   authorId String?  @map("author_id") @db.Char(36)
-  author   AppUser? @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  author   AppUser? @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_client_notes_author")
   /// Desnormalizado: la nota sigue siendo legible aunque el autor se borre.
   authorName String @map("author_name") @db.VarChar(255)
   body       String @db.Text
@@ -518,7 +527,7 @@ model OdooEntityCache {
 model AuditLog {
   id      BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
   actorId String?  @map("actor_id") @db.Char(36)
-  actor   AppUser? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  actor   AppUser? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_actor")
   /// Desnormalizado: el rastro sigue siendo legible aunque el usuario se borre.
   actorEmail String? @map("actor_email") @db.VarChar(255)
 

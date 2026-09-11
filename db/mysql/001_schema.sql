@@ -2,8 +2,14 @@
 -- ASTA — Esquema del Middleware · MySQL 8.0+
 -- =============================================================================
 --
--- Requiere MySQL 8.0.13 o superior (defaults por expresión, CHECK constraints).
+-- Probado contra MySQL 8.0.13+ y MariaDB 10.4+.
 -- Verificar con:  SELECT VERSION();
+--
+-- Las colaciones son deliberadamente las "de toda la vida" (utf8mb4_unicode_ci,
+-- utf8mb4_general_ci) y no las modernas de MySQL 8 (utf8mb4_0900_*): estas
+-- ULTIMAS NO EXISTEN EN MARIADB. Elegirlas ataria el esquema a un motor
+-- concreto, y aqui el entorno de desarrollo (XAMPP/MariaDB) y el de despliegue
+-- pueden no coincidir.
 --
 -- Convenciones de este esquema:
 --
@@ -18,6 +24,14 @@
 --     (miles de filas, no millones) la diferencia no se nota, y poder leer un id
 --     en un log vale más.
 --
+--   · Los UUID y `updated_at` los genera la APLICACIÓN, no la base.
+--     El DDL llegó a declarar DEFAULT (UUID()) y ON UPDATE CURRENT_TIMESTAMP
+--     como red de seguridad para inserciones manuales, pero eso hacía que
+--     `prisma migrate diff` viera divergencia en cada tabla y quisiera
+--     "corregirla". Entre una red de seguridad para un caso que no ocurre —la
+--     aplicación es la única que escribe— y que las migraciones futuras sean
+--     predecibles, gana lo segundo.
+--
 --   · Las claves foráneas están declaradas. InnoDB las respeta de verdad, y son
 --     la última defensa contra datos huérfanos cuando un bug de la aplicación
 --     se salta la lógica.
@@ -28,9 +42,19 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- EL SERVIDOR DEBE ESTAR EN MODO ESTRICTO.
+--
+-- Como los `id` los genera la aplicación y no la base, un INSERT que se olvide
+-- del id SIN modo estricto no falla: crea una fila con id = '' y el error
+-- aparece mucho después, al insertar la segunda. Con STRICT falla en el acto:
+--     ERROR 1364: Field 'id' doesn't have a default value
+--
+-- XAMPP NO lo trae activado. En my.ini:
+--     sql_mode=STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION
+
 -- CREATE DATABASE IF NOT EXISTS asta
 --   CHARACTER SET utf8mb4
---   COLLATE utf8mb4_0900_ai_ci;
+--   COLLATE utf8mb4_unicode_ci;
 -- USE asta;
 
 
@@ -45,13 +69,31 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- deja de ser el mismo cliente.
 -- -----------------------------------------------------------------------------
 CREATE TABLE app_users (
-  id                      CHAR(36)      NOT NULL DEFAULT (UUID()),
+  id                      CHAR(36)      NOT NULL,
 
-  -- El email se compara sin distinguir mayúsculas pero SÍ acentos.
-  -- La colación por defecto de MySQL 8 (_ai_ci) ignora los acentos, lo que haría
-  -- que jose@x.com y josé@x.com fueran el mismo usuario. Para direcciones de
-  -- correo eso es incorrecto, así que esta columna usa _as_ci.
-  email                   VARCHAR(255)  COLLATE utf8mb4_0900_as_ci NOT NULL,
+  -- El email usa colación BINARIA y la aplicación lo normaliza a minúsculas.
+  --
+  -- Se probó primero con colaciones _ci, buscando una que ignorase mayúsculas
+  -- pero respetase acentos. NINGUNA lo hace. Comprobado con literales hex, para
+  -- que el charset de la consola no falsee el resultado:
+  --
+  --     utf8mb4_general_ci      ignora mayús.  IGNORA ACENTOS
+  --     utf8mb4_unicode_ci      ignora mayús.  IGNORA ACENTOS
+  --     utf8mb4_spanish_ci      ignora mayús.  IGNORA ACENTOS
+  --     utf8mb4_unicode_520_ci  ignora mayús.  IGNORA ACENTOS
+  --     utf8mb4_bin             distingue      respeta acentos
+  --
+  -- Con cualquier _ci, 'jose@x.com' y 'josé@x.com' serían el MISMO usuario, y
+  -- el segundo no podría darse de alta.
+  --
+  -- Por eso: _bin en la base, y `normalizarEmail()` en la aplicación pasa a
+  -- minúsculas y recorta espacios antes de CUALQUIER inserción o búsqueda.
+  --   · 'JOSE@x.com' -> 'jose@x.com'  -> colisiona (correcto)
+  --   · 'josé@x.com' -> 'josé@x.com'  -> no colisiona (correcto)
+  --
+  -- CONTRAPARTIDA: si alguien inserta a mano sin normalizar, se cuelan
+  -- duplicados que la base ya no impide. La aplicación es la única que escribe.
+  email                   VARCHAR(255)  COLLATE utf8mb4_bin NOT NULL,
   full_name               VARCHAR(255)  NOT NULL,
   phone                   VARCHAR(50)            DEFAULT NULL,
 
@@ -81,8 +123,7 @@ CREATE TABLE app_users (
   sync_error              TEXT                   DEFAULT NULL,
 
   created_at              DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  updated_at              DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                        ON UPDATE CURRENT_TIMESTAMP(3),
+  updated_at              DATETIME(3)   NOT NULL,
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_app_users_email (email),
@@ -95,7 +136,7 @@ CREATE TABLE app_users (
   CONSTRAINT fk_app_users_salesperson
     FOREIGN KEY (assigned_salesperson_id) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -134,7 +175,7 @@ CREATE TABLE user_credentials (
   CONSTRAINT fk_user_credentials_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -147,7 +188,7 @@ CREATE TABLE user_credentials (
 -- se valida por firma y caduca solo.
 -- -----------------------------------------------------------------------------
 CREATE TABLE user_sessions (
-  id                 CHAR(36)     NOT NULL DEFAULT (UUID()),
+  id                 CHAR(36)     NOT NULL,
   user_id            CHAR(36)     NOT NULL,
 
   -- SHA-256 en hex del refresh token. 64 caracteres exactos.
@@ -171,7 +212,7 @@ CREATE TABLE user_sessions (
   CONSTRAINT fk_user_sessions_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -181,7 +222,7 @@ CREATE TABLE user_sessions (
 -- uso, con caducidad corta, que autoriza una acción concreta".
 -- -----------------------------------------------------------------------------
 CREATE TABLE auth_tokens (
-  id          CHAR(36)  NOT NULL DEFAULT (UUID()),
+  id          CHAR(36)  NOT NULL,
   user_id     CHAR(36)  NOT NULL,
   purpose     ENUM('INVITE','PASSWORD_RESET','EMAIL_VERIFY') NOT NULL,
 
@@ -201,7 +242,7 @@ CREATE TABLE auth_tokens (
   CONSTRAINT fk_auth_tokens_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -225,16 +266,16 @@ CREATE TABLE tier_pricelist_map (
   notes               VARCHAR(500) DEFAULT NULL,
 
   updated_by          CHAR(36)     DEFAULT NULL,
-  updated_at          DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                                   ON UPDATE CURRENT_TIMESTAMP(3),
+  updated_at          DATETIME(3)  NOT NULL,
 
   PRIMARY KEY (odoo_pricelist_id),
   KEY ix_tier_pricelist_tier (tier),
+  KEY ix_tier_pricelist_updated_by (updated_by),
 
   CONSTRAINT fk_tier_map_updated_by
     FOREIGN KEY (updated_by) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -257,7 +298,7 @@ CREATE TABLE tier_pricelist_map (
 --   · El secreto en claro se muestra UNA vez, al crearlo. No se recupera.
 -- -----------------------------------------------------------------------------
 CREATE TABLE api_keys (
-  id                    CHAR(36)     NOT NULL DEFAULT (UUID()),
+  id                    CHAR(36)     NOT NULL,
   user_id               CHAR(36)     NOT NULL,
 
   name                  VARCHAR(60)  NOT NULL,   -- "Integración con mi ERP"
@@ -287,6 +328,8 @@ CREATE TABLE api_keys (
   -- MySQL no tiene índices parciales (el `WHERE revoked_at IS NULL` de
   -- PostgreSQL). Un índice compuesto cumple la misma función aquí.
   KEY ix_api_keys_user_revoked (user_id, revoked_at),
+  -- Explicito: si no, MySQL crea uno implicito llamado como la FK.
+  KEY ix_api_keys_revoked_by (revoked_by),
 
   CONSTRAINT fk_api_keys_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
@@ -294,7 +337,7 @@ CREATE TABLE api_keys (
   CONSTRAINT fk_api_keys_revoked_by
     FOREIGN KEY (revoked_by) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -318,7 +361,7 @@ CREATE TABLE api_key_scopes (
   CONSTRAINT fk_api_key_scopes_key
     FOREIGN KEY (api_key_id) REFERENCES api_keys (id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -334,7 +377,7 @@ CREATE TABLE api_key_allowed_ips (
   CONSTRAINT fk_api_key_ips_key
     FOREIGN KEY (api_key_id) REFERENCES api_keys (id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -366,14 +409,18 @@ CREATE TABLE api_request_logs (
 
   PRIMARY KEY (id),
   KEY ix_api_logs_key_date (api_key_id, created_at),
-  KEY ix_api_logs_date (created_at),
+  KEY ix_api_logs_date (created_at)
 
-  -- ON DELETE SET NULL, no CASCADE: revocar y borrar una key no debe borrar su
-  -- historial de uso. Ahí es justo donde se mira si algo salió mal.
-  CONSTRAINT fk_api_logs_key
-    FOREIGN KEY (api_key_id) REFERENCES api_keys (id)
-    ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  -- SIN clave foránea a api_keys, a propósito.
+  --
+  -- MySQL y MariaDB NO permiten particionar una tabla que tenga claves foráneas,
+  -- y esta se particiona por mes para poder purgarla con DROP PARTITION en vez
+  -- de un DELETE de millones de filas (ver 003_partitioning.sql).
+  --
+  -- Se puede prescindir de ella porque `odoo_partner_id` está desnormalizado
+  -- justo para que el registro sobreviva al borrado de la key. La integridad la
+  -- mantiene la aplicación, que es la única que escribe aquí.
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -381,7 +428,7 @@ CREATE TABLE api_request_logs (
 -- =============================================================================
 
 CREATE TABLE kiosk_devices (
-  id             CHAR(36)     NOT NULL DEFAULT (UUID()),
+  id             CHAR(36)     NOT NULL,
   label          VARCHAR(100) NOT NULL,          -- "Tablet Mostrador 1"
   store_location VARCHAR(150) NOT NULL,
   token_hash     CHAR(64)     NOT NULL,          -- igual que las API keys
@@ -394,7 +441,7 @@ CREATE TABLE kiosk_devices (
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_kiosk_devices_token (token_hash)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -405,7 +452,7 @@ CREATE TABLE kiosk_devices (
 -- los precios del que se fue.
 -- -----------------------------------------------------------------------------
 CREATE TABLE kiosk_sessions (
-  id               CHAR(36)    NOT NULL DEFAULT (UUID()),
+  id               CHAR(36)    NOT NULL,
   device_id        CHAR(36)    NOT NULL,
   -- NULL = visitante anónimo: ve precio público, no tarifa de nivel.
   user_id          CHAR(36)             DEFAULT NULL,
@@ -419,6 +466,7 @@ CREATE TABLE kiosk_sessions (
   PRIMARY KEY (id),
   KEY ix_kiosk_sessions_device (device_id, ended_at),
   KEY ix_kiosk_sessions_expiry (expires_at),
+  KEY ix_kiosk_sessions_user (user_id),
 
   CONSTRAINT fk_kiosk_sessions_device
     FOREIGN KEY (device_id) REFERENCES kiosk_devices (id)
@@ -426,7 +474,7 @@ CREATE TABLE kiosk_sessions (
   CONSTRAINT fk_kiosk_sessions_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -455,6 +503,8 @@ CREATE TABLE recommendation_events (
   PRIMARY KEY (id),
   KEY ix_reco_printer_date (matched_printer_id, created_at),
   KEY ix_reco_date (created_at),
+  KEY ix_reco_device (device_id),
+  KEY ix_reco_user (user_id),
 
   CONSTRAINT fk_reco_device
     FOREIGN KEY (device_id) REFERENCES kiosk_devices (id)
@@ -462,7 +512,7 @@ CREATE TABLE recommendation_events (
   CONSTRAINT fk_reco_user
     FOREIGN KEY (user_id) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -477,7 +527,7 @@ CREATE TABLE recommendation_events (
 -- el chatter del cliente.
 -- -----------------------------------------------------------------------------
 CREATE TABLE client_notes (
-  id              CHAR(36)     NOT NULL DEFAULT (UUID()),
+  id              CHAR(36)     NOT NULL,
   -- Se guarda el id de Odoo y no el de app_users: un vendedor puede querer
   -- anotar sobre un prospecto que todavía no tiene cuenta en el panel.
   odoo_partner_id INT UNSIGNED NOT NULL,
@@ -486,8 +536,7 @@ CREATE TABLE client_notes (
   body            TEXT         NOT NULL,
 
   created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  updated_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
-                               ON UPDATE CURRENT_TIMESTAMP(3),
+  updated_at      DATETIME(3)  NOT NULL,
   deleted_at      DATETIME(3)           DEFAULT NULL,
 
   PRIMARY KEY (id),
@@ -497,7 +546,7 @@ CREATE TABLE client_notes (
   CONSTRAINT fk_client_notes_author
     FOREIGN KEY (author_id) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================
@@ -524,7 +573,7 @@ CREATE TABLE odoo_entity_cache (
 
   PRIMARY KEY (odoo_model, odoo_id, variant),
   KEY ix_odoo_cache_expiry (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -----------------------------------------------------------------------------
@@ -555,4 +604,4 @@ CREATE TABLE audit_logs (
   CONSTRAINT fk_audit_actor
     FOREIGN KEY (actor_id) REFERENCES app_users (id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

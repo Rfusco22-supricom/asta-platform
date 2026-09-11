@@ -16,6 +16,7 @@ import {
   hashSecreto,
 } from '../auth/tokens.js';
 import { bearerDe, emitirAccessToken, TokenInvalido, verificarAccessToken } from '../auth/jwt.js';
+import { emailValido, esEmailPlausible, normalizarEmail } from '../auth/email.js';
 
 /**
  * Issues #51 y #52 — la capa criptográfica de la autenticación.
@@ -268,5 +269,62 @@ describe('#52 · Access tokens', () => {
     expect(bearerDe('Basic dXNlcjpwYXNz')).toBeNull();
     expect(bearerDe(undefined)).toBeNull();
     expect(bearerDe('')).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('#51 · Normalización de correo', () => {
+  // La columna usa colación BINARIA, así que la base distingue mayúsculas. Sin
+  // esta normalización se crearían cuentas duplicadas que nada impediría, y el
+  // usuario afectado no podría entrar porque el login busca el valor normalizado.
+
+  it('pasa a minúsculas y recorta', () => {
+    expect(normalizarEmail('  JOSE@Supricom.COM.ve ')).toBe('jose@supricom.com.ve');
+    expect(normalizarEmail('jose@x.com')).toBe('jose@x.com');
+  });
+
+  it('las variantes de mayúsculas colapsan en el mismo valor', () => {
+    const variantes = ['jose@x.com', 'JOSE@X.COM', 'Jose@X.com', '  jOsE@x.CoM  '];
+    const normalizados = new Set(variantes.map(normalizarEmail));
+    expect(normalizados.size).toBe(1);
+  });
+
+  it('los acentos NO se pierden', () => {
+    // Es justo lo que la colación binaria protege: josé@ y jose@ son personas
+    // distintas y deben poder coexistir.
+    expect(normalizarEmail('JOSÉ@x.com')).toBe('josé@x.com');
+    expect(normalizarEmail('josé@x.com')).not.toBe(normalizarEmail('jose@x.com'));
+  });
+
+  it('NO aplica reglas de un proveedor concreto', () => {
+    // Gmail ignora puntos y lo que va tras un '+', pero eso es política SUYA.
+    // Aplicarlo a todos romperia direcciones legitimas de otros dominios.
+    expect(normalizarEmail('j.perez+facturas@otrodominio.com')).toBe(
+      'j.perez+facturas@otrodominio.com',
+    );
+  });
+
+  it('acepta direcciones con forma razonable', () => {
+    for (const e of ['a@b.co', 'jose.perez@supricom.com.ve', 'x+y@sub.dominio.org']) {
+      expect(esEmailPlausible(e), e).toBe(true);
+    }
+  });
+
+  it('rechaza lo que no tiene forma de correo', () => {
+    for (const e of ['', 'sinarroba', 'a@b', 'a@@b.com', 'con espacio@b.com', '@b.com', 'a@.com']) {
+      expect(esEmailPlausible(e), e).toBe(false);
+    }
+  });
+
+  it('rechaza direcciones por encima del máximo del RFC', () => {
+    expect(esEmailPlausible('a'.repeat(250) + '@b.com')).toBe(false);
+  });
+
+  it('emailValido normaliza y valida en un paso', () => {
+    expect(emailValido('  JOSE@X.com ')).toBe('jose@x.com');
+    expect(emailValido('basura')).toBeNull();
+    expect(emailValido(null)).toBeNull();
+    expect(emailValido(12345)).toBeNull();
   });
 });

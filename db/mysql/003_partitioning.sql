@@ -10,8 +10,15 @@
 -- -----------------------------------------------------------------------------
 -- El compromiso que impone MySQL
 --
--- Toda clave única (incluida la primaria) de una tabla particionada DEBE incluir
--- la columna de partición. Es decir: `PRIMARY KEY (id)` pasa a ser
+-- DOS restricciones, no una:
+--
+--   1. La tabla no puede tener NINGUNA clave foránea, ni saliente ni entrante.
+--      Por eso `api_request_logs` guarda `api_key_id` como columna suelta y
+--      `odoo_partner_id` desnormalizado: la integridad la mantiene la
+--      aplicación, que es la única que escribe ahí.
+--
+--   2. Toda clave única (incluida la primaria) DEBE incluir la columna de
+--      partición. Es decir: `PRIMARY KEY (id)` pasa a ser
 -- `PRIMARY KEY (id, created_at)`.
 --
 -- Consecuencia: `id` deja de ser único por sí solo a ojos del motor. Para una
@@ -19,6 +26,18 @@
 -- key y por fecha— pero NO hagas esto con tablas donde el id sea una referencia
 -- real. Por eso `audit_logs` se deja sin particionar: ahí sí se cita un id.
 -- -----------------------------------------------------------------------------
+
+-- Requisito previo: la tabla NO puede tener claves foráneas. Desde 001_schema
+-- ya se crea sin ellas, pero si vienes de una versión anterior del esquema hay
+-- que retirarla primero, o el ALTER falla con:
+--     ERROR 1217: Cannot delete or update a parent row
+SET @fk := (
+  SELECT constraint_name FROM information_schema.referential_constraints
+  WHERE constraint_schema = DATABASE() AND table_name = 'api_request_logs' LIMIT 1
+);
+SET @sql := IF(@fk IS NULL, 'SELECT 1',
+  CONCAT('ALTER TABLE api_request_logs DROP FOREIGN KEY ', @fk));
+PREPARE st FROM @sql; EXECUTE st; DEALLOCATE PREPARE st;
 
 ALTER TABLE api_request_logs
   DROP PRIMARY KEY,

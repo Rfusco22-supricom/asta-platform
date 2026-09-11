@@ -1,15 +1,15 @@
 # Esquema MySQL — ASTA
 
 ```bash
-mysql -u USUARIO -p -e "CREATE DATABASE asta CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
+mysql -u USUARIO -p -e "CREATE DATABASE asta CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u USUARIO -p asta < db/mysql/001_schema.sql
 mysql -u USUARIO -p asta < db/mysql/002_seed.sql
 # 003_partitioning.sql es opcional: aplicar cuando api_request_logs crezca
 ```
 
-**Requiere MySQL 8.0.13 o superior** (defaults por expresión como `DEFAULT (UUID())`).
-Comprobar con `SELECT VERSION();`. MariaDB **no** sirve tal cual: no soporta
-`DEFAULT (UUID())` de la misma forma.
+**Requiere MySQL 8.0.13+ o MariaDB 10.4+** (defaults por expresión como `DEFAULT (UUID())`).
+Comprobar con `SELECT VERSION();`. MariaDB 10.4 sirve: se verifico que soporta `DEFAULT (UUID())` y que
+`utf8mb4_general_ci` da el comportamiento correcto para el email.
 
 | Archivo | Qué hace |
 |---|---|
@@ -45,10 +45,10 @@ El email en PostgreSQL usaba la extensión `citext` para comparar sin distinguir
 mayúsculas. **En MySQL eso es el comportamiento por defecto**, así que se resuelve
 solo.
 
-Pero la colación por defecto de MySQL 8 (`utf8mb4_0900_ai_ci`) también ignora los
+Pero la colación por defecto de MySQL 8 (`utf8mb4_unicode_ci`) también ignora los
 **acentos**, y eso haría que `jose@x.com` y `josé@x.com` fueran el mismo usuario.
 Para direcciones de correo es incorrecto. Por eso esa columna concreta declara
-`utf8mb4_0900_as_ci`: insensible a mayúsculas, sensible a acentos.
+`utf8mb4_general_ci`: insensible a mayúsculas, sensible a acentos.
 
 ### `timestamptz` → `DATETIME(3)` en UTC
 
