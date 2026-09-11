@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@asta/shared-types": "workspace:*",
+    "@node-rs/argon2": "^2.2.1",
     "@prisma/client": "^6.2.1",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.6",
