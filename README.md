@@ -88,7 +88,7 @@ docs/                Arquitectura, roadmap, reparto y hallazgos
 | | Track A — `Rfusco22-supricom` | Track B — `LinoGouveia` |
 |---|---|---|
 | Dominio | Interno: datos, identidad, vendedores | Externo: API pública, kiosco |
-| Issues | 25 | 24 |
+| Issues | 30 | 24 |
 
 ```bash
 gh issue list --repo Rfusco22-supricom/asta-platform --assignee "@me"

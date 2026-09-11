@@ -4,7 +4,7 @@
 |---|---|---|
 | Responsable | `Rfusco22-supricom` | `LinoGouveia` |
 | Label | `track:A-core-vendedores` | `track:B-api-kiosco` |
-| Issues | 25 | 24 |
+| Issues | 30 | 24 |
 | Frontend propio | Panel Next.js | App React Native |
 | Superficie backend | Middleware core, identidad, `/salesperson/*` | `/api/v1/public/*`, recomendador |
 
@@ -32,12 +32,12 @@ a Odoo hasta la pantalla. Nadie espera a nadie para avanzar en su track.
 |---|---|---|
 | 0 — Descubrimiento | #1, #2 | #3, #4, #5, #6, #7 |
 | 1 — Cimientos | #8 – #14 (7) | — |
-| 2 — Identidad | #15 – #19 (5) | — |
+| 2 — Identidad | #15 – #19, #51 – #54 (9) | — |
 | 3 — Vendedores | #20 – #26 (7) | — |
 | 4 — API pública | — | #27 – #37 (11) |
 | 5 — Kiosco | — | #38 – #43 (6) |
 | 6 — Endurecimiento | #44, #46, #47, #48 | #45, #49 |
-| **Total** | **25** | **24** |
+| **Total** | **30** | **24** |
 
 ---
 

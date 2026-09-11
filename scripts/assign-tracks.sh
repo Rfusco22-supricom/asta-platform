@@ -20,7 +20,7 @@ LABEL_A="track:A-core-vendedores"
 LABEL_B="track:B-api-kiosco"
 
 # Track A — 25 issues. Middleware core, identidad, modulo de vendedores.
-ISSUES_A=(1 2 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 44 46 47 48)
+ISSUES_A=(1 2 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 44 46 47 48 50 51 52 53 54)
 
 # Track B — 24 issues. Descubrimiento de catalogo, API publica, kiosco.
 ISSUES_B=(3 4 5 6 7 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 45 49)
