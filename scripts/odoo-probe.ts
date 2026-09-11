@@ -445,55 +445,196 @@ async function probePricelists(): Promise<void> {
 
   const detalle: Record<string, unknown> = { tarifas: pricelists };
 
-  // Prueba de fuego: un mismo SKU debe dar precios distintos por tarifa.
-  const muestra = await probe('producto de muestra', () =>
-    searchRead('product.product', [['sale_ok', '=', true], ['type', '!=', 'service']],
-      ['id', 'name', 'default_code', 'list_price'], { limit: 1 }),
-  );
+  // ¿Existen las tres tarifas por nivel que asume la arquitectura?
+  const NIVELES = ['bronce', 'plata', 'gold', 'oro'];
+  const porNivel = pricelists.filter((p) =>
+    NIVELES.some((n) => String(p.name).toLowerCase().includes(n)));
+  detalle.tarifasPorNivel = porNivel;
+  log(porNivel.length
+    ? `\n     Tarifas con nombre de nivel: ${porNivel.map((p) => String(p.name)).join(', ')}`
+    : '\n   ⚠ Ninguna tarifa se llama Bronce, Plata ni Gold.');
 
-  if (muestra?.length) {
-    const producto = muestra[0];
-    log(`\n     Producto de prueba: ${String(producto.default_code ?? '')} ${String(producto.name)}`);
-    log(`     list_price (precio base): ${String(producto.list_price)}`);
+  // Las reglas viven en product.pricelist.item.
+  //
+  // OJO: no usar product.product.read([id], ['price']) con context.pricelist.
+  // Ese campo NO existe en Odoo 17 — la llamada lanza excepción, y si se traga
+  // con un .catch(() => null) los N nulos son iguales entre sí, así que el
+  // Set da tamaño 1 y el script concluye "todas las tarifas dan el mismo
+  // precio". Es un falso negativo; fue el bug que reportamos en el issue #5.
+  const totalReglas = await probe('reglas de tarifa', () =>
+    searchCount('product.pricelist.item', []));
+  log(`\n     Reglas de tarifa cargadas: ${totalReglas ?? '?'}`);
+  detalle.totalReglas = totalReglas;
 
-    const precios: Array<{ pricelistId: number; nombre: string; precio: unknown }> = [];
+  const grupos = await probe('reglas por tarifa', () =>
+    readGroup('product.pricelist.item', [], ['id'], ['pricelist_id']));
 
-    for (const pl of pricelists) {
-      const leido = await execute<Array<Record<string, unknown>>>(
-        'product.product', 'read', [[producto.id], ['price']],
-        { context: { pricelist: pl.id, quantity: 1 } },
-      ).catch(() => null);
+  const rankingTodas = (grupos ?? [])
+    .filter((g) => Array.isArray(g.pricelist_id))
+    .map((g) => {
+      const ref = g.pricelist_id as [number, string];
+      return {
+        id: Number(ref[0]),
+        nombre: String(ref[1]),
+        reglas: Number(g.__count ?? g.pricelist_id_count ?? 0),
+      };
+    })
+    .sort((a, b) => b.reglas - a.reglas);
 
-      const precio = leido?.[0]?.price ?? null;
-      precios.push({ pricelistId: Number(pl.id), nombre: String(pl.name), precio });
-      log(`       · ${String(pl.name).padEnd(30)} ${precio ?? '(no se pudo leer)'}`);
+  // read_group sobre product.pricelist.item ve TODAS las reglas, incluidas las
+  // de tarifas archivadas. search_read sobre product.pricelist solo devuelve
+  // las activas (active_test). Comparar precios contra una tarifa archivada
+  // seria medir precios que el negocio retiro a proposito, asi que el ranking
+  // que alimenta la prueba se filtra a las activas.
+  const idsActivas = new Set(pricelists.map((p) => Number(p.id)));
+  const ranking = rankingTodas.filter((r) => idsActivas.has(r.id));
+  const archivadas = rankingTodas.filter((r) => !idsActivas.has(r.id));
+
+  detalle.reglasPorTarifa = ranking;
+  detalle.tarifasArchivadas = archivadas;
+
+  if (ranking.length) {
+    log('\n     Tarifas activas con más reglas:');
+    for (const r of ranking.slice(0, 8)) {
+      log(`       · id ${String(r.id).padStart(6)}  ${r.nombre.padEnd(45)} ${r.reglas} reglas`);
+    }
+  }
+
+  if (archivadas.length) {
+    const reglasArchivadas = archivadas.reduce((n, r) => n + r.reglas, 0);
+    const pct = totalReglas ? ((reglasArchivadas / totalReglas) * 100).toFixed(1) : '?';
+    log(`\n   ⚠ ${archivadas.length} tarifas ARCHIVADAS acumulan ${reglasArchivadas} reglas (${pct}% del total).`);
+    log('     Son precios retirados a proposito. Quedan fuera de la comparacion,');
+    log('     pero siguen siendo alcanzables si algo fuerza un pricelist por id');
+    log('     o pasa active_test: false. Ver #36.');
+    for (const r of archivadas.slice(0, 8)) {
+      log(`       · id ${String(r.id).padStart(6)}  ${r.nombre.padEnd(45)} ${r.reglas} reglas`);
+    }
+  }
+
+  // Prueba de fuego: el mismo SKU en las tres tarifas más pobladas.
+  const top = ranking.slice(0, 3);
+  let distintos = 0;
+  let iguales = 0;
+  let conCero = 0;
+  let comparables = 0;
+
+  if (top.length === 3) {
+    const mapas: Array<Map<number, number>> = [];
+    for (const t of top) {
+      const items = await probe(`reglas de la tarifa ${t.id}`, () =>
+        searchRead('product.pricelist.item',
+          [['pricelist_id', '=', t.id], ['product_tmpl_id', '!=', false], ['compute_price', '=', 'fixed']],
+          ['product_tmpl_id', 'fixed_price'], { limit: 5000 }));
+      mapas.push(new Map((items ?? [])
+        .filter((i) => Array.isArray(i.product_tmpl_id))
+        .map((i) => [Number((i.product_tmpl_id as [number, string])[0]), Number(i.fixed_price)])));
     }
 
-    detalle.pruebaDePrecios = { producto, precios };
+    const comunes = [...mapas[0].keys()].filter((k) => mapas.every((m) => m.has(k)));
+    const ejemplos: Array<{ tmplId: number; precios: number[] }> = [];
 
-    const distintos = new Set(precios.map((p) => String(p.precio))).size;
-    if (distintos <= 1) {
-      log('\n   ⚠ Todas las tarifas devuelven el MISMO precio.');
-      log('     O las reglas de tarifa no están cargadas, o este producto no tiene');
-      log('     regla en ninguna. Probar con un producto que sí esté en las tarifas');
-      log('     antes de dar por rota la configuración.');
-      add({
-        issue: '#5',
-        pregunta: '¿Un mismo SKU devuelve precios distintos por tarifa?',
-        respuesta: `NO — las ${pricelists.length} tarifas devuelven el mismo precio para el producto de prueba. Verificar las reglas de tarifa.`,
-        status: 'warn',
-        detalle,
-      });
-    } else {
-      log(`\n   ✓ ${distintos} precios distintos entre ${pricelists.length} tarifas. El mecanismo funciona.`);
-      add({
-        issue: '#5',
-        pregunta: '¿Un mismo SKU devuelve precios distintos por tarifa?',
-        respuesta: `Sí — ${distintos} precios distintos. El context { pricelist: N } es la vía correcta.`,
-        status: 'ok',
-        detalle,
-      });
+    for (const t of comunes) {
+      const vals = mapas.map((m) => m.get(t) as number);
+      // Un 0.00 no es un precio: cuenta como dato ausente, no como diferencia.
+      if (vals.some((v) => v === 0)) { conCero++; continue; }
+      if (new Set(vals.map((v) => v.toFixed(4))).size > 1) {
+        distintos++;
+        if (ejemplos.length < 5) ejemplos.push({ tmplId: t, precios: vals });
+      } else {
+        iguales++;
+      }
     }
+    comparables = distintos + iguales;
+
+    log(`\n     Productos presentes en las 3 tarifas más pobladas: ${comunes.length}`);
+    log(`       · con algún precio 0.00 (dato ausente): ${conCero}`);
+    log(`       · con precio real y DISTINTO entre tarifas: ${distintos}`);
+    log(`       · con precio real e igual: ${iguales}`);
+
+    if (ejemplos.length) {
+      const info = await probe('nombres de los ejemplos', () =>
+        execute<Array<Record<string, unknown>>>('product.template', 'read',
+          [ejemplos.map((e) => e.tmplId), ['name', 'default_code']]));
+      const byId = new Map((info ?? []).map((i) => [Number(i.id), i]));
+      log(`\n     Ejemplos (${top.map((t) => t.id).join(' / ')}):`);
+      for (const e of ejemplos) {
+        const i = byId.get(e.tmplId);
+        const sku = String(i?.default_code ?? e.tmplId);
+        log(`       · ${sku.padEnd(18)} ${e.precios.map((p) => p.toFixed(2).padStart(10)).join('')}  ${String(i?.name ?? '').slice(0, 38)}`);
+      }
+    }
+
+    detalle.pruebaDePrecios = { tarifas: top, comunes: comunes.length, conCero, distintos, iguales, ejemplos };
+  }
+
+  // El mecanismo puede funcionar y no usarse: hay que mirar a qué tarifa
+  // apunta cada cliente. Si todos apuntan a la misma, la diferenciación
+  // por nivel es 0% en la práctica aunque las reglas estén bien cargadas.
+  const clientes = await probe('tarifa asignada por cliente', () =>
+    searchRead('res.partner', [['customer_rank', '>', 0]],
+      ['property_product_pricelist'], { limit: 20_000 }));
+
+  const reparto = new Map<string, number>();
+  for (const c of clientes ?? []) {
+    const pl = c.property_product_pricelist;
+    const clave = Array.isArray(pl) ? `[${pl[0]}] ${pl[1]}` : 'sin tarifa asignada';
+    reparto.set(clave, (reparto.get(clave) ?? 0) + 1);
+  }
+  const repartoOrdenado = [...reparto.entries()].sort((a, b) => b[1] - a[1]);
+  detalle.repartoDeClientes = repartoOrdenado;
+
+  if (repartoOrdenado.length) {
+    log(`\n     Reparto de ${clientes?.length ?? 0} clientes entre tarifas:`);
+    for (const [nombre, n] of repartoOrdenado.slice(0, 8)) {
+      log(`       · ${nombre.padEnd(45)} ${n} clientes`);
+    }
+  }
+
+  // Veredicto: dos preguntas distintas, y la segunda es la que decide.
+  const mecanismoOk = comparables > 0 && distintos / comparables > 0.5;
+  const seUsa = repartoOrdenado.length > 1;
+
+  if (mecanismoOk && seUsa) {
+    log('\n   ✓ Las tarifas diferencian precio y los clientes están repartidos.');
+    add({
+      issue: '#5',
+      pregunta: '¿Un mismo SKU devuelve precios distintos por tarifa?',
+      respuesta: `Sí — ${distintos}/${comparables} productos comparables difieren, y los clientes se reparten entre ${repartoOrdenado.length} tarifas.`,
+      status: 'ok',
+      detalle,
+    });
+  } else if (mecanismoOk && !seUsa) {
+    log('\n   ⚠ El mecanismo funciona, pero NO se usa.');
+    log(`     ${distintos}/${comparables} productos comparables dan precios distintos,`);
+    log(`     pero los ${clientes?.length ?? 0} clientes apuntan todos a la misma tarifa.`);
+    log('     La diferenciación por nivel es 0% en la práctica. No hay que');
+    log('     arreglar las tarifas: hay que asignarlas. Es trabajo de negocio.');
+    add({
+      issue: '#5',
+      pregunta: '¿Un mismo SKU devuelve precios distintos por tarifa?',
+      respuesta: `El mecanismo sí (${distintos}/${comparables} productos comparables difieren), pero los ${clientes?.length ?? 0} clientes apuntan a la misma tarifa: diferenciación real 0%. Falta asignar tarifas, no arreglarlas.`,
+      status: 'warn',
+      detalle,
+    });
+  } else {
+    log('\n   ✗ Las tarifas no diferencian precio de forma consistente.');
+    add({
+      issue: '#5',
+      pregunta: '¿Un mismo SKU devuelve precios distintos por tarifa?',
+      respuesta: comparables === 0
+        ? 'No medible: ningún producto tiene precio real (distinto de 0.00) en las tres tarifas más pobladas.'
+        : `NO — solo ${distintos}/${comparables} productos comparables difieren entre tarifas.`,
+      status: 'fail',
+      detalle,
+    });
+  }
+
+  if (conCero > 0) {
+    const pctCero = ((conCero / (conCero + comparables)) * 100).toFixed(1);
+    log(`\n   ⚠ ${conCero} productos (${pctCero}%) tienen algún precio en 0.00.`);
+    log('     Un endpoint público que devuelva 0.00 como precio válido es un');
+    log('     incidente comercial. Ver #31.');
   }
 
   report.tarifas = detalle;
