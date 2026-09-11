@@ -6,6 +6,7 @@ import {
 } from '../services/invoicing.service.js';
 import { getPartnersBySalesperson } from '../services/partners.service.js';
 import { getClientProfile } from '../services/profile.service.js';
+import { borrarNota, crearNota } from '../services/notes.service.js';
 
 /**
  * Controlador del módulo de vendedores.
@@ -174,7 +175,7 @@ export async function getClientProfileHandler(
 
     const { partnerId } = params.data;
 
-    const perfil = await getClientProfile(partnerId);
+    const perfil = await getClientProfile(partnerId, req.identity.appUserId);
 
     res.json({
       data: perfil,
@@ -184,6 +185,51 @@ export async function getClientProfileHandler(
         consultadoEn: new Date().toISOString(),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /api/v1/salesperson/clients/:partnerId/notes
+ *
+ * La autorización (rol + que el cliente sea suyo) ya la aplicó
+ * `autorizar('cliente.notas.escribir')` en la ruta.
+ */
+export async function crearNotaHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params = paramsSchema.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: { code: 'INVALID_PARTNER_ID', message: 'partnerId inválido' } });
+      return;
+    }
+
+    const texto = String(req.body?.texto ?? '');
+    const nota = await crearNota(params.data.partnerId, req.identity.appUserId, texto);
+    res.status(201).json({ data: nota });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** DELETE /api/v1/salesperson/clients/:partnerId/notes/:notaId */
+export async function borrarNotaHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const notaId = String(req.params.notaId ?? '');
+    await borrarNota(
+      notaId,
+      req.identity.appUserId,
+      req.identity.role === 'SUPERADMIN',
+    );
+    res.status(204).end();
   } catch (error) {
     next(error);
   }

@@ -7,15 +7,68 @@ mysql -u USUARIO -p asta < db/mysql/002_seed.sql
 # 003_partitioning.sql es opcional: aplicar cuando api_request_logs crezca
 ```
 
-**Requiere MySQL 8.0.13+ o MariaDB 10.4+** (defaults por expresión como `DEFAULT (UUID())`).
-Comprobar con `SELECT VERSION();`. MariaDB 10.4 sirve: se verifico que soporta `DEFAULT (UUID())` y que
-`utf8mb4_general_ci` da el comportamiento correcto para el email.
+**Requiere MySQL 8.0.13+ o MariaDB 10.4+.** Comprobar con `SELECT VERSION();`.
+Desarrollo va sobre MariaDB 10.4 (XAMPP); **falta confirmar qué motor da EasyPanel
+antes del primer despliegue.**
+
+> **Corrección.** Una versión anterior de este README decía que
+> `utf8mb4_general_ci` daba el comportamiento correcto para el email y que estaba
+> "verificado". Era falso: lo que se estaba viendo era la consola de Windows
+> (cp850) manglando la `é`, no el motor. Repetida la prueba con literales hex,
+> **ninguna colación `_ci` distingue acentos ni mayúsculas.** Por eso la columna
+> `app_users.email` lleva `COLLATE utf8mb4_bin` explícito y la normalización la
+> hace la aplicación en `normalizarEmail()`. Ver la nota de migraciones abajo.
 
 | Archivo | Qué hace |
 |---|---|
-| `001_schema.sql` | 15 tablas, índices y claves foráneas |
+| `001_schema.sql` | 16 tablas, índices y claves foráneas. **Es el diseño**: aquí están los comentarios |
 | `002_seed.sql` | Mapeo tarifa→nivel y SuperAdmin inicial. Idempotente |
-| `003_partitioning.sql` | Particionado mensual de logs + rutinas de limpieza. Opcional |
+| `003_partitioning.sql` | Particionado mensual de logs + rutinas de limpieza. Opcional (issue #47, sin aplicar) |
+
+---
+
+## Migraciones de Prisma (issue #12)
+
+Hay **dos** rutas para montar la base y conviene no confundirlas:
+
+```bash
+pnpm db:setup          # desarrollo: aplica los .sql de arriba a pelo
+pnpm migrate:deploy    # cualquier entorno: aplica prisma/migrations
+```
+
+`prisma/migrations/0_init/` es una **línea base**, no una migración escrita a
+mano: se generó desde la base de desarrollo ya montada por `001_schema.sql` y se
+marcó como aplicada con `prisma migrate resolve --applied 0_init`. Existe para
+que EasyPanel y cualquier entorno nuevo se levanten con `migrate deploy` y para
+que los cambios futuros tengan de dónde partir.
+
+El **diseño** sigue viviendo en `001_schema.sql`. La migración es su reflejo
+mecánico, sin los comentarios.
+
+### `prisma migrate diff` se come las colaciones de columna
+
+Comprobado, no supuesto. La base real tiene `app_users.email COLLATE utf8mb4_bin`
+y el fichero generado salía con `VARCHAR(255)` a secas, que habría heredado el
+`utf8mb4_unicode_ci` de la base.
+
+No es cosmético. Probado sobre una base recién creada:
+
+| columna | `jose@x.com` + `JOSE@x.com` + `josé@x.com` |
+|---|---|
+| con `COLLATE utf8mb4_bin` | las tres conviven |
+| sin él (default `_unicode_ci`) | `ERROR 1062 Duplicate entry` en la segunda y en la tercera |
+
+Es decir: sin el `COLLATE`, dos personas distintas no pueden tener cuenta. Por eso
+en `0_init/migration.sql` ese `COLLATE` está puesto **a mano**, con su comentario.
+**Si alguien regenera el fichero con `migrate diff`, hay que volver a ponerlo.**
+
+### Comprobar que no hay deriva
+
+```bash
+npx prisma migrate diff   --from-url "$DATABASE_URL"   --to-schema-datamodel prisma/schema.prisma --script
+```
+
+Si imprime `-- This is an empty migration.` la base y el modelo coinciden.
 
 ---
 

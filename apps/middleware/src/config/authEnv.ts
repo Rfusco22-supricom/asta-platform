@@ -9,7 +9,7 @@ import { z } from 'zod';
  * `DEV_AUTH_ENABLED`, y no hay motivo para repetirlo.
  */
 
-const schema = z.object({
+export const authEnvSchema = z.object({
   /**
    * Clave de firma de los JWT. Mínimo 32 caracteres.
    *
@@ -50,14 +50,14 @@ const schema = z.object({
   LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
-export type AuthEnv = z.infer<typeof schema>;
+export type AuthEnv = z.infer<typeof authEnvSchema>;
 
 let cache: AuthEnv | null = null;
 
 export function authEnv(): AuthEnv {
   if (cache) return cache;
 
-  const parsed = schema.safeParse(process.env);
+  const parsed = authEnvSchema.safeParse(process.env);
   if (!parsed.success) {
     throw new Error(
       'Configuración de autenticación inválida:\n' + z.prettifyError(parsed.error),

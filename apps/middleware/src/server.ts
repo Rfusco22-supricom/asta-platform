@@ -10,13 +10,15 @@ import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
+import { prisma } from './config/prisma.js';
+import { logger } from './utils/logger.js';
+import { exigirEntornoValido } from './config/validarEntorno.js';
 
 /**
  * Servidor del middleware.
  *
- * De momento solo monta la superficie del panel de vendedores (Fase 3), que lee
- * exclusivamente de Odoo y no necesita MySQL. La API pública (Fase 4) se monta
- * cuando existan sus endpoints.
+ * Monta la superficie del panel de vendedores (Fase 3) y la de autenticación.
+ * La API pública (Fase 4) se monta cuando existan sus endpoints.
  */
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -38,17 +40,10 @@ export function createApp() {
 
   app.use(
     pinoHttp({
-      level: process.env.LOG_LEVEL ?? 'info',
-      // Sin esto, las cabeceras de autenticación acaban en texto plano en el log.
-      redact: {
-        paths: [
-          'req.headers.authorization',
-          'req.headers["x-api-key"]',
-          'req.headers.cookie',
-          'req.headers["x-dev-odoo-user-id"]',
-        ],
-        remove: true,
-      },
+      // El nivel y la redacción de cabeceras viven en utils/logger.ts, que es
+      // el MISMO logger que usa el cliente de Odoo. Compartirlo es lo que
+      // permite cruzar una petición lenta con el RPC que la hizo lenta.
+      logger,
       // El health check dispara cada pocos segundos: ahogaría el log.
       autoLogging: { ignore: (req) => req.url === '/health' },
     }),
@@ -63,29 +58,83 @@ export function createApp() {
   app.use('/api/v1/admin', corsPanel, adminRouter);
 
   // ── Health ────────────────────────────────────────────────────────────────
-  app.get('/health', async (_req, res) => {
+  /**
+   * Estado de las dos dependencias duras (issue #11).
+   *
+   * Lo mira quien está de guardia, normalmente de madrugada y con prisa, así
+   * que tiene que decir la verdad y decirla entera:
+   *
+   *   · Se comprueban Odoo Y MySQL. Odoo trae la facturación; MySQL trae las
+   *     sesiones, las notas y el sync. Con MySQL caída no se puede ni entrar
+   *     al panel, así que un 200 mirando solo a Odoo sería una mentira.
+   *
+   *   · Las dos se piden EN PARALELO. Encadenarlas sumaría las latencias y,
+   *     con Odoo colgado, el propio health se quedaría colgado con él.
+   *
+   *   · Cada una lleva su propio timeout. Sin él, "caído" y "lentísimo" se
+   *     parecen demasiado: la petición se queda esperando y el monitor no
+   *     recibe respuesta en vez de recibir un 503.
+   *
+   *   · El status agregado es el PEOR de los dos. Medio sistema en pie no es
+   *     un sistema en pie.
+   *
+   * No lleva autenticación a propósito: un health que exige token no sirve
+   * para lo que existe. Por eso tampoco revela nada explotable — ni versiones,
+   * ni cadenas de conexión, ni credenciales.
+   */
+  const TIMEOUT_SONDA_MS = 5000;
+
+  interface Sonda {
+    ok: boolean;
+    ms: number;
+    error?: string;
+  }
+
+  /** Ejecuta una comprobación acotada en el tiempo y nunca lanza. */
+  async function sondear(fn: () => Promise<unknown>): Promise<Sonda> {
     const t0 = performance.now();
-    let odoo: { ok: boolean; ms: number; error?: string };
+    const ms = () => Math.round(performance.now() - t0);
 
     try {
-      await getUid();
-      await executeKw('res.users', 'search_count', [[['id', '=', 1]]]);
-      odoo = { ok: true, ms: Math.round(performance.now() - t0) };
+      await Promise.race([
+        fn(),
+        new Promise((_, rechazar) =>
+          setTimeout(
+            () => rechazar(new Error(`sin respuesta en ${TIMEOUT_SONDA_MS} ms`)),
+            TIMEOUT_SONDA_MS,
+          ),
+        ),
+      ]);
+      return { ok: true, ms: ms() };
     } catch (error) {
-      odoo = {
+      return {
         ok: false,
-        ms: Math.round(performance.now() - t0),
+        ms: ms(),
+        // Recortado: el mensaje de un driver puede traer la cadena de conexión
+        // entera, y esto se sirve sin autenticar.
         error: error instanceof Error ? error.message.slice(0, 120) : 'desconocido',
       };
     }
+  }
 
-    // MySQL todavía no se comprueba: la Fase 3 no lo usa y la base no está
-    // montada. Se añade al cerrar #12.
-    res.status(odoo.ok ? 200 : 503).json({
-      status: odoo.ok ? 'ok' : 'degraded',
+  app.get('/health', async (_req, res) => {
+    const [odoo, mysql] = await Promise.all([
+      sondear(async () => {
+        await getUid();
+        await executeKw('res.users', 'search_count', [[['id', '=', 1]]]);
+      }),
+      // `SELECT 1` y no un count de una tabla: comprueba que la conexión está
+      // viva sin depender de que el esquema esté migrado ni cargar la base.
+      sondear(() => prisma.$queryRaw`SELECT 1`),
+    ]);
+
+    const sano = odoo.ok && mysql.ok;
+
+    res.status(sano ? 200 : 503).json({
+      status: sano ? 'ok' : 'degraded',
       dependencias: {
         odoo: { ...odoo, url: odooEnv.ODOO_URL, db: odooEnv.ODOO_DB },
-        mysql: { ok: null, nota: 'sin comprobar — pendiente del issue #12' },
+        mysql,
       },
       timestamp: new Date().toISOString(),
     });
@@ -99,6 +148,12 @@ export function createApp() {
 
 // Solo arranca al ejecutarse directamente, no al importarse desde un test.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()!)) {
+  // Lo PRIMERO, antes de abrir el puerto (issue #9). Un API_KEY_PEPPER ausente
+  // no debe descubrirse la primera vez que alguien usa una API key: el servidor
+  // habría arrancado, parecería sano y fallaría más tarde, que es justo el peor
+  // momento. Aquí se cae en el segundo 0 diciendo qué variable falta.
+  exigirEntornoValido();
+
   const app = createApp();
   const server = app.listen(PORT, () => {
     console.log(`middleware escuchando en http://localhost:${PORT}`);

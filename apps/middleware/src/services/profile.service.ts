@@ -1,4 +1,5 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
+import { listarNotas, type Nota } from './notes.service.js';
 
 /**
  * Perfilado del cliente (issue #24).
@@ -6,12 +7,14 @@ import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/clien
  * Responde a lo que un vendedor necesita antes de llamar a un cliente: cuánto
  * hace que no compra y qué le suele comprar.
  *
- * ── Lo que NO está aquí ──────────────────────────────────────────────────────
+ * ── De dónde sale cada cosa ──────────────────────────────────────────────────
  *
- * Las notas del vendedor viven en MySQL (`client_notes`), que todavía no está
- * montado (#12). El endpoint devuelve `notasDisponibles: false` en vez de un
- * array vacío: no es lo mismo "este cliente no tiene notas" que "todavía no
- * podemos guardar notas", y el panel tiene que poder decir cuál de las dos.
+ * La recencia y el top de productos se leen de Odoo en vivo. Las notas del
+ * vendedor salen de MySQL (`client_notes`): son datos operativos del panel, no
+ * del ERP.
+ *
+ * Los tres se piden EN PARALELO. Son dos sistemas distintos y encadenarlos
+ * sumaría la latencia de Odoo a la de la base sin necesidad.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,8 +66,15 @@ export interface ClientProfile {
   productosDistintos: number;
   /** Suma de `price_subtotal`: SIN impuestos, a diferencia del total facturado. */
   montoEnProductos: number;
-  notas: never[];
-  /** false mientras no exista MySQL. Ver #12 y #24. */
+  notas: Nota[];
+  /**
+   * Se conserva aunque ya sea siempre true.
+   *
+   * Distinguir "este cliente no tiene notas" de "todavía no se pueden guardar"
+   * dejó de hacer falta cuando llegó MySQL, pero el campo sigue en el contrato:
+   * quitarlo obligaría a tocar el panel para nada, y el día que la base no
+   * responda vuelve a significar algo.
+   */
   notasDisponibles: boolean;
 }
 
@@ -102,6 +112,7 @@ function partirNombre(display: string): { sku: string | null; nombre: string } {
  */
 export async function getClientProfile(
   partnerId: number,
+  lectorId: string,
   limiteTop = 5,
 ): Promise<ClientProfile> {
   if (!Number.isInteger(partnerId) || partnerId <= 0) {
@@ -121,7 +132,7 @@ export async function getClientProfile(
     ['product_id', '!=', false],
   ];
 
-  const [grupos, ultimas] = await Promise.all([
+  const [grupos, ultimas, notas] = await Promise.all([
     readGroup<LineGroup>(
       'account.move.line',
       lineasBase,
@@ -138,6 +149,9 @@ export async function getClientProfile(
       ['invoice_date'],
       { limit: 1, order: 'invoice_date desc, id desc' },
     ),
+    // En paralelo con los dos RPC a Odoo: son sistemas distintos y esperar uno
+    // para empezar el otro no tiene sentido.
+    listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
   ]);
 
   const conProducto = grupos.filter((g) => g.product_id);
@@ -183,7 +197,7 @@ export async function getClientProfile(
     productosDistintos: conProducto.length,
     montoEnProductos:
       Math.round(conProducto.reduce((s, g) => s + (g.price_subtotal ?? 0), 0) * 100) / 100,
-    notas: [],
-    notasDisponibles: false,
+    notas,
+    notasDisponibles: true,
   };
 }

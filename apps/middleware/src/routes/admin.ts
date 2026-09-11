@@ -4,6 +4,7 @@ import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
+import { crearInvitacion, listarSinAcceso, InvitacionInvalida } from '../services/invitation.service.js';
 import { prisma } from '../config/prisma.js';
 
 /**
@@ -131,3 +132,40 @@ adminRouter.post(
     }
   },
 );
+
+/** Cuentas activas que todavia no pueden entrar: candidatas a invitar. */
+adminRouter.get('/users/without-access', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const limite = Math.min(Number(req.query.limit ?? 50) || 50, 200);
+    res.json({ data: await listarSinAcceso(limite) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Genera un enlace de invitación.
+ *
+ * Devuelve la URL para que el administrador la entregue como pueda mientras no
+ * haya SMTP. El enlace es un secreto de un solo uso: se muestra una vez y no se
+ * puede volver a consultar.
+ */
+adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const base = process.env.WEB_APP_ORIGIN ?? 'http://localhost:3000';
+    const inv = await crearInvitacion(String(req.params.userId), base, req.identity.appUserId, req.ip);
+    res.json({
+      data: inv,
+      meta: {
+        entrega: 'manual',
+        nota: 'Sin SMTP configurado: copia el enlace y entrégalo tú. Caduca en 7 días y solo sirve una vez.',
+      },
+    });
+  } catch (error) {
+    if (error instanceof InvitacionInvalida) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ese usuario no existe.' } });
+      return;
+    }
+    next(error);
+  }
+});

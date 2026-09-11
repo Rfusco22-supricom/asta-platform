@@ -12,7 +12,7 @@ import { z } from 'zod';
  * Cada módulo exige solo lo que usa.
  */
 
-const schema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.string().default('info'),
@@ -37,7 +37,7 @@ const schema = z.object({
   WEB_APP_ORIGIN: z.string().url().default('http://localhost:3000'),
 });
 
-export type Env = z.infer<typeof schema>;
+export type Env = z.infer<typeof envSchema>;
 
 let cache: Env | null = null;
 
@@ -45,7 +45,7 @@ let cache: Env | null = null;
 export function env(): Env {
   if (cache) return cache;
 
-  const parsed = schema.safeParse(process.env);
+  const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
     throw new Error('Configuración de entorno inválida:\n' + z.prettifyError(parsed.error));
   }

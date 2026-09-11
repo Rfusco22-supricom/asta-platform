@@ -1,4 +1,5 @@
 import { Algorithm, hash, verify } from '@node-rs/argon2';
+import { LONGITUD_MINIMA_CONTRASENA } from '@asta/shared-types';
 import { authEnv } from '../config/authEnv.js';
 
 /**
@@ -25,7 +26,7 @@ import { authEnv } from '../config/authEnv.js';
  */
 
 /** Longitud mínima. Corta a propósito: la longitud sola no mide gran cosa. */
-export const LONGITUD_MINIMA = 10;
+export const LONGITUD_MINIMA = LONGITUD_MINIMA_CONTRASENA;
 
 export interface FortalezaResultado {
   ok: boolean;

@@ -64,11 +64,17 @@ export type PortfolioMeta = z.infer<typeof portfolioMetaSchema>;
  * Perfilado del cliente (issue #24). Las notas viven en Postgres, no en Odoo:
  * son datos operativos del panel, no del ERP.
  */
+export const LARGO_MAXIMO_NOTA = 4000;
+
 export const clientNoteSchema = z.object({
   id: z.uuid(),
   autorNombre: z.string(),
-  texto: z.string().min(1).max(4000),
+  /** null si el autor se dio de baja. El nombre se conserva igualmente. */
+  autorId: z.uuid().nullable(),
+  texto: z.string().min(1).max(LARGO_MAXIMO_NOTA),
   creadoEn: z.iso.datetime(),
+  /** true si la escribió quien está mirando: solo esas se pueden borrar. */
+  esMia: z.boolean(),
 });
 
 export type ClientNote = z.infer<typeof clientNoteSchema>;

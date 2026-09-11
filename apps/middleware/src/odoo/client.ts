@@ -1,6 +1,7 @@
 import xmlrpc from 'xmlrpc';
 import { URL } from 'node:url';
 import { odooEnv as env } from '../config/odooEnv.js';
+import { odooLogger } from '../utils/logger.js';
 
 /**
  * Cliente XML-RPC de Odoo.
@@ -128,8 +129,11 @@ export async function executeKw<T = unknown>(
     ...kwargs.context,
   };
 
+  const t0 = performance.now();
+  const transcurrido = () => Math.round(performance.now() - t0);
+
   try {
-    return await call<T>(objectClient, 'execute_kw', [
+    const resultado = await call<T>(objectClient, 'execute_kw', [
       env.ODOO_DB,
       uid,
       env.ODOO_PASSWORD,
@@ -138,15 +142,52 @@ export async function executeKw<T = unknown>(
       args,
       { ...kwargs, context },
     ]);
+
+    const ms = transcurrido();
+
+    /*
+     * Las lentas van a `warn` y el resto a `debug`.
+     *
+     * Con todo en `info` esto sería inservible: una sola carga de cartera son
+     * dos RPC y la batería de aislamiento dispara cientos. Así, en producción
+     * con LOG_LEVEL=info solo aparecen las llamadas que de verdad arrastran,
+     * que es justo lo que se busca cuando alguien dice que el panel va lento.
+     *
+     * NUNCA se registran los argumentos. El tercer parámetro de `execute_kw`
+     * es la API key del usuario de servicio, y los dominios llevan datos de
+     * clientes reales. Con modelo, método y milisegundos sobra para saber qué
+     * llamada hay que mirar.
+     */
+    const lenta = ms >= env.ODOO_SLOW_RPC_MS;
+    odooLogger[lenta ? 'warn' : 'debug'](
+      { model, method, ms, lenta },
+      `odoo ${model}.${method} ${ms}ms`,
+    );
+
+    return resultado;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const ms = transcurrido();
 
     // La sesión del usuario de servicio caducó (reinicio de Odoo, cambio de pwd):
     // se reintenta UNA vez con uid fresco.
     if (retryOnAuthFailure && /AccessDenied|Session expired|Invalid.*uid/i.test(message)) {
+      // En `warn`, no en `debug`: si esto empieza a salir seguido es que alguien
+      // está tocando el usuario de servicio en Odoo, y conviene enterarse.
+      odooLogger.warn(
+        { model, method, ms, reintento: true },
+        `odoo ${model}.${method}: sesión caducada, reintentando con uid fresco`,
+      );
       invalidateUid();
       return executeKw<T>(model, method, args, kwargs, { retryOnAuthFailure: false });
     }
+
+    odooLogger.error(
+      // Recortado: el mensaje de Odoo puede traer una traza entera. Sin
+      // argumentos, por lo mismo de arriba.
+      { model, method, ms, error: message.slice(0, 300) },
+      `odoo ${model}.${method} falló tras ${ms}ms`,
+    );
 
     throw new OdooError(`Fallo en ${model}.${method}: ${message}`, model, method, error);
   }

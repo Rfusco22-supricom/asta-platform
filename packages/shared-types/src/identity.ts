@@ -123,3 +123,20 @@ export const sessionUserSchema = z.object({
 });
 
 export type SessionUser = z.infer<typeof sessionUserSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Contraseñas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Longitud mínima de contraseña.
+ *
+ * Vive aquí, y no en el middleware, porque el formulario y el validador tienen
+ * que decir EXACTAMENTE lo mismo. Estaban desalineados —la pantalla pedía 12 y
+ * el servidor exigía 10—, y ese tipo de desajuste enseña al usuario que los
+ * mensajes de la aplicación no son de fiar.
+ *
+ * 10 sin exigir mayúsculas ni símbolos: esas reglas producen "Passw0rd!" y
+ * empujan a apuntar la clave en un papel. Una frase larga es más fuerte.
+ */
+export const LONGITUD_MINIMA_CONTRASENA = 10;

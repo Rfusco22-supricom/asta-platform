@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireSession, clearSession } from '@/lib/session';
-import { getReconciliacion, ApiError, ContractError } from '@/lib/api';
+import { getReconciliacion, getSinAcceso, ApiError, ContractError } from '@/lib/api';
+import { Invitaciones } from './Invitaciones';
 
 /**
  * Panel del administrador: reconciliación Odoo ↔ middleware (issue #19).
@@ -51,8 +52,16 @@ export default async function AdminPage() {
   const sesion = await requireSession();
 
   let r;
+  let candidatos: Awaited<ReturnType<typeof getSinAcceso>> = [];
   try {
-    r = await getReconciliacion(sesion.accessToken);
+    // En paralelo y con el de invitaciones degradado por separado: si falla,
+    // el informe —que es lo principal— se sigue viendo.
+    const [rec, cand] = await Promise.all([
+      getReconciliacion(sesion.accessToken),
+      getSinAcceso(sesion.accessToken, 25).catch(() => []),
+    ]);
+    r = rec;
+    candidatos = cand;
   } catch (error) {
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
@@ -125,20 +134,11 @@ export default async function AdminPage() {
         />
       </section>
 
-      {/* Lo más grave primero: cuentas que existen pero son inservibles. */}
+      {/* Lo más grave primero: cuentas que existen pero no sirven para nada.
+          El bloque trae ya la acción que lo resuelve, en vez de un aviso que
+          solo dice que hay un problema. */}
       {rec.sinCredenciales.total > 0 && (
-        <div className="notice error" style={{ marginBottom: 18 }}>
-          <h2>{rec.sinCredenciales.total} cuentas sin contraseña</h2>
-          <p>
-            Existen en la base pero <strong>nadie puede iniciar sesión con ellas</strong>. La
-            tabla se ve poblada y el panel parece listo, pero ningún cliente podría entrar.
-          </p>
-          <p style={{ marginTop: 10 }}>
-            Se resuelve con el flujo de invitación por correo (issue #16), que necesita SMTP
-            configurado. Para casos sueltos:{' '}
-            <code>pnpm --filter @asta/middleware exec tsx src/cli/set-password.ts &lt;correo&gt;</code>
-          </p>
-        </div>
+        <Invitaciones candidatos={candidatos} total={rec.sinCredenciales.total} />
       )}
 
       <section className="panel">
