@@ -1,5 +1,6 @@
 import type { ClientProfile } from '@asta/shared-types';
 import { money, fecha } from '@/lib/formato';
+import { Notas } from './Notas';
 
 /**
  * Bloque de perfilado (issue #24).
@@ -100,19 +101,11 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
         )}
       </section>
 
-      <section className="panel">
-        <h2>Notas del vendedor</h2>
-        {perfil.notasDisponibles ? (
-          <div className="empty" style={{ padding: '28px 20px' }}>
-            Todavía no hay notas sobre este cliente.
-          </div>
-        ) : (
-          <div className="aviso-pendiente">
-            <strong>Pendiente de la base de datos.</strong> Las notas se guardan en MySQL
-            (<code>client_notes</code>), que aún no está montado. Ver los issues #12 y #24.
-          </div>
-        )}
-      </section>
+      <Notas
+        partnerId={perfil.partnerId}
+        notas={perfil.notas}
+        disponibles={perfil.notasDisponibles}
+      />
     </>
   );
 }

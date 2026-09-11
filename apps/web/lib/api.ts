@@ -59,9 +59,27 @@ async function request<T extends z.ZodType>(
   try {
     res = await fetch(`${MIDDLEWARE_URL}${path}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      // La cartera cambia poco dentro de una misma navegación, pero no tanto
-      // como para arriesgar mostrar cifras viejas.
-      next: { revalidate: 30 },
+      /**
+       * SIN caché. Nunca.
+       *
+       * Empezó como `revalidate: 30` para no repetir la consulta de cartera,
+       * que tarda ~2 s. Dos problemas, y el segundo es el grave:
+       *
+       *   1. Al escribir una nota, `router.refresh()` volvía a pintar la página
+       *      con la respuesta cacheada y el vendedor no veía lo que acababa de
+       *      guardar. Parecía que se había perdido.
+       *
+       *   2. La Data Cache de Next se comparte entre TODOS los visitantes del
+       *      servidor. Estas respuestas son datos de UN vendedor concreto,
+       *      autorizados por su token. Depender de que la clave de caché
+       *      incluya la cabecera de autorización para que no se mezclen es
+       *      apoyar el aislamiento entre clientes en un detalle de
+       *      implementación del framework. Sin RLS detrás (#44), no.
+       *
+       * Los 2 s de la cartera se pagan. Si algún día molestan, la solución es
+       * cachear en el middleware por identidad, no aquí.
+       */
+      cache: 'no-store',
     });
   } catch {
     throw new ApiError('NETWORK', 'No se pudo contactar con el middleware.', 503);

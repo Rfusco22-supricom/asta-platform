@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import {
+  borrarNotaHandler,
+  crearNotaHandler,
   getClientInvoicing,
   getClientProfileHandler,
   getPortfolio,
@@ -34,4 +36,19 @@ salespersonRouter.get(
   '/clients/:partnerId/profile',
   autorizar('cliente.perfil.ver'),
   getClientProfileHandler,
+);
+
+salespersonRouter.post(
+  '/clients/:partnerId/notes',
+  autorizar('cliente.notas.escribir'),
+  crearNotaHandler,
+);
+
+// El :partnerId va en la ruta aunque la nota se identifique por su propio id:
+// es lo que permite que `autorizar` compruebe que el cliente es de quien pide.
+// Sin él, cualquiera con el id de una nota podria borrarla.
+salespersonRouter.delete(
+  '/clients/:partnerId/notes/:notaId',
+  autorizar('cliente.notas.escribir'),
+  borrarNotaHandler,
 );
