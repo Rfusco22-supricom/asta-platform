@@ -37,3 +37,8 @@ cart.json
 prof.json
 port.json
 p.json
+
+# Salida de `pnpm probe`. Es un volcado del esquema y de datos de la
+# instancia real: incluye nombres de clientes. Se regenera cuando hace
+# falta, asi que no tiene por que estar en el control de versiones.
+docs/odoo-schema-snapshot.json
