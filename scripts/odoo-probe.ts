@@ -469,7 +469,7 @@ async function probePricelists(): Promise<void> {
   const grupos = await probe('reglas por tarifa', () =>
     readGroup('product.pricelist.item', [], ['id'], ['pricelist_id']));
 
-  const ranking = (grupos ?? [])
+  const rankingTodas = (grupos ?? [])
     .filter((g) => Array.isArray(g.pricelist_id))
     .map((g) => {
       const ref = g.pricelist_id as [number, string];
@@ -481,11 +481,33 @@ async function probePricelists(): Promise<void> {
     })
     .sort((a, b) => b.reglas - a.reglas);
 
+  // read_group sobre product.pricelist.item ve TODAS las reglas, incluidas las
+  // de tarifas archivadas. search_read sobre product.pricelist solo devuelve
+  // las activas (active_test). Comparar precios contra una tarifa archivada
+  // seria medir precios que el negocio retiro a proposito, asi que el ranking
+  // que alimenta la prueba se filtra a las activas.
+  const idsActivas = new Set(pricelists.map((p) => Number(p.id)));
+  const ranking = rankingTodas.filter((r) => idsActivas.has(r.id));
+  const archivadas = rankingTodas.filter((r) => !idsActivas.has(r.id));
+
   detalle.reglasPorTarifa = ranking;
+  detalle.tarifasArchivadas = archivadas;
 
   if (ranking.length) {
-    log('\n     Tarifas con más reglas:');
+    log('\n     Tarifas activas con más reglas:');
     for (const r of ranking.slice(0, 8)) {
+      log(`       · id ${String(r.id).padStart(6)}  ${r.nombre.padEnd(45)} ${r.reglas} reglas`);
+    }
+  }
+
+  if (archivadas.length) {
+    const reglasArchivadas = archivadas.reduce((n, r) => n + r.reglas, 0);
+    const pct = totalReglas ? ((reglasArchivadas / totalReglas) * 100).toFixed(1) : '?';
+    log(`\n   ⚠ ${archivadas.length} tarifas ARCHIVADAS acumulan ${reglasArchivadas} reglas (${pct}% del total).`);
+    log('     Son precios retirados a proposito. Quedan fuera de la comparacion,');
+    log('     pero siguen siendo alcanzables si algo fuerza un pricelist por id');
+    log('     o pasa active_test: false. Ver #36.');
+    for (const r of archivadas.slice(0, 8)) {
       log(`       · id ${String(r.id).padStart(6)}  ${r.nombre.padEnd(45)} ${r.reglas} reglas`);
     }
   }
