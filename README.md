@@ -54,6 +54,7 @@ mysql -u root -p asta < db/mysql/002_seed.sql
 | `pnpm probe` | Reconocimiento de la instancia de Odoo (solo lectura) |
 | `pnpm verify:invoicing` | Contrasta los totales del servicio contra Odoo real |
 | `pnpm prisma:generate` | Regenera el cliente tras tocar el schema |
+| `bash scripts/verify-mysql-ddl.sh` | Verifica el DDL contra un MySQL 8 real (Docker o DSN propio) |
 
 ---
 
