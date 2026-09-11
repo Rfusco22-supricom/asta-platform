@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { ApiScope, ApiKeyEnv } from '@prisma/client';
+import type { ApiScope, ApiKeyEnv } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 

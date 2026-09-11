@@ -1,24 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import type { ApiScope } from '@prisma/client';
+import type { ApiScope } from '@asta/shared-types';
 import { verifyApiKey, type VerifiedIdentity } from '../services/apiKey.service.js';
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      /**
-       * Identidad resuelta, sea por JWT (panel/app) o por API key (integraciones).
-       * Ambos caminos producen la MISMA forma para que los controladores no tengan
-       * que saber cómo entró el request.
-       */
-      identity: VerifiedIdentity;
-      /** partner_id efectivo, derivado del token — nunca del input del cliente. */
-      scopedPartnerId?: number;
-      /** Logger por request (pino-http). */
-      log?: { warn: (obj: unknown, msg?: string) => void; error: (obj: unknown, msg?: string) => void };
-    }
-  }
-}
 
 /**
  * Autenticación por API key para la API pública.

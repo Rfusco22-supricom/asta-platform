@@ -1,6 +1,6 @@
 import xmlrpc from 'xmlrpc';
 import { URL } from 'node:url';
-import { env } from '../config/env.js';
+import { odooEnv as env } from '../config/odooEnv.js';
 
 /**
  * Cliente XML-RPC de Odoo.

@@ -215,15 +215,27 @@ export async function getInvoicingTotalsByPartner(
 
   const moveTypes = query.incluirNotasDeCredito ? ['out_invoice', 'out_refund'] : ['out_invoice'];
 
+  /**
+   * `commercial_partner_id in [...]` en vez de `partner_id child_of [...]`.
+   *
+   * Son equivalentes aquí —la cartera son partners de primer nivel, y
+   * `commercial_partner_id` de cualquier sucursal apunta a su matriz— pero
+   * `child_of` obliga a Odoo a expandir el árbol de cada uno de los cientos de
+   * IDs antes de filtrar. Con una cartera de 791 clientes eso costaba ~2,9 s.
+   *
+   * Ojo: esto vale porque además se agrupa por `commercial_partner_id`. Para un
+   * cliente suelto, `getPartnerInvoicingSummary` sigue usando `child_of`, que es
+   * lo correcto cuando el id recibido puede ser una sucursal.
+   */
   const domain: OdooDomain = [
-    ['partner_id', 'child_of', partnerIds],
+    ['commercial_partner_id', 'in', partnerIds],
     ['move_type', 'in', moveTypes],
     ['state', '=', 'posted'],
   ];
   if (query.desde) domain.push(['invoice_date', '>=', query.desde]);
   if (query.hasta) domain.push(['invoice_date', '<=', query.hasta]);
 
-  // Se agrupa por commercial_partner_id: consolida cada sucursal bajo su matriz,
+  // Agrupado por commercial_partner_id: consolida cada sucursal bajo su matriz,
   // que es la entidad que el vendedor ve en su cartera.
   const groups = await readGroup<{
     commercial_partner_id: [number, string] | false;

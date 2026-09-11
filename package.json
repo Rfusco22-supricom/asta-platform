@@ -11,7 +11,8 @@
     "probe": "tsx scripts/odoo-probe.ts",
     "probe:json": "tsx scripts/odoo-probe.ts --json",
     "seed:issues": "bash scripts/seed-issues.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:invoicing": "tsx scripts/verify-invoicing.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

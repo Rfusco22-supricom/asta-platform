@@ -97,6 +97,14 @@ export const identitySchema = z.object({
   odooPricelistId: odooIdSchema.nullable(),
   /** Vacío cuando la identidad viene de un JWT: los scopes son de las API keys. */
   scopes: z.array(apiScopeSchema).default([]),
+  /**
+   * Solo presente cuando el request entró con API key. Ausente con JWT.
+   *
+   * Es la única asimetría entre las dos puertas de autenticación, y está aquí
+   * porque los logs de acceso cruzado necesitan saber *qué key* lo intentó, no
+   * solo qué usuario.
+   */
+  apiKeyId: z.uuid().optional(),
 });
 
 export type Identity = z.infer<typeof identitySchema>;

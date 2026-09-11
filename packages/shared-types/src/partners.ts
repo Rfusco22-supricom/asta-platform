@@ -43,6 +43,8 @@ export const portfolioRowSchema = z.object({
   totalFacturado: montoSchema,
   porCobrar: montoSchema,
   numeroFacturas: z.number().int().nonnegative(),
+  /** false = prospecto asignado que nunca ha comprado. El panel los separa, no los oculta. */
+  esCliente: z.boolean(),
 });
 
 export type PortfolioRow = z.infer<typeof portfolioRowSchema>;
