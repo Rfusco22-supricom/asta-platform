@@ -15,6 +15,8 @@
     "verify:invoicing": "tsx scripts/verify-invoicing.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "migrate:status": "prisma migrate status --schema prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema prisma/schema.prisma",
     "postinstall": "prisma generate --schema prisma/schema.prisma",
     "verify:endpoints": "tsx scripts/verify-endpoints.ts",
