@@ -35,7 +35,12 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // ── Guarda 2: hace falta activarlo explícitamente ────────────────────────────
-const ENABLED = process.env.DEV_AUTH_ENABLED === 'true';
+//
+// Se evalúa en cada llamada y no una vez al importar el módulo. Leerlo al
+// importar significa que el valor queda congelado con lo que hubiera en ese
+// instante — que es antes de que un test, o un arranque que carga el .env más
+// tarde, haya podido poner la variable. Costó un rato de depuración en #25.
+const habilitado = () => process.env.DEV_AUTH_ENABLED === 'true';
 
 interface OdooUserRow {
   id: number;
@@ -83,7 +88,7 @@ async function buildIdentity(odooUserId: number, role: AppRole): Promise<Identit
  */
 export function authDev(): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
-    if (!ENABLED) {
+    if (!habilitado()) {
       res.status(401).json({
         error: {
           code: 'UNAUTHENTICATED',
@@ -106,8 +111,14 @@ export function authDev(): RequestHandler {
       return;
     }
 
+    // Se acepta cualquiera de los cinco roles: los tests de #25 necesitan
+    // entrar como cliente (BRONCE/PLATA/GOLD) para comprobar que el modulo de
+    // vendedores los rechaza.
+    const ROLES: readonly AppRole[] = ['SUPERADMIN', 'VENDEDOR', 'BRONCE', 'PLATA', 'GOLD'];
     const headerRole = (req.get('x-dev-role') ?? 'VENDEDOR').toUpperCase();
-    const role: AppRole = headerRole === 'SUPERADMIN' ? 'SUPERADMIN' : 'VENDEDOR';
+    const role: AppRole = (ROLES as readonly string[]).includes(headerRole)
+      ? (headerRole as AppRole)
+      : 'VENDEDOR';
 
     try {
       const identity = await buildIdentity(odooUserId, role);
@@ -144,7 +155,7 @@ export async function listDevSalespeople(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (!ENABLED) {
+  if (!habilitado()) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'No disponible.' } });
     return;
   }
@@ -174,7 +185,7 @@ export async function listDevSalespeople(
 
 /** Aviso al arrancar, para que nadie levante el servidor sin enterarse. */
 export function warnIfDevAuthEnabled(): void {
-  if (!ENABLED) return;
+  if (!habilitado()) return;
   const line = '─'.repeat(70);
   console.warn(`\n${line}`);
   console.warn('  DEV_AUTH_ENABLED=true — la autenticación está DESACTIVADA.');

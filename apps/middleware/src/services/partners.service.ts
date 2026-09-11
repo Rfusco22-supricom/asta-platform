@@ -134,7 +134,18 @@ export class ForbiddenPartnerAccess extends Error {
   readonly status = 403;
   readonly code = 'PARTNER_NOT_IN_PORTFOLIO';
 
-  constructor(odooUserId: number, partnerId: number) {
+  /**
+   * El id viaja DENTRO del error, no se lee de `req.params` en el manejador.
+   *
+   * Express limpia `req.params` al salir de la capa de la ruta, así que cuando
+   * el manejador de errores corre a nivel de aplicación ya está vacío. El
+   * registro de auditoría guardaba `targetId: ""`: sabías que alguien fue
+   * rechazado, pero no qué intentó ver — es decir, un rastro inútil.
+   */
+  constructor(
+    readonly odooUserId: number,
+    readonly partnerId: number,
+  ) {
     super(`El vendedor ${odooUserId} no tiene asignado al cliente ${partnerId}`);
     this.name = 'ForbiddenPartnerAccess';
   }
@@ -144,7 +155,7 @@ export class PartnerNotFound extends Error {
   readonly status = 404;
   readonly code = 'PARTNER_NOT_FOUND';
 
-  constructor(partnerId: number) {
+  constructor(readonly partnerId: number) {
     super(`No existe el cliente ${partnerId}`);
     this.name = 'PartnerNotFound';
   }

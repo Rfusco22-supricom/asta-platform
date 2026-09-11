@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { ZodError, z } from 'zod';
 import { HTTP_STATUS_BY_ERROR, type ErrorCode } from '@asta/shared-types';
 import { OdooError } from '../odoo/client.js';
+import { auditContext, recordAudit } from '../services/audit.service.js';
 
 /**
  * Manejador de errores único.
@@ -42,11 +43,16 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   // ForbiddenPartnerAccess, PartnerNotFound y similares. Su mensaje SÍ es apto
   // para el cliente: se escribió pensando en eso.
   if (isTypedServiceError(err)) {
+    // Sin RLS, este rastro es la unica forma de enterarse de que alguien
+    // intento cruzar la linea. Ver #44.
     if (err.code === 'PARTNER_NOT_IN_PORTFOLIO') {
-      req.log?.warn(
-        { identity: req.identity?.appUserId, path: req.path, code: err.code },
-        'acceso denegado a cartera ajena',
-      );
+      recordAudit({
+        action: 'access.denied.partner',
+        ...auditContext(req),
+        targetType: 'res.partner',
+        targetId: String((err as { partnerId?: number }).partnerId ?? req.params.partnerId ?? ''),
+        metadata: { path: req.path, motivo: err.message },
+      });
     }
     send(res, err.code, err.message);
     return;

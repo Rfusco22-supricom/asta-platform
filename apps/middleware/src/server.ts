@@ -7,6 +7,7 @@ import { getUid, executeKw } from './odoo/client.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { warnIfDevAuthEnabled } from './middleware/authDev.js';
+import { installLogAuditSink } from './services/audit.service.js';
 
 /**
  * Servidor del middleware.
@@ -20,6 +21,8 @@ const PORT = Number(process.env.PORT ?? 3001);
 const WEB_APP_ORIGIN = process.env.WEB_APP_ORIGIN ?? 'http://localhost:3000';
 
 export function createApp() {
+  installLogAuditSink();
+
   const app = express();
 
   // Detrás de un proxy, req.ip debe ser la IP real del cliente y no la del

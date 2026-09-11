@@ -8,6 +8,21 @@ import {
   assertSalespersonOwnsPartner,
   getPartnersBySalesperson,
 } from '../services/partners.service.js';
+import { auditContext, recordAudit } from '../services/audit.service.js';
+
+/** Un rol sin permiso para el modulo de vendedores tambien deja rastro. */
+function denegarPorRol(req: Request, res: Response): void {
+  recordAudit({
+    action: 'access.denied.role',
+    ...auditContext(req),
+    targetType: 'endpoint',
+    targetId: req.path,
+    metadata: { rol: req.identity?.role ?? null },
+  });
+  res.status(403).json({
+    error: { code: 'ROLE_NOT_ALLOWED', message: 'Requiere rol de vendedor' },
+  });
+}
 
 /**
  * Controlador del módulo de vendedores.
@@ -61,9 +76,7 @@ export async function getClientInvoicing(
     let partner = null;
     if (identity.role !== 'SUPERADMIN') {
       if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
-        res.status(403).json({
-          error: { code: 'ROLE_NOT_ALLOWED', message: 'Requiere rol de vendedor' },
-        });
+        denegarPorRol(req, res);
         return;
       }
       // Lanza ForbiddenPartnerAccess (403) o PartnerNotFound (404).
@@ -107,9 +120,7 @@ export async function getPortfolio(
     const { identity } = req;
 
     if (identity.role !== 'VENDEDOR' || identity.odooUserId === null) {
-      res.status(403).json({
-        error: { code: 'ROLE_NOT_ALLOWED', message: 'Requiere rol de vendedor' },
-      });
+      denegarPorRol(req, res);
       return;
     }
 
