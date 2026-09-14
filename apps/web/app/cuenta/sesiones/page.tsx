@@ -86,7 +86,10 @@ export default async function SesionesPage() {
         </p>
       </div>
 
-      <Sesiones filas={datos.filas} otras={datos.otras} />
+      {/* El instante de referencia se fija AQUÍ, en el servidor, y baja como
+          prop. Si cada lado leyera su propio reloj, los textos de "hace X min"
+          no coincidirían y la hidratación fallaría. */}
+      <Sesiones filas={datos.filas} otras={datos.otras} ahora={Date.now()} />
 
       <p style={{ marginTop: 24, fontSize: 13 }}>
         <Link href={volverA} className="btn-link">

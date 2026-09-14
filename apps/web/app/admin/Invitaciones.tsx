@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { fechaCorta } from '@/lib/formato';
 
 /**
  * Generación de enlaces de invitación (issue #16).
@@ -78,7 +79,7 @@ export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; t
         <div className="notice" style={{ marginBottom: 16, borderColor: 'var(--positive)' }}>
           <h2 style={{ color: 'var(--positive)' }}>Enlace para {generada.email}</h2>
           <p style={{ marginBottom: 10 }}>
-            Caduca el {new Date(generada.expiraEl).toLocaleDateString('es-VE')} y{' '}
+            Caduca el {fechaCorta(generada.expiraEl)} y{' '}
             <strong>solo sirve una vez</strong>. No vuelve a mostrarse: cópialo ahora.
           </p>
           <div className="enlace-copiable">

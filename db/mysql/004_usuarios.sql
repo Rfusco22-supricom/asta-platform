@@ -129,14 +129,19 @@ GRANT SELECT, INSERT, UPDATE ON asta.kiosk_sessions TO 'asta_app'@'localhost';
 -- -----------------------------------------------------------------------------
 -- LOS TESTS NO PUEDEN CORRER CON ESTE USUARIO, y está bien así.
 --
--- Se comprobó: con `asta_app` la batería entera da 206 pasando y 0 fallando, y
--- la ÚNICA operación denegada en todo el recorrido es
+-- Se comprobó: con `asta_app` la batería entera da 209 pasando y 0 fallando, y
+-- las ÚNICAS operaciones denegadas en todo el recorrido son
 --
---   DELETE command denied to user 'asta_app' for table `asta`.`app_users`
+--   DELETE ... for table `asta`.`app_users`
+--   DELETE ... for table `asta`.`api_request_logs`
 --
--- que sale de la limpieza de fixtures en los `afterAll`, no de ningún camino de
+-- que salen de la limpieza de fixtures en los `afterAll`, no de ningún camino de
 -- la aplicación. Eso es justamente la prueba de que quitar DELETE es seguro: si
 -- algo del producto lo necesitara, habría salido aquí.
+--
+-- (Eran 206 y un solo DELETE cuando se escribió esto. Subieron al añadir los
+-- tests de alertas (#46), que también limpian lo que siembran. Lo que no cambia
+-- es lo que importa: ninguna de las dos sale de código de producción.)
 --
 -- Los tests, por tanto, corren contra una base de DESARROLLO con un usuario que
 -- sí puede borrar (en local, root). No se crea un cuarto usuario para esto
