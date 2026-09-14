@@ -578,3 +578,175 @@ describe('#25 · Rastro de auditoría', () => {
     expect(despues).toBe(antes);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test de propiedad (issue #44, sección 2)
+//
+// El muestreo de más arriba coge los 8 PRIMEROS clientes de un vendedor. Eso
+// prueba siempre los mismos ocho, así que un fallo de scoping que solo afecte a
+// cierto tipo de cliente —una sucursal con la matriz en otra cartera, un partner
+// sin `commercial_partner_id` propio— no se toparía nunca con él.
+//
+// Y hay una mitad que ningún test cubría: los 403 demuestran que se deniega lo
+// ajeno, pero NO que lo permitido esté limpio. Una respuesta 200 que devolviera
+// datos de otro cliente pasaría entera por la batería anterior.
+//
+// Esto ataca las dos: pares al azar, y verificación del CONTENIDO de lo que sí
+// se autoriza.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface FilaCartera {
+  id: number;
+  nombre: string;
+  totalFacturado: number;
+  numeroFacturas: number;
+}
+
+/** Muestra al azar sin repetir. Devuelve menos de `n` si no hay suficientes. */
+function alAzar<T>(origen: readonly T[], n: number): T[] {
+  const copia = [...origen];
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia.slice(0, n);
+}
+
+describe('#44 · Propiedad: ninguna respuesta mezcla carteras', () => {
+  const MUESTRA = 6;
+
+  let carteraA: FilaCartera[];
+  let carteraB: FilaCartera[];
+
+  beforeAll(async () => {
+    const [a, b] = await Promise.all([
+      get('/api/v1/salesperson/portfolio', comoVendedor(fx.vendedorA)),
+      get('/api/v1/salesperson/portfolio', comoVendedor(fx.vendedorB)),
+    ]);
+    carteraA = (a.body as never as { data: FilaCartera[] }).data;
+    carteraB = (b.body as never as { data: FilaCartera[] }).data;
+
+    // Sin esto, una cartera vacía haría que los tests de abajo pasaran sin
+    // probar nada. Ya pasó una vez en este fichero y costó caro.
+    if (carteraA.length === 0 || carteraB.length === 0) {
+      throw new Error(
+        `Fixtures insuficientes: A tiene ${carteraA.length} clientes y B ${carteraB.length}. ` +
+          'El test de propiedad necesita las dos carteras con contenido.',
+      );
+    }
+  }, 120_000);
+
+  it(`${MUESTRA} clientes AJENOS al azar: ninguno se filtra`, async () => {
+    const muestra = alAzar(carteraB, MUESTRA);
+
+    const resultados = await Promise.all(
+      muestra.map(async (c) => {
+        const [inv, perfil] = await Promise.all([
+          get(`/api/v1/salesperson/clients/${c.id}/invoicing`, comoVendedor(fx.vendedorA)),
+          get(`/api/v1/salesperson/clients/${c.id}/profile`, comoVendedor(fx.vendedorA)),
+        ]);
+        return { id: c.id, nombre: c.nombre, inv: inv.status, perfil: perfil.status };
+      }),
+    );
+
+    // Se enseña el par concreto que falló: con muestreo al azar, un fallo que
+    // solo dice "esperaba 403" no se puede reproducir a mano.
+    const filtrados = resultados.filter((r) => r.inv !== 403 || r.perfil !== 403);
+    expect(
+      filtrados.map((r) => `${r.id} (${r.nombre}) → invoicing ${r.inv}, profile ${r.perfil}`),
+    ).toEqual([]);
+  }, 120_000);
+
+  it(`${MUESTRA} clientes PROPIOS al azar: la respuesta es de quien se pidió`, async () => {
+    const muestra = alAzar(carteraA, MUESTRA);
+
+    const desajustes: string[] = [];
+
+    for (const c of muestra) {
+      const r = await get(
+        `/api/v1/salesperson/clients/${c.id}/invoicing`,
+        comoVendedor(fx.vendedorA),
+      );
+      if (r.status !== 200) {
+        desajustes.push(`${c.id} (${c.nombre}) → HTTP ${r.status} en su PROPIO cliente`);
+        continue;
+      }
+
+      const cuerpo = r.body as never as {
+        data: { cliente: { id: number; nombre?: string }; facturacion: { totalFacturado: number } };
+      };
+
+      // Que devuelva el cliente que se pidió, y no otro. Una sustitución silenciosa
+      // —por un índice mal calculado, por una caché mal indexada— saldría aquí y
+      // por ningún otro sitio.
+      if (cuerpo.data.cliente.id !== c.id) {
+        desajustes.push(`se pidió ${c.id} y devolvió ${cuerpo.data.cliente.id}`);
+      }
+    }
+
+    expect(desajustes).toEqual([]);
+  }, 180_000);
+
+  it('el total individual coincide con el de la cartera, cliente a cliente', async () => {
+    /*
+     * La propiedad más fuerte de las tres.
+     *
+     * La cartera calcula los totales EN LOTE, con un `read_group` sobre
+     * `commercial_partner_id in [...]`. La ficha los calcula de uno en uno, con
+     * `child_of`. Son dos caminos distintos hasta el mismo número.
+     *
+     * Si la consulta en lote agrupara mal —y metiera en la fila de un cliente
+     * facturas que son de otro— los dos caminos dejarían de coincidir. Eso es
+     * exactamente la forma que tendría una fuga entre clientes de la MISMA
+     * cartera, que ningún 403 puede detectar porque los dos accesos son
+     * legítimos.
+     */
+    const muestra = alAzar(
+      carteraA.filter((c) => c.numeroFacturas > 0),
+      MUESTRA,
+    );
+
+    if (muestra.length === 0) {
+      throw new Error('Ningún cliente de A tiene facturas: el test no probaría nada.');
+    }
+
+    const desajustes: string[] = [];
+
+    for (const c of muestra) {
+      const r = await get(
+        `/api/v1/salesperson/clients/${c.id}/invoicing`,
+        comoVendedor(fx.vendedorA),
+      );
+      const total = (r.body as never as { data: { facturacion: { totalFacturado: number } } })
+        .data.facturacion.totalFacturado;
+
+      /*
+       * Comprobar que son NÚMEROS antes de restarlos. No es paranoia: este test
+       * leía `facturacion.total`, que no existe en el contrato —el campo se
+       * llama `totalFacturado`—, así que la resta daba NaN, `NaN > 0.01` es
+       * false, y el test pasaba sin comparar nada. Lo destapó sabotear el
+       * servicio a propósito y ver que NADIE se quejaba.
+       *
+       * Cualquier comparación con tolerancia tiene esta trampa: el caso de
+       * "no hay valor" se cuela por el mismo sitio que el de "los valores
+       * coinciden".
+       */
+      if (!Number.isFinite(total) || !Number.isFinite(c.totalFacturado)) {
+        desajustes.push(
+          `${c.id} (${c.nombre}): no llegó un número — cartera ${c.totalFacturado} · ficha ${total}`,
+        );
+        continue;
+      }
+
+      // Un céntimo de tolerancia: son dos sumas de floats de Odoo por caminos
+      // distintos, no dos lecturas del mismo número.
+      if (Math.abs(total - c.totalFacturado) > 0.01) {
+        desajustes.push(
+          `${c.id} (${c.nombre}): cartera ${c.totalFacturado} · ficha ${total}`,
+        );
+      }
+    }
+
+    expect(desajustes).toEqual([]);
+  }, 180_000);
+});
