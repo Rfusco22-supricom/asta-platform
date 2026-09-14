@@ -46,3 +46,12 @@ p.json
 # usuario de servicio, el nombre del mayor cliente y precios reales. Se
 # regenera con `pnpm probe` cuando haga falta.
 docs/odoo-schema-snapshot.json
+
+# Respaldos. Llevan datos reales: el volcado de MySQL con los clientes, y la
+# copia de configuracion de Odoo con precios y nombres de tarifas. Se guardan
+# donde se guarden las copias, no en el repositorio.
+backups/
+*.sql.gz
+*.sql.gz.sha256
+odoo-config-*.json
+odoo-config-*.json.gz

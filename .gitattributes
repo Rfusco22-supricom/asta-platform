@@ -1,0 +1,15 @@
+# Finales de línea
+#
+# Se desarrolla en Windows y se despliega en Linux (EasyPanel), así que Git
+# convierte a CRLF al sacar los ficheros. Para casi todo da igual; para estos
+# dos tipos, no:
+
+# Los scripts de shell DEBEN ir en LF. Con CRLF, Linux falla al ejecutarlos con
+#   /usr/bin/env: 'bash\r': No such file or directory
+# que es un mensaje que no dice nada a quien no ha visto antes el problema, y
+# aparece justo el día que hay que restaurar un respaldo.
+*.sh text eol=lf
+
+# Los .sql se aplican con el cliente de mysql en el servidor. El CRLF no los
+# rompe, pero ensucia los mensajes de error y los diffs entre entornos.
+*.sql text eol=lf

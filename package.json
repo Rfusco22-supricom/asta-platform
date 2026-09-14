@@ -21,6 +21,8 @@
     "postinstall": "prisma generate --schema prisma/schema.prisma",
     "check:env": "tsx scripts/check-env.ts",
     "check:grants": "tsx scripts/check-grants.ts",
+    "backup:verificar": "tsx scripts/verify-restore.ts",
+    "backup:odoo": "tsx scripts/backup-odoo-config.ts",
     "verify:endpoints": "tsx scripts/verify-endpoints.ts",
     "dev:middleware": "tsx watch apps/middleware/src/server.ts",
     "dev:web": "pnpm --filter @asta/web dev",
