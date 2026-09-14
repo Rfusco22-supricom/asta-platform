@@ -9,13 +9,16 @@
 # =============================================================================
 
 # ── 1. Dependencias y compilación ────────────────────────────────────────────
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 
 # `openssl` lo necesita el motor de Prisma. Sin él, el cliente falla al arrancar
 # con un error que no menciona OpenSSL por ningún lado y cuesta media hora.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 
+# node:22, no 20. `packageManager` fija pnpm 11.20.0 y esa version exige
+# Node >= 22.13: con la imagen de 20 el build muere en `pnpm install` con
+# "No such built-in module: node:sqlite", que no menciona ni a pnpm ni a Node.
 RUN corepack enable
 
 WORKDIR /app
@@ -42,7 +45,7 @@ RUN pnpm --filter @asta/middleware build
 # Solo el bundle y las dependencias nativas. El código compartido va DENTRO del
 # bundle (ver apps/middleware/build.mjs), así que aquí no hace falta ni el
 # workspace ni TypeScript ni las herramientas de build.
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*

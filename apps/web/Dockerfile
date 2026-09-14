@@ -7,7 +7,7 @@
 # En EasyPanel: "Build context" = raíz, "Dockerfile path" = apps/web/Dockerfile
 # =============================================================================
 
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 
 RUN corepack enable
 WORKDIR /app
@@ -40,7 +40,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @asta/web build
 
 # ── Imagen final ─────────────────────────────────────────────────────────────
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production

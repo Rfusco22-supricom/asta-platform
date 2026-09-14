@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { revisarEntorno, describirProblemas } from '../config/validarEntorno.js';
+import { envSchema } from '../config/env.js';
 
 /**
  * Comprobación del entorno (issue #9).
@@ -106,5 +107,32 @@ describe('#9 · Comprobación del entorno', () => {
     delete entorno.NODE_ENV;
 
     expect(revisarEntorno(entorno)).toEqual([]);
+  });
+});
+
+describe('#48 · WEB_APP_ORIGIN', () => {
+  it('se le quita la barra final', () => {
+    /*
+     * Salió del primer despliegue real en EasyPanel.
+     *
+     * El panel de despliegue muestra las URL con barra —
+     * `https://asta.host/`— y se copian tal cual. La cabecera `Origin` que
+     * manda un navegador NUNCA la lleva, así que con la barra el origen no casa
+     * jamás y el panel entero da error de CORS.
+     *
+     * Y es de los peores de diagnosticar: el middleware responde 200, es el
+     * navegador quien descarta la respuesta. En el log del servidor no se ve
+     * nada raro.
+     */
+    const entorno = { ...entornoCompleto(), WEB_APP_ORIGIN: 'https://panel.example/' };
+    const problemas = revisarEntorno(entorno);
+
+    expect(problemas).toEqual([]);
+    expect(envSchema.parse(entorno).WEB_APP_ORIGIN).toBe('https://panel.example');
+  });
+
+  it('una URL sin barra se queda igual', () => {
+    const entorno = { ...entornoCompleto(), WEB_APP_ORIGIN: 'https://panel.example' };
+    expect(envSchema.parse(entorno).WEB_APP_ORIGIN).toBe('https://panel.example');
   });
 });

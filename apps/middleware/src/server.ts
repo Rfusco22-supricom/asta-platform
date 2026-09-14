@@ -25,7 +25,7 @@ import { env } from './config/env.js';
  */
 
 const PORT = Number(process.env.PORT ?? 3001);
-const WEB_APP_ORIGIN = process.env.WEB_APP_ORIGIN ?? 'http://localhost:3000';
+
 
 export function createApp() {
   installLogAuditSink();
@@ -61,7 +61,10 @@ export function createApp() {
 
   // CORS solo para el panel. La API pública se consume con API key desde
   // servidores, no desde navegadores, así que no lleva CORS.
-  const corsPanel = cors({ origin: WEB_APP_ORIGIN, credentials: true });
+  // Del entorno VALIDADO, no de `process.env` directo: ahí es donde se le quita
+  // la barra final, y sin ese paso un `https://panel/` copiado del panel de
+  // despliegue no casa nunca con el `Origin` que manda el navegador.
+  const corsPanel = cors({ origin: env().WEB_APP_ORIGIN, credentials: true });
 
   app.use('/api/v1/auth', corsPanel, authRouter);
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
