@@ -9,6 +9,12 @@
 
 FROM node:22-slim AS build
 
+# `openssl` no lo necesita el panel para funcionar —no habla con MySQL— pero sí
+# el `postinstall` de la raíz, que ejecuta `prisma generate`. Sin él la
+# construcción escupe seis avisos de Prisma sobre libssl que no significan nada
+# aquí y hacen dudar de un build que está bien.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl     && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable
 WORKDIR /app
 
@@ -51,7 +57,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # de megas que en su mayoría son herramientas de desarrollo.
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static     ./apps/web/.next/static
-COPY --from=build /app/apps/web/public           ./apps/web/public
+
+# No se copia `apps/web/public`: este proyecto NO tiene esa carpeta.
+#
+# Casi todos los proyectos de Next la traen y por eso se dio por hecha, pero
+# aquí el único estático es el favicon, y en App Router vive en `app/icon.svg`
+# —Next lo sirve como una ruta más y acaba dentro del build—. Un `COPY` de una
+# ruta que no existe no se ignora: rompe la construcción entera.
+#
+# Si algún día se añade `apps/web/public`, hay que volver a poner:
+#   COPY --from=build /app/apps/web/public ./apps/web/public
 
 USER node
 
