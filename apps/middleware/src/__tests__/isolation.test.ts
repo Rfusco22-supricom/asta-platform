@@ -52,6 +52,16 @@ interface Fixtures {
   sucursalAjena: { id: number; duenio: number } | null;
   /** Sucursal sin vendedor propio + el vendedor de su matriz. Prueba la escalada. */
   sucursalHeredada: { id: number; vendedorDeLaMatriz: number } | null;
+  /**
+   * Cliente RAIZ —sin matriz— y SIN vendedor asignado.
+   *
+   * En `assertSalespersonOwnsPartner` toma un camino que ningun otro caso
+   * ejercita: no coincide el vendedor, y como `commercialPartnerId === id` no hay
+   * matriz a la que subir, asi que cae directo en el 403. La revision cruzada
+   * de #25 lo encontro por mutacion: con ese camino saboteado para devolver el
+   * cliente, la bateria entera seguia en verde. Son el ~10% de la cartera.
+   */
+  clienteSinVendedor: number | null;
 }
 
 let fx: Fixtures;
@@ -259,6 +269,29 @@ async function descubrirFixtures(): Promise<Fixtures> {
     }
   }
 
+  // Cliente raiz sin vendedor. Se exige `commercial_partner_id === id` y no solo
+  // `parent_id = false`: lo que se quiere probar es el camino SIN matriz a la que
+  // subir, y un partner sin padre no garantiza por si solo ser su propia
+  // entidad comercial.
+  const candidatosSinVendedor = await searchRead<{
+    id: number;
+    commercial_partner_id: [number, string] | false;
+  }>(
+    'res.partner',
+    [
+      ['customer_rank', '>', 0],
+      ['parent_id', '=', false],
+      ['user_id', '=', false],
+      ['active', '=', true],
+    ],
+    ['id', 'commercial_partner_id'],
+    { limit: 40 },
+  );
+  const clienteSinVendedor =
+    candidatosSinVendedor.find(
+      (c) => !c.commercial_partner_id || c.commercial_partner_id[0] === c.id,
+    )?.id ?? null;
+
   return {
     vendedorA: A.user_id[0],
     vendedorB: B.user_id[0],
@@ -268,6 +301,7 @@ async function descubrirFixtures(): Promise<Fixtures> {
     clienteDeB: await traerCliente(B.user_id[0]),
     sucursalAjena,
     sucursalHeredada: heredada,
+    clienteSinVendedor,
   };
 }
 
@@ -402,6 +436,34 @@ describe('#25 · Aislamiento entre carteras de vendedores', () => {
       comoVendedor(ajeno),
     );
     expect(r.status).toBe(403);
+  });
+
+  it('NINGÚN vendedor puede ver un cliente raíz sin vendedor asignado', async () => {
+    // Un cliente sin vendedor no es "de todos": no es de nadie. Solo lo ve el
+    // SUPERADMIN.
+    //
+    // Este camino —sin vendedor y sin matriz a la que subir— no lo ejercitaba
+    // ningun otro test. Saboteado para devolver el cliente, las 36 pruebas de
+    // esta bateria seguian en verde; la unica que cazaba un sabotaje parecido lo
+    // hacia por casualidad, a traves de una SUCURSAL sin vendedor, y dejaba de
+    // hacerlo en cuanto el sabotaje se limitaba a los clientes raiz.
+    if (fx.clienteSinVendedor === null) {
+      throw new Error(
+        'No hay clientes raiz sin vendedor asignado. El camino sin matriz de ' +
+          'assertSalespersonOwnsPartner queda SIN PROBAR.',
+      );
+    }
+
+    // A y B, no solo uno: que el 403 no dependa de que el vendedor elegido tenga
+    // o no cartera grande.
+    for (const vendedor of [fx.vendedorA, fx.vendedorB]) {
+      const r = await get(
+        `/api/v1/salesperson/clients/${fx.clienteSinVendedor}/invoicing`,
+        comoVendedor(vendedor),
+      );
+      expect(r.status).toBe(403);
+      expect(r.body?.error?.code).toBe('PARTNER_NOT_IN_PORTFOLIO');
+    }
   });
 
   it('las carteras de dos vendedores no se solapan', async () => {
