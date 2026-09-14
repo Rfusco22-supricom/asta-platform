@@ -113,6 +113,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
             <>
               {' · '}
               <a
+                className="enlace-accion"
                 href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`}
                 target="_blank"
                 rel="noopener noreferrer"

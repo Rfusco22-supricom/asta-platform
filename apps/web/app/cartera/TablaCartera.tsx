@@ -117,7 +117,7 @@ export function TablaCartera({ filas }: { filas: PortfolioRow[] }) {
               <th className="sortable" onClick={() => ordenarPor('nombre')}>
                 Cliente {flecha('nombre')}
               </th>
-              <th>Nivel</th>
+              <th className="col-nivel">Nivel</th>
               <th className="sortable num" onClick={() => ordenarPor('totalFacturado')}>
                 Facturado {flecha('totalFacturado')}
               </th>
@@ -137,7 +137,25 @@ export function TablaCartera({ filas }: { filas: PortfolioRow[] }) {
                       puede contener <td>, y hacerlo con onClick rompería
                       abrir en pestaña nueva con ctrl+clic. */}
                   <Link href={`/cartera/${f.id}`} className="row-link">
-                    <div className="cliente-nombre">{f.nombre}</div>
+                    <div className="cliente-nombre">
+                      {f.nombre}
+                      {/*
+                        Marca de prospecto para cuando la columna «Nivel» no
+                        cabe (pantalla estrecha).
+
+                        Se pinta SIEMPRE y es el CSS quien decide si se ve. Con
+                        JavaScript mirando el ancho de la ventana, el servidor y
+                        el navegador renderizarían cosas distintas y la
+                        hidratación fallaría — el mismo fallo que hubo en la
+                        pantalla de sesiones.
+
+                        Solo se conserva «Prospecto», no el nivel: hoy los 2942
+                        clientes están en la misma tarifa (#5), así que el nivel
+                        no distingue a nadie. Que un cliente no haya comprado
+                        nunca, sí.
+                      */}
+                      {!f.esCliente && <span className="marca-prospecto">Prospecto</span>}
+                    </div>
                     {(f.email || f.telefono) && (
                       <div className="cliente-contacto">
                         {[f.email, f.telefono].filter(Boolean).join(' · ')}
@@ -145,7 +163,7 @@ export function TablaCartera({ filas }: { filas: PortfolioRow[] }) {
                     )}
                   </Link>
                 </td>
-                <td>
+                <td className="col-nivel">
                   {f.esCliente ? (
                     <span className={`tag ${TIER_CLASS[f.tierDerivado] ?? 'bronce'}`}>
                       {f.tierDerivado}
