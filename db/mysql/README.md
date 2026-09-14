@@ -107,9 +107,10 @@ pnpm check:grants          # comprueba que quedó como debe
 **`asta_app` no tiene `DELETE`.** Se revisó el código: la aplicación nunca borra
 una fila. Las notas se borran en suave, las sesiones y las API keys se revocan.
 Comprobado además a la brava — la batería completa corriendo como `asta_app` da
-**206 tests pasando y 0 fallando**, y la única operación denegada en todo el
-recorrido es el `DELETE` con el que los propios tests limpian sus fixtures. Si
-algo del producto necesitara borrar, habría salido ahí.
+**209 tests pasando y 0 fallando**, y las únicas operaciones denegadas en todo el
+recorrido son los dos `DELETE` con los que los propios tests limpian sus fixtures
+(`app_users` y `api_request_logs`). Si algo del producto necesitara borrar,
+habría salido ahí.
 
 **`asta_app` no puede reescribir las bitácoras** (`audit_logs`,
 `api_request_logs`, `recommendation_events`): solo `SELECT` e `INSERT`. Un

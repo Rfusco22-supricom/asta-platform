@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { SesionActiva, TipoDispositivo } from '@asta/shared-types';
+import { fechaCorta } from '@/lib/formato';
 
 /**
  * Lista de sesiones activas con sus botones de cierre (issue #52).
@@ -21,9 +22,27 @@ const ICONO: Record<TipoDispositivo, string> = {
   desconocido: '?',
 };
 
-/** "hace 5 minutos" se lee mejor que una fecha cuando lo que importa es si es reciente. */
-function haceCuanto(iso: string): string {
-  const ms = Date.now() - Date.parse(iso);
+/**
+ * "hace 5 minutos" se lee mejor que una fecha cuando lo que importa es si es
+ * reciente.
+ *
+ * ── El `ahora` ENTRA COMO PARÁMETRO, y eso no es un capricho ─────────────────
+ *
+ * Antes llamaba a `Date.now()` aquí dentro. Este componente es de cliente, pero
+ * se renderiza TAMBIÉN en el servidor, así que el reloj se leía dos veces: una
+ * al generar el HTML y otra al hidratar, unos segundos después. Una sesión
+ * iniciada hace 59 s salía como "ahora mismo" del servidor y como "hace 1 min"
+ * en el navegador, los textos no coincidían y React abortaba la hidratación.
+ *
+ * Se vio en la consola: "Hydration failed because the server rendered text
+ * didn't match". No es cosmético — cuando la hidratación falla, React descarta
+ * el HTML del servidor y vuelve a pintar en el cliente.
+ *
+ * Con un único `ahora` que baja desde el servidor, los dos lados calculan lo
+ * mismo. Se refresca en cada `router.refresh()`, que es cuando la lista cambia.
+ */
+function haceCuanto(iso: string, ahora: number): string {
+  const ms = ahora - Date.parse(iso);
   const min = Math.floor(ms / 60_000);
 
   if (min < 1) return 'ahora mismo';
@@ -35,14 +54,19 @@ function haceCuanto(iso: string): string {
   const dias = Math.floor(horas / 24);
   if (dias < 30) return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 
-  return new Date(iso).toLocaleDateString('es-VE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return fechaCorta(iso);
 }
 
-export function Sesiones({ filas, otras }: { filas: SesionActiva[]; otras: number }) {
+export function Sesiones({
+  filas,
+  otras,
+  ahora,
+}: {
+  filas: SesionActiva[];
+  otras: number;
+  /** Instante de referencia, fijado por el servidor. Ver `haceCuanto`. */
+  ahora: number;
+}) {
   const router = useRouter();
   const [cerrando, setCerrando] = useState<string | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -112,8 +136,8 @@ export function Sesiones({ filas, otras }: { filas: SesionActiva[]; otras: numbe
                 {s.esActual && <span className="etiqueta-actual">Esta sesión</span>}
               </div>
               <div className="sesion-meta">
-                {s.ip ?? 'IP desconocida'} · iniciada {haceCuanto(s.iniciadaEn)}
-                {s.ultimoUsoEn && ` · activa ${haceCuanto(s.ultimoUsoEn)}`}
+                {s.ip ?? 'IP desconocida'} · iniciada {haceCuanto(s.iniciadaEn, ahora)}
+                {s.ultimoUsoEn && ` · activa ${haceCuanto(s.ultimoUsoEn, ahora)}`}
               </div>
             </div>
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LARGO_MAXIMO_NOTA, type ClientNote } from '@asta/shared-types';
+import { fechaHora } from '@/lib/formato';
 
 /**
  * Notas del vendedor sobre un cliente (issue #24).
@@ -138,13 +139,7 @@ export function Notas({
               <div className="nota-cabecera">
                 <strong>{n.autorNombre}</strong>
                 <span className="nota-fecha">
-                  {new Date(n.creadoEn).toLocaleString('es-VE', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {fechaHora(n.creadoEn)}
                 </span>
                 {/* Solo las propias. La nota de otro vendedor es el registro de
                     una conversación que no tuvo quien mira. */}
