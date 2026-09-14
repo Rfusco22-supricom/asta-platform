@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import type { Identity } from '@asta/shared-types';
 import { requireScope, scopeToOwnPartner } from '../middleware/apiKeyAuth.js';
+import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 
 /**
  * Issue #27 — `requireScope` y `scopeToOwnPartner`.
@@ -15,11 +16,9 @@ import { requireScope, scopeToOwnPartner } from '../middleware/apiKeyAuth.js';
  * `authApiKey` no se prueba aqui: llama a `verifyApiKey`, que si pega a la base
  * de datos. Va aparte cuando haya una DATABASE_URL alcanzable.
  *
- * Los casos marcados con `it.fails` documentan fallos REALES descritos en el
- * issue #27. Afirman el comportamiento correcto, no el actual: mientras el bug
- * viva, el cuerpo falla y `it.fails` lo da por bueno. En cuanto alguien arregle
- * el codigo, `it.fails` empezara a fallar y habra que convertirlo en un `it`
- * normal. Es la forma de fijar un bug conocido sin dejar la suite en rojo.
+ * Este fichero llego a tener `it.fails` fijando fallos reales de #27. Ya no
+ * queda ninguno: el ultimo, el partner_id por query, se cerro con #36. Los casos
+ * que los sustituyeron llevan una nota ARREGLADO.
  */
 
 const UUID_USER = '00000000-0000-4000-8000-000000000001';
@@ -150,11 +149,16 @@ describe('#27 · scopeToOwnPartner', () => {
     expect(req.scopedPartnerId).toBe(1001);
   });
 
-  it('sobreescribe un partner_id ajeno que venga en el body', () => {
+  it('rechaza con 400 un partner_id ajeno que venga en el body', () => {
+    // Antes lo corregia en silencio. Ahora se rechaza: ver el comentario de
+    // scopeToOwnPartner sobre por que 400 y no corregirlo.
     const req = fakeReq({ identity: identidad(), body: { partner_id: 2002 } });
-    correr(scopeToOwnPartner(), req, fakeRes());
+    const res = fakeRes();
 
-    expect(req.body.partner_id).toBe(1001);
+    expect(correr(scopeToOwnPartner(), req, res)).toBe(false);
+    expect(res.codigo).toBe(400);
+    expect(res.cuerpo).toMatchObject({ error: { code: 'PARTNER_ID_NOT_ALLOWED' } });
+    expect(req.scopedPartnerId).toBeUndefined();
   });
 
   it('no registra nada cuando el partner_id pedido es el suyo', () => {
@@ -208,40 +212,61 @@ describe('#27 · scopeToOwnPartner', () => {
   });
 
   /**
-   * EL FALLO PRINCIPAL DEL ISSUE #27.
+   * ARREGLADO — era el fallo principal del issue #27, y la primera tarea de #36.
    *
-   * El comentario de scopeToOwnPartner promete que un partner_id "en body o
-   * query" se sobreescribe con el del token. El body si. La query no se toca.
+   * El comentario de scopeToOwnPartner prometia que un partner_id "en body o
+   * query" se sobreescribia con el del token. El body si; la query no se tocaba,
+   * y las rutas de /api/v1/public/* son GET, que es justo por donde viaja.
    *
-   * Las cuatro rutas de /api/v1/public/* son GET, que es justo por donde viaja
-   * el partner_id. Hoy no hay fuga porque los controladores son stubs 501, pero
-   * el primero que lea req.query.partner_id en vez de req.scopedPartnerId abre
-   * el agujero sin que nada lo impida.
-   *
-   * Es tambien la primera tarea del gate #36.
+   * Aqui antes habia un `it.fails` con una nota que decia que en Express 5
+   * `req.query` es de solo lectura. Era falso: el middleware usa Express 4, donde
+   * `req.query` SI se puede escribir. La decision de responder 400 no se apoya
+   * en eso, sino en que un partner_id ajeno merece un error y no una correccion
+   * callada que oculte que alguien lo intento.
    */
-  it.fails('deberia neutralizar tambien el partner_id de la query', () => {
+  it('rechaza con 400 un partner_id ajeno que venga en la query', () => {
     const req = fakeReq({ identity: identidad(), query: { partner_id: '2002' } });
-    correr(scopeToOwnPartner(), req, fakeRes());
+    const res = fakeRes();
 
-    // En Express 5 req.query es de solo lectura, asi que la salida probablemente
-    // no sea sobreescribir sino responder 400. Cualquiera de las dos vale;
-    // lo que no vale es dejar el valor ajeno intacto.
-    expect(String(req.query.partner_id)).toBe('1001');
+    expect(correr(scopeToOwnPartner(), req, res)).toBe(false);
+    expect(res.codigo).toBe(400);
+    expect(res.cuerpo).toMatchObject({ error: { code: 'PARTNER_ID_NOT_ALLOWED' } });
+    expect(req.scopedPartnerId).toBeUndefined();
   });
 
-  it('sin logger el intento cruzado NO rompe el request, pero se pierde', () => {
-    // req.log es opcional (`req.log?.warn`). Si pino-http no esta montado en
-    // algun camino, el evento de auditoria desaparece en silencio.
-    //
-    // El gate #36 exige "verificar que cada intento queda registrado como acceso
-    // cruzado en los logs". Un registro de seguridad no deberia depender de que
-    // otro middleware este presente. Este test fija el comportamiento actual
-    // para que el dia que se arregle, alguien lo vea aqui.
-    const req = fakeReq({ identity: identidad(), query: { partner_id: '2002' } });
+  it('el intento cruzado queda auditado aunque NO haya logger', () => {
+    // Antes solo se registraba con `req.log?.warn`, que es opcional: sin pino-http
+    // montado, el evento desaparecia en silencio. #36 exige que cada intento
+    // quede registrado, asi que ahora pasa tambien por recordAudit().
+    const eventos: AuditEvent[] = [];
+    const quitar = registerAuditSink((e) => eventos.push(e));
+    try {
+      const req = fakeReq({ identity: identidad(), query: { partner_id: '2002' } });
+      correr(scopeToOwnPartner(), req, fakeRes());
 
-    expect(() => correr(scopeToOwnPartner(), req, fakeRes())).not.toThrow();
-    expect(req.scopedPartnerId).toBe(1001);
+      expect(eventos).toHaveLength(1);
+      expect(eventos[0]).toMatchObject({
+        action: 'access.denied.partner',
+        actorId: UUID_USER,
+        targetType: 'res.partner',
+        targetId: '2002',
+        metadata: { via: 'api_key', apiKeyId: UUID_KEY },
+      });
+    } finally {
+      quitar();
+    }
+  });
+
+  it('un partner_id propio NO genera evento de auditoria', () => {
+    const eventos: AuditEvent[] = [];
+    const quitar = registerAuditSink((e) => eventos.push(e));
+    try {
+      const req = fakeReq({ identity: identidad(), query: { partner_id: '1001' } });
+      expect(correr(scopeToOwnPartner(), req, fakeRes())).toBe(true);
+      expect(eventos).toHaveLength(0);
+    } finally {
+      quitar();
+    }
   });
 
   it('deniega con 401 si falta la identidad, sin reventar', () => {

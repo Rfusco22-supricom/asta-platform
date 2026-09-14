@@ -1,4 +1,4 @@
-import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
+import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 
 /**
  * Facturación de un cliente, leída en vivo de `account.move`.
@@ -268,4 +268,134 @@ export async function getInvoicingTotalsByPartner(
   }
 
   return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Facturas individuales — API pública del cliente (#32, gate #36)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Viven en este fichero, y no en uno del Track B, para REUTILIZAR `buildDomain`.
+// Esa función es la única definición de "qué facturas pertenecen a este
+// cliente": `child_of`, solo `posted`, solo facturas de venta. Copiarla a otro
+// sitio crearía dos definiciones, y en un filtro de seguridad así es como aparece
+// una fuga: alguien corrige una y la otra se queda como estaba.
+
+interface InvoiceRow {
+  id: number;
+  name: string;
+  invoice_date: string | false;
+  invoice_date_due: string | false;
+  amount_total_signed: number;
+  amount_residual_signed: number;
+  payment_state: PaymentState | false;
+}
+
+const INVOICE_FIELDS = [
+  'id',
+  'name',
+  'invoice_date',
+  'invoice_date_due',
+  'amount_total_signed',
+  'amount_residual_signed',
+  'payment_state',
+];
+
+export interface PartnerInvoice {
+  id: number;
+  folio: string;
+  fecha: string | null;
+  vencimiento: string | null;
+  estadoPago: PaymentState | 'desconocido';
+  total: number;
+  saldo: number;
+}
+
+export interface PartnerInvoiceListQuery {
+  desde?: string;
+  hasta?: string;
+  estadoPago?: PaymentState;
+  limit: number;
+  offset: number;
+}
+
+function mapInvoice(row: InvoiceRow): PartnerInvoice {
+  return {
+    id: row.id,
+    folio: row.name,
+    fecha: row.invoice_date || null,
+    vencimiento: row.invoice_date_due || null,
+    estadoPago: row.payment_state || 'desconocido',
+    total: round2(row.amount_total_signed ?? 0),
+    saldo: round2(row.amount_residual_signed ?? 0),
+  };
+}
+
+function assertIdValido(nombre: string, valor: number): void {
+  if (!Number.isInteger(valor) || valor <= 0) {
+    throw new TypeError(`${nombre} inválido: ${valor}`);
+  }
+}
+
+/** Facturas de un cliente, paginadas. Cuesta 2 RPC. */
+export async function listPartnerInvoices(
+  partnerId: number,
+  query: PartnerInvoiceListQuery,
+): Promise<{ facturas: PartnerInvoice[]; total: number }> {
+  assertIdValido('partnerId', partnerId);
+
+  const domain = buildDomain(partnerId, { desde: query.desde, hasta: query.hasta });
+  if (query.estadoPago) domain.push(['payment_state', '=', query.estadoPago]);
+
+  const [rows, total] = await Promise.all([
+    searchRead<InvoiceRow>('account.move', domain, INVOICE_FIELDS, {
+      limit: query.limit,
+      offset: query.offset,
+      // `id desc` desempata: sin él, dos facturas del mismo día pueden cambiar
+      // de página entre una petición y la siguiente.
+      order: 'invoice_date desc, id desc',
+    }),
+    executeKw<number>('account.move', 'search_count', [domain]),
+  ]);
+
+  return { facturas: rows.map(mapInvoice), total };
+}
+
+/**
+ * Una factura concreta, SOLO si pertenece al cliente.
+ *
+ * El id y el cliente van en el MISMO dominio. No se trae la factura para
+ * comparar después de quién es: esa comparación es exactamente la línea que
+ * alguien olvida, y aquí no existe. Una factura de otro cliente y una que no
+ * existe producen el mismo resultado, `null`, porque para Odoo son la misma
+ * consulta vacía.
+ */
+export async function getPartnerInvoice(
+  partnerId: number,
+  invoiceId: number,
+): Promise<PartnerInvoice | null> {
+  assertIdValido('partnerId', partnerId);
+  assertIdValido('invoiceId', invoiceId);
+
+  const domain: OdooDomain = [...buildDomain(partnerId, {}), ['id', '=', invoiceId]];
+  const rows = await searchRead<InvoiceRow>('account.move', domain, INVOICE_FIELDS, { limit: 1 });
+  return rows[0] ? mapInvoice(rows[0]) : null;
+}
+
+/**
+ * ¿Existe esta factura de venta, sea de quien sea?
+ *
+ * Solo para AUDITAR. Sirve para distinguir, en el registro, "pidió una factura
+ * que no existe" de "pidió la factura de otro cliente", que es un intento de
+ * acceso cruzado. La respuesta al cliente NO depende de esto: en los dos casos
+ * es el mismo 404.
+ */
+export async function invoiceExists(invoiceId: number): Promise<boolean> {
+  assertIdValido('invoiceId', invoiceId);
+  const n = await executeKw<number>('account.move', 'search_count', [
+    [
+      ['id', '=', invoiceId],
+      ['move_type', '=', 'out_invoice'],
+    ],
+  ]);
+  return n > 0;
 }

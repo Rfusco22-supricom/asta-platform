@@ -9,6 +9,7 @@ import { metricasOdoo } from './odoo/metrics.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
+import { publicRouter } from './routes/public.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 import { prisma } from './config/prisma.js';
@@ -19,8 +20,8 @@ import { env } from './config/env.js';
 /**
  * Servidor del middleware.
  *
- * Monta la superficie del panel de vendedores (Fase 3) y la de autenticación.
- * La API pública (Fase 4) se monta cuando existan sus endpoints.
+ * Monta la superficie del panel de vendedores (Fase 3), la de autenticación y la
+ * API pública del cliente por API key (Fase 4, #32 · gate #36).
  */
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -65,6 +66,7 @@ export function createApp() {
   app.use('/api/v1/auth', corsPanel, authRouter);
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
   app.use('/api/v1/admin', corsPanel, adminRouter);
+  app.use('/api/v1/public', publicRouter);
 
   // ── Health ────────────────────────────────────────────────────────────────
   /**
@@ -189,6 +191,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
     console.log(`  sesión    POST /api/v1/auth/login · /refresh · /logout`);
     console.log(`  vendedor  GET /api/v1/salesperson/portfolio`);
     console.log(`  vendedor  GET /api/v1/salesperson/clients/:partnerId/invoicing`);
+    console.log(`  cliente   GET /api/v1/public/invoices · /invoices/:id   (API key)`);
   });
 
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
