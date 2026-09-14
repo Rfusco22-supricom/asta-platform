@@ -5,6 +5,7 @@ import pinoHttp from 'pino-http';
 import cookieParser from 'cookie-parser';
 import { odooEnv } from './config/odooEnv.js';
 import { getUid, executeKw } from './odoo/client.js';
+import { metricasOdoo } from './odoo/metrics.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
@@ -129,7 +130,11 @@ export function createApp() {
     const [odoo, mysql] = await Promise.all([
       sondear(async () => {
         await getUid();
-        await executeKw('res.users', 'search_count', [[['id', '=', 1]]]);
+        // `medir: false`: esta llamada NO entra en la ventana de latencia. Es
+        // una sonda trivial y, consultada cada pocos segundos por un monitor,
+        // desplazaría al tráfico real y dejaría el p95 en una cifra preciosa
+        // que no describe nada.
+        await executeKw('res.users', 'search_count', [[['id', '=', 1]]], {}, { medir: false });
       }),
       // `SELECT 1` y no un count de una tabla: comprueba que la conexión está
       // viva sin depender de que el esquema esté migrado ni cargar la base.
@@ -141,7 +146,22 @@ export function createApp() {
     res.status(sano ? 200 : 503).json({
       status: sano ? 'ok' : 'degraded',
       dependencias: {
-        odoo: { ...odoo, url: odooEnv.ODOO_URL, db: odooEnv.ODOO_DB },
+        odoo: {
+          ...odoo,
+          url: odooEnv.ODOO_URL,
+          db: odooEnv.ODOO_DB,
+          /*
+           * Latencia del tráfico REAL, no de la sonda de arriba (issue #46).
+           *
+           * La sonda mide una llamada trivial: dice si Odoo responde, no si
+           * responde a tiempo bajo carga. El p95 sale de las últimas llamadas
+           * que hizo el panel de verdad, que es lo que nota el vendedor.
+           *
+           * Se sirve aquí, sin autenticar como el resto de /health, porque son
+           * números agregados: no revelan qué se consultó ni de quién.
+           */
+          latencia: metricasOdoo(),
+        },
         mysql,
       },
       timestamp: new Date().toISOString(),

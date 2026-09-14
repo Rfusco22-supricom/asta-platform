@@ -2,6 +2,7 @@ import xmlrpc from 'xmlrpc';
 import { URL } from 'node:url';
 import { odooEnv as env } from '../config/odooEnv.js';
 import { odooLogger } from '../utils/logger.js';
+import { registrarRpc } from './metrics.js';
 
 /**
  * Cliente XML-RPC de Odoo.
@@ -119,7 +120,18 @@ export async function executeKw<T = unknown>(
   method: string,
   args: unknown[] = [],
   kwargs: ExecuteKwOptions = {},
-  { retryOnAuthFailure = true }: { retryOnAuthFailure?: boolean } = {},
+  {
+    retryOnAuthFailure = true,
+    /**
+     * Si esta llamada cuenta para la ventana de latencia (issue #46).
+     *
+     * La sonda de `/health` pasa `medir: false`. Si contara, un monitor que
+     * consulta el health cada 30 s llenaría la ventana con una llamada trivial
+     * (`res.users.search_count`) y el p95 saldría estupendo aunque el panel
+     * fuera lentísimo. La alerta mediría la sonda, no el sistema.
+     */
+    medir = true,
+  }: { retryOnAuthFailure?: boolean; medir?: boolean } = {},
 ): Promise<T> {
   const uid = await getUid();
 
@@ -158,6 +170,10 @@ export async function executeKw<T = unknown>(
      * clientes reales. Con modelo, método y milisegundos sobra para saber qué
      * llamada hay que mirar.
      */
+    // Además del log, a la ventana en memoria: el log no se consulta, y el p95
+    // que dispara la alerta de #46 tiene que salir de algún sitio.
+    if (medir) registrarRpc(ms, true);
+
     const lenta = ms >= env.ODOO_SLOW_RPC_MS;
     odooLogger[lenta ? 'warn' : 'debug'](
       { model, method, ms, lenta },
@@ -179,8 +195,12 @@ export async function executeKw<T = unknown>(
         `odoo ${model}.${method}: sesión caducada, reintentando con uid fresco`,
       );
       invalidateUid();
-      return executeKw<T>(model, method, args, kwargs, { retryOnAuthFailure: false });
+      return executeKw<T>(model, method, args, kwargs, { retryOnAuthFailure: false, medir });
     }
+
+    // Los fallos también cuentan: una tanda de errores rápidos bajaría el p95 y
+    // haría parecer que Odoo va mejor que nunca justo cuando está roto.
+    if (medir) registrarRpc(ms, false);
 
     odooLogger.error(
       // Recortado: el mensaje de Odoo puede traer una traza entera. Sin

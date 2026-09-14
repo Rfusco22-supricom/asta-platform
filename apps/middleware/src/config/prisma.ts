@@ -22,10 +22,25 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 const entorno = process.env.NODE_ENV ?? 'development';
 
+/**
+ * El registro de CADA consulta es opt-in, no el comportamiento de desarrollo.
+ *
+ * Antes se activaba solo con NODE_ENV=development, y eso ahogaba todo lo demás:
+ * cualquier script de línea de comandos —`alertas`, `check:grants`,
+ * `reconciliación`— escupía veinte líneas de SQL antes de su informe, y el log
+ * del servidor en desarrollo era casi todo consultas.
+ *
+ * Ver el SQL es una herramienta de depuración concreta, no algo que se quiera
+ * siempre. Se enciende cuando hace falta:
+ *
+ *   PRISMA_LOG_QUERIES=1 pnpm dev:middleware
+ */
+const registrarConsultas = process.env.PRISMA_LOG_QUERIES === '1';
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: entorno === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
+    log: registrarConsultas ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 
 if (entorno !== 'production') globalForPrisma.prisma = prisma;

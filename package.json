@@ -21,6 +21,7 @@
     "postinstall": "prisma generate --schema prisma/schema.prisma",
     "check:env": "tsx scripts/check-env.ts",
     "check:grants": "tsx scripts/check-grants.ts",
+    "alertas": "tsx scripts/alertas.ts",
     "backup:verificar": "tsx scripts/verify-restore.ts",
     "backup:odoo": "tsx scripts/backup-odoo-config.ts",
     "verify:endpoints": "tsx scripts/verify-endpoints.ts",
