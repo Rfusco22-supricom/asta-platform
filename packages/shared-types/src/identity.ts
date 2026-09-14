@@ -106,6 +106,15 @@ export const identitySchema = z.object({
    */
   apiKeyId: z.uuid().optional(),
   /**
+   * Límite de peticiones por minuto de la key (#29). Solo con API key, igual que
+   * `apiKeyId`.
+   *
+   * Viaja en la identidad porque sale de la misma fila que la verificación: así
+   * cambiarlo en `api_keys` tiene efecto en la siguiente petición, sin reiniciar
+   * nada ni consultar la base una segunda vez.
+   */
+  rateLimitPerMinute: z.number().int().positive().optional(),
+  /**
    * Solo presente cuando el request entró con JWT. Ausente con API key.
    *
    * Es la simétrica de `apiKeyId`, y existe por la pantalla de sesiones activas

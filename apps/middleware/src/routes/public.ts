@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authApiKey, requireScope, scopeToOwnPartner } from '../middleware/apiKeyAuth.js';
+import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import {
   listarFacturasHandler,
   noImplementadoHandler,
@@ -17,19 +18,38 @@ import {
  * respondía 404. No se notó porque `authApiKey` y `scopeToOwnPartner` se
  * probaban como funciones sueltas, y funcionaban.
  *
- * El orden importa y no se toca: primero quién eres (`authApiKey`), luego a qué
- * cliente quedas atado (`scopeToOwnPartner`), y solo entonces qué puedes hacer
- * (`requireScope`). Un scope no significa nada sin saber sobre qué cliente se
- * ejerce.
+ * El orden importa y no se toca:
+ *
+ *   1. `preAuth`             frena a quien acumula keys inválidas, antes de que
+ *                            cada intento pague la verificación contra la base
+ *   2. `authApiKey`          quién eres
+ *   3. `porKey`              cuánto puedes pedir. Después de autenticar, porque
+ *                            necesita saber qué key es; y antes que todo lo demás,
+ *                            para que también cuenten los 400 y 403 — probar
+ *                            `partner_id` o ids de factura con una key válida no
+ *                            puede salir gratis
+ *   4. `scopeToOwnPartner`   a qué cliente quedas atado
+ *   5. `requireScope`        qué puedes hacer. Un scope no significa nada sin
+ *                            saber sobre qué cliente se ejerce
+ *
+ * Es una fábrica para que cada app tenga sus propios contadores de rate limit.
+ * Ver `crearLimitadoresPublicos`.
  */
-export const publicRouter = Router();
+export function crearPublicRouter(): Router {
+  const router = Router();
+  const limitar = crearLimitadoresPublicos();
 
-publicRouter.use(authApiKey());
-publicRouter.use(scopeToOwnPartner());
+  router.use(limitar.preAuth);
+  router.use(authApiKey());
+  router.use(limitar.porKey);
+  router.use(scopeToOwnPartner());
 
-publicRouter.get('/invoices', requireScope('INVOICES_READ'), listarFacturasHandler);
-publicRouter.get('/invoices/:id', requireScope('INVOICES_READ'), verFacturaHandler);
+  router.get('/invoices', requireScope('INVOICES_READ'), listarFacturasHandler);
+  router.get('/invoices/:id', requireScope('INVOICES_READ'), verFacturaHandler);
 
-publicRouter.get('/inventory', requireScope('INVENTORY_READ'), noImplementadoHandler);
-publicRouter.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);
-publicRouter.get('/recommender/compatible', requireScope('RECOMMENDER_READ'), noImplementadoHandler);
+  router.get('/inventory', requireScope('INVENTORY_READ'), noImplementadoHandler);
+  router.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);
+  router.get('/recommender/compatible', requireScope('RECOMMENDER_READ'), noImplementadoHandler);
+
+  return router;
+}
