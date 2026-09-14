@@ -72,10 +72,25 @@ USER node
 
 EXPOSE 3000
 ENV PORT=3000
-# Sin esto, el servidor de Next escucha solo en localhost y el contenedor no
-# responde desde fuera aunque el puerto esté publicado.
-ENV HOSTNAME=0.0.0.0
 
+# ── HOSTNAME se fija AQUÍ, no con un ENV ─────────────────────────────────────
+#
+# El servidor que genera `standalone` hace literalmente:
+#
+#     const hostname = process.env.HOSTNAME || '0.0.0.0'
+#
+# y Docker rellena `HOSTNAME` por su cuenta con el identificador del contenedor.
+# Ese valor GANA sobre un `ENV HOSTNAME` del Dockerfile, así que Next acababa
+# escuchando en la dirección del propio contenedor en vez de en todas las
+# interfaces.
+#
+# El síntoma engaña: el contenedor arranca, consume memoria y aparece sano, pero
+# el proxy no lo alcanza y el dominio responde "Service is not reachable". No hay
+# ningún error en su log — desde dentro todo va bien.
+#
+# `exec` es importante: reemplaza a la shell en vez de dejarla de padre, así el
+# SIGTERM del contenedor llega a Node y el cierre es ordenado.
+#
 # La ruta lleva `apps/web` porque `outputFileTracingRoot` apunta a la raíz del
 # monorepo, y `standalone` reproduce esa estructura dentro de la imagen.
-CMD ["node", "apps/web/server.js"]
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node apps/web/server.js"]
