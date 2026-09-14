@@ -40,6 +40,49 @@ const prisma = new PrismaClient({ log: ['warn', 'error'] });
 const USUARIOS = ['asta_app', 'asta_migrador', 'asta_lectura'];
 
 /**
+ * Contraseñas que dejaban las versiones ANTERIORES de 004_usuarios.sql.
+ *
+ * Aquellas llevaban los marcadores entre comillas —'CAMBIA_ESTA_APP'—, que es
+ * una cadena válida: aplicar el fichero sin editarlo creaba los usuarios con una
+ * clave publicada en este repositorio. La versión actual los deja sin comillas
+ * y el fichero no llega a ejecutarse, pero eso no repara una base donde ya se
+ * aplicó la versión vieja. Para eso está esta comprobación.
+ */
+const CLAVES_DE_EJEMPLO: Record<string, string> = {
+  asta_app: 'CAMBIA_ESTA_APP',
+  asta_migrador: 'CAMBIA_ESTA_MIGRADOR',
+  asta_lectura: 'CAMBIA_ESTA_LECTURA',
+};
+
+type ResultadoLogin = 'entra' | 'denegado' | 'no-comprobable';
+
+/**
+ * Intenta abrir una conexión con otro usuario y otra clave sobre el mismo
+ * servidor y la misma base que DATABASE_URL.
+ *
+ * Solo el éxito es concluyente. MySQL responde el mismo "Access denied" (1045)
+ * a una clave equivocada y a un usuario que no existe o no casa por host, así
+ * que un rechazo NO demuestra que la clave sea buena: solo que desde esta
+ * conexión no se entra con la de ejemplo. Y cualquier otro error se reporta
+ * como no comprobable, en vez de darlo por bueno.
+ */
+async function probarLogin(urlBase: string, usuario: string, clave: string): Promise<ResultadoLogin> {
+  const u = new URL(urlBase);
+  u.username = usuario;
+  u.password = encodeURIComponent(clave);
+
+  const cliente = new PrismaClient({ datasources: { db: { url: u.toString() } }, log: [] });
+  try {
+    await cliente.$queryRawUnsafe('SELECT 1');
+    return 'entra';
+  } catch (e) {
+    return /Authentication failed/i.test(String((e as Error).message)) ? 'denegado' : 'no-comprobable';
+  } finally {
+    await cliente.$disconnect();
+  }
+}
+
+/**
  * Tablas que a propósito NO se conceden a nadie de la aplicación.
  *
  * `_prisma_migrations` la gestiona la CLI de Prisma corriendo como migrador; la
@@ -101,7 +144,48 @@ async function main(): Promise<void> {
 
   const presentes = USUARIOS.filter((u) => porUsuario.has(u));
 
+  /*
+   * Qué usuarios de ASTA EXISTEN, que no es lo mismo que `presentes`.
+   *
+   * `presentes` sale de TABLE_PRIVILEGES, y ahí solo aparece quien tiene permisos
+   * tabla a tabla. `asta_migrador` los tiene sobre `asta.*`, a nivel de base, que
+   * se registran en SCHEMA_PRIVILEGES: con `presentes` nunca se le comprobaba
+   * nada. USER_PRIVILEGES en cambio lista a todo usuario, porque todos tienen al
+   * menos la fila USAGE.
+   */
+  const filasUsuarios = await prisma.$queryRawUnsafe<Array<{ usuario: string }>>(
+    `SELECT DISTINCT SUBSTRING_INDEX(GRANTEE, '''', 2) AS usuario
+       FROM information_schema.USER_PRIVILEGES`,
+  );
+  const existentes = new Set(filasUsuarios.map((f) => f.usuario.replace(/^'/, '')));
+  const asta = USUARIOS.filter((u) => existentes.has(u));
+
   console.log(`\n  Base: ${base}  ·  ${tablas.length} tablas\n`);
+
+  // ── Contraseñas de ejemplo ────────────────────────────────────────────────
+  // Va ANTES de la salida temprana de abajo, a proposito: esa salida mira
+  // `presentes`, y un usuario con permisos solo a nivel de base —el migrador,
+  // el unico con DDL— la haria saltar con codigo 0 sin comprobar su clave.
+  let clavesDeEjemplo = 0;
+  for (const usuario of asta) {
+    const clave = CLAVES_DE_EJEMPLO[usuario];
+    if (!clave) continue;
+
+    const r = await probarLogin(url, usuario, clave);
+    if (r === 'entra') {
+      clavesDeEjemplo += 1;
+      console.log(`  MAL  ${usuario}: entra con la contraseña de ejemplo '${clave}'`);
+      console.log('       → está publicada en el repositorio. Cámbiala YA con:');
+      console.log(`         ALTER USER '${usuario}'@'<host>' IDENTIFIED BY '<clave aleatoria>';`);
+    } else if (r === 'denegado') {
+      console.log(`  ok   ${usuario}: no entra con la contraseña de ejemplo desde esta conexión`);
+    } else {
+      clavesDeEjemplo += 1;
+      console.log(`  ??   ${usuario}: no se pudo comprobar la contraseña de ejemplo`);
+      console.log('       → error distinto de "autenticación fallida"; no se da por bueno.');
+    }
+  }
+  if (asta.length > 0) console.log('');
 
   if (presentes.length === 0) {
     // No es un aprobado. Es que todavía no se ha aplicado 004_usuarios.sql, o
@@ -111,10 +195,12 @@ async function main(): Promise<void> {
     console.log('  puede ver las concesiones (information_schema filtra por permisos).\n');
     console.log('  En desarrollo es normal: se conecta como root. En producción NO.\n');
     await prisma.$disconnect();
-    process.exit(0);
+    // Antes salia siempre con 0. Una clave de ejemplo encontrada arriba no puede
+    // quedar tapada por no haber permisos por tabla.
+    process.exit(clavesDeEjemplo > 0 ? 1 : 0);
   }
 
-  let problemas = 0;
+  let problemas = clavesDeEjemplo;
 
   // ── 1. Tablas sin decisión ────────────────────────────────────────────────
   const dePlantilla = porUsuario.get('asta_app') ?? new Map();
@@ -199,6 +285,7 @@ async function main(): Promise<void> {
       console.log(`       → ${inv.mal.join(', ')}`);
     }
   }
+
 
   console.log('');
   await prisma.$disconnect();
