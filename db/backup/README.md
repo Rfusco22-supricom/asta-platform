@@ -166,12 +166,57 @@ tarifa (#3), así que una tarifa tocada cambia los precios que ve un cliente por
 la API sin tocar una línea de nuestro código. Restaurar Odoo entero por eso no
 es realista; tener una copia fechada y comparar, sí.
 
+### Ver qué cambió
+
 ```bash
-diff <(gzip -dc vieja.json.gz | jq -S .) <(gzip -dc nueva.json.gz | jq -S .)
+pnpm backup:odoo --diff                        # las dos copias más recientes
+pnpm backup:odoo --diff vieja.json.gz nueva.json.gz
 ```
 
+Antes aquí ponía `diff <(gzip -dc ... | jq -S .)`. **No servía**, por dos
+razones. `jq` no está instalado en la máquina de desarrollo, así que la
+instrucción no funcionaba donde se iba a usar. Y aunque lo estuviera, son 35.000
+reglas de precio: un `diff` textual de eso escupe miles de líneas por un solo
+precio cambiado y entierra lo que se busca. Un respaldo que solo se puede
+comparar a ojo es un respaldo que nadie compara.
+
+La comparación ordena por lo que cuesta dinero:
+
+```
+  ── CLIENTES QUE CAMBIARON DE TARIFA ───────────────────────────────
+
+    [15866 ] Lista de Precios                      2949 →  1200  (-1749)
+    [15869 ] Lista de Precios Vendedores              0 →  1749  (+1749)
+
+  ── TARIFAS MODIFICADAS ────────────────────────────────────────────
+
+    [15836] Supricom S.A - Lista USD
+        active: sí → no
+
+  ── REGLAS DE PRECIO ───────────────────────────────────────────────
+
+    1 nuevas · 3 retiradas · 2 modificadas
+
+    [42614] Lista de precios VEF (VEF) · 4534C001AA
+        fixed_price: 0 → 999.99
+```
+
+**Los clientes que cambian de tarifa van primero** porque es lo único de aquí
+que altera lo que un cliente paga, y nadie avisa cuando pasa: se mueven clientes
+en Odoo y la API pública empieza a devolver otros precios.
+
+De las reglas solo se detallan las **modificadas**. Una regla nueva o retirada se
+entiende con el recuento; una modificada es la que esconde el cambio de precio.
+
+Sale con código 0 aunque haya cambios: cambiar tarifas es una operación normal
+del negocio, no un fallo. Si devolviera error, el cron mandaría un aviso cada vez
+que alguien toca un precio y en dos semanas no lo leería nadie. Avisar de lo que
+merece la pena es trabajo de `pnpm alertas` (#46).
+
 Incluye las tarifas **archivadas** a propósito: archivar una tarifa es
-precisamente uno de los cambios que se querría poder deshacer.
+precisamente uno de los cambios que se querría poder deshacer. Y archivar se
+distingue de borrar — en Odoo lo normal es archivar, así que una tarifa que
+DESAPARECE significa que alguien la borró de verdad.
 
 Los ficheros van a la carpeta de respaldos, nunca al repositorio: llevan precios
 reales.
