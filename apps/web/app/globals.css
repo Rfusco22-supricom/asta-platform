@@ -631,3 +631,119 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
   font-size: 12px;
   color: var(--text-3);
 }
+
+/* ── Uso táctil: móvil y la tablet del kiosco ─────────────────────────────── */
+
+/*
+ * Se apunta a `pointer: coarse` y NO a un ancho de pantalla.
+ *
+ * La diferencia importa. Un portátil con la ventana estrecha sigue teniendo
+ * ratón: agrandarle los botones solo le quita sitio. Una tablet de 1024 px en
+ * horizontal —la del kiosco— es ancha y se maneja con el dedo. Lo que decide es
+ * con qué se señala, no cuánto mide.
+ *
+ * Los 44 px salen de la guía de Apple; Material dice 48. Se midió el panel y 12
+ * de 13 objetivos estaban por debajo: la casilla de notas de crédito medía
+ * 13 × 13, que con el pulgar es imposible de acertar.
+ */
+@media (pointer: coarse) {
+  .btn,
+  .btn-inline,
+  .segmented button,
+  .input,
+  .select {
+    min-height: 44px;
+  }
+
+  /* Los enlaces de acción («Salir», «Cerrar», «Borrar») son texto suelto: no
+     tienen caja propia que agrandar, así que se les da una con padding. El
+     margen negativo evita que ese padding descoloque lo que hay alrededor. */
+  .btn-link,
+  .row-link,
+  .enlace-accion,
+  .brand a,
+  .crumb a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    margin: 0 -8px;
+  }
+
+  /* `.row-link` ocupa toda la celda del nombre: ahí el padding lateral rompería
+     la alineación de la tabla. */
+  .row-link {
+    padding: 0;
+    margin: 0;
+    display: block;
+  }
+
+  /* La casilla del navegador viene a 13 px y no hay forma de ampliarla sin
+     escalarla. `transform` la agranda sin cambiar el hueco que ocupa, así que
+     se compensa con margen para que no pise al texto de al lado. */
+  .check input[type='checkbox'] {
+    transform: scale(1.5);
+    transform-origin: left center;
+    margin-right: 9px;
+  }
+
+  .check {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* ── Cartera en pantalla estrecha ──────────────────────────────────────────── */
+
+/*
+ * En un teléfono solo caben dos columnas de las cinco, y sin esto las dos que
+ * cabían eran «Cliente» y «Nivel»: el vendedor veía una lista de nombres con la
+ * etiqueta BRONCE repetida y tenía que arrastrar la tabla de lado para ver un
+ * solo importe. La cifra que va a mirar quedaba escondida.
+ *
+ * Se quita «Nivel», que hoy dice lo mismo para los 2942 clientes porque todos
+ * están en la misma tarifa (#5), y su sitio lo ocupa «Facturado».
+ *
+ * Lo único que esa columna aportaba de verdad —distinguir a un prospecto de un
+ * cliente— se conserva como marca junto al nombre.
+ *
+ * Aquí SÍ se usa el ancho y no `pointer: coarse`: el problema es que no caben
+ * las columnas, y eso depende de los píxeles, no del dedo.
+ */
+@media (max-width: 700px) {
+  .col-nivel { display: none; }
+
+  /*
+   * Y también el correo y el teléfono.
+   *
+   * Quitar «Nivel» no bastaba: se midió y esa línea de contacto ocupa 230 px,
+   * que empujaban la columna del nombre a 258 de los 345 disponibles y dejaban
+   * «Facturado» cortada por la mitad.
+   *
+   * En un teléfono, repasando la cartera, lo que se quiere saber es quién y
+   * cuánto. El correo y el teléfono son para cuando ya se decidió llamar, y
+   * entonces están en la ficha, a un toque.
+   */
+  .cliente-contacto { display: none; }
+}
+
+/* Al revés que arriba: en pantalla ancha la columna «Nivel» ya lo dice, y
+   repetirlo junto al nombre sería ruido. */
+.marca-prospecto { display: none; }
+
+@media (max-width: 700px) {
+  .marca-prospecto {
+    display: inline-block;
+    margin-left: 7px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-3);
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    padding: 0 4px;
+    vertical-align: middle;
+  }
+}
