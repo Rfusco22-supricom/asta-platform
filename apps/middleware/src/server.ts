@@ -141,9 +141,32 @@ export function createApp() {
         // que no describe nada.
         await executeKw('res.users', 'search_count', [[['id', '=', 1]]], {}, { medir: false });
       }),
-      // `SELECT 1` y no un count de una tabla: comprueba que la conexión está
-      // viva sin depender de que el esquema esté migrado ni cargar la base.
-      sondear(() => prisma.$queryRaw`SELECT 1`),
+      /*
+       * Una tabla REAL, no `SELECT 1` (issue #77).
+       *
+       * Antes era `SELECT 1`, con el razonamiento de comprobar la conexión sin
+       * atar la salud a que el esquema estuviera migrado. Sonaba bien y tenía un
+       * agujero: `SELECT 1` no toca ninguna tabla, así que tampoco detecta que
+       * al usuario le falten permisos.
+       *
+       * Eso pasó en el primer despliegue. El health decía
+       *
+       *     "mysql": { "ok": true, "ms": 9 }
+       *
+       * mientras cada consulta de verdad moría con «User was denied access on
+       * the database». Conexión viva, base inservible, semáforo en verde — que
+       * es exactamente lo que un health check existe para evitar: quien está de
+       * guardia mira el verde y descarta la base como causa.
+       *
+       * `app_users` es la tabla adecuada: la aplicación no sirve para nada sin
+       * ella, así que si no se puede leer, la aplicación está caída aunque el
+       * proceso siga en pie.
+       *
+       * Que esté VACÍA no es un fallo. `LIMIT 1` sobre cero filas devuelve cero
+       * filas sin error, y eso es lo correcto: aquí se comprueba el acceso, no
+       * el contenido.
+       */
+      sondear(() => prisma.$queryRaw`SELECT 1 FROM app_users LIMIT 1`),
     ]);
 
     const sano = odoo.ok && mysql.ok;
