@@ -91,10 +91,26 @@ base se negaba a devolver filas de otro cliente. **MySQL no tiene RLS y no hay
 equivalente.** Lo único que queda es acotar el daño.
 
 ```bash
-# Sustituye los CAMBIA_ESTA_* por contraseñas al azar ANTES de aplicarlo.
-mysql -u root -p < db/mysql/004_usuarios.sql
-pnpm check:grants          # comprueba que quedó como debe
+# Genera el SQL ya adaptado, con contraseñas al azar.
+pnpm usuarios:sql --host '%' --base Asta > /tmp/usuarios.sql
+
+# Las contraseñas salen por pantalla (no van al fichero). Cópialas.
+# Luego se aplica y se comprueba:
+mysql -u root -p < /tmp/usuarios.sql
+pnpm check:grants
 ```
+
+`004_usuarios.sql` **no se aplica tal cual**: hay que tocarle los diez
+marcadores de contraseña, las cuarenta apariciones de `@'localhost'` —que en
+Docker no valen— y el nombre de la base, que en Linux distingue mayúsculas. El
+generador hace las tres cosas de una vez sustituyendo sobre el fichero, sin
+reimplementar ningún `GRANT`: el fichero versionado sigue siendo la única
+descripción de qué puede hacer cada usuario.
+
+Las contraseñas salen por la salida de error a propósito, para que una
+redirección deje en el fichero solo el SQL y no una copia de las credenciales en
+el disco. Y son `base64url`, que entra en un DSN sin codificar — el `@` de una
+contraseña normal es justo el carácter que rompe la `DATABASE_URL`.
 
 | Usuario | Para qué | Lo que NO puede |
 |---|---|---|
