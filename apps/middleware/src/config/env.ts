@@ -33,8 +33,22 @@ export const envSchema = z.object({
    */
   API_KEY_PEPPER: z.string().min(32),
 
-  /** Origen del panel para CORS. La API pública se consume sin navegador. */
-  WEB_APP_ORIGIN: z.string().url().default('http://localhost:3000'),
+  /**
+   * Origen del panel para CORS. La API pública se consume sin navegador.
+   *
+   * Se le quita la barra final. La cabecera `Origin` que manda un navegador
+   * NUNCA la lleva, así que `https://panel.example/` no casaría jamás con
+   * `https://panel.example` y el panel entero daría error de CORS.
+   *
+   * Es un fallo fácil de cometer —los paneles de despliegue muestran las URL
+   * con barra y se copian tal cual— y dificilísimo de diagnosticar: el
+   * middleware responde 200, es el navegador quien descarta la respuesta.
+   */
+  WEB_APP_ORIGIN: z
+    .string()
+    .url()
+    .default('http://localhost:3000')
+    .transform((u) => u.replace(/\/+$/, '')),
 
   /**
    * Quién puede hablar en nombre del cliente final (issue #52).
