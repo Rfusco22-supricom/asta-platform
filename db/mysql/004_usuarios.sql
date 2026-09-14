@@ -3,10 +3,52 @@
 --
 --   mysql -u root -p < db/mysql/004_usuarios.sql
 --
--- ANTES DE APLICARLO: sustituye los tres CAMBIA_ESTA_* por contraseñas
--- generadas al azar, y NO guardes el fichero resultante en el repositorio.
--- Solo la de la aplicación va al `.env` del middleware; las otras dos viven
--- donde vivan las credenciales de operación, no en el despliegue.
+-- ANTES DE APLICARLO: sustituye cada <CAMBIA_ESTA_*> por una contraseña
+-- generada al azar ENTRE COMILLAS, y NO guardes el fichero resultante en el
+-- repositorio. Solo la de la aplicación va al `.env` del middleware; las otras
+-- dos viven donde vivan las credenciales de operación, no en el despliegue.
+--
+--     IDENTIFIED BY <CAMBIA_ESTA_XXX>      ->  IDENTIFIED BY 'x7Kq...'
+--
+-- (El ejemplo usa XXX, que no es ningún usuario, para que un `sed` sobre los tres
+-- marcadores reales no escriba la contraseña también en este comentario.)
+--
+-- Cada contraseña aparece DOS veces (en el CREATE y en el ALTER de su usuario):
+-- pon la misma en los dos sitios. Para comprobar que no queda ninguno sin
+-- sustituir, ignorando los comentarios:
+--
+--     grep -v '^--' db/mysql/004_usuarios.sql | grep -c '<CAMBIA_ESTA_'
+--
+-- tiene que dar 0.
+--
+-- -----------------------------------------------------------------------------
+-- Por qué los marcadores van SIN comillas
+--
+-- A propósito: sin comillas no son una cadena, son un error de sintaxis. Si se
+-- ejecuta el fichero sin sustituirlos, MySQL se detiene en el primer CREATE USER
+-- y no crea NADA. Es un fallo ruidoso y seguro.
+--
+-- Antes iban entre comillas —'CAMBIA_ESTA_APP'— y eso era una contraseña válida.
+-- Aplicar el fichero sin editarlo creaba los tres usuarios con una clave que
+-- está publicada en este mismo repositorio, sin ningún error.
+--
+-- -----------------------------------------------------------------------------
+-- Por qué hay un ALTER USER tras cada CREATE USER
+--
+-- `CREATE USER IF NOT EXISTS` NO toca a un usuario que ya existe. Así que si la
+-- primera aplicación salió mal y se corrige el fichero, reaplicarlo no cambiaba
+-- la contraseña: se saltaba el CREATE en silencio y la clave vieja seguía
+-- entrando. Comprobado contra MySQL real.
+--
+-- El ALTER fija la contraseña siempre, exista o no el usuario. Eso solo es
+-- seguro porque los marcadores ya no son ejecutables: el fichero no puede
+-- correr hasta tener contraseñas reales, así que el ALTER nunca puede devolver
+-- a un usuario de producción a una clave de ejemplo.
+--
+-- Si se sustituye solo UNO de los dos sitios de un usuario, el otro sigue
+-- siendo un error de sintaxis y el script se detiene ahí. Lo que haya quedado
+-- aplicado hasta ese punto lleva contraseñas reales: incompleto y ruidoso, pero
+-- nunca inseguro.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -58,7 +100,8 @@
 -- 1. asta_app — el middleware en marcha
 -- =============================================================================
 
-CREATE USER IF NOT EXISTS 'asta_app'@'localhost' IDENTIFIED BY 'CAMBIA_ESTA_APP';
+CREATE USER IF NOT EXISTS 'asta_app'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_APP>;
+ALTER USER 'asta_app'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_APP>;
 
 -- -----------------------------------------------------------------------------
 -- NO LLEVA DELETE. A propósito, y no es un descuido.
@@ -157,7 +200,8 @@ GRANT SELECT, INSERT, UPDATE ON asta.kiosk_sessions TO 'asta_app'@'localhost';
 -- 2. asta_migrador — aplica el esquema
 -- =============================================================================
 
-CREATE USER IF NOT EXISTS 'asta_migrador'@'localhost' IDENTIFIED BY 'CAMBIA_ESTA_MIGRADOR';
+CREATE USER IF NOT EXISTS 'asta_migrador'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_MIGRADOR>;
+ALTER USER 'asta_migrador'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_MIGRADOR>;
 
 -- -----------------------------------------------------------------------------
 -- Este sí necesita DDL, y por eso no es el de la aplicación.
@@ -180,7 +224,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE,
 -- 3. asta_lectura — informes y depuración
 -- =============================================================================
 
-CREATE USER IF NOT EXISTS 'asta_lectura'@'localhost' IDENTIFIED BY 'CAMBIA_ESTA_LECTURA';
+CREATE USER IF NOT EXISTS 'asta_lectura'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_LECTURA>;
+ALTER USER 'asta_lectura'@'localhost' IDENTIFIED BY <CAMBIA_ESTA_LECTURA>;
 
 -- -----------------------------------------------------------------------------
 -- SELECT, pero NO sobre todo.
