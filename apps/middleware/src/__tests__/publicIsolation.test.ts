@@ -39,6 +39,9 @@ import { issueApiKey } from '../services/apiKey.service.js';
  * puesto no demuestra que un 200 no esté filtrando.
  */
 
+/** Desde #29 la API pública escribe `api_request_logs`: se borran al terminar. */
+const INICIO = new Date(Date.now() - 1000);
+
 let server: Server;
 let base = '';
 const auditados: AuditEvent[] = [];
@@ -201,6 +204,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   quitarSink?.();
+  // Las filas de bitácora de este fichero, para no contaminar las reglas de
+  // alerts.test.ts.
+  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   await new Promise<void>((resolve) => server?.close(() => resolve()));

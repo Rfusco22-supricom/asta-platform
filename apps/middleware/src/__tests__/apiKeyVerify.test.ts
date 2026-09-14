@@ -36,6 +36,13 @@ let tokenInactivo = '';
 let tokenConIpExacta = '';
 let tokenConCidr = '';
 
+/**
+ * Ids de las keys de fixture. Desde #29, un rechazo de una key cuyo prefijo existe
+ * devuelve a qué key iba (`apiKeyId`), para que `api_request_logs` pueda
+ * atribuirlo. Estos tests fijan que se atribuye a la key CORRECTA.
+ */
+const ids = { valida: '', revocada: '', expirada: '', inactiva: '', conIp: '', conCidr: '' };
+
 async function limpiar() {
   // Las keys, scopes e IPs caen por ON DELETE CASCADE al borrar el usuario.
   await prisma.appUser.deleteMany({
@@ -71,41 +78,44 @@ beforeAll(async () => {
   });
   userInactivoId = inactivo.id;
 
-  tokenValido = (
-    await issueApiKey({
-      userId,
-      name: 'valida',
-      scopes: ['INVENTORY_READ', 'PRICING_READ'],
-    })
-  ).plaintext;
+  const valida = await issueApiKey({
+    userId,
+    name: 'valida',
+    scopes: ['INVENTORY_READ', 'PRICING_READ'],
+  });
+  tokenValido = valida.plaintext;
+  ids.valida = valida.id;
 
   const revocada = await issueApiKey({ userId, name: 'revocada', scopes: ['INVENTORY_READ'] });
   tokenRevocado = revocada.plaintext;
+  ids.revocada = revocada.id;
   await revokeApiKey(revocada.id, userId, 'test');
 
-  tokenExpirado = (
-    await issueApiKey({
-      userId,
-      name: 'expirada',
-      scopes: ['INVENTORY_READ'],
-      expiresInDays: -1,
-    })
-  ).plaintext;
+  const expirada = await issueApiKey({
+    userId,
+    name: 'expirada',
+    scopes: ['INVENTORY_READ'],
+    expiresInDays: -1,
+  });
+  tokenExpirado = expirada.plaintext;
+  ids.expirada = expirada.id;
 
-  tokenInactivo = (
-    await issueApiKey({
-      userId: userInactivoId,
-      name: 'de usuario inactivo',
-      scopes: ['INVENTORY_READ'],
-    })
-  ).plaintext;
+  const inactiva = await issueApiKey({
+    userId: userInactivoId,
+    name: 'de usuario inactivo',
+    scopes: ['INVENTORY_READ'],
+  });
+  tokenInactivo = inactiva.plaintext;
+  ids.inactiva = inactiva.id;
 
   const conIp = await issueApiKey({ userId, name: 'ip exacta', scopes: ['INVENTORY_READ'] });
   tokenConIpExacta = conIp.plaintext;
+  ids.conIp = conIp.id;
   await prisma.apiKeyAllowedIp.create({ data: { apiKeyId: conIp.id, cidr: '200.44.1.10' } });
 
   const conCidr = await issueApiKey({ userId, name: 'cidr', scopes: ['INVENTORY_READ'] });
   tokenConCidr = conCidr.plaintext;
+  ids.conCidr = conCidr.id;
   await prisma.apiKeyAllowedIp.create({ data: { apiKeyId: conCidr.id, cidr: '200.44.1.0/24' } });
 });
 
@@ -148,7 +158,9 @@ describe('#27 · verifyApiKey · formato del token', () => {
     // Mismo prefijo, secreto cambiado: es el caso que protege el HMAC.
     const prefijo = tokenValido.split('_')[2];
     const r = await verifyApiKey(`asta_live_${prefijo}_${'B'.repeat(43)}`);
-    expect(r).toEqual({ ok: false, reason: 'NOT_FOUND' });
+    // Hacia fuera es un NOT_FOUND como cualquier otro. Pero el prefijo es real:
+    // el intento iba contra ESTA key, y queda atribuido para la alerta key-401.
+    expect(r).toEqual({ ok: false, reason: 'NOT_FOUND', apiKeyId: ids.valida });
   });
 
   it('un token TEST no vale contra una key LIVE', async () => {
@@ -195,18 +207,18 @@ describe('#27 · verifyApiKey · formato del token', () => {
 describe('#27 · verifyApiKey · ciclo de vida', () => {
   it('rechaza una key revocada', async () => {
     const r = await verifyApiKey(tokenRevocado);
-    expect(r).toEqual({ ok: false, reason: 'REVOKED' });
+    expect(r).toEqual({ ok: false, reason: 'REVOKED', apiKeyId: ids.revocada });
   });
 
   it('rechaza una key caducada', async () => {
     const r = await verifyApiKey(tokenExpirado);
-    expect(r).toEqual({ ok: false, reason: 'EXPIRED' });
+    expect(r).toEqual({ ok: false, reason: 'EXPIRED', apiKeyId: ids.expirada });
   });
 
   it('rechaza la key de un usuario dado de baja', async () => {
     // Desactivar al usuario invalida sus keys sin tener que revocarlas una a una.
     const r = await verifyApiKey(tokenInactivo);
-    expect(r).toEqual({ ok: false, reason: 'USER_INACTIVE' });
+    expect(r).toEqual({ ok: false, reason: 'USER_INACTIVE', apiKeyId: ids.inactiva });
   });
 
   it('revocar deja rastro en audit_logs', async () => {
@@ -226,7 +238,7 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
 
   it('rechaza una IP que no esta en la lista', async () => {
     const r = await verifyApiKey(tokenConIpExacta, '8.8.8.8');
-    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED' });
+    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED', apiKeyId: ids.conIp });
   });
 
   it('una key SIN lista blanca acepta cualquier origen', async () => {
@@ -247,7 +259,7 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
     // key: una allowlist se volvia inutil justo cuando no se podia determinar
     // el origen. Ahora falla cerrada.
     const r = await verifyApiKey(tokenConIpExacta, undefined);
-    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED' });
+    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED', apiKeyId: ids.conIp });
   });
 
   /**
@@ -274,7 +286,7 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
 
   it('rechaza una IP fuera del rango CIDR', async () => {
     const r = await verifyApiKey(tokenConCidr, '200.44.2.77');
-    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED' });
+    expect(r).toEqual({ ok: false, reason: 'IP_NOT_ALLOWED', apiKeyId: ids.conCidr });
   });
 
   it('acepta una IPv4 que llega envuelta como ::ffff:', async () => {
@@ -291,7 +303,9 @@ describe('#27 · verifyApiKey · lista blanca de IPs', () => {
 type ResEspia = Response & { codigo: number | null; cuerpo: unknown };
 
 function fakeRes(): ResEspia {
-  const res: Record<string, unknown> = { codigo: null, cuerpo: undefined };
+  // `locals` existe siempre en Express. Sin él, `authApiKey` lanzaba al anotar
+  // la key rechazada y el doble no se parecía a una respuesta real.
+  const res: Record<string, unknown> = { codigo: null, cuerpo: undefined, locals: {} };
   res.status = (c: number) => {
     res.codigo = c;
     return res;

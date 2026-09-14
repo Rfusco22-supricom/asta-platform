@@ -21,6 +21,8 @@
  * Para "¿está Odoo lento AHORA?", que es lo que dispara una alerta, sobra.
  */
 
+import { anotarRpcOdoo } from '../utils/contextoPeticion.js';
+
 /** Cuántas llamadas se recuerdan. 500 son unos minutos de tráfico normal. */
 const CAPACIDAD = 500;
 
@@ -37,6 +39,11 @@ export function registrarRpc(ms: number, ok: boolean): void {
 
   totales++;
   if (!ok) fallos++;
+
+  // Además de la ventana global, cuenta el RPC en la petición HTTP que lo
+  // disparó, si la hay (`api_request_logs.odoo_calls`, alerta de N+1). Cuenta
+  // también los fallidos: una llamada que falla le costó igual a Odoo.
+  anotarRpcOdoo();
 }
 
 export interface MetricasOdoo {

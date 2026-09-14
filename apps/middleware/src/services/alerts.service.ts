@@ -21,11 +21,19 @@ import { prisma } from '../config/prisma.js';
  *
  * ── Advertencia sobre el estado real ─────────────────────────────────────────
  *
- * De las siete reglas, hoy solo DOS pueden dispararse con datos reales: el sync
- * y los accesos cruzados. Las otras leen `api_request_logs` y `kiosk_devices`,
- * que están vacías porque la API pública (#30-#33) y el kiosco (Fase 5) todavía
- * no existen. Están escritas y probadas contra datos sembrados; cuando llegue el
- * tráfico empiezan a funcionar solas.
+ * De las ocho reglas, siete pueden dispararse con datos reales. Solo `kiosk_devices`
+ * sigue vacía, porque el kiosco (Fase 5) no existe.
+ *
+ * Las cuatro que leen `api_request_logs` —`key-401`, `key-429`, `tasa-5xx` y
+ * `odoo-n-mas-uno`— dependen de que la API pública escriba esa tabla, y hasta #29
+ * no la escribía nada. Esta cabecera decía antes que "cuando llegue el tráfico
+ * empiezan a funcionar solas": el tráfico llegó con #64 y la tabla siguió vacía,
+ * porque recibir peticiones no la llena. Lo hace `middleware/registroPeticiones`.
+ *
+ * Y una lección de ese cambio: una regla probada solo con datos sembrados no está
+ * probada contra la forma real de los datos. `tasa-5xx` contaba los 501 de los
+ * endpoints sin implementar como errores del servidor, y habría despertado a
+ * alguien con cero fallos reales. Sembrando nunca se habría visto.
  */
 
 export type Severidad = 'critica' | 'aviso';
@@ -92,6 +100,13 @@ export const UMBRALES = {
   /** 401 de una misma key en la ventana. */
   get key401() {
     return num('ALERTA_KEY_401', 10);
+  },
+  /**
+   * Minutos DISTINTOS de la ventana en los que una key recibió algún 429.
+   * No se cuentan rechazos: ver `regla429PorKey`.
+   */
+  get key429Minutos() {
+    return num('ALERTA_KEY_429_MINUTOS', 5);
   },
   /** Llamadas a Odoo por petición a partir de las cuales huele a N+1. */
   get odooCallsPorPeticion() {
@@ -318,13 +333,78 @@ export async function regla401PorKey(): Promise<Alerta | null> {
   );
 }
 
+/**
+ * Una API key satura su límite de forma SOSTENIDA (#29).
+ *
+ * Se cuentan minutos distintos con algún 429, no el número de 429. Son dos
+ * situaciones que piden cosas opuestas:
+ *
+ *   · una ráfaga —un reintento en bucle durante un minuto— puede dar cientos de
+ *     429 seguidos, y ya está contenida: el limitador hizo su trabajo y no hay
+ *     nada que decidir
+ *   · una key que roza el límite minuto tras minuto durante un cuarto de hora es
+ *     una integración que ya no cabe en él. O hay que subírselo, o hay que hablar
+ *     con el cliente, o la key se filtró y alguien la está exprimiendo
+ *
+ * Contar rechazos confundiría las dos. Contar minutos, no.
+ *
+ * Es la única regla del fichero con SQL crudo, y es a propósito: agrupar por
+ * minuto no se expresa con `groupBy`, y traer las filas a Node no escala — una
+ * integración saturando puede generar decenas de miles de 429 en la ventana. La
+ * consulta es parametrizada, y `created_at` está en UTC porque lo escribe Prisma,
+ * así que el corte por minuto es consistente con el `desde` de JavaScript.
+ *
+ * Severidad `aviso` y no `critica`: cuando salta, el limitador ya está
+ * protegiendo a Odoo. Es una conversación pendiente, no una caída.
+ */
+export async function regla429PorKey(): Promise<Alerta | null> {
+  const desde = haceMinutos(UMBRALES.ventanaMin);
+
+  const filas = await prisma.$queryRaw<
+    Array<{ apiKeyId: string; rechazos: bigint | number; minutos: bigint | number }>
+  >`
+    SELECT api_key_id AS apiKeyId,
+           COUNT(*) AS rechazos,
+           COUNT(DISTINCT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i')) AS minutos
+      FROM api_request_logs
+     WHERE status_code = 429
+       AND api_key_id IS NOT NULL
+       AND created_at >= ${desde}
+     GROUP BY api_key_id
+    HAVING minutos >= ${UMBRALES.key429Minutos}
+     ORDER BY minutos DESC, rechazos DESC
+     LIMIT 5`;
+
+  if (filas.length === 0) return null;
+
+  return alerta(
+    'key-429',
+    'aviso',
+    'Una API key satura su límite de forma sostenida',
+    filas
+      .map(
+        (f) =>
+          `key ${f.apiKeyId}: 429 en ${Number(f.minutos)} de los últimos ` +
+          `${UMBRALES.ventanaMin} min (${Number(f.rechazos)} rechazos)`,
+      )
+      .join(' · '),
+  );
+}
+
 /** Demasiados errores del servidor. Esto es culpa nuestra, no del cliente. */
 export async function regla5xx(): Promise<Alerta | null> {
   const desde = haceMinutos(UMBRALES.ventanaMin);
 
   const [total, errores] = await Promise.all([
     prisma.apiRequestLog.count({ where: { createdAt: { gte: desde } } }),
-    prisma.apiRequestLog.count({ where: { createdAt: { gte: desde }, statusCode: { gte: 500 } } }),
+    // 501 NO cuenta como error. Es la respuesta deliberada de los endpoints que
+    // todavía no existen (`/inventory`, `/pricing`, `/recommender`), no un fallo
+    // del servidor. Contándolo, diez llamadas de un cliente a `/inventory` entre
+    // treinta peticiones sanas daban una alerta CRÍTICA al 25 % con cero errores
+    // reales. Comprobado. Sigue contando en el total, que sí es tráfico.
+    prisma.apiRequestLog.count({
+      where: { createdAt: { gte: desde }, statusCode: { gte: 500, not: 501 } },
+    }),
   ]);
 
   // Con poco tráfico un solo error dispara cualquier porcentaje. Se exige un
@@ -431,6 +511,7 @@ export async function evaluarReglasDeBase(): Promise<{
     ['sync', reglaSync],
     ['accesos-cruzados', reglaAccesosCruzados],
     ['key-401', regla401PorKey],
+    ['key-429', regla429PorKey],
     ['tasa-5xx', regla5xx],
     ['n+1', reglaNMasUno],
     ['kioscos', () => reglaKioscos()],

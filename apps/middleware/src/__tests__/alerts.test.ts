@@ -6,6 +6,7 @@ import { prisma } from '../config/prisma.js';
 import {
   evaluarReglasDeBase,
   regla401PorKey,
+  regla429PorKey,
   regla5xx,
   evaluarAccesosCruzados,
   reglaAccesosCruzados,
@@ -340,6 +341,172 @@ describe('#46 · Reglas sobre api_request_logs', () => {
   });
 });
 
+describe('#29 · Regla key-429: saturación sostenida', () => {
+  /*
+   * El helper `sembrarPeticiones` de arriba pone todas las filas en el mismo
+   * minuto. Aquí eso es justo lo que hay que evitar: la regla cuenta MINUTOS
+   * distintos con 429, así que las fechas se reparten a mano.
+   */
+  const RAFAGA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const SOSTENIDA = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  let n = 0;
+
+  async function sembrar429(keyId: string, minutosAtras: number[], porMinuto = 1): Promise<void> {
+    await prisma.apiRequestLog.createMany({
+      data: minutosAtras.flatMap((m) =>
+        Array.from({ length: porMinuto }, () => ({
+          odooPartnerId: PARTNER_BASE + 500 + n++,
+          apiKeyId: keyId,
+          method: 'GET',
+          path: '/api/v1/public/invoices',
+          statusCode: 429,
+          durationMs: 1,
+          errorCode: 'RATE_LIMITED',
+          createdAt: haceMin(m),
+        })),
+      ),
+    });
+  }
+
+  it('NO avisa de una ráfaga: cientos de 429 en un solo minuto', async () => {
+    // Un reintento en bucle. El limitador ya la contuvo; no hay nada que decidir.
+    await sembrar429(RAFAGA, [2], 300);
+    expect(await regla429PorKey()).toBeNull();
+  });
+
+  it('SÍ avisa de una key que roza el límite minuto tras minuto', async () => {
+    // Un solo 429 por minuto, pero en minutos distintos: la integración ya no
+    // cabe en su límite. Pocos rechazos y, aun así, es lo que importa.
+    const minutos = Array.from({ length: UMBRALES.key429Minutos }, (_, i) => 1 + i * 2);
+    await sembrar429(SOSTENIDA, minutos);
+
+    const a = await regla429PorKey();
+    expect(a?.id).toBe('key-429');
+    expect(a?.severidad).toBe('aviso');
+    expect(a?.detalle).toContain(SOSTENIDA);
+  });
+
+  it('distingue la sostenida de la ráfaga cuando llegan juntas', async () => {
+    await sembrar429(RAFAGA, [2], 300);
+    await sembrar429(SOSTENIDA, Array.from({ length: UMBRALES.key429Minutos }, (_, i) => 1 + i * 2));
+
+    const a = await regla429PorKey();
+    expect(a?.detalle).toContain(SOSTENIDA);
+    expect(a?.detalle).not.toContain(RAFAGA);
+  });
+
+  it('se queda justo por debajo del umbral sin avisar', async () => {
+    await sembrar429(SOSTENIDA, Array.from({ length: UMBRALES.key429Minutos - 1 }, (_, i) => 1 + i * 2));
+    expect(await regla429PorKey()).toBeNull();
+  });
+
+  it('ignora los 429 fuera de la ventana', async () => {
+    const fuera = Array.from({ length: UMBRALES.key429Minutos }, (_, i) => UMBRALES.ventanaMin + 5 + i);
+    await sembrar429(SOSTENIDA, fuera);
+    expect(await regla429PorKey()).toBeNull();
+  });
+});
+
+describe('#29 · Las reglas sobre api_request_logs están registradas en el cron', () => {
+  /*
+   * Una regla escrita y probada que no está en la lista de `evaluarReglasDeBase`
+   * no la ejecuta nunca `pnpm alertas`: es una alerta muerta con todos sus tests
+   * en verde. Lo encontró la verificación por mutación de #29 — quitar `key-429`
+   * de la lista pasaba las 75 pruebas de estos ficheros — y el hueco era el mismo
+   * para las demás: el test de "Evaluación conjunta" comprueba que ninguna regla
+   * falle, no cuáles se evalúan.
+   *
+   * Aquí se siembra lo necesario para disparar las cuatro y se exige que salgan
+   * de la evaluación CONJUNTA, que es lo que corre el cron.
+   */
+  it('evaluarReglasDeBase devuelve key-401, key-429, tasa-5xx y odoo-n-mas-uno', async () => {
+    const CLAVE_401 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const CLAVE_429 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    let n = 0;
+    const fila = (over: Partial<Prisma.ApiRequestLogCreateManyInput>) => ({
+      odooPartnerId: PARTNER_BASE + 1000 + n++,
+      method: 'GET',
+      path: '/api/v1/public/invoices',
+      statusCode: 200,
+      durationMs: 100,
+      createdAt: haceMin(1),
+      ...over,
+    });
+
+    await prisma.apiRequestLog.createMany({
+      data: [
+        ...Array.from({ length: UMBRALES.key401 }, () => fila({ statusCode: 401, apiKeyId: CLAVE_401 })),
+        ...Array.from({ length: UMBRALES.key429Minutos }, (_, i) =>
+          fila({ statusCode: 429, apiKeyId: CLAVE_429, createdAt: haceMin(1 + i * 2) }),
+        ),
+        ...Array.from({ length: 30 }, () => fila({ statusCode: 200 })),
+        ...Array.from({ length: 10 }, () => fila({ statusCode: 500 })),
+        fila({ odooCalls: UMBRALES.odooCallsPorPeticion + 40 }),
+      ],
+    });
+
+    const { alertas, fallos } = await evaluarReglasDeBase();
+    const ids = new Set(alertas.map((a) => a.id));
+
+    expect(fallos).toEqual([]);
+    for (const id of ['key-401', 'key-429', 'tasa-5xx', 'odoo-n-mas-uno']) {
+      expect(ids.has(id), `la regla ${id} no se evalúa en el cron`).toBe(true);
+    }
+  }, 30_000);
+});
+
+describe('#29 · Regla tasa-5xx: los 501 no son errores', () => {
+  it('un endpoint sin implementar NO dispara la alerta crítica', async () => {
+    // Comprobado antes del arreglo: 30 peticiones sanas y 10 a /inventory daban
+    // "Tasa alta de errores del servidor" al 25 % con cero errores reales.
+    await prisma.apiRequestLog.createMany({
+      data: [
+        ...Array.from({ length: 30 }, (_, i) => ({
+          odooPartnerId: PARTNER_BASE + 800 + i,
+          method: 'GET',
+          path: '/api/v1/public/invoices',
+          statusCode: 200,
+          durationMs: 300,
+          createdAt: haceMin(1),
+        })),
+        ...Array.from({ length: 10 }, (_, i) => ({
+          odooPartnerId: PARTNER_BASE + 850 + i,
+          method: 'GET',
+          path: '/api/v1/public/inventory',
+          statusCode: 501,
+          durationMs: 2,
+          createdAt: haceMin(1),
+        })),
+      ],
+    });
+    expect(await regla5xx()).toBeNull();
+  });
+
+  it('pero un 500 de verdad sigue contando', async () => {
+    await prisma.apiRequestLog.createMany({
+      data: [
+        ...Array.from({ length: 30 }, (_, i) => ({
+          odooPartnerId: PARTNER_BASE + 900 + i,
+          method: 'GET',
+          path: '/api/v1/public/invoices',
+          statusCode: 200,
+          durationMs: 300,
+          createdAt: haceMin(1),
+        })),
+        ...Array.from({ length: 10 }, (_, i) => ({
+          odooPartnerId: PARTNER_BASE + 950 + i,
+          method: 'GET',
+          path: '/api/v1/public/invoices',
+          statusCode: 500,
+          durationMs: 300,
+          createdAt: haceMin(1),
+        })),
+      ],
+    });
+    expect((await regla5xx())?.id).toBe('tasa-5xx');
+  });
+});
+
 describe('#46 · Regla de kioscos', () => {
   async function sembrarKiosco(minutosSinSenal: number): Promise<void> {
     const k = await prisma.kioskDevice.create({
@@ -427,6 +594,7 @@ describe('#46 · Cada alerta tiene su runbook', () => {
       'odoo-n-mas-uno',
       'tasa-5xx',
       'key-401',
+      'key-429',
       'kiosco-mudo',
     ];
 
