@@ -112,16 +112,16 @@ model AppUser {
 
   // ── Vínculo con Odoo ──────────────────────────────────────────────────────
   /// res.partner.id — la llave que une los dos mundos. Inmutable.
-  odooPartnerId Int  @unique(map: "uq_app_users_odoo_partner") @map("odoo_partner_id") @db.UnsignedInt
+  odooPartnerId     Int     @unique(map: "uq_app_users_odoo_partner") @map("odoo_partner_id") @db.UnsignedInt
   /// res.users.id — solo para SUPERADMIN y VENDEDOR.
-  odooUserId    Int? @unique(map: "uq_app_users_odoo_user") @map("odoo_user_id") @db.UnsignedInt
+  odooUserId        Int?    @unique(map: "uq_app_users_odoo_user") @map("odoo_user_id") @db.UnsignedInt
   /// product.pricelist.id. De aquí se deriva el tier (ver TierPricelistMap).
-  odooPricelistId Int? @map("odoo_pricelist_id") @db.UnsignedInt
+  odooPricelistId   Int?    @map("odoo_pricelist_id") @db.UnsignedInt
   /// Nombre de la tarifa tal como viene de Odoo, para depurar desalineaciones.
   odooPricelistName String? @map("odoo_pricelist_name") @db.VarChar(255)
   /// res.partner.commercial_partner_id — la matriz bajo la que se consolida la
   /// facturación cuando el cliente tiene sucursales.
-  odooCommercialId Int? @map("odoo_commercial_id") @db.UnsignedInt
+  odooCommercialId  Int?    @map("odoo_commercial_id") @db.UnsignedInt
 
   /// false = prospecto: asignado a un vendedor pero nunca se le ha facturado.
   /// De los 791 partners del vendedor con más cartera, 532 están así. No se
@@ -174,9 +174,9 @@ model UserCredential {
   userId String  @id @map("user_id") @db.Char(36)
   user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_user_credentials_user")
 
-  passwordHash String @map("password_hash") @db.VarChar(255)
+  passwordHash      String   @map("password_hash") @db.VarChar(255)
   /// Obliga a cambiarla en el próximo login (alta inicial, reseteo por soporte).
-  mustChange   Boolean  @default(false) @map("must_change")
+  mustChange        Boolean  @default(false) @map("must_change")
   passwordChangedAt DateTime @default(now()) @map("password_changed_at") @db.DateTime(3)
 
   /// Bloqueo por fuerza bruta. Se cuenta por usuario y no por IP: un atacante
@@ -310,8 +310,8 @@ model ApiKey {
   createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
   createdFrom String?  @map("created_from_ip") @db.VarChar(45)
 
-  scopes      ApiKeyScope[]
-  allowedIps  ApiKeyAllowedIp[]
+  scopes     ApiKeyScope[]
+  allowedIps ApiKeyAllowedIp[]
 
   /// MySQL no tiene índices parciales (el `WHERE revoked_at IS NULL` de
   /// PostgreSQL). Un compuesto cumple la misma función aquí.
@@ -348,15 +348,58 @@ model ApiKeyAllowedIp {
 }
 
 /// Bitácora de la API pública. Alto volumen: ver db/mysql/003_partitioning.sql.
+/// Consumo mensual por cliente, sobreviviente de la purga (issue #47).
+model ApiUsageMonthly {
+  /**
+   * Existe porque `api_request_logs` se purga con DROP PARTITION a los 90 días.
+   * Tirar la partición es la forma correcta de purgar —instantánea, devuelve el
+   * espacio al sistema, no infla el log de transacciones— pero se lleva por
+   * delante el detalle. Perder "qué petición hizo este cliente el 3 de marzo" es
+   * aceptable. Perder "cuánto consumió este cliente en marzo" no lo es: eso es
+   * lo que se factura y lo que se mira cuando alguien discute una cuota.
+   * Por eso el procedimiento de rotación calcula esto ANTES de tirar la
+   * partición, en la misma transacción lógica. Separarlo en dos trabajos
+   * distintos es garantizar que algún día se ejecute solo el segundo.
+   */
+  odooPartnerId Int    @map("odoo_partner_id") @db.UnsignedInt
+  /// 'YYYY-MM'. Texto y no fecha: es un periodo, no un instante.
+  periodo       String @db.Char(7)
+
+  peticiones      Int    @default(0) @db.UnsignedInt
+  errores         Int    @default(0) @db.UnsignedInt
+  /// Suma de duraciones. Con las peticiones da la media sin guardar la media.
+  duracionTotalMs BigInt @default(0) @map("duracion_total_ms") @db.UnsignedBigInt
+  /// RPC a Odoo que costaron. Delata a un cliente que está saliendo caro.
+  odooCalls       Int    @default(0) @map("odoo_calls") @db.UnsignedInt
+
+  calculadoEn DateTime @default(now()) @map("calculado_en") @db.DateTime(3)
+
+  @@id([odooPartnerId, periodo])
+  @@index([periodo], map: "ix_api_usage_periodo")
+  @@map("api_usage_monthly")
+}
+
 model ApiRequestLog {
-  id       BigInt  @id @default(autoincrement()) @db.UnsignedBigInt
+  /**
+   * `@id` va abajo, en `@@id([id, createdAt])`, y no aquí.
+   * MySQL exige que TODA clave única de una tabla particionada incluya la
+   * columna de partición. Como esta se particiona por `created_at`
+   * (003_partitioning.sql), la primaria tiene que ser compuesta.
+   * Se declara así SIEMPRE, esté la tabla particionada o no. Antes la primaria
+   * era `(id)` aquí y 003 la cambiaba a `(id, created_at)` con un ALTER: el
+   * resultado era que, en cuanto se aplicaba el particionado, `prisma migrate
+   * diff` veía deriva y quería DESHACERLO. La siguiente migración habría
+   * intentado devolver la primaria a `(id)` —imposible en una tabla
+   * particionada— o, peor, desparticionado la tabla en producción.
+   * En una tabla sin particionar la primaria compuesta no molesta: `id` sigue
+   * siendo autoincremental y único de hecho.
+   */
+  id       BigInt  @default(autoincrement()) @db.UnsignedBigInt
   /**
    * SIN clave foránea a `api_keys`, a propósito.
-   *
    * MySQL y MariaDB NO permiten particionar una tabla que tenga claves foráneas
    * —ni salientes ni entrantes— y esta tabla se particiona por mes para poder
    * purgarla con DROP PARTITION (ver db/mysql/003_partitioning.sql).
-   *
    * Se puede prescindir de ella porque el registro ya guarda `odooPartnerId`
    * desnormalizado justo para sobrevivir al borrado de la key. La integridad la
    * mantiene la aplicación, que es la única que escribe aquí.
@@ -379,6 +422,7 @@ model ApiRequestLog {
 
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
+  @@id([id, createdAt])
   @@index([apiKeyId, createdAt], map: "ix_api_logs_key_date")
   @@index([createdAt], map: "ix_api_logs_date")
   @@map("api_request_logs")
@@ -480,11 +524,11 @@ model ClientNote {
   /// sobre un prospecto que todavía no tiene cuenta en el panel.
   odooPartnerId Int @map("odoo_partner_id") @db.UnsignedInt
 
-  authorId String?  @map("author_id") @db.Char(36)
-  author   AppUser? @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_client_notes_author")
+  authorId   String?  @map("author_id") @db.Char(36)
+  author     AppUser? @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_client_notes_author")
   /// Desnormalizado: la nota sigue siendo legible aunque el autor se borre.
-  authorName String @map("author_name") @db.VarChar(255)
-  body       String @db.Text
+  authorName String   @map("author_name") @db.VarChar(255)
+  body       String   @db.Text
 
   createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
@@ -544,11 +588,11 @@ model SyncState {
 /// Append-only. Nunca se actualiza ni se borra: un registro de auditoría que se
 /// puede editar no es un registro de auditoría.
 model AuditLog {
-  id      BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  actorId String?  @map("actor_id") @db.Char(36)
-  actor   AppUser? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_actor")
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  actorId    String?  @map("actor_id") @db.Char(36)
+  actor      AppUser? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_actor")
   /// Desnormalizado: el rastro sigue siendo legible aunque el usuario se borre.
-  actorEmail String? @map("actor_email") @db.VarChar(255)
+  actorEmail String?  @map("actor_email") @db.VarChar(255)
 
   action     String  @db.VarChar(64)
   targetType String? @map("target_type") @db.VarChar(64)

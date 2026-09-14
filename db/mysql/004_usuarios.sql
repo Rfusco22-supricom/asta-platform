@@ -101,6 +101,11 @@ GRANT SELECT, INSERT ON asta.audit_logs           TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT ON asta.api_request_logs     TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT ON asta.recommendation_events TO 'asta_app'@'localhost';
 
+-- Consumo mensual agregado (#47). La aplicación solo LEE: lo escribe el
+-- procedimiento de rotación, que corre como asta_migrador en el mantenimiento.
+-- Que el middleware no pueda tocar estas cifras importa — es lo que se factura.
+GRANT SELECT ON asta.api_usage_monthly TO 'asta_app'@'localhost';
+
 -- -----------------------------------------------------------------------------
 -- Configuración: solo lectura.
 --
@@ -204,6 +209,7 @@ GRANT SELECT ON asta.odoo_entity_cache     TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.kiosk_devices         TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.kiosk_sessions        TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.recommendation_events TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.api_usage_monthly     TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 

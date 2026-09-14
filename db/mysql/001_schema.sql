@@ -407,7 +407,11 @@ CREATE TABLE api_request_logs (
 
   created_at      DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-  PRIMARY KEY (id),
+  -- Primaria COMPUESTA: MySQL exige la columna de partición en toda clave única,
+  -- y esta tabla se particiona por created_at (003_partitioning.sql). Se declara
+  -- así aunque todavía no esté particionada, para que el esquema no cambie al
+  -- aplicar 003 y Prisma no vea deriva.
+  PRIMARY KEY (id, created_at),
   KEY ix_api_logs_key_date (api_key_id, created_at),
   KEY ix_api_logs_date (created_at)
 
@@ -420,6 +424,39 @@ CREATE TABLE api_request_logs (
   -- Se puede prescindir de ella porque `odoo_partner_id` está desnormalizado
   -- justo para que el registro sobreviva al borrado de la key. La integridad la
   -- mantiene la aplicación, que es la única que escribe aquí.
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- api_usage_monthly — consumo por cliente, superviviente de la purga (#47)
+--
+-- `api_request_logs` se purga con DROP PARTITION a los 90 días. Es la forma
+-- correcta de purgar —instantánea, devuelve el espacio al sistema operativo, no
+-- infla el log de transacciones— pero se lleva por delante el detalle.
+--
+-- Perder "qué petición hizo este cliente el 3 de marzo" es aceptable. Perder
+-- "cuánto consumió este cliente en marzo" no: eso es lo que se factura y lo que
+-- se mira cuando alguien discute su cuota.
+--
+-- Lo rellena sp_rotate_api_log_partitions() ANTES de tirar cada partición, en el
+-- mismo procedimiento. Separarlo en dos trabajos distintos sería garantizar que
+-- algún día se ejecute solo el segundo.
+-- -----------------------------------------------------------------------------
+CREATE TABLE api_usage_monthly (
+  odoo_partner_id   INT UNSIGNED  NOT NULL,
+  -- Texto y no fecha: es un periodo, no un instante.
+  periodo           CHAR(7)       NOT NULL,
+
+  peticiones        INT UNSIGNED  NOT NULL DEFAULT 0,
+  errores           INT UNSIGNED  NOT NULL DEFAULT 0,
+  -- Suma, no media: con las peticiones se obtiene la media, y al revés no.
+  duracion_total_ms BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  -- RPC a Odoo que costaron. Delata a un cliente que está saliendo caro.
+  odoo_calls        INT UNSIGNED  NOT NULL DEFAULT 0,
+
+  calculado_en      DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+  PRIMARY KEY (odoo_partner_id, periodo),
+  KEY ix_api_usage_periodo (periodo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

@@ -23,8 +23,59 @@ antes del primer despliegue.**
 |---|---|
 | `001_schema.sql` | 16 tablas, índices y claves foráneas. **Es el diseño**: aquí están los comentarios |
 | `002_seed.sql` | Mapeo tarifa→nivel y SuperAdmin inicial. Idempotente |
-| `003_partitioning.sql` | Particionado mensual de logs + rutinas de limpieza. Opcional (issue #47, sin aplicar) |
+| `003_partitioning.sql` | Particionado mensual de logs, rotación con agregados y limpieza. Opcional (issue #47) |
 | `004_usuarios.sql` | Usuarios de MySQL con privilegio mínimo. **Obligatorio en producción** (issue #44) |
+
+---
+
+## Particionado y purga de `api_request_logs` (issue #47)
+
+Opcional. Se aplica cuando la API pública empiece a generar volumen de verdad,
+no el día 1: particionar una tabla vacía solo añade complejidad.
+
+```bash
+mysql -u USUARIO -p asta < db/mysql/003_partitioning.sql
+mysql -u USUARIO -p asta -e "CALL sp_rotate_api_log_partitions();"   # mensual
+mysql -u USUARIO -p asta -e "CALL sp_cleanup_expired();"             # diario
+```
+
+Los dos procedimientos los llama `asta_migrador`, no la aplicación: hacen DDL y
+`DELETE`, y `asta_app` no tiene ninguno de los dos (ver #44).
+
+### Se purga con DROP PARTITION, no con DELETE
+
+Un `DELETE` de millones de filas bloquea, infla el log de transacciones y no
+devuelve el espacio al sistema operativo. Tirar la partición es instantáneo y
+libera el archivo.
+
+### Y por eso hace falta `api_usage_monthly`
+
+Tirar la partición se lleva el detalle por delante. Perder *qué petición hizo
+este cliente el 3 de marzo* es aceptable; perder *cuánto consumió este cliente en
+marzo* no lo es, porque eso es lo que se factura.
+
+`sp_rotate_api_log_partitions()` calcula el agregado **antes** de tirar cada
+partición, en el mismo procedimiento. Separarlo en dos trabajos distintos sería
+garantizar que algún día se ejecute solo el segundo.
+
+### Dos cosas que solo se vieron ejecutándolo
+
+**La primaria tenía que ser compuesta desde el principio.** MySQL exige la
+columna de partición en toda clave única. Antes `003` cambiaba la primaria a
+`(id, created_at)` con un `ALTER`, y eso dejaba una bomba: en cuanto se aplicaba
+el particionado, `prisma migrate diff` veía deriva y quería **deshacerlo** — la
+siguiente migración habría intentado devolver la primaria a `(id)`, imposible
+sobre una tabla particionada, o desparticionado la tabla en producción. Ahora la
+primaria compuesta viene de `001_schema.sql` y de `schema.prisma`, y tras aplicar
+`003` el diff sale vacío.
+
+**El procedimiento dejaba huecos entre particiones.** Creaba solo la de dentro de
+dos meses; si el trabajo se saltaba un mes, el mes intermedio se quedaba sin
+partición. Y un hueco no da error: las filas de ese mes caen en la siguiente
+partición, que se llama como **otro** mes. Al purgarla, el agregado se calcula
+para el mes de su nombre y las del mes sin partición se borran sin haberse
+agregado nunca — pérdida de datos silenciosa. Ahora crea en bucle todas las que
+falten, y se comprobó partiendo de una tabla a la que le faltaban julio y agosto.
 
 ---
 
