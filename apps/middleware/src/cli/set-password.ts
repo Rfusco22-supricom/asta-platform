@@ -44,7 +44,20 @@ function preguntarOculto(prompt: string): Promise<string> {
 async function main(): Promise<void> {
   const emailArg = process.argv[2];
   if (!emailArg) {
-    console.error('\n  Uso: tsx src/cli/set-password.ts <email>\n');
+    /*
+     * El mensaje se adapta a desde dónde se llama.
+     *
+     * En el contenedor no existe `tsx` ni `src/`: solo el bundle. Decirle a
+     * quien está desplegando que ejecute algo que ahí no existe es mandarlo a
+     * dar vueltas justo en el momento en que intenta poner la primera
+     * contraseña y todavía no puede entrar nadie al panel.
+     */
+    const empaquetado = process.argv[1]?.includes('dist') ?? false;
+    console.error(
+      empaquetado
+        ? '\n  Uso: node dist/cli/set-password.js <email>\n'
+        : '\n  Uso: tsx src/cli/set-password.ts <email>\n',
+    );
     process.exit(1);
   }
 

@@ -29,8 +29,22 @@ import { build } from 'esbuild';
  * binario de Linux — que no es el de esta máquina Windows.
  */
 await build({
-  entryPoints: ['src/server.ts'],
-  outfile: 'dist/server.js',
+  /*
+   * DOS puntos de entrada, no uno.
+   *
+   * El servidor es el obvio. El CLI de contraseñas es el que casi se queda
+   * fuera: `002_seed.sql` crea el SuperAdmin SIN contraseña a propósito —un
+   * hash de ejemplo en un fichero versionado acaba en producción—, así que sin
+   * este ejecutable en la imagen no hay forma de poner la primera clave y NADIE
+   * puede entrar al panel recién desplegado.
+   *
+   * Se descubrió preparando el primer despliegue real, con el contenedor ya
+   * construido.
+   */
+  entryPoints: ['src/server.ts', 'src/cli/set-password.ts'],
+  outdir: 'dist',
+  // Para que `src/cli/set-password.ts` salga en `dist/cli/`, y no en `dist/`.
+  outbase: 'src',
   bundle: true,
   platform: 'node',
   // La versión de Node que declara `engines`. Poner una mayor generaría sintaxis
