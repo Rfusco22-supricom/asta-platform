@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authApiKey, requireScope, scopeToOwnPartner } from '../middleware/apiKeyAuth.js';
 import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
+import { registroPeticiones } from '../middleware/registroPeticiones.js';
 import {
   listarFacturasHandler,
   noImplementadoHandler,
@@ -20,6 +21,9 @@ import {
  *
  * El orden importa y no se toca:
  *
+ *   0. `registroPeticiones`  bitácora en `api_request_logs`. Primero, para que
+ *                            registre también lo que cortan los limitadores y la
+ *                            autenticación: son las filas que leen las alertas
  *   1. `preAuth`             frena a quien acumula keys inválidas, antes de que
  *                            cada intento pague la verificación contra la base
  *   2. `authApiKey`          quién eres
@@ -39,6 +43,7 @@ export function crearPublicRouter(): Router {
   const router = Router();
   const limitar = crearLimitadoresPublicos();
 
+  router.use(registroPeticiones());
   router.use(limitar.preAuth);
   router.use(authApiKey());
   router.use(limitar.porKey);

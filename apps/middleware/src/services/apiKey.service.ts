@@ -123,7 +123,22 @@ export interface VerifiedIdentity {
 
 export type VerifyResult =
   | { ok: true; identity: VerifiedIdentity }
-  | { ok: false; reason: VerifyFailure };
+  | {
+      ok: false;
+      reason: VerifyFailure;
+      /**
+       * La key a la que iba dirigido el intento, cuando se puede saber: siempre
+       * que el PREFIJO corresponde a una key real, aunque luego falle el secreto,
+       * esté revocada, caducada o fuera de su lista de IPs.
+       *
+       * Solo para el registro (`api_request_logs`), nunca para la respuesta: hacia
+       * fuera sigue saliendo el mismo 401 para todo. Sin esto, la alerta `key-401`
+       * de #46 no podía atribuir un rechazo a ninguna key y no saltaba nunca. Y es
+       * justo lo que distingue "una integración con una key revocada" de "alguien
+       * que conoce el prefijo de una key y está probando secretos".
+       */
+      apiKeyId?: string;
+    };
 
 /**
  * Verifica un token. Coste: un índice único + un HMAC. Sin RPC a Odoo.
@@ -173,13 +188,18 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
   const stored = Buffer.from(key?.keyHash ?? '0'.repeat(64), 'utf8');
   const hashMatches = candidate.length === stored.length && timingSafeEqual(candidate, stored);
 
-  if (!key || !hashMatches) return { ok: false, reason: 'NOT_FOUND' };
-  if (key.revokedAt) return { ok: false, reason: 'REVOKED' };
-  if (key.expiresAt && key.expiresAt < new Date()) return { ok: false, reason: 'EXPIRED' };
-  if (!key.user.isActive) return { ok: false, reason: 'USER_INACTIVE' };
+  if (!key) return { ok: false, reason: 'NOT_FOUND' };
+  // Prefijo real, secreto equivocado: hacia fuera es indistinguible de una key
+  // inexistente, pero el intento iba contra ESTA key y así se registra.
+  if (!hashMatches) return { ok: false, reason: 'NOT_FOUND', apiKeyId: key.id };
+  if (key.revokedAt) return { ok: false, reason: 'REVOKED', apiKeyId: key.id };
+  if (key.expiresAt && key.expiresAt < new Date()) {
+    return { ok: false, reason: 'EXPIRED', apiKeyId: key.id };
+  }
+  if (!key.user.isActive) return { ok: false, reason: 'USER_INACTIVE', apiKeyId: key.id };
   const allowedIps = key.allowedIps.map((row) => row.cidr);
   if (!origenPermitido(allowedIps, ip)) {
-    return { ok: false, reason: 'IP_NOT_ALLOWED' };
+    return { ok: false, reason: 'IP_NOT_ALLOWED', apiKeyId: key.id };
   }
 
   // `lastUsedAt` se actualiza fuera del camino crítico: no se espera al INSERT

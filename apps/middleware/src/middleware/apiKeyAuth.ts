@@ -40,6 +40,9 @@ export function authApiKey(): RequestHandler {
         // Un solo mensaje para todas las causas: no se le regala al atacante un
         // oráculo que distinga "no existe" de "existe pero está revocada".
         req.log?.warn({ reason: result.reason, ip: req.ip }, 'api key rechazada');
+        // Para `registroPeticiones`: a qué key iba el intento, si se sabe. Vive en
+        // `res.locals`, que nunca se serializa en la respuesta.
+        if (result.apiKeyId) res.locals.apiKeyIdRechazada = result.apiKeyId;
         res.status(401).json({
           error: { code: 'INVALID_API_KEY', message: 'API key inválida o revocada.' },
         });

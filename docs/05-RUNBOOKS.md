@@ -23,12 +23,25 @@ cron cada pocos minutos.
 
 Conviene saberlo antes de confiar en esta lista.
 
-De las reglas escritas, hoy **solo dos pueden dispararse con datos reales**:
-`sync-*` y `accesos-cruzados`. Las que miran `api_request_logs` (`key-401`,
-`tasa-5xx`, `odoo-n-mas-uno`) leen una tabla vacía porque la API pública todavía
-no existe (#30–#33), y `kiosco-mudo` espera a la Fase 5. Están escritas y probadas
-contra datos sembrados para que empiecen a funcionar solas cuando llegue el
-tráfico, no para aparentar cobertura.
+De las reglas escritas, **todas menos `kiosco-mudo` pueden dispararse con datos
+reales**. `kiosco-mudo` espera a la Fase 5.
+
+Las que miran `api_request_logs` (`key-401`, `key-429`, `tasa-5xx`,
+`odoo-n-mas-uno`) funcionan desde #29, que es cuando la API pública empezó a
+escribir esa tabla. Antes leían una tabla vacía: la API ya servía tráfico real
+desde #64, pero recibir peticiones no llena la tabla, así que no podían saltar
+nunca. Si alguna vez dejan de saltar sin motivo aparente, lo primero es
+comprobar que la tabla sigue recibiendo filas:
+
+```sql
+SELECT COUNT(*), MAX(created_at) FROM api_request_logs
+ WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 1 HOUR;
+```
+
+> **Ojo con `NOW()` en estas consultas.** `created_at` se guarda en **UTC**, y
+> `NOW()` devuelve la hora del servidor MySQL. Si el servidor no corre en UTC, una
+> ventana de "1 hora" con `NOW()` abarca otra cosa — con un servidor a UTC−4, cinco
+> horas. Usar siempre `UTC_TIMESTAMP()`.
 
 Y una cosa más: **las alertas no llegan a ningún canal todavía**. Salen por la
 salida estándar y por código de salida, y a un webhook si se configura
@@ -243,6 +256,11 @@ Esto es culpa nuestra, no del cliente: un 5xx es el middleware fallando.
 Se exige un mínimo de 20 peticiones en la ventana antes de calcular la tasa: con
 poco tráfico, un solo error dispara cualquier porcentaje.
 
+**Los 501 no cuentan.** Son la respuesta deliberada de los endpoints que todavía no
+existen (`/inventory`, `/pricing`, `/recommender`), no un fallo. Antes contaban, y
+diez llamadas de un cliente a `/inventory` entre treinta peticiones sanas daban
+esta alerta al 25 % con cero errores reales.
+
 ---
 
 ## `key-401`
@@ -258,16 +276,72 @@ Dos lecturas posibles, y **no conviene elegir una antes de mirar**:
 Cómo distinguirlas: mirar desde **qué IP** llegan los rechazos.
 
 ```sql
-SELECT ip, COUNT(*) n, MIN(created_at), MAX(created_at)
+SELECT ip, error_code, COUNT(*) n, MIN(created_at), MAX(created_at)
   FROM api_request_logs
  WHERE api_key_id = '...' AND status_code = 401
-   AND created_at >= NOW() - INTERVAL 1 HOUR
- GROUP BY ip ORDER BY n DESC;
+   AND created_at >= UTC_TIMESTAMP() - INTERVAL 1 HOUR
+ GROUP BY ip, error_code ORDER BY n DESC;
 ```
+
+*(Esta consulta usaba `NOW()`, que con un servidor MySQL fuera de UTC mira una
+ventana distinta. Ver "Qué NO está cubierto todavía".)*
 
 Una sola IP conocida, de la que ya venía tráfico legítimo → integración rota.
 Varias IPs, o una que no había aparecido nunca → revocar la key **antes** de
 llamar a nadie. Revocar es un `UPDATE`, no un borrado, así que queda registro.
+
+**Qué rechazos se atribuyen a una key.** Solo los de keys cuyo **prefijo existe**:
+revocadas, caducadas, de un usuario dado de baja, fuera de su lista de IPs, o con
+el prefijo correcto y el **secreto equivocado**. Este último caso es el que
+importa para la segunda lectura: alguien conoce el prefijo de la key y está
+probando secretos. Una key totalmente inventada no pertenece a nadie y se registra
+sin `api_key_id`; esa la frena el límite por IP de #29, no esta alerta.
+
+---
+
+## `key-429`
+
+**Una API key satura su límite de forma sostenida.**
+
+Salta cuando una misma key recibe algún 429 en al menos `ALERTA_KEY_429_MINUTOS`
+minutos distintos de la ventana. No cuenta rechazos, cuenta **minutos**: una
+ráfaga de cientos de 429 en un solo minuto —un reintento en bucle— ya la contuvo
+el limitador y no hay nada que decidir. Una key que roza su límite minuto tras
+minuto es otra cosa.
+
+**No es una caída.** Cuando salta, el limitador ya está protegiendo a Odoo. Por eso
+es un aviso y no una alerta crítica. Es una conversación pendiente.
+
+Tres lecturas:
+
+1. **La integración creció y ya no cabe en su límite.** Tráfico legítimo, desde
+   las IPs de siempre. Se decide con el cliente y, si procede, se sube:
+
+   ```sql
+   UPDATE api_keys SET rate_limit_per_minute = 120 WHERE id = '...';
+   ```
+
+   Tiene efecto en la siguiente petición, sin reiniciar nada.
+
+2. **La integración está mal escrita**: consulta en bucle lo que podría cachear,
+   o ignora el `Retry-After` y reintenta sin esperar. Subir el límite solo
+   empeoraría la carga sobre Odoo. Hay que hablar con quien la mantiene.
+
+3. **La key se filtró y alguien la está exprimiendo.** Tráfico desde IPs nuevas.
+   Revocar primero y hablar después.
+
+Cómo distinguirlas:
+
+```sql
+SELECT ip, path, COUNT(*) n, SUM(status_code = 429) rechazos
+  FROM api_request_logs
+ WHERE api_key_id = '...'
+   AND created_at >= UTC_TIMESTAMP() - INTERVAL 1 HOUR
+ GROUP BY ip, path ORDER BY n DESC;
+```
+
+Las IPs de siempre y el mismo `path` una y otra vez apuntan a la 1 o a la 2. Una
+IP que no había aparecido nunca, a la 3.
 
 ---
 
@@ -303,6 +377,7 @@ un mes de tráfico real.
 | `ALERTA_ODOO_P95_MS` | 3000 | p95 de Odoo |
 | `ALERTA_TASA_5XX` | 5 | Porcentaje de 5xx |
 | `ALERTA_KEY_401` | 10 | Rechazos de una misma key |
+| `ALERTA_KEY_429_MINUTOS` | 5 | Minutos distintos con 429 de una misma key |
 | `ALERTA_ODOO_CALLS` | 5 | RPC por petición |
 | `ALERTA_KIOSCO_MIN` | 30 | Minutos sin señal de un kiosco |
 

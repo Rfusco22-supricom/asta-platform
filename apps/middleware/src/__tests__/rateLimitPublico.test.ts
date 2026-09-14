@@ -17,6 +17,8 @@ import type { ApiScope } from '@asta/shared-types';
  */
 
 const PARTNER_FICTICIO = 999_000_201;
+/** Desde #29 la API pública escribe `api_request_logs`: se borran al terminar. */
+const INICIO = new Date(Date.now() - 1000);
 const EMAIL = 'test.ratelimit@limites.local';
 const KEY_INVENTADA = `asta_live_deadbeef_${'A'.repeat(43)}`;
 
@@ -66,6 +68,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Sin esto, los 401, 429 y 501 de este fichero quedarían en la ventana de las
+  // alertas y harían saltar —o callar— las reglas de alerts.test.ts.
+  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { email: EMAIL } });
   await prisma.$disconnect();
