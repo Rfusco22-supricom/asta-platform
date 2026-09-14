@@ -24,6 +24,59 @@ antes del primer despliegue.**
 | `001_schema.sql` | 16 tablas, índices y claves foráneas. **Es el diseño**: aquí están los comentarios |
 | `002_seed.sql` | Mapeo tarifa→nivel y SuperAdmin inicial. Idempotente |
 | `003_partitioning.sql` | Particionado mensual de logs + rutinas de limpieza. Opcional (issue #47, sin aplicar) |
+| `004_usuarios.sql` | Usuarios de MySQL con privilegio mínimo. **Obligatorio en producción** (issue #44) |
+
+---
+
+## Usuarios de MySQL (issue #44)
+
+**En producción la aplicación no debe conectarse como `root`.** Hoy lo hace, y eso
+significa que un fallo de inyección o un servidor comprometido puede borrar la
+base entera, leer `mysql.user` y escribir ficheros en el disco del servidor.
+
+El esquema original vivía en PostgreSQL con Row Level Security, que era la
+segunda línea de defensa: aunque el middleware tuviera un fallo de scoping, la
+base se negaba a devolver filas de otro cliente. **MySQL no tiene RLS y no hay
+equivalente.** Lo único que queda es acotar el daño.
+
+```bash
+# Sustituye los CAMBIA_ESTA_* por contraseñas al azar ANTES de aplicarlo.
+mysql -u root -p < db/mysql/004_usuarios.sql
+pnpm check:grants          # comprueba que quedó como debe
+```
+
+| Usuario | Para qué | Lo que NO puede |
+|---|---|---|
+| `asta_app` | El middleware en marcha. Va en `DATABASE_URL` | Borrar filas, tocar el esquema, reescribir las bitácoras |
+| `asta_migrador` | `migrate:deploy` y `003_partitioning.sql`, a mano | Su clave **no** va en el `.env` del despliegue |
+| `asta_lectura` | Informes y depuración | Leer `user_credentials`, `auth_tokens` ni `api_keys` |
+
+### Las tres decisiones que hacen que esto valga de algo
+
+**`asta_app` no tiene `DELETE`.** Se revisó el código: la aplicación nunca borra
+una fila. Las notas se borran en suave, las sesiones y las API keys se revocan.
+Comprobado además a la brava — la batería completa corriendo como `asta_app` da
+**206 tests pasando y 0 fallando**, y la única operación denegada en todo el
+recorrido es el `DELETE` con el que los propios tests limpian sus fixtures. Si
+algo del producto necesitara borrar, habría salido ahí.
+
+**`asta_app` no puede reescribir las bitácoras** (`audit_logs`,
+`api_request_logs`, `recommendation_events`): solo `SELECT` e `INSERT`. Un
+registro de auditoría que la aplicación puede modificar no es un registro de
+auditoría — si el middleware queda comprometido, lo primero que hace quien entra
+es borrar su rastro.
+
+**Los permisos se conceden tabla a tabla, no con `asta.*`.** Es lo que permite lo
+anterior. El precio es que una tabla nueva no queda cubierta hasta que alguien la
+añada, y por eso existe `pnpm check:grants`: compara las tablas que existen
+contra las concedidas y falla si alguna no tiene decisión. Sin esa comprobación,
+el primer síntoma sería un informe roto y el "arreglo" sería un `GRANT ALL`.
+
+### Los tests necesitan `DELETE`
+
+No es una excepción escondida: limpian sus fixtures en los `afterAll`. Corren
+contra una base de **desarrollo** con un usuario que puede borrar — en local,
+`root`. No se crea un cuarto usuario para eso mientras no haya CI (issue #13).
 
 ---
 
