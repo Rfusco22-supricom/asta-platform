@@ -1,6 +1,7 @@
-import { writeFileSync, mkdirSync, statSync } from 'node:fs';
-import { gzipSync } from 'node:zlib';
-import { join } from 'node:path';
+import { writeFileSync, mkdirSync, statSync, readFileSync, readdirSync } from 'node:fs';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import { join, basename } from 'node:path';
+import { comparar, valor, type Copia } from './lib/odoo-config-diff.js';
 import { searchRead } from '../apps/middleware/src/odoo/client.js';
 
 /**
@@ -50,9 +51,138 @@ interface Linea {
   date_end: string | false;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Modo comparación: `pnpm backup:odoo --diff [vieja.json.gz nueva.json.gz]`
+// ─────────────────────────────────────────────────────────────────────────────
+
+function leerCopia(ruta: string): Copia {
+  return JSON.parse(gunzipSync(readFileSync(ruta)).toString('utf8')) as Copia;
+}
+
+/** Las dos copias más recientes de la carpeta, por nombre (el sello es UTC). */
+function dosUltimas(carpeta: string): [string, string] {
+  const ficheros = readdirSync(carpeta)
+    .filter((f) => f.startsWith('odoo-config-') && f.endsWith('.json.gz'))
+    .sort();
+
+  if (ficheros.length < 2) {
+    throw new Error(
+      `Hacen falta dos copias para comparar y en ${carpeta} hay ${ficheros.length}. ` +
+        'Ejecuta `pnpm backup:odoo` sin argumentos para hacer una.',
+    );
+  }
+
+  return [
+    join(carpeta, ficheros[ficheros.length - 2]),
+    join(carpeta, ficheros[ficheros.length - 1]),
+  ];
+}
+
+/** Cuántos detalles se imprimen antes de resumir. */
+const MUESTRA = 15;
+
+function comparar_y_pintar(rutaAntes: string, rutaAhora: string): void {
+  const antes = leerCopia(rutaAntes);
+  const ahora = leerCopia(rutaAhora);
+
+  console.log('\n  Comparando dos copias de la configuración de Odoo\n');
+  console.log(`  antes  ${basename(rutaAntes)}  (${antes.generadoEn})`);
+  console.log(`  ahora  ${basename(rutaAhora)}  (${ahora.generadoEn})\n`);
+
+  const d = comparar(antes, ahora);
+
+  if (d.identicas) {
+    console.log('  Sin cambios.\n');
+    return;
+  }
+
+  /*
+   * Los clientes por tarifa van PRIMEROS.
+   *
+   * Es lo único de aquí que cambia lo que un cliente paga, y nadie avisa cuando
+   * pasa: alguien mueve clientes de tarifa en Odoo y la API pública empieza a
+   * devolver otros precios sin que se toque una línea de código nuestro.
+   */
+  if (d.clientesPorTarifa.length > 0) {
+    console.log('  ── CLIENTES QUE CAMBIARON DE TARIFA ───────────────────────────────\n');
+    for (const c of d.clientesPorTarifa) {
+      const signo = c.ahora > c.antes ? '+' : '';
+      console.log(
+        `    [${String(c.tarifaId).padEnd(6)}] ${c.nombre.padEnd(36)} ` +
+          `${String(c.antes).padStart(5)} → ${String(c.ahora).padStart(5)}  (${signo}${c.ahora - c.antes})`,
+      );
+    }
+    console.log('');
+  }
+
+  if (d.tarifasNuevas.length > 0) {
+    console.log('  ── TARIFAS NUEVAS ─────────────────────────────────────────────────\n');
+    for (const t of d.tarifasNuevas) console.log(`    [${t.id}] ${t.name}`);
+    console.log('');
+  }
+
+  if (d.tarifasDesaparecidas.length > 0) {
+    // Borrar una tarifa en Odoo no es lo normal —se archivan— asi que esto casi
+    // siempre significa que alguien borro de verdad, y eso conviene mirarlo.
+    console.log('  ── TARIFAS QUE YA NO ESTÁN ────────────────────────────────────────\n');
+    for (const t of d.tarifasDesaparecidas) console.log(`    [${t.id}] ${t.name}`);
+    console.log('');
+  }
+
+  if (d.tarifasCambiadas.length > 0) {
+    console.log('  ── TARIFAS MODIFICADAS ────────────────────────────────────────────\n');
+    for (const t of d.tarifasCambiadas) {
+      console.log(`    [${t.id}] ${t.nombre}`);
+      for (const c of t.cambios) {
+        console.log(`        ${c.campo}: ${valor(c.antes)} → ${valor(c.ahora)}`);
+      }
+    }
+    console.log('');
+  }
+
+  const totalReglas = d.reglasNuevas + d.reglasDesaparecidas + d.reglasCambiadas.length;
+  if (totalReglas > 0) {
+    console.log('  ── REGLAS DE PRECIO ───────────────────────────────────────────────\n');
+    console.log(
+      `    ${d.reglasNuevas} nuevas · ${d.reglasDesaparecidas} retiradas · ` +
+        `${d.reglasCambiadas.length} modificadas\n`,
+    );
+
+    // Solo se detallan las MODIFICADAS. Una regla nueva o retirada se entiende
+    // con el recuento; una modificada es la que esconde el cambio de precio.
+    for (const r of d.reglasCambiadas.slice(0, MUESTRA)) {
+      console.log(`    [${r.id}] ${r.tarifa} · ${r.producto}`);
+      for (const c of r.cambios) {
+        console.log(`        ${c.campo}: ${valor(c.antes)} → ${valor(c.ahora)}`);
+      }
+    }
+    if (d.reglasCambiadas.length > MUESTRA) {
+      console.log(`\n    … y ${d.reglasCambiadas.length - MUESTRA} reglas modificadas más.`);
+    }
+    console.log('');
+  }
+
+  /*
+   * Sale con 0 aunque haya cambios.
+   *
+   * Cambiar tarifas es una operación normal del negocio, no un fallo. Si esto
+   * devolviera error, el cron que lo ejecute mandaría un aviso cada vez que
+   * alguien toca un precio, y en dos semanas nadie lo lee. Avisar de lo que
+   * merece la pena es trabajo de `pnpm alertas` (#46).
+   */
+}
+
 async function main(): Promise<void> {
   const destino = process.env.ASTA_BACKUP_DIR ?? join(process.cwd(), 'backups');
   mkdirSync(destino, { recursive: true });
+
+  const args = process.argv.slice(2);
+  if (args.includes('--diff')) {
+    const rutas = args.filter((a) => !a.startsWith('--'));
+    const [a, b] = rutas.length >= 2 ? [rutas[0], rutas[1]] : dosUltimas(destino);
+    comparar_y_pintar(a, b);
+    return;
+  }
 
   // UTC en el nombre, igual que en respaldar.sh: la hora local retrocede una
   // hora en octubre y ordenar respaldos por un nombre que da marcha atrás es
