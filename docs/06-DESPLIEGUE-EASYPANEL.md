@@ -161,6 +161,18 @@ corto.
 
 ## Orden de arranque
 
+### Desde la consola del contenedor del middleware
+
+El directorio de trabajo es `/app/apps/middleware`, así que las rutas son:
+
+```bash
+# Aplicar el esquema (con credenciales del MIGRADOR, no las de la app)
+DATABASE_URL="mysql://asta_migrador:CLAVE@HOST:3306/asta"   ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
+
+# Poner la contraseña del SuperAdmin
+node dist/cli/set-password.js webmaster02@supricom.com.ve
+```
+
 ```
 1. MySQL arriba y accesible
 2. Aplicar el esquema:

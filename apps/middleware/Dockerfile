@@ -57,16 +57,33 @@ ENV NODE_ENV=production
 # NO se pueden empaquetar: esbuild se lleva el JavaScript y deja atrás el `.node`
 # que ese JavaScript busca. Se copian ya resueltos para Linux desde la etapa de
 # build — que no es lo mismo que los de la máquina de desarrollo.
-COPY --from=build /app/node_modules/.pnpm            /app/node_modules/.pnpm
-COPY --from=build /app/apps/middleware/node_modules  /app/node_modules
-COPY --from=build /app/apps/middleware/dist          /app/dist
+#
+# ── LAS RUTAS SE CONSERVAN EXACTAMENTE. No mover nada de sitio. ──────────────
+#
+# pnpm no copia las dependencias: las ENLAZA con rutas relativas. En Linux,
+# `apps/middleware/node_modules/@prisma/client` es un enlace a
+# `../../../../node_modules/.pnpm/@prisma+client@…/node_modules/@prisma/client`,
+# y esos cuatro saltos hacia arriba solo llegan a `/app` desde esa profundidad
+# concreta.
+#
+# La versión anterior copiaba `apps/middleware/node_modules` a `/app/node_modules`.
+# Los enlaces viajan tal cual, así que desde la nueva ubicación los cuatro saltos
+# se pasaban de largo hasta `/` y apuntaban a `/node_modules/.pnpm/…`, que no
+# existe. La imagen se construía sin una queja y el contenedor moría al arrancar
+# buscando `@prisma/client`.
+COPY --from=build /app/node_modules/.pnpm            ./node_modules/.pnpm
+COPY --from=build /app/apps/middleware/node_modules  ./apps/middleware/node_modules
+COPY --from=build /app/apps/middleware/dist          ./apps/middleware/dist
 
 # Las migraciones NO se aplican al arrancar, a propósito: eso le daría DDL al
 # contenedor de la aplicación, que es justo lo que evita `asta_app` (#44). Se
 # aplican a mano con `asta_migrador` en una ventana controlada.
 # Se copia el esquema solo para poder ejecutar `migrate deploy` desde aquí si se
 # entra al contenedor con las credenciales del migrador.
-COPY --from=build /app/prisma /app/prisma
+COPY --from=build /app/prisma ./prisma
+
+# Desde aquí, los enlaces de pnpm resuelven igual que en la etapa de build.
+WORKDIR /app/apps/middleware
 
 # Sin privilegios. La imagen de node ya trae el usuario `node`.
 USER node
