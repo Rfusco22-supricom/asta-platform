@@ -1,0 +1,24 @@
+# Lo que NUNCA debe entrar en una imagen
+.env
+.env.*
+!.env.example
+backups/
+*.sql.gz
+*.json.gz
+docs/odoo-schema-snapshot.json
+
+# Lo que se reinstala o reconstruye dentro
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.turbo
+
+# Ruido que solo invalida el cache de capas
+.git
+.github
+.vscode
+.claude
+*.log
