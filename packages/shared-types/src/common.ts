@@ -31,17 +31,39 @@ export const errorCodeSchema = z.enum([
   'ROLE_NOT_ALLOWED',
   'INSUFFICIENT_SCOPE',
   'PARTNER_NOT_IN_PORTFOLIO',
+  /**
+   * API pública: `partner_id` de otro cliente en la query o el cuerpo (#36).
+   * 400 y no 403, decidido en la revisión de #36: la key no "carece de permiso"
+   * sobre otro cliente, es que ese parámetro no tiene sentido con una API key.
+   */
+  'PARTNER_ID_NOT_ALLOWED',
 
   // Entrada
   'VALIDATION_ERROR',
   'INVALID_QUERY',
   'INVALID_PARTNER_ID',
+  /** `:id` de factura que no es un entero positivo. */
+  'INVALID_INVOICE_ID',
 
   // Recursos
   'NOT_FOUND',
   'PARTNER_NOT_FOUND',
   'PRODUCT_NOT_FOUND',
   'PRINTER_NOT_FOUND',
+  /** Factura inexistente O de otro cliente: la misma respuesta a propósito (#36). */
+  'INVOICE_NOT_FOUND',
+  /**
+   * La factura es del cliente pero no tiene un PDF que se pueda servir (#32).
+   * Unas 4.500 de 17.180 no tienen ninguno guardado en Odoo.
+   */
+  'INVOICE_PDF_NOT_AVAILABLE',
+  /** Enlace de descarga con firma inválida, o que ya no autoriza nada (#32). */
+  'LINK_NOT_VALID',
+  /**
+   * Enlace de descarga caducado (#32). 410 y no 404: a quien tiene un enlace
+   * legítimo le dice que pida otro, y no revela nada que el token no diga ya.
+   */
+  'LINK_EXPIRED',
 
   // Conflicto
   'CONFLICT',
@@ -90,15 +112,21 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   ROLE_NOT_ALLOWED: 403,
   INSUFFICIENT_SCOPE: 403,
   PARTNER_NOT_IN_PORTFOLIO: 403,
+  PARTNER_ID_NOT_ALLOWED: 400,
 
   VALIDATION_ERROR: 400,
   INVALID_QUERY: 400,
   INVALID_PARTNER_ID: 400,
+  INVALID_INVOICE_ID: 400,
 
   NOT_FOUND: 404,
   PARTNER_NOT_FOUND: 404,
   PRODUCT_NOT_FOUND: 404,
   PRINTER_NOT_FOUND: 404,
+  INVOICE_NOT_FOUND: 404,
+  INVOICE_PDF_NOT_AVAILABLE: 404,
+  LINK_NOT_VALID: 404,
+  LINK_EXPIRED: 410,
 
   CONFLICT: 409,
   IDEMPOTENCY_KEY_REUSED: 409,
