@@ -138,7 +138,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
         <table>
           <thead>
             <tr>
-              <th>Agente</th>
+              <th>Vendedor</th>
               <th className="num">Clientes</th>
               <th className="num">Facturado</th>
               <th className="num">Por cobrar</th>
@@ -188,7 +188,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
           </tbody>
         </table>
 
-        {visibles.length === 0 && <div className="empty">Ningún agente coincide.</div>}
+        {visibles.length === 0 && <div className="empty">Ningún vendedor coincide.</div>}
       </div>
     </>
   );

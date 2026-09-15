@@ -56,7 +56,7 @@ export default async function AgentesPage() {
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Agentes">
+      <Marco usuario={sesion.usuario} titulo="Vendedores">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -75,7 +75,7 @@ export default async function AgentesPage() {
   return (
     <Marco
       usuario={sesion.usuario}
-      titulo="Agentes"
+      titulo="Vendedores"
       descripcion={`${totales.agentes} personas con cartera asignada en Odoo · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
     >
       <section className="stats">
@@ -110,7 +110,7 @@ export default async function AgentesPage() {
       */}
       {totales.sinAcceso > 0 && (
         <div className="notice" style={{ marginBottom: 18 }}>
-          <h2>{totales.sinAcceso} agentes no pueden ver su cartera</h2>
+          <h2>{totales.sinAcceso} vendedores no pueden ver su cartera</h2>
           <p>
             Tienen clientes asignados en Odoo y trabajan hoy, pero o no tienen cuenta en el
             panel o nadie les ha puesto contraseña. Se resuelve desde{' '}

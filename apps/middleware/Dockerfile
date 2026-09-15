@@ -53,6 +53,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl \
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Qué commit lleva esta imagen. Se sirve en /health (ver src/config/version.ts).
+#
+# En EasyPanel se pasa como build arg. Si se olvida, /health cae en la FECHA del
+# bundle, que no necesita configuración y ya distingue una imagen vieja de una
+# nueva — que es el caso que hizo falta resolver.
+#
+#   docker build --build-arg VERSION_SHA=$(git rev-parse --short HEAD) ...
+ARG VERSION_SHA=""
+ENV VERSION_SHA=$VERSION_SHA
+
 # `@prisma/client` y `@node-rs/argon2` traen binarios compilados por plataforma y
 # NO se pueden empaquetar: esbuild se lleva el JavaScript y deja atrás el `.node`
 # que ese JavaScript busca. Se copian ya resueltos para Linux desde la etapa de
