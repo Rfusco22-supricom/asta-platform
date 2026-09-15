@@ -45,6 +45,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       titulo: null,
       secciones: [
         { href: '/admin', titulo: 'Resumen', icono: 'resumen' },
+        { href: '/admin/agentes', titulo: 'Agentes', icono: 'agentes' },
         { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
       ],
     },
