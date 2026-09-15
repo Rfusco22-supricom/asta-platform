@@ -39,10 +39,12 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'admin.reconciliacion.ver',
     'admin.agentes.ver',
     'admin.asta.ver',
+    'admin.reportes.ver',
     'catalogo.leer',
   ],
   VENDEDOR: [
     'asta.propias.ver',
+    'reportes.propios.ver',
     'cartera.ver',
     'cliente.ver',
     'cliente.perfil.ver',

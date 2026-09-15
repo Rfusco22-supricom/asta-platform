@@ -11,6 +11,8 @@ import {
   apiKeySummarySchema,
   agentesRespuestaSchema,
   astaRespuestaSchema,
+  reporteRespuestaSchema,
+  type ReporteRespuesta,
   hermanosRespuestaSchema,
   type Hermano,
   type OportunidadAsta,
@@ -391,6 +393,36 @@ async function pedirAsta(ruta: string, accessToken: string): Promise<Asta> {
 export const getAstaEmpresa = (accessToken: string) => pedirAsta('/api/v1/admin/asta', accessToken);
 export const getAstaCartera = (accessToken: string) =>
   pedirAsta('/api/v1/salesperson/asta', accessToken);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type Reporte = ReporteRespuesta;
+
+/**
+ * Reportes de facturacion.
+ *
+ * Igual que ASTA: dos rutas, no una con parametro. La del vendedor devuelve
+ * `porVendedor: null` porque ni siquiera calcula ese corte, asi que no hay forma
+ * de que la pantalla ensene de mas por un fallo de plantilla.
+ */
+async function pedirReporte(
+  ruta: string,
+  accessToken: string,
+  rango?: { desde: string; hasta: string },
+): Promise<Reporte> {
+  const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
+  return request(`${ruta}${qs}`, reporteRespuestaSchema, accessToken);
+}
+
+export const getReporteEmpresa = (
+  accessToken: string,
+  rango?: { desde: string; hasta: string },
+) => pedirReporte('/api/v1/admin/reportes', accessToken, rango);
+
+export const getReporteCartera = (
+  accessToken: string,
+  rango?: { desde: string; hasta: string },
+) => pedirReporte('/api/v1/salesperson/reportes', accessToken, rango);
 
 // ─────────────────────────────────────────────────────────────────────────────
 

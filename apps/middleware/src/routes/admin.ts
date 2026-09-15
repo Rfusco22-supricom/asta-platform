@@ -6,6 +6,8 @@ import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.j
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida } from '../services/invitation.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
+import { reporte } from '../services/reportes.service.js';
+import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { prisma } from '../config/prisma.js';
 
@@ -169,6 +171,23 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
       data: r.agentes,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Reportes de facturación de toda la empresa.
+ *
+ * Ruta APARTE de la del vendedor, con su propio permiso, por lo mismo que en
+ * ASTA: un único endpoint que mirara el rol para decidir cuánto enseña es donde
+ * acaba colándose la facturación de la empresa en la pantalla de un comercial.
+ * Esta ruta no sabe acotar por cartera; la del vendedor no sabe no hacerlo.
+ */
+adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, next) => {
+  try {
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json(await reporte(rango));
   } catch (error) {
     next(error);
   }

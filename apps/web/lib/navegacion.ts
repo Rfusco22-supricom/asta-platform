@@ -46,6 +46,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       secciones: [
         { href: '/admin', titulo: 'Resumen', icono: 'resumen' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
+        { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca' },
         { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
       ],
@@ -64,6 +65,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           prefijo: true,
         },
         { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca' },
+        { href: '/reportes', titulo: 'Reportes', icono: 'reportes' },
       ],
     },
     MI_CUENTA,
