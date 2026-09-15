@@ -2,14 +2,22 @@
 
 ```bash
 mysql -u USUARIO -p -e "CREATE DATABASE asta CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u USUARIO -p asta < db/mysql/001_schema.sql
+pnpm migrate:deploy                        # aplica prisma/migrations
 mysql -u USUARIO -p asta < db/mysql/002_seed.sql
 # 003_partitioning.sql es opcional: aplicar cuando api_request_logs crezca
 ```
 
-**Requiere MySQL 8.0.13+ o MariaDB 10.4+.** Comprobar con `SELECT VERSION();`.
-Desarrollo va sobre MariaDB 10.4 (XAMPP); **falta confirmar qué motor da EasyPanel
-antes del primer despliegue.**
+> **`001_schema.sql` ya no se aplica.** Desde que existe historial de
+> migraciones, montar la base con él dejaba fuera todo lo posterior a la línea
+> base —las seis tablas de #101, sin ir más lejos— y la base recién creada salía
+> con deriva. Ahora la construyen las migraciones, en desarrollo y en
+> producción. El fichero se queda como **documentación del diseño**: es donde
+> están los comentarios de las tablas del principio.
+
+**Requiere MySQL 8.0.13+ o MariaDB 10.4+.** Desarrollo va sobre **MariaDB 10.4**
+(XAMPP) y producción resultó ser **MySQL 9.7.2** (medido el 15-sep-2026). No es
+la misma familia: lo que está verde en local no dice nada sobre MySQL 9 mientras
+no haya la copia de staging de #13.
 
 > **Corrección.** Una versión anterior de este README decía que
 > `utf8mb4_general_ci` daba el comportamiento correcto para el email y que estaba
@@ -21,7 +29,7 @@ antes del primer despliegue.**
 
 | Archivo | Qué hace |
 |---|---|
-| `001_schema.sql` | 16 tablas, índices y claves foráneas. **Es el diseño**: aquí están los comentarios |
+| `001_schema.sql` | El diseño de las 17 tablas originales, con los comentarios. **Ya no se aplica**: ver arriba |
 | `002_seed.sql` | Mapeo tarifa→nivel y SuperAdmin inicial. Idempotente |
 | `003_partitioning.sql` | Particionado mensual de logs, rotación con agregados y limpieza. Opcional (issue #47) |
 | `004_usuarios.sql` | Usuarios de MySQL con privilegio mínimo. **Obligatorio en producción** (issue #44) |
@@ -221,8 +229,13 @@ solo.
 
 Pero la colación por defecto de MySQL 8 (`utf8mb4_unicode_ci`) también ignora los
 **acentos**, y eso haría que `jose@x.com` y `josé@x.com` fueran el mismo usuario.
-Para direcciones de correo es incorrecto. Por eso esa columna concreta declara
-`utf8mb4_general_ci`: insensible a mayúsculas, sensible a acentos.
+Para direcciones de correo es incorrecto.
+
+Este párrafo decía que por eso la columna declara `utf8mb4_general_ci`. **Es
+falso y contradecía la corrección del principio de este mismo fichero**:
+`general_ci` tampoco distingue acentos. La columna declara `utf8mb4_bin`, que es
+binaria —distingue todo—, y la normalización la hace la aplicación en
+`normalizarEmail()`.
 
 ### `timestamptz` → `DATETIME(3)` en UTC
 
@@ -291,7 +304,7 @@ hace que los dos gates de seguridad (#25 y #36) pasen de importantes a críticos
 
 ---
 
-## Las 15 tablas
+## Las 23 tablas
 
 | Tabla | Qué guarda |
 |---|---|
@@ -309,7 +322,15 @@ hace que los dos gates de seguridad (#25 y #36) pasen de importantes a críticos
 | `recommendation_events` | Telemetría del recomendador |
 | `client_notes` | Notas del vendedor sobre el cliente |
 | `odoo_entity_cache` | Cache de lectura del ERP |
+| `sync_state` | Hasta dónde llegó cada sincronización con Odoo |
 | `audit_logs` | Rastro de acciones sensibles |
+| `api_usage_monthly` | Consumo agregado por cliente y mes, para facturar |
+| `printer_brands` | Marcas de impresora y de cartucho |
+| `printer_models` | Modelos de impresora |
+| `printer_model_aliases` | Como los escribe la gente: "hl2350", "M404" |
+| `cartridges` | El cartucho del fabricante, no el producto que lo vende |
+| `cartridge_printer_models` | Qué cartucho usa cada impresora |
+| `product_cartridges` | Qué producto de Odoo es, o sustituye a, qué cartucho |
 
 ---
 

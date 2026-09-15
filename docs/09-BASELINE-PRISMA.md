@@ -77,6 +77,13 @@ permanente e invisible.
 
 Solo si el paso 1 salió vacío. **En este orden**, que es el del historial:
 
+> **Exactamente estas tres, aunque `prisma/migrations/` tenga más.** Son las que
+> el esquema aplicado a mano ya contiene. Las posteriores —la primera es
+> `20260915195135_compatibilidad_impresora_toner`, las tablas de #101— **no
+> están en la base**, así que marcarlas sería mentir y dejaría a Prisma creyendo
+> que existen unas tablas que nadie creó. Esas se aplican solas con
+> `migrate deploy` en el paso 3.
+
 ```bash
 ./node_modules/.bin/prisma migrate resolve --applied 0_init                              --schema ../../prisma/schema.prisma
 ./node_modules/.bin/prisma migrate resolve --applied 20260914120000_api_logs_pk_compuesta --schema ../../prisma/schema.prisma
@@ -110,8 +117,16 @@ que `asta`.
 Database schema is up to date!
 ```
 
-Y `migrate deploy` a partir de aquí debe decir `No pending migrations to apply.`
-Si dice que va a aplicar algo, el paso 2 no quedó completo.
+Y después, `migrate deploy` aplica lo que venga DESPUÉS de la línea base:
+
+```bash
+./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
+```
+
+Si en el repositorio no hay nada posterior a las tres, dirá `No pending
+migrations to apply.` Si hay migraciones nuevas —hoy las tablas de #101—, las
+aplicará, y eso es lo correcto. Lo que **no** debe pasar es que intente aplicar
+`0_init`: si lo hace, el paso 2 no quedó completo.
 
 ---
 
