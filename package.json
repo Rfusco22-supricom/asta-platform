@@ -34,7 +34,7 @@
     "test:scripts": "vitest run --config vitest.config.ts",
     "seed:dev": "tsx scripts/seed-dev.ts",
     "db:setup": "mysql -u root -e \"CREATE DATABASE IF NOT EXISTS asta_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\" && mysql -u root asta_dev < db/mysql/001_schema.sql && mysql -u root asta_dev < db/mysql/002_seed.sql",
-    "sync:partners": "tsx scripts/sync-partners.ts",
+    "sync:partners": "tsx apps/middleware/src/cli/sync-partners.ts",
     "usuarios:sql": "tsx scripts/generar-usuarios-sql.ts"
   },
   "devDependencies": {

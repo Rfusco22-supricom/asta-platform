@@ -1,16 +1,33 @@
 /**
  * Sincroniza res.partner -> app_users.
  *
+ * En desarrollo:
+ *
  *   pnpm sync:partners             incremental (solo lo que cambió)
  *   pnpm sync:partners --completo  relee TODO, ignorando la marca de agua
  *   pnpm sync:partners --huerfanos revisa qué usuarios perdieron su partner
  *
+ * Dentro del contenedor:
+ *
+ *   node dist/cli/sync-partners.js [--completo|--huerfanos]
+ *
  * Pensado para un cron cada 15 minutos. También hay un endpoint para el
  * SuperAdmin, pero para una tarea programada un proceso suelto es más simple
  * que mantener viva una llamada HTTP.
+ *
+ * ── Por qué vive AQUÍ y no en `scripts/` ─────────────────────────────────────
+ *
+ * Estaba en `scripts/`, fuera de `apps/middleware/src`, así que no entraba en el
+ * bundle y no había forma de ejecutarlo desde el contenedor. En un despliegue
+ * recién hecho eso importa más de lo que parece: sin sincronizar, la base solo
+ * tiene el SuperAdmin del seed y el panel de vendedores no tiene a quién
+ * enseñárselo.
+ *
+ * El mismo tropiezo que el CLI de contraseñas (#74), que también se descubrió
+ * con el contenedor ya construido.
  */
-import { marcarHuerfanos, sincronizarPartners } from '../apps/middleware/src/services/sync.service.js';
-import { prisma } from '../apps/middleware/src/config/prisma.js';
+import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
+import { prisma } from '../config/prisma.js';
 
 const n = (x: number) => String(x).padStart(5);
 
