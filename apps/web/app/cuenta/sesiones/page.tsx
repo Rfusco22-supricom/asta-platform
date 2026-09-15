@@ -1,6 +1,5 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { requireSession, clearSession } from '@/lib/session';
+import { requireSession } from '@/lib/session';
+import { Marco } from '@/components/Marco';
 import { getSesiones, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Sesiones } from './Sesiones';
 
@@ -21,35 +20,6 @@ import { Sesiones } from './Sesiones';
 
 export const dynamic = 'force-dynamic';
 
-async function salir() {
-  'use server';
-  await clearSession();
-  redirect('/login');
-}
-
-function Marco({ nombre, children }: { nombre: string; children: React.ReactNode }) {
-  return (
-    <>
-      <header className="topbar">
-        <div className="brand">
-          ASTA<span>Mi cuenta</span>
-        </div>
-        <div className="topbar-right">
-          <span className="who">
-            <strong>{nombre}</strong>
-          </span>
-          <form action={salir}>
-            <button type="submit" className="btn-link">
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
-      <main className="shell">{children}</main>
-    </>
-  );
-}
-
 export default async function SesionesPage() {
   const sesion = await requireSession();
 
@@ -61,7 +31,7 @@ export default async function SesionesPage() {
     // el usuario ve "no se pudo cargar" en vez de ir al login.
     if (esRedireccion(error)) throw error;
     return (
-      <Marco nombre={sesion.usuario.nombre}>
+      <Marco usuario={sesion.usuario} titulo="Sesiones activas">
         <div className="notice error">
           <h2>No se pudieron cargar las sesiones</h2>
           <p>
@@ -74,28 +44,12 @@ export default async function SesionesPage() {
     );
   }
 
-  const volverA = sesion.usuario.role === 'SUPERADMIN' ? '/admin' : '/cartera';
-
   return (
-    <Marco nombre={sesion.usuario.nombre}>
-      <div className="page-head">
-        <h1>Sesiones activas</h1>
-        <p>
-          Dónde está abierta tu cuenta ahora mismo. Si ves algo que no
-          reconoces, ciérralo y cambia tu contraseña.
-        </p>
-      </div>
-
+    <Marco usuario={sesion.usuario} titulo="Sesiones activas">
       {/* El instante de referencia se fija AQUÍ, en el servidor, y baja como
           prop. Si cada lado leyera su propio reloj, los textos de "hace X min"
           no coincidirían y la hidratación fallaría. */}
       <Sesiones filas={datos.filas} otras={datos.otras} ahora={Date.now()} />
-
-      <p style={{ marginTop: 24, fontSize: 13 }}>
-        <Link href={volverA} className="btn-link">
-          ← Volver
-        </Link>
-      </p>
     </Marco>
   );
 }

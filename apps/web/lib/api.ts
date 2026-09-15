@@ -69,7 +69,10 @@ export function esRedireccion(error: unknown): boolean {
 
 /** Cuando el contrato y la respuesta no coinciden. Es un bug, no un fallo de red. */
 export class ContractError extends Error {
-  constructor(readonly endpoint: string, readonly detail: string) {
+  constructor(
+    readonly endpoint: string,
+    readonly detail: string,
+  ) {
     super(`La respuesta de ${endpoint} no cumple el contrato: ${detail}`);
     this.name = 'ContractError';
   }
@@ -270,20 +273,27 @@ const sinAccesoSchema = z.object({
       invitacionPendiente: z.boolean(),
     }),
   ),
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    mostrados: z.number().int().nonnegative(),
+  }),
 });
 
 export type CandidatoInvitacion = z.infer<typeof sinAccesoSchema>['data'][number];
 
-export async function getSinAcceso(
-  accessToken: string,
-  limite = 25,
-): Promise<CandidatoInvitacion[]> {
+export interface SinAcceso {
+  filas: CandidatoInvitacion[];
+  /** Cuántos hay EN TOTAL, no cuántos se muestran. Ver la nota del servicio. */
+  total: number;
+}
+
+export async function getSinAcceso(accessToken: string, limite = 25): Promise<SinAcceso> {
   const r = await request(
     `/api/v1/admin/users/without-access?limit=${limite}`,
     sinAccesoSchema,
     accessToken,
   );
-  return r.data;
+  return { filas: r.data, total: r.meta.total };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

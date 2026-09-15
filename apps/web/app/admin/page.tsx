@@ -1,8 +1,7 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { requireSession, clearSession } from '@/lib/session';
-import { getReconciliacion, getSinAcceso, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { Invitaciones } from './Invitaciones';
+import { requireSession } from '@/lib/session';
+import { Marco } from '@/components/Marco';
+import { getReconciliacion, ApiError, esRedireccion, ContractError } from '@/lib/api';
 
 /**
  * Panel del administrador: reconciliación Odoo ↔ middleware (issue #19).
@@ -12,12 +11,6 @@ import { Invitaciones } from './Invitaciones';
  */
 
 export const dynamic = 'force-dynamic';
-
-async function salir() {
-  'use server';
-  await clearSession();
-  redirect('/login');
-}
 
 interface Fila {
   motivo: string;
@@ -37,7 +30,13 @@ function Metrica({
   tono?: 'neutro' | 'bien' | 'atencion' | 'mal';
 }) {
   const color =
-    tono === 'mal' ? 'var(--danger)' : tono === 'atencion' ? 'var(--warning)' : tono === 'bien' ? 'var(--positive)' : undefined;
+    tono === 'mal'
+      ? 'var(--danger)'
+      : tono === 'atencion'
+        ? 'var(--warning)'
+        : tono === 'bien'
+          ? 'var(--positive)'
+          : undefined;
   return (
     <div className="stat">
       <div className="stat-label">{etiqueta}</div>
@@ -53,25 +52,21 @@ export default async function AdminPage() {
   const sesion = await requireSession();
 
   let r;
-  let candidatos: Awaited<ReturnType<typeof getSinAcceso>> = [];
   try {
-    // En paralelo y con el de invitaciones degradado por separado: si falla,
-    // el informe —que es lo principal— se sigue viendo.
-    const [rec, cand] = await Promise.all([
-      getReconciliacion(sesion.accessToken),
-      getSinAcceso(sesion.accessToken, 25).catch(() => []),
-    ]);
-    r = rec;
-    candidatos = cand;
+    r = await getReconciliacion(sesion.accessToken);
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
     // el usuario ve "no se pudo cargar" en vez de ir al login.
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco nombre={sesion.usuario.nombre}>
+      <Marco usuario={sesion.usuario} titulo="Reconciliación con Odoo">
         <div className="notice error">
-          <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo generar el informe'}</h2>
+          <h2>
+            {esPermiso
+              ? 'Esta sección es solo para administradores'
+              : 'No se pudo generar el informe'}
+          </h2>
           <p>
             {error instanceof ContractError || error instanceof ApiError
               ? error.message
@@ -85,11 +80,36 @@ export default async function AdminPage() {
   const rec = r as unknown as {
     odoo: { clientesActivos: number };
     middleware: { usuarios: number; clientes: number; staff: number };
-    sinCuenta: { total: number; porMotivo: Record<string, number>; muestra: Array<{ odooPartnerId: number; nombre: string; email: string | null; motivo: string; detalle?: string }> };
-    sinCredenciales: { total: number; muestra: Array<{ email: string; nombre: string }> };
+    sinCuenta: {
+      total: number;
+      porMotivo: Record<string, number>;
+      muestra: Array<{
+        odooPartnerId: number;
+        nombre: string;
+        email: string | null;
+        motivo: string;
+        detalle?: string;
+      }>;
+    };
+    sinCredenciales: {
+      total: number;
+      muestra: Array<{ email: string; nombre: string }>;
+    };
     huerfanos: { total: number };
-    desalineados: { total: number; muestra: Array<{ odooPartnerId: number; nombre: string; campo: string; enOdoo: string | null; enMiddleware: string | null }> };
-    nuncaSincronizados: { total: number; muestra: Array<{ email: string; role: string }> };
+    desalineados: {
+      total: number;
+      muestra: Array<{
+        odooPartnerId: number;
+        nombre: string;
+        campo: string;
+        enOdoo: string | null;
+        enMiddleware: string | null;
+      }>;
+    };
+    nuncaSincronizados: {
+      total: number;
+      muestra: Array<{ email: string; role: string }>;
+    };
     duracionMs: number;
     generadoEn: string;
   };
@@ -107,15 +127,11 @@ export default async function AdminPage() {
     .sort((a, b) => b.total - a.total);
 
   return (
-    <Marco nombre={sesion.usuario.nombre}>
-      <div className="page-head">
-        <h1>Reconciliación con Odoo</h1>
-        <p>
-          Generado en {(rec.duracionMs / 1000).toFixed(1)} s ·{' '}
-          {new Date(rec.generadoEn).toLocaleString('es-VE')}
-        </p>
-      </div>
-
+    <Marco
+      usuario={sesion.usuario}
+      titulo="Reconciliación con Odoo"
+      descripcion={`Generado en ${(rec.duracionMs / 1000).toFixed(1)} s · ${new Date(rec.generadoEn).toLocaleString('es-VE')}`}
+    >
       <section className="stats">
         <Metrica etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
         <Metrica
@@ -137,13 +153,6 @@ export default async function AdminPage() {
           tono={rec.sinCredenciales.total > 0 ? 'mal' : 'bien'}
         />
       </section>
-
-      {/* Lo más grave primero: cuentas que existen pero no sirven para nada.
-          El bloque trae ya la acción que lo resuelve, en vez de un aviso que
-          solo dice que hay un problema. */}
-      {rec.sinCredenciales.total > 0 && (
-        <Invitaciones candidatos={candidatos} total={rec.sinCredenciales.total} />
-      )}
 
       <section className="panel">
         <h2>Por qué {rec.sinCuenta.total} clientes no tienen cuenta</h2>
@@ -178,7 +187,14 @@ export default async function AdminPage() {
       {rec.sinCuenta.muestra.filter((m) => m.motivo === 'EMAIL_INVALIDO').length > 0 && (
         <section className="panel">
           <h2>Correos mal escritos en Odoo</h2>
-          <p style={{ marginTop: -6, marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
+          <p
+            style={{
+              marginTop: -6,
+              marginBottom: 12,
+              fontSize: 13,
+              color: 'var(--text-2)',
+            }}
+          >
             Cada uno es un cliente que no puede entrar por una errata de captura.
           </p>
           <div className="table-wrap" style={{ border: 0 }}>
@@ -261,38 +277,10 @@ export default async function AdminPage() {
         <h2>Cómo se arregla</h2>
         <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-2)' }}>
           La sincronización corre sola cada 15 minutos. Para lanzarla a mano:{' '}
-          <code>pnpm sync:partners</code>. Los datos se corrigen <strong>en Odoo</strong>,
-          nunca aquí: este panel es un espejo, y editarlo a mano crearía dos verdades.
+          <code>pnpm sync:partners</code>. Los datos se corrigen <strong>en Odoo</strong>, nunca
+          aquí: este panel es un espejo, y editarlo a mano crearía dos verdades.
         </p>
       </section>
     </Marco>
-  );
-}
-
-function Marco({ nombre, children }: { nombre: string; children: React.ReactNode }) {
-  return (
-    <>
-      <header className="topbar">
-        <div className="brand">
-          ASTA<span>Administración</span>
-        </div>
-        <div className="topbar-right">
-          <span className="who">
-            <strong>{nombre}</strong>
-          </span>
-          {/* La pantalla de sesiones no sirve de nada si hay que saberse la URL:
-              quien sospecha de un acceso ajeno tiene que encontrarla mirando. */}
-          <Link href="/cuenta/sesiones" className="btn-link">
-            Sesiones
-          </Link>
-          <form action={salir}>
-            <button type="submit" className="btn-link">
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
-      <main className="shell">{children}</main>
-    </>
   );
 }

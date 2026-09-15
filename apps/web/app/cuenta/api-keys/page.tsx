@@ -1,6 +1,5 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { requireSession, clearSession } from '@/lib/session';
+import { requireSession } from '@/lib/session';
+import { Marco } from '@/components/Marco';
 import { getApiKeys, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { ApiKeys } from './ApiKeys';
 
@@ -26,35 +25,6 @@ import { ApiKeys } from './ApiKeys';
 
 export const dynamic = 'force-dynamic';
 
-async function salir() {
-  'use server';
-  await clearSession();
-  redirect('/login');
-}
-
-function Marco({ nombre, children }: { nombre: string; children: React.ReactNode }) {
-  return (
-    <>
-      <header className="topbar">
-        <div className="brand">
-          ASTA<span>Mi cuenta</span>
-        </div>
-        <div className="topbar-right">
-          <span className="who">
-            <strong>{nombre}</strong>
-          </span>
-          <form action={salir}>
-            <button type="submit" className="btn-link">
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
-      <main className="shell">{children}</main>
-    </>
-  );
-}
-
 export default async function ApiKeysPage() {
   const sesion = await requireSession();
 
@@ -74,17 +44,12 @@ export default async function ApiKeysPage() {
      */
     if (error instanceof ApiError && error.status === 403) {
       return (
-        <Marco nombre={sesion.usuario.nombre}>
+        <Marco usuario={sesion.usuario} titulo="Mis API keys">
           <div className="notice">
             <h2>Esta pantalla es para clientes</h2>
             <p>
-              Las API keys sirven para que un cliente conecte su propio sistema
-              con ASTA. Los datos que necesitas los tienes en el panel.
-            </p>
-            <p style={{ marginTop: 12 }}>
-              <Link href="/" className="btn-link">
-                ← Volver
-              </Link>
+              Las API keys sirven para que un cliente conecte su propio sistema con ASTA. Los datos
+              que necesitas los tienes en el panel.
             </p>
           </div>
         </Marco>
@@ -92,7 +57,7 @@ export default async function ApiKeysPage() {
     }
 
     return (
-      <Marco nombre={sesion.usuario.nombre}>
+      <Marco usuario={sesion.usuario} titulo="Mis API keys">
         <div className="notice error">
           <h2>No se pudieron cargar tus API keys</h2>
           <p>
@@ -106,22 +71,8 @@ export default async function ApiKeysPage() {
   }
 
   return (
-    <Marco nombre={sesion.usuario.nombre}>
-      <div className="page-head">
-        <h1>Mis API keys</h1>
-        <p>
-          Para conectar tu sistema con ASTA y consultar tus facturas, el
-          catálogo y tus existencias sin entrar aquí.
-        </p>
-      </div>
-
+    <Marco usuario={sesion.usuario} titulo="Mis API keys">
       <ApiKeys filas={datos.filas} vivas={datos.vivas} maximo={datos.maximo} />
-
-      <p style={{ marginTop: 24, fontSize: 13 }}>
-        <Link href="/cuenta/sesiones" className="btn-link">
-          Sesiones activas
-        </Link>
-      </p>
     </Marco>
   );
 }
