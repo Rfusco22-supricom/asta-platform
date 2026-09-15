@@ -1,5 +1,11 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { ApiScope, ApiKeyEnv } from '@asta/shared-types';
+import type {
+  ApiScope,
+  ApiKeyEnv,
+  ApiKeySummary,
+  ApiKeyUsageRow,
+  ErrorCode,
+} from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { origenPermitido } from './ipAllowlist.js';
@@ -228,24 +234,155 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
   };
 }
 
-export async function revokeApiKey(
-  apiKeyId: string,
-  revokedByUserId: string,
-  reason?: string,
-): Promise<void> {
+export class ApiKeyNoEncontrada extends Error {
+  readonly status = 404;
+  readonly code: ErrorCode = 'NOT_FOUND';
+
+  constructor(apiKeyId: string) {
+    // MISMO mensaje tanto si la key no existe como si es de otro. Distinguirlos
+    // convertiría este endpoint en un oráculo: probando ids se sabría cuáles
+    // están en uso por otros clientes.
+    super('Esa API key no existe o no es tuya.');
+    this.name = 'ApiKeyNoEncontrada';
+    void apiKeyId;
+  }
+}
+
+/**
+ * Revoca una key.
+ *
+ * ── `duenoEsperado` es obligatorio y no tiene valor por defecto ──────────────
+ *
+ * Esta función NO comprobaba de quién era la key: revocaba por id, sin más.
+ * Mientras solo la llamaban los tests daba igual. En cuanto la UI de #28 la
+ * expone a un cliente, «revocar por id» significa que cualquiera con una cuenta
+ * puede apagar la integración de otro mandando un uuid — sin leer nada suyo, así
+ * que ni el aislamiento de lectura lo habría frenado.
+ *
+ * El parámetro no lleva defecto a propósito. Pasar `null` —el caso peligroso, el
+ * del SUPERADMIN que revoca la de cualquiera— hay que ESCRIBIRLO en la ruta, y
+ * entonces se ve al revisarla. Un `duenoEsperado?: string` opcional habría dejado
+ * que el camino inseguro fuera el de omitir el argumento.
+ */
+export async function revokeApiKey(params: {
+  apiKeyId: string;
+  actorId: string;
+  /** El dueño que debe tener la key, o `null` para no comprobarlo (SUPERADMIN). */
+  duenoEsperado: string | null;
+  reason?: string;
+}): Promise<void> {
+  const { apiKeyId, actorId, duenoEsperado, reason } = params;
+
+  if (duenoEsperado !== null) {
+    const suya = await prisma.apiKey.findFirst({
+      // El userId va DENTRO del where, no en un `if` después de leer: es la
+      // misma regla que las sesiones de #52.
+      where: { id: apiKeyId, userId: duenoEsperado },
+      select: { id: true },
+    });
+    if (!suya) throw new ApiKeyNoEncontrada(apiKeyId);
+  }
+
   await prisma.$transaction([
     prisma.apiKey.update({
       where: { id: apiKeyId },
-      data: { revokedAt: new Date(), revokedById: revokedByUserId, revokeReason: reason },
+      data: { revokedAt: new Date(), revokedById: actorId, revokeReason: reason },
     }),
     prisma.auditLog.create({
       data: {
-        actorId: revokedByUserId,
+        actorId,
         action: 'api_key.revoked',
         targetType: 'ApiKey',
         targetId: apiKeyId,
-        metadata: { reason: reason ?? null },
+        metadata: { reason: reason ?? null, propia: duenoEsperado !== null },
       },
     }),
   ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lo que consume la UI del cliente (#28)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Las keys de UN usuario, revocadas incluidas.
+ *
+ * Las revocadas NO se ocultan. Quien entra a esta pantalla suele venir de
+ * «¿alguien está usando algo mío?», y una lista que solo enseña lo vivo no
+ * responde a eso: no deja ver que ayer se apagó una integración, ni cuándo se
+ * usó por última vez. Se devuelven marcadas y la UI las separa.
+ */
+export async function listarApiKeys(userId: string): Promise<ApiKeySummary[]> {
+  const filas = await prisma.apiKey.findMany({
+    where: { userId },
+    include: { scopes: { select: { scope: true } } },
+    orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  return filas.map((k) => ({
+    id: k.id,
+    name: k.name,
+    environment: k.environment,
+    prefix: k.prefix,
+    lastFour: k.lastFour,
+    scopes: k.scopes.map((s) => s.scope),
+    rateLimitPerMinute: k.rateLimitPerMinute,
+    createdAt: k.createdAt.toISOString(),
+    expiresAt: k.expiresAt?.toISOString() ?? null,
+    revokedAt: k.revokedAt?.toISOString() ?? null,
+    lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
+    /*
+     * `usage_count` es BIGINT y Prisma lo devuelve como `bigint` de JavaScript,
+     * que `JSON.stringify` NO sabe serializar: lanza «Do not know how to
+     * serialize a BigInt» y el endpoint entero responde 500.
+     *
+     * No es un caso raro que aparecerá en producción con el tiempo: pasa con
+     * CUALQUIER valor, incluido el 0 de una key recién creada.
+     */
+    usageCount: Number(k.usageCount),
+  }));
+}
+
+/**
+ * Últimas peticiones hechas con una key.
+ *
+ * El `userId` no se usa para filtrar el log —`api_request_logs` no tiene clave
+ * foránea a `api_keys`, a propósito, porque la tabla se particiona— sino para
+ * comprobar ANTES que la key es de quien pregunta. Sin ese paso, pasar un uuid
+ * ajeno enseñaría por dónde se mueve la integración de otro cliente: sus rutas,
+ * sus horarios y su volumen.
+ */
+export async function usosDeApiKey(
+  userId: string,
+  apiKeyId: string,
+  limite = 20,
+): Promise<ApiKeyUsageRow[]> {
+  const suya = await prisma.apiKey.findFirst({
+    where: { id: apiKeyId, userId },
+    select: { id: true },
+  });
+  if (!suya) throw new ApiKeyNoEncontrada(apiKeyId);
+
+  const filas = await prisma.apiRequestLog.findMany({
+    where: { apiKeyId },
+    orderBy: { createdAt: 'desc' },
+    take: Math.min(Math.max(limite, 1), 100),
+    select: {
+      method: true,
+      path: true,
+      statusCode: true,
+      durationMs: true,
+      cacheHit: true,
+      createdAt: true,
+    },
+  });
+
+  return filas.map((f) => ({
+    method: f.method,
+    path: f.path,
+    statusCode: f.statusCode,
+    durationMs: f.durationMs,
+    cacheHit: f.cacheHit,
+    createdAt: f.createdAt.toISOString(),
+  }));
 }

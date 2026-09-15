@@ -89,7 +89,7 @@ beforeAll(async () => {
   const revocada = await issueApiKey({ userId, name: 'revocada', scopes: ['INVENTORY_READ'] });
   tokenRevocado = revocada.plaintext;
   ids.revocada = revocada.id;
-  await revokeApiKey(revocada.id, userId, 'test');
+  await revokeApiKey({ apiKeyId: revocada.id, actorId: userId, duenoEsperado: userId, reason: 'test' });
 
   const expirada = await issueApiKey({
     userId,
