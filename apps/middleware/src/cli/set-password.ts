@@ -17,6 +17,7 @@
 import { createInterface } from 'node:readline';
 import { stdin, stdout } from 'node:process';
 import { prisma } from '../config/prisma.js';
+import { esperarAuditoriaPendiente, installAuditSinks } from '../services/audit.service.js';
 import { normalizarEmail } from '../auth/email.js';
 import { evaluarFortaleza, hashPassword } from '../auth/password.js';
 import { cerrarTodasLasSesiones } from '../services/auth.service.js';
@@ -42,6 +43,9 @@ function preguntarOculto(prompt: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  // Sin esto, `recordAudit` escribe en el vacio: los sinks viven en
+  // `createApp()`, que un CLI no llama. Ver `esperarAuditoriaPendiente`.
+  installAuditSinks();
   const emailArg = process.argv[2];
   if (!emailArg) {
     /*
@@ -129,8 +133,10 @@ async function main(): Promise<void> {
   });
 
   console.log(`\n  Contraseña establecida.`);
-  if (cerradas > 0) console.log(`  ${cerradas} ${cerradas === 1 ? 'sesión cerrada' : 'sesiones cerradas'}.`);
+  if (cerradas > 0)
+    console.log(`  ${cerradas} ${cerradas === 1 ? 'sesión cerrada' : 'sesiones cerradas'}.`);
   console.log('');
+  await esperarAuditoriaPendiente();
   await prisma.$disconnect();
 }
 

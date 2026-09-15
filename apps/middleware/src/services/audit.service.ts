@@ -36,6 +36,11 @@ export type AuditAction =
   /// `sync.partners` porque no es lo mismo copiar un cliente que conceder
   /// acceso a la facturación de una cartera entera.
   | 'sync.vendedores'
+  /// Una cuenta se apaga porque Odoo dice que esa persona está de baja (#89).
+  /// Va aparte de `user.role_changed` porque no es un cambio de permisos: es
+  /// retirar el acceso entero, y es lo primero que se mira cuando alguien
+  /// pregunta por qué no puede entrar.
+  | 'user.desactivado'
   | 'user.invitado'
   | 'user.invitacion_aceptada';
 
@@ -132,12 +137,44 @@ let dbSinkInstalado = false;
  * evento se pierde. Por eso el sink de log sigue instalado en paralelo — son dos
  * destinos independientes, y que fallen a la vez es mucho menos probable.
  */
+/**
+ * Escrituras en vuelo, para poder esperarlas antes de salir.
+ *
+ * Ver `esperarAuditoriaPendiente()`. En el servidor no hace falta —el proceso
+ * sigue vivo— pero en un CLI sí: sin esto, cada INSERT se corta al llegar el
+ * `$disconnect()` de la línea siguiente.
+ */
+const enVuelo = new Set<Promise<unknown>>();
+
+/**
+ * Espera a que terminen los INSERT de auditoría pendientes.
+ *
+ * Lo llama todo proceso que se va a morir enseguida, es decir los CLI. No falla
+ * nunca: los errores los grita el propio sink por stderr.
+ *
+ * Hizo falta porque la auditoría de los CLI se perdía ENTERA, en dos pasos: los
+ * sinks solo se instalaban dentro de `createApp()` —que un CLI no llama— y, una
+ * vez instalados, el `void` del INSERT dejaba la escritura a medias cuando el
+ * proceso cerraba la conexión. Se descubrió al comprobar el rastro de #89 y
+ * encontrar la tabla vacía; mirando hacia atrás, las 19 altas de vendedor de #81
+ * tampoco habían quedado registradas.
+ */
+export async function esperarAuditoriaPendiente(): Promise<void> {
+  await Promise.allSettled([...enVuelo]);
+}
+
+/** Instala los dos sinks. Lo llaman el servidor y cada CLI. */
+export function installAuditSinks(): void {
+  installLogAuditSink();
+  installDbAuditSink();
+}
+
 export function installDbAuditSink(): void {
   if (dbSinkInstalado) return;
   dbSinkInstalado = true;
 
   registerAuditSink((e) => {
-    void prisma.auditLog
+    const escritura = prisma.auditLog
       .create({
         data: {
           actorId: e.actorId,
@@ -163,5 +200,10 @@ export function installDbAuditSink(): void {
           }) + '\n',
         );
       });
+
+    // Se registra para poder esperarla, y se descuenta al terminar para que el
+    // conjunto no crezca con cada evento en un proceso de vida larga.
+    enVuelo.add(escritura);
+    void escritura.finally(() => enVuelo.delete(escritura));
   });
 }

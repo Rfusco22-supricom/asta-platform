@@ -14,7 +14,7 @@ import { crearPublicRouter } from './routes/public.js';
 import { crearDescargasRouter } from './routes/descargas.js';
 import { ocultarTokenDeUrl } from './services/enlacesFirmados.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
+import { installAuditSinks } from './services/audit.service.js';
 import { prisma } from './config/prisma.js';
 import { logger } from './utils/logger.js';
 import { exigirEntornoValido } from './config/validarEntorno.js';
@@ -29,10 +29,8 @@ import { env } from './config/env.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 
-
 export function createApp() {
-  installLogAuditSink();
-  installDbAuditSink();
+  installAuditSinks();
 
   const app = express();
 
@@ -216,7 +214,10 @@ export function createApp() {
 }
 
 // Solo arranca al ejecutarse directamente, no al importarse desde un test.
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()!)) {
+if (
+  process.argv[1] &&
+  import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()!)
+) {
   // Lo PRIMERO, antes de abrir el puerto (issue #9). Un API_KEY_PEPPER ausente
   // no debe descubrirse la primera vez que alguien usa una API key: el servidor
   // habría arrancado, parecería sano y fallaría más tarde, que es justo el peor

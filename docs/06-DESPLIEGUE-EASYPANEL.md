@@ -179,6 +179,10 @@ node dist/cli/sync-partners.js --completo
 # la lista de quién tendría acceso y por qué, que es lo que hay que leer antes.
 node dist/cli/sync-vendedores.js
 node dist/cli/sync-vendedores.js --aplicar
+
+# Propagar las bajas de Odoo (#89). Tambien simulacro por defecto.
+node dist/cli/sync-partners.js --bajas
+node dist/cli/sync-partners.js --bajas --aplicar
 ```
 
 **El orden importa**: `sync-vendedores` va DESPUÉS de `sync-partners`. Casi
