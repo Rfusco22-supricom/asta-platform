@@ -42,8 +42,18 @@ export interface IssuedApiKey {
   expiresAt: Date | null;
 }
 
+function hmac(pepper: string, token: string): string {
+  return createHmac('sha256', pepper).update(token).digest('hex');
+}
+
 function hashToken(token: string): string {
-  return createHmac('sha256', env().API_KEY_PEPPER).update(token).digest('hex');
+  return hmac(env().API_KEY_PEPPER, token);
+}
+
+function iguales(a: string, b: string): boolean {
+  const x = Buffer.from(a, 'utf8');
+  const y = Buffer.from(b, 'utf8');
+  return x.length === y.length && timingSafeEqual(x, y);
 }
 
 export async function issueApiKey(params: {
@@ -190,11 +200,35 @@ export async function verifyApiKey(rawToken: string, ip?: string): Promise<Verif
 
   // Se calcula el HMAC aunque la fila no exista, para que el tiempo de respuesta
   // no revele si el prefijo es válido.
-  const candidate = Buffer.from(hashToken(token), 'utf8');
-  const stored = Buffer.from(key?.keyHash ?? '0'.repeat(64), 'utf8');
-  const hashMatches = candidate.length === stored.length && timingSafeEqual(candidate, stored);
+  const stored = key?.keyHash ?? '0'.repeat(64);
+  const conActual = iguales(hashToken(token), stored);
+
+  // Rotación del pepper (#45). Con un pepper anterior configurado se calculan
+  // SIEMPRE los dos HMAC, coincida o no el primero: así el tiempo tampoco dice
+  // con qué pepper está hasheada la key.
+  const anterior = env().API_KEY_PEPPER_ANTERIOR;
+  const conAnterior = anterior !== undefined && iguales(hmac(anterior, token), stored);
+  const hashMatches = conActual || conAnterior;
 
   if (!key) return { ok: false, reason: 'NOT_FOUND' };
+
+  // El token en claro solo existe aquí, en el momento de verificar: es la única
+  // ocasión de pasar la key al pepper actual sin pedirle nada al cliente.
+  // Se hace aunque luego la key resulte revocada o caducada: el secreto ya está
+  // demostrado, y así la ventana de rotación no depende del estado de cada key.
+  if (conAnterior && !conActual) {
+    try {
+      // `keyHash` en el where: si dos peticiones concurrentes migran la misma
+      // key, la segunda no encuentra la fila vieja y no hace nada.
+      await prisma.apiKey.updateMany({
+        where: { id: key.id, keyHash: key.keyHash },
+        data: { keyHash: hashToken(token) },
+      });
+    } catch {
+      // Si falla, la key sigue funcionando con el pepper anterior mientras dure
+      // la ventana, y se reintentará en el próximo uso. No se tumba la petición.
+    }
+  }
   // Prefijo real, secreto equivocado: hacia fuera es indistinguible de una key
   // inexistente, pero el intento iba contra ESTA key y así se registra.
   if (!hashMatches) return { ok: false, reason: 'NOT_FOUND', apiKeyId: key.id };
@@ -415,4 +449,59 @@ export async function keyVigenteParaEnlace(apiKeyId: string, partnerId: number):
   if (key.expiresAt && key.expiresAt < new Date()) return false;
   if (!key.user.isActive || key.user.odooPartnerId !== partnerId) return false;
   return key.scopes.some((s) => s.scope === 'INVOICES_READ');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rotación del pepper (#45)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface KeyPendienteDeRotacion {
+  id: string;
+  name: string;
+  /** `asta_live_<prefix>…<lastFour>`, exactamente como lo muestra «Mis API keys». */
+  identificador: string;
+  creadaEn: Date;
+  ultimoUso: Date | null;
+  email: string;
+  nombre: string;
+}
+
+/**
+ * Keys activas que todavía no han pasado al pepper actual.
+ *
+ * Una key migra en su primer uso con éxito tras la rotación (`verifyApiKey`).
+ * Así que siguen pendientes las que ya existían al rotar y no se han usado
+ * desde entonces. Son las que dejarán de funcionar al quitar
+ * `API_KEY_PEPPER_ANTERIOR`, y a sus dueños —solo a ellos— hay que avisar.
+ *
+ * No hace falta una columna con la versión del pepper: basta con la fecha en que
+ * se desplegó la rotación, que el runbook pide anotar.
+ *
+ * Puede dar algún falso positivo, nunca un falso negativo que importe: una key
+ * que migró pero cuyo uso se rechazó después (por ejemplo, desde una IP no
+ * permitida) no actualiza `last_used_at` y sale como pendiente. Avisar de más a
+ * ese cliente no rompe nada.
+ */
+export async function keysPendientesDeRotacion(desde: Date): Promise<KeyPendienteDeRotacion[]> {
+  const ahora = new Date();
+  const filas = await prisma.apiKey.findMany({
+    where: {
+      revokedAt: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: ahora } }],
+      createdAt: { lt: desde },
+      AND: [{ OR: [{ lastUsedAt: null }, { lastUsedAt: { lt: desde } }] }],
+    },
+    include: { user: { select: { email: true, fullName: true } } },
+    orderBy: [{ user: { email: 'asc' } }, { createdAt: 'asc' }],
+  });
+
+  return filas.map((k) => ({
+    id: k.id,
+    name: k.name,
+    identificador: `asta_${k.environment.toLowerCase()}_${k.prefix}…${k.lastFour}`,
+    creadaEn: k.createdAt,
+    ultimoUso: k.lastUsedAt,
+    email: k.user.email,
+    nombre: k.user.fullName,
+  }));
 }
