@@ -107,6 +107,7 @@ ODOO_PASSWORD=<API KEY NUEVA>
 # Secretos propios. Generar con: openssl rand -base64 48
 JWT_SECRET=<48 bytes al azar>
 API_KEY_PEPPER=<48 bytes al azar>
+# API_KEY_PEPPER_ANTERIOR solo durante una rotación: docs/08-ROTACION-PEPPER.md
 
 # De donde acepta peticiones el panel.
 WEB_APP_ORIGIN=https://<dominio-del-panel>

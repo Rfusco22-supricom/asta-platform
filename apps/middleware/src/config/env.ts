@@ -29,9 +29,32 @@ export const envSchema = z.object({
   /**
    * Pepper del HMAC de las API keys. Vive SOLO aquí, nunca en la base: si se
    * filtra la tabla `api_keys`, los hashes sin el pepper no permiten verificar
-   * ni un token. Rotarlo invalida todas las keys emitidas.
+   * ni un token. De él se deriva también la clave de los enlaces de PDF (#32).
+   *
+   * Rotarlo NO invalida las keys si se hace con `API_KEY_PEPPER_ANTERIOR`: ver
+   * docs/08-ROTACION-PEPPER.md (#45).
    */
   API_KEY_PEPPER: z.string().min(32),
+
+  /**
+   * El pepper que se está retirando, SOLO durante una rotación (#45).
+   *
+   * Mientras está puesto, una key cuyo hash se calculó con el pepper anterior se
+   * sigue aceptando, y en ese mismo uso se vuelve a calcular con el actual. Las
+   * keys que se usan en la ventana migran solas; al quitarla, las que no se
+   * usaron dejan de funcionar.
+   *
+   * Los enlaces de PDF NO lo aceptan: se firman y se verifican solo con el
+   * actual, así que rotar corta los que haya en vuelo. Es a propósito: si se
+   * rota porque el pepper se filtró, lo que hay que cerrar de inmediato es la
+   * posibilidad de firmar enlaces.
+   */
+  API_KEY_PEPPER_ANTERIOR: z.preprocess(
+    // Vacía cuenta como no puesta: `.env.example` la trae así, y un `.env`
+    // copiado de él no puede impedir que el servidor arranque.
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().min(32).optional(),
+  ),
 
   /**
    * Origen del panel para CORS. La API pública se consume sin navegador.
@@ -68,6 +91,16 @@ export const envSchema = z.object({
    * IPs/CIDR separada por comas, o un número de saltos.
    */
   TRUSTED_PROXIES: z.string().default('loopback'),
+}).superRefine((e, ctx) => {
+  // Poner el mismo valor en las dos es el error típico al copiar de un sitio a
+  // otro durante la rotación: parecería que se rotó y no se rotó nada.
+  if (e.API_KEY_PEPPER_ANTERIOR !== undefined && e.API_KEY_PEPPER_ANTERIOR === e.API_KEY_PEPPER) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['API_KEY_PEPPER_ANTERIOR'],
+      message: 'es igual a API_KEY_PEPPER: la rotación no está cambiando nada',
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
