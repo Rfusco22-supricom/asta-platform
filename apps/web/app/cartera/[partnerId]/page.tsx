@@ -2,8 +2,16 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
-import { requireSession, clearSession } from '@/lib/session';
-import { getClientInvoicing, getClientProfile, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { requireSession } from '@/lib/session';
+import { Marco } from '@/components/Marco';
+import {
+  getClientInvoicing,
+  getClientProfile,
+  getDuplicados,
+  ApiError,
+  esRedireccion,
+  ContractError,
+} from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
 import { GraficaMensual } from './GraficaMensual';
 import { Perfil } from './Perfil';
@@ -45,6 +53,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   if (!Number.isInteger(partnerId) || partnerId <= 0) notFound();
 
   let datos;
+  let duplicados: Awaited<ReturnType<typeof getDuplicados>> | null = null;
   let perfil = null;
   try {
     // En paralelo: son dos endpoints independientes y encadenarlos duplicaria
@@ -53,7 +62,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     // El perfil se degrada solo: si falla, la ficha sigue mostrando la
     // facturacion, que es lo esencial. Perder el top de productos no justifica
     // dejar al vendedor sin la pantalla entera.
-    const [inv, prof] = await Promise.all([
+    const [inv, prof, dup] = await Promise.all([
       getClientInvoicing(sesion.accessToken, partnerId, {
         serieMensual: true,
         desde,
@@ -61,9 +70,13 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         incluirNotasDeCredito: nc === '1',
       }),
       getClientProfile(sesion.accessToken, partnerId).catch(() => null),
+      // Se degrada solo, igual que el perfil: el aviso de duplicados es
+      // importante, pero no vale dejar sin ficha a nadie si Odoo tarda.
+      getDuplicados(sesion.accessToken, partnerId).catch(() => null),
     ]);
     datos = inv;
     perfil = prof;
+    duplicados = dup;
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
     // el usuario ve "no se pudo cargar" en vez de ir al login.
@@ -77,7 +90,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     const esContrato = error instanceof ContractError;
 
     return (
-      <Marco nombre={sesion.usuario.nombre}>
+      <Marco usuario={sesion.usuario} titulo="Cliente">
         <div className="notice error">
           <h2>
             {esPermiso
@@ -101,7 +114,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   const hayFiltro = Boolean(desde || hasta || nc === '1');
 
   return (
-    <Marco nombre={sesion.usuario.nombre}>
+    <Marco usuario={sesion.usuario} titulo={nombre}>
       <div className="page-head">
         <div className="crumb">
           <Link href="/cartera">Mi cartera</Link> <span>/</span> {nombre}
@@ -124,6 +137,62 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           )}
         </p>
       </div>
+
+      {/*
+        ── El número de esta ficha puede estar incompleto (#50) ──────────────
+
+        El 34,5 % de lo facturado en la instancia está repartido entre registros
+        duplicados del mismo cliente. Los totales de abajo son EXACTOS para este
+        registro y aun así un retrato falso del cliente cuando hay hermanos.
+
+        Va arriba del todo y antes de las cifras a propósito: un aviso debajo de
+        los números llega tarde: para entonces ya se ha leído la cifra y se ha
+        creído.
+
+        Solo aparece si hay hermanos CON facturación. De los 272 grupos
+        duplicados, 133 no distorsionan nada y avisar de ellos sería ruido en
+        media cartera.
+      */}
+      {duplicados && duplicados.hermanos.length > 0 && (
+        <div className="notice" style={{ marginBottom: 18 }}>
+          <h2>
+            Este cliente tiene {duplicados.hermanos.length}{' '}
+            {duplicados.hermanos.length === 1 ? 'registro más' : 'registros más'} en Odoo
+          </h2>
+          <p>
+            Lo que ves aquí es <strong>{money(duplicados.esteRegistro)}</strong> de{' '}
+            <strong>{money(duplicados.total)}</strong> facturados al cliente real. El resto
+            está en:
+          </p>
+          <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13.5 }}>
+            {duplicados.hermanos.map((h) => (
+              <li key={h.partnerId} style={{ marginBottom: 4 }}>
+                <strong>{money(h.facturado)}</strong> en {h.facturas}{' '}
+                {h.facturas === 1 ? 'factura' : 'facturas'}
+                {h.vendedorNombre && <> · cartera de {h.vendedorNombre}</>}
+                {ODOO_URL && (
+                  <>
+                    {' · '}
+                    <a
+                      className="enlace-accion"
+                      href={`${ODOO_URL}/web#id=${h.partnerId}&model=res.partner&view_type=form`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ver en Odoo
+                    </a>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-3)' }}>
+            Se detectan por {duplicados.hermanos[0].motivo === 'rif' ? 'RIF' : 'nombre'} idéntico.
+            Unirlos se hace en Odoo (Contactos → Acción → Fusionar), y mueve la facturación de
+            una cartera a otra: no es una decisión del panel.
+          </p>
+        </div>
+      )}
 
       {/* ── Filtros ────────────────────────────────────────────────────────── */}
       <form className="filtros" method="get">
@@ -257,39 +326,3 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   );
 }
 
-async function salir() {
-  'use server';
-  await clearSession();
-  redirect('/login');
-}
-
-function Marco({ nombre, children }: { nombre: string; children: React.ReactNode }) {
-  return (
-    <>
-      <header className="topbar">
-        <div className="brand">
-          <Link href="/cartera" style={{ color: 'inherit' }}>
-            ASTA
-          </Link>
-          <span>Panel de vendedores</span>
-        </div>
-        <div className="topbar-right">
-          <span className="who">
-            <strong>{nombre}</strong>
-          </span>
-          {/* La pantalla de sesiones no sirve de nada si hay que saberse la URL:
-              quien sospecha de un acceso ajeno tiene que encontrarla mirando. */}
-          <Link href="/cuenta/sesiones" className="btn-link">
-            Sesiones
-          </Link>
-          <form action={salir}>
-            <button type="submit" className="btn-link">
-              Salir
-            </button>
-          </form>
-        </div>
-      </header>
-      <main className="shell">{children}</main>
-    </>
-  );
-}

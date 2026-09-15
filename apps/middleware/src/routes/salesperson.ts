@@ -9,6 +9,7 @@ import {
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
+import { hermanosDe } from '../services/hermanos.service.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -31,6 +32,25 @@ salespersonRouter.get(
   '/clients/:partnerId/invoicing',
   autorizar('cliente.ver'),
   getClientInvoicing,
+);
+
+/**
+ * Otros registros del MISMO cliente (#50).
+ *
+ * Va con `cliente.perfil.ver` —ámbito `partner-propio`— así que `autorizar` ya
+ * comprobó que el cliente que se mira es de quien pregunta. Lo que se revela de
+ * los hermanos es un total, nunca sus facturas: ver la nota del servicio.
+ */
+salespersonRouter.get(
+  '/clients/:partnerId/duplicados',
+  autorizar('cliente.perfil.ver'),
+  async (req, res, next) => {
+    try {
+      res.json({ data: await hermanosDe(Number(req.params.partnerId)) });
+    } catch (error) {
+      next(error);
+    }
+  },
 );
 
 salespersonRouter.get(

@@ -7,7 +7,7 @@ import {
   resumir,
   rifUtilizable,
   type Registro,
-} from './duplicados.js';
+} from '../services/duplicados.js';
 
 /**
  * Detección de clientes duplicados (#50).

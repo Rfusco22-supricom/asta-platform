@@ -2,7 +2,7 @@
 import '../apps/middleware/src/config/dotenv.js';
 import { writeFileSync } from 'node:fs';
 import { searchRead, readGroup } from '../apps/middleware/src/odoo/client.js';
-import { agrupar, gruposParaCubrir, resumir, type Grupo, type Registro } from './lib/duplicados.js';
+import { agrupar, gruposParaCubrir, resumir, type Grupo, type Registro } from '../apps/middleware/src/services/duplicados.js';
 
 /**
  * `pnpm analizar:duplicados` — la lista de fusiones que de verdad importan (#50).

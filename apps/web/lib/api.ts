@@ -11,6 +11,8 @@ import {
   apiKeySummarySchema,
   agentesRespuestaSchema,
   astaRespuestaSchema,
+  hermanosRespuestaSchema,
+  type Hermano,
   type OportunidadAsta,
   type Agente,
   type ApiKeySummary,
@@ -389,3 +391,21 @@ async function pedirAsta(ruta: string, accessToken: string): Promise<Asta> {
 export const getAstaEmpresa = (accessToken: string) => pedirAsta('/api/v1/admin/asta', accessToken);
 export const getAstaCartera = (accessToken: string) =>
   pedirAsta('/api/v1/salesperson/asta', accessToken);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Duplicados {
+  esteRegistro: number;
+  total: number;
+  hermanos: Hermano[];
+}
+
+/** Otros registros del mismo cliente en Odoo (#50). */
+export async function getDuplicados(accessToken: string, partnerId: number): Promise<Duplicados> {
+  const r = await request(
+    `/api/v1/salesperson/clients/${partnerId}/duplicados`,
+    hermanosRespuestaSchema,
+    accessToken,
+  );
+  return r.data;
+}
