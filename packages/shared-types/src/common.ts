@@ -46,6 +46,14 @@ export const errorCodeSchema = z.enum([
   // Conflicto
   'CONFLICT',
   'IDEMPOTENCY_KEY_REUSED',
+  /**
+   * El cliente no tiene un almacén desde el que se le venda (#30).
+   *
+   * No es NOT_FOUND —el catálogo existe— ni un catálogo entero en "agotado",
+   * que sería una respuesta verosímil y falsa. Es que a esa cuenta todavía no
+   * se le puede decir nada cierto sobre existencias.
+   */
+  'INVENTORY_UNAVAILABLE',
 
   // Límites
   'RATE_LIMITED',
@@ -94,6 +102,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
 
   CONFLICT: 409,
   IDEMPOTENCY_KEY_REUSED: 409,
+  INVENTORY_UNAVAILABLE: 409,
 
   RATE_LIMITED: 429,
 
