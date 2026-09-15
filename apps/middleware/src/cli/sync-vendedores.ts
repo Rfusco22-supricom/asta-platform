@@ -22,11 +22,15 @@
  */
 import { sincronizarVendedores } from '../services/vendedores.service.js';
 import { prisma } from '../config/prisma.js';
+import { esperarAuditoriaPendiente, installAuditSinks } from '../services/audit.service.js';
 
 const n = (x: number) => String(x).padStart(5);
 const bs = (x: number) => x.toLocaleString('es-VE', { maximumFractionDigits: 0 }).padStart(12);
 
 async function main(): Promise<void> {
+  // Sin esto, `recordAudit` escribe en el vacio: los sinks viven en
+  // `createApp()`, que un CLI no llama. Ver `esperarAuditoriaPendiente`.
+  installAuditSinks();
   const aplicar = process.argv.includes('--aplicar');
 
   console.log(
@@ -142,6 +146,7 @@ async function main(): Promise<void> {
   }
 
   console.log('');
+  await esperarAuditoriaPendiente();
   await prisma.$disconnect();
 }
 

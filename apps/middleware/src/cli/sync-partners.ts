@@ -6,6 +6,8 @@
  *   pnpm sync:partners             incremental (solo lo que cambió)
  *   pnpm sync:partners --completo  relee TODO, ignorando la marca de agua
  *   pnpm sync:partners --huerfanos revisa qué usuarios perdieron su partner
+ *   pnpm sync:partners --bajas      quién está de baja en Odoo (simulacro)
+ *   pnpm sync:partners --bajas --aplicar   lo aplica
  *
  * Dentro del contenedor:
  *
@@ -27,17 +29,83 @@
  * con el contenedor ya construido.
  */
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
+import { desactivarBajas } from '../services/bajas.service.js';
 import { prisma } from '../config/prisma.js';
+import { esperarAuditoriaPendiente, installAuditSinks } from '../services/audit.service.js';
 
 const n = (x: number) => String(x).padStart(5);
 
 async function main(): Promise<void> {
+  // Sin esto, `recordAudit` escribe en el vacio: los sinks viven en
+  // `createApp()`, que un CLI no llama. Ver `esperarAuditoriaPendiente`.
+  installAuditSinks();
   const completo = process.argv.includes('--completo');
   const soloHuerfanos = process.argv.includes('--huerfanos');
+  const soloBajas = process.argv.includes('--bajas');
+
+  if (soloBajas) {
+    /*
+     * Propaga al panel las bajas hechas en Odoo (#89).
+     *
+     * SIMULACRO por defecto, como el alta de vendedores, y por lo mismo: apagar
+     * una cuenta no se ve. La persona cree que se le olvidó la contraseña, y el
+     * error solo sale a la luz cuando se queja.
+     */
+    const aplicar = process.argv.includes('--aplicar');
+    const r = await desactivarBajas({ aplicar });
+
+    console.log(
+      `\n  Bajas desde Odoo${aplicar ? ' — APLICANDO' : ' — SIMULACRO (nada se escribe)'}\n`,
+    );
+    console.log(`  ${n(r.revisadas)}  cuentas activas revisadas`);
+    console.log(`  ${n(r.bajas.length)}  ${aplicar ? 'desactivadas' : 'se desactivarían'}`);
+    console.log(`  ${n(r.sinRespuesta.length)}  sin respuesta de Odoo (NO se tocan)`);
+    console.log(`  ${n(r.protegidos.length)}  protegidas (SUPERADMIN)`);
+    console.log(`  duración: ${(r.duracionMs / 1000).toFixed(1)} s`);
+
+    if (r.abortado) {
+      console.log(`\n  ABORTADO: ${r.abortado}`);
+      console.log('  Son demasiadas de golpe para ser bajas de verdad. Casi seguro es un');
+      console.log('  problema de datos, no gente que se haya ido. Revisa la lista.');
+    }
+
+    for (const b of r.bajas) {
+      console.log(
+        `      ${b.nombre.trim().slice(0, 30).padEnd(30)} ${b.email.padEnd(36)} ${b.motivo}`,
+      );
+    }
+
+    if (r.protegidos.length > 0) {
+      console.log('\n  SUPERADMIN de baja en Odoo — NO se desactivan solos:');
+      for (const p of r.protegidos) console.log(`      ${p.email}  ${p.detalle}`);
+    }
+
+    /*
+     * Los «sin respuesta» no son ruido.
+     *
+     * Son cuentas de las que Odoo no dijo nada, ni que sí ni que no. Si son
+     * muchas, esta pasada no ha comprobado casi nada, y el cero de arriba NO
+     * significa que no haya bajas: significa que no se sabe.
+     */
+    if (r.sinRespuesta.length > 0) {
+      console.log(`\n  Odoo no devolvió ${r.sinRespuesta.length} registros. Muestra:`);
+      for (const s of r.sinRespuesta.slice(0, 5)) console.log(`      ${s.email}  ${s.detalle}`);
+    }
+
+    if (!aplicar && r.bajas.length > 0 && !r.abortado) {
+      console.log('\n  Para aplicarlo:  node dist/cli/sync-partners.js --bajas --aplicar');
+    }
+
+    console.log('');
+    await esperarAuditoriaPendiente();
+    await prisma.$disconnect();
+    return;
+  }
 
   if (soloHuerfanos) {
     const r = await marcarHuerfanos();
     console.log(`\n  ${r.revisados} usuarios revisados · ${r.huerfanos} huérfanos marcados\n`);
+    await esperarAuditoriaPendiente();
     await prisma.$disconnect();
     return;
   }
@@ -94,6 +162,7 @@ async function main(): Promise<void> {
   }
 
   console.log('');
+  await esperarAuditoriaPendiente();
   await prisma.$disconnect();
 }
 
