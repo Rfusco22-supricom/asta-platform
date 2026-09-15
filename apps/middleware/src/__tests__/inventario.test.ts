@@ -3,6 +3,7 @@ import type { Server } from 'node:http';
 import { createApp } from '../server.js';
 import { executeKw, readGroup, searchRead } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
+import { apiErrorSchema } from '@asta/shared-types';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { estadoDeStock, vaciarCachesInventario } from '../services/inventory.service.js';
 
@@ -371,6 +372,16 @@ describe('#30 · Rechazos', () => {
     expect(r.status).toBe(409);
     expect(r.body?.error?.code).toBe('INVENTORY_UNAVAILABLE');
     expect(r.body?.data).toBeUndefined();
+
+    /*
+     * Contra el SCHEMA, no solo contra la cadena.
+     *
+     * La línea de arriba pasaba mientras `INVENTORY_UNAVAILABLE` no estaba en
+     * `errorCodeSchema`: comprobaba que el controlador escribe lo que el
+     * controlador escribe. Esta comprueba que el cuerpo es algo que un cliente
+     * puede parsear con el contrato publicado, que es lo que importa.
+     */
+    expect(apiErrorSchema.safeParse(r.body).success).toBe(true);
   });
 
   it('sin el scope INVENTORY_READ → 403', async () => {

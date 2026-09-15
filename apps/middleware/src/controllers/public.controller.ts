@@ -6,7 +6,11 @@ import {
   invoiceExists,
   listPartnerInvoices,
 } from '../services/invoicing.service.js';
-import { almacenDelCliente, listarInventario } from '../services/inventory.service.js';
+import {
+  almacenDelCliente,
+  InventarioNoDisponible,
+  listarInventario,
+} from '../services/inventory.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -159,13 +163,9 @@ export async function listarInventarioHandler(
     if (!almacen) {
       // Un catálogo entero en "agotado" sería una respuesta verosímil y falsa.
       req.log?.warn({ partnerId }, 'inventario: el cliente no tiene compañía o su compañía no tiene almacén');
-      res.status(409).json({
-        error: {
-          code: 'INVENTORY_UNAVAILABLE',
-          message: 'La cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
-        },
-      });
-      return;
+      // Se LANZA, no se escribe aquí: el status y la forma los pone
+      // `errorHandler` desde `HTTP_STATUS_BY_ERROR`. Ver `InventarioNoDisponible`.
+      throw new InventarioNoDisponible(partnerId);
     }
 
     const { pagina, porPagina } = query.data;

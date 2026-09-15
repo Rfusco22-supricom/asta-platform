@@ -1,4 +1,4 @@
-import type { InventoryQuery, PublicInventoryItem, StockStatus } from '@asta/shared-types';
+import type { ErrorCode, InventoryQuery, PublicInventoryItem, StockStatus } from '@asta/shared-types';
 import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 
@@ -128,6 +128,39 @@ export async function almacenDelCliente(partnerId: number): Promise<AlmacenClien
 
   cacheAlmacen.set(clave, resultado);
   return resultado;
+}
+
+/**
+ * El cliente no tiene un almacén desde el que se le venda.
+ *
+ * ── Por qué es una excepción y no un `res.status(409).json(...)` ─────────────
+ *
+ * Antes el controlador escribía el JSON a mano, y así se coló un código,
+ * `INVENTORY_UNAVAILABLE`, que no estaba en `errorCodeSchema`. Nadie se enteró:
+ * la enumeración es cerrada justo para que el frontend pueda hacer un `switch`
+ * exhaustivo, pero un literal dentro de un `res.json()` no lo mira nadie, ni el
+ * compilador ni el test —que comparaba la cadena, no el schema—. El resultado
+ * era un 409 legítimo que `apiErrorSchema.parse()` rechazaba.
+ *
+ * Lanzándolo, lo sirve `errorHandler`, que saca el status de
+ * `HTTP_STATUS_BY_ERROR` en vez de dejar que cada controlador elija el suyo.
+ *
+ * ── `code: ErrorCode` está anotado a propósito ──────────────────────────────
+ *
+ * Sin la anotación, TypeScript infiere el tipo literal y acepta cualquier
+ * cadena: es lo que dejó pasar el código inexistente. Con ella, inventarse un
+ * código que no esté en la unión no compila.
+ */
+export class InventarioNoDisponible extends Error {
+  readonly status = 409;
+  readonly code: ErrorCode = 'INVENTORY_UNAVAILABLE';
+
+  constructor(readonly partnerId: number) {
+    // Este mensaje SÍ sale al cliente: dice qué falta y a quién preguntarle,
+    // sin mencionar compañías ni almacenes de Odoo.
+    super('La cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.');
+    this.name = 'InventarioNoDisponible';
+  }
 }
 
 export function dominioInventario(
