@@ -45,18 +45,27 @@ Y correr `pnpm check:grants` **aunque nunca se haya aplicado el fichero**: detec
 si alguna versión anterior dejó usuarios con las contraseñas de ejemplo, que están
 publicadas en este repositorio.
 
-### 3. Confirmar el motor de la base
+### 3. El motor NO es el de desarrollo
 
-Desarrollo va sobre **MariaDB 10.4**. EasyPanel puede dar MySQL 8. No es un
-detalle: las diferencias de colación ya causaron un problema real (#12), y el
-particionado de #47 tiene sintaxis que difiere entre los dos.
+Ya está medido (15-sep-2026):
 
-```sql
-SELECT VERSION();
-```
+| | |
+|---|---|
+| desarrollo | MariaDB **10.4** |
+| producción (EasyPanel) | MySQL **9.7.2** |
 
-Si es MySQL 8, hay que correr el simulacro de restauración (`pnpm
-backup:verificar`) contra esa base antes de confiar en los respaldos.
+No son dos versiones del mismo motor. La suite entera de tests corre contra
+MariaDB, así que verde en local no dice nada sobre MySQL 9 (#13).
+
+**Lo que sí está cubierto:** la colación. `001_schema.sql` la declara tabla por
+tabla (`utf8mb4_unicode_ci`, y `utf8mb4_bin` en `app_users.email`), no la hereda
+del servidor, así que el problema de #12 no vuelve por cambiar de motor.
+
+**Lo que NO está comprobado contra MySQL 9:**
+
+- el particionado de `003_partitioning.sql` (#47), cuya sintaxis difiere;
+- el simulacro de restauración (`pnpm backup:verificar`), que nunca ha corrido
+  contra este motor (#48). Hasta que lo haga, no hay respaldo en el que confiar.
 
 ---
 
@@ -174,6 +183,11 @@ corto.
 
 El directorio de trabajo es `/app/apps/middleware`, así que las rutas son:
 
+> **La base que ya está desplegada no necesita este paso, necesita el
+> contrario.** Su esquema se aplicó a mano y le falta el historial de Prisma:
+> antes de cualquier migración nueva hay que baselinearla siguiendo
+> `docs/09-BASELINE-PRISMA.md`. Lo de abajo es para un entorno NUEVO.
+
 ```bash
 # Aplicar el esquema (con credenciales del MIGRADOR, no las de la app)
 DATABASE_URL="mysql://asta_migrador:CLAVE@HOST:3306/asta"   ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
@@ -272,6 +286,10 @@ despliegue, comparar esta fecha con la del último commit que se quería subir.
 middleware es de una imagen anterior a esa pantalla. Mirar `/health` (arriba) y
 reconstruir `asta-middleware`. No hay que tocar la base: los permisos viven en
 el código, no en tablas.
+
+**`migrate deploy` dice «table already exists».** A esa base le falta el
+historial de Prisma: `docs/09-BASELINE-PRISMA.md`. Y si ya abortó a medias, hay
+que resolver la entrada fallida antes de volver a intentarlo.
 
 **El contenedor del middleware reinicia en bucle.** Mirar los primeros renglones
 del log: si faltan variables de entorno, `exigirEntornoValido()` las lista todas
