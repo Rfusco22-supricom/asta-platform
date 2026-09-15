@@ -1,12 +1,7 @@
 // Solo para poner el .env en process.env. No valida nada ni lanza (issue #9).
-import '../apps/middleware/src/config/dotenv.js';
-import { prisma } from '../apps/middleware/src/config/prisma.js';
-import {
-  evaluarReglasDeBase,
-  reglaLatenciaOdoo,
-  reglaSalud,
-  type Alerta,
-} from '../apps/middleware/src/services/alerts.service.js';
+import '../config/dotenv.js';
+import { prisma } from '../config/prisma.js';
+import { evaluarTodo, type Alerta } from '../services/alerts.service.js';
 
 /**
  * `pnpm alertas` — comprueba el estado y avisa (issue #46).
@@ -126,28 +121,18 @@ async function enviarAlWebhook(alertas: Alerta[]): Promise<void> {
 async function main(): Promise<void> {
   const salud = await consultarSalud();
 
-  const alertas: Alerta[] = [];
-  const fallos: string[] = [];
-
-  const deSalud = reglaSalud(salud);
-  if (deSalud) alertas.push(deSalud);
-
-  if (salud.latencia) {
-    const lenta = reglaLatenciaOdoo(salud.latencia);
-    if (lenta) alertas.push(lenta);
-  }
-
   /*
    * Las reglas de base se evalúan SIEMPRE, incluso con el middleware caído.
    *
    * Son dos sistemas distintos: que el servidor no responda no dice nada sobre
    * si el sync está atrasado, y con el middleware caído es cuando más interesa
-   * saber qué más está roto. Si MySQL tampoco responde, `evaluarReglasDeBase`
-   * lo recoge como fallo y se informa abajo.
+   * saber qué más está roto. Si MySQL tampoco responde, se recoge como fallo y
+   * se informa abajo.
+   *
+   * La composición vive en `evaluarTodo` y no aquí: así los tests pueden
+   * comprobar el orden y la combinación sin levantar un servidor ni un cron.
    */
-  const deBase = await evaluarReglasDeBase();
-  alertas.push(...deBase.alertas);
-  fallos.push(...deBase.fallos);
+  const { alertas, fallos } = await evaluarTodo(salud);
 
   // ── Informe ───────────────────────────────────────────────────────────────
   const criticas = alertas.filter((a) => a.severidad === 'critica');
@@ -156,7 +141,20 @@ async function main(): Promise<void> {
   console.log(`\n  ${new Date().toISOString()}  ·  ${MIDDLEWARE_URL}\n`);
 
   if (alertas.length === 0) {
-    console.log(`  ${VERDE}Sin alertas.${FIN}`);
+    /*
+     * «Sin alertas» en verde SOLO si de verdad se pudo mirar todo.
+     *
+     * Con MySQL inalcanzable fallan las siete reglas de base y la pasada termina
+     * sin alertas: un verde ahí, con la lista de fallos debajo, se lee de un
+     * vistazo como que todo va bien. Es la lectura falsa que este comando existe
+     * para evitar, y la tenía él.
+     */
+    console.log(
+      fallos.length === 0
+        ? `  ${VERDE}Sin alertas.${FIN}`
+        : `  ${AMARILLO}Ninguna alerta, pero ${fallos.length} regla(s) no se pudieron evaluar:${FIN}\n` +
+          `  ${AMARILLO}esto NO significa que todo esté bien.${FIN}`,
+    );
     if (salud.latencia?.p95 !== null && salud.latencia?.p95 !== undefined) {
       console.log(
         `  ${GRIS}Odoo p95 ${salud.latencia.p95} ms sobre ${salud.latencia.muestras} llamadas.${FIN}`,
