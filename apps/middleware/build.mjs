@@ -41,7 +41,7 @@ await build({
    * Se descubrió preparando el primer despliegue real, con el contenedor ya
    * construido.
    */
-  entryPoints: ['src/server.ts', 'src/cli/set-password.ts'],
+  entryPoints: ['src/server.ts', 'src/cli/set-password.ts', 'src/cli/sync-partners.ts'],
   outdir: 'dist',
   // Para que `src/cli/set-password.ts` salga en `dist/cli/`, y no en `dist/`.
   outbase: 'src',
