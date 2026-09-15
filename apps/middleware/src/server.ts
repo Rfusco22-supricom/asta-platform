@@ -10,6 +10,8 @@ import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { crearPublicRouter } from './routes/public.js';
+import { crearDescargasRouter } from './routes/descargas.js';
+import { ocultarTokenDeUrl } from './services/enlacesFirmados.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installDbAuditSink, installLogAuditSink } from './services/audit.service.js';
 import { prisma } from './config/prisma.js';
@@ -56,6 +58,14 @@ export function createApp() {
       logger,
       // El health check dispara cada pocos segundos: ahogaría el log.
       autoLogging: { ignore: (req) => req.url === '/health' },
+      // En `/api/v1/descargas` la URL lleva el enlace firmado, que durante
+      // 5 minutos ES la credencial (#32). No puede quedar escrita en el log.
+      serializers: {
+        req: (req: { url?: string }) => {
+          if (req.url) req.url = ocultarTokenDeUrl(req.url);
+          return req;
+        },
+      },
     }),
   );
 
@@ -70,6 +80,7 @@ export function createApp() {
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
   app.use('/api/v1/admin', corsPanel, adminRouter);
   app.use('/api/v1/public', crearPublicRouter());
+  app.use('/api/v1/descargas', crearDescargasRouter());
 
   // ── Health ────────────────────────────────────────────────────────────────
   /**

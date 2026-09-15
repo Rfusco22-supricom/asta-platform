@@ -11,6 +11,8 @@ import {
   InventarioNoDisponible,
   listarInventario,
 } from '../services/inventory.service.js';
+import { buscarPdfDeFactura, PdfNoDisponible } from '../services/invoicePdf.service.js';
+import { firmarEnlace } from '../services/enlacesFirmados.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -92,35 +94,91 @@ export async function verFacturaHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const params = idFacturaSchema.safeParse(req.params);
-    if (!params.success) {
-      res.status(400).json({ error: { code: 'INVALID_INVOICE_ID', message: 'id de factura inválido' } });
-      return;
-    }
-
-    const partnerId = partnerDelToken(req);
-    const factura = await getPartnerInvoice(partnerId, params.data.id);
-
-    if (!factura) {
-      if (await invoiceExists(params.data.id)) {
-        recordAudit({
-          action: 'access.denied.partner',
-          ...auditContext(req),
-          targetType: 'account.move',
-          targetId: String(params.data.id),
-          metadata: {
-            via: 'api_key',
-            apiKeyId: req.identity?.apiKeyId ?? null,
-            partnerDelToken: partnerId,
-            path: req.path,
-          },
-        });
-      }
-      facturaNoEncontrada(res);
-      return;
-    }
-
+    const factura = await facturaDelToken(req, res);
+    if (!factura) return;
     res.json({ data: factura });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * La factura pedida en `:id`, si es del cliente del token. Si no, responde ella
+ * misma —400 o el 404 único— y devuelve `null`.
+ *
+ * La comparten el detalle y el enlace al PDF (#32): el PDF es otra forma de ver
+ * la misma factura, y no puede tener otra comprobación de propiedad distinta.
+ * Dos copias de esta lógica son dos sitios donde una puede quedarse atrás.
+ */
+async function facturaDelToken(req: Request, res: Response) {
+  const params = idFacturaSchema.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: { code: 'INVALID_INVOICE_ID', message: 'id de factura inválido' } });
+    return null;
+  }
+
+  const partnerId = partnerDelToken(req);
+  const factura = await getPartnerInvoice(partnerId, params.data.id);
+
+  if (!factura) {
+    if (await invoiceExists(params.data.id)) {
+      recordAudit({
+        action: 'access.denied.partner',
+        ...auditContext(req),
+        targetType: 'account.move',
+        targetId: String(params.data.id),
+        metadata: {
+          via: 'api_key',
+          apiKeyId: req.identity?.apiKeyId ?? null,
+          partnerDelToken: partnerId,
+          path: req.path,
+        },
+      });
+    }
+    facturaNoEncontrada(res);
+    return null;
+  }
+
+  return factura;
+}
+
+/**
+ * `GET /api/v1/public/invoices/:id/pdf` (#32)
+ *
+ * No devuelve el PDF: devuelve un ENLACE firmado que caduca en 5 minutos. La
+ * descarga no pide API key —puede abrirse en un navegador o reenviarse—, y
+ * vuelve a comprobarlo todo al usarse. Ver `enlacesFirmados.ts` y
+ * `descargas.controller.ts`.
+ */
+export async function enlacePdfFacturaHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const factura = await facturaDelToken(req, res);
+    if (!factura) return;
+
+    const pdf = await buscarPdfDeFactura(factura.id);
+    if (!pdf) throw new PdfNoDisponible(factura.id);
+
+    const apiKeyId = req.identity?.apiKeyId;
+    if (!apiKeyId) throw new Error('enlacePdfFacturaHandler sin apiKeyId: la ruta no pasó por authApiKey()');
+
+    const { token, expira } = firmarEnlace({
+      facturaId: factura.id,
+      adjuntoId: pdf.adjuntoId,
+      partnerId: partnerDelToken(req),
+      apiKeyId,
+    });
+
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      data: {
+        url: `${req.protocol}://${req.get('host')}/api/v1/descargas/facturas/${token}`,
+        expiraEn: new Date(expira * 1000).toISOString(),
+      },
+    });
   } catch (error) {
     next(error);
   }

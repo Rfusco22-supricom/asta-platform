@@ -3,6 +3,7 @@ import { authApiKey, requireScope, scopeToOwnPartner } from '../middleware/apiKe
 import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
 import {
+  enlacePdfFacturaHandler,
   listarFacturasHandler,
   listarInventarioHandler,
   noImplementadoHandler,
@@ -52,6 +53,7 @@ export function crearPublicRouter(): Router {
 
   router.get('/invoices', requireScope('INVOICES_READ'), listarFacturasHandler);
   router.get('/invoices/:id', requireScope('INVOICES_READ'), verFacturaHandler);
+  router.get('/invoices/:id/pdf', requireScope('INVOICES_READ'), enlacePdfFacturaHandler);
 
   router.get('/inventory', requireScope('INVENTORY_READ'), listarInventarioHandler);
   router.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);

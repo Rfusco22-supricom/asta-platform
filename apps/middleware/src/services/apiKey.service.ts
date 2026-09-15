@@ -249,3 +249,33 @@ export async function revokeApiKey(
     }),
   ]);
 }
+
+/**
+ * ¿Sigue valiendo la key con la que se emitió un enlace de descarga? (#32)
+ *
+ * La descarga no lleva la key —la autoriza la firma—, así que sin esta
+ * comprobación revocar una key filtrada no cortaría los enlaces que ya emitió.
+ * Duran 5 minutos, pero son 5 minutos de facturas.
+ *
+ * Mismas condiciones que `verifyApiKey` salvo la lista de IPs: el enlace existe
+ * precisamente para abrirse desde otro sitio —un navegador, contabilidad—. Se
+ * emitió desde una IP permitida, y eso ya lo comprobó `verifyApiKey`.
+ *
+ * Además la key tiene que seguir siendo del mismo cliente y conservar
+ * `INVOICES_READ`: quitarle el scope también corta sus enlaces.
+ */
+export async function keyVigenteParaEnlace(apiKeyId: string, partnerId: number): Promise<boolean> {
+  const key = await prisma.apiKey.findUnique({
+    where: { id: apiKeyId },
+    select: {
+      revokedAt: true,
+      expiresAt: true,
+      user: { select: { isActive: true, odooPartnerId: true } },
+      scopes: { select: { scope: true } },
+    },
+  });
+  if (!key || key.revokedAt) return false;
+  if (key.expiresAt && key.expiresAt < new Date()) return false;
+  if (!key.user.isActive || key.user.odooPartnerId !== partnerId) return false;
+  return key.scopes.some((s) => s.scope === 'INVOICES_READ');
+}
