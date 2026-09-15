@@ -64,11 +64,11 @@ async function filasTras(idPrevio: bigint, cuantas: number) {
   throw new Error(`No llegaron ${cuantas} filas a api_request_logs`);
 }
 
-async function nuevaKey(opciones: { limite?: number; scopes?: Array<'INVOICES_READ' | 'INVENTORY_READ'> } = {}) {
+async function nuevaKey(opciones: { limite?: number; scopes?: Array<'INVOICES_READ' | 'PRICING_READ'> } = {}) {
   const k = await issueApiKey({
     userId,
     name: 'bitacora',
-    scopes: opciones.scopes ?? ['INVOICES_READ', 'INVENTORY_READ'],
+    scopes: opciones.scopes ?? ['INVOICES_READ', 'PRICING_READ'],
     rateLimitPerMinute: opciones.limite ?? 1000,
   });
   keysCreadas.push(k.id);
@@ -108,14 +108,14 @@ afterAll(async () => {
 describe('#29 · Bitácora: una fila por petición', () => {
   it('una petición deja su fila con todo lo que leen las alertas', async () => {
     const previo = await ultimoId();
-    await get('/inventory', buena.plaintext);
+    await get('/pricing', buena.plaintext);
 
     const [f] = await filasTras(previo, 1);
     expect(f).toMatchObject({
       apiKeyId: buena.id,
       odooPartnerId: PARTNER_FICTICIO,
       method: 'GET',
-      path: '/api/v1/public/inventory',
+      path: '/api/v1/public/pricing',
       statusCode: 501,
       errorCode: 'NOT_IMPLEMENTED',
       odooCalls: 0,
@@ -139,13 +139,13 @@ describe('#29 · Bitácora: una fila por petición', () => {
     // gracias a AsyncLocalStorage; aquí se comprueba que no se pierde por el camino.
     const previo = await ultimoId();
     await get('/invoices?porPagina=1', buena.plaintext);
-    await get('/inventory', buena.plaintext);
+    await get('/pricing', buena.plaintext);
 
     // Por ruta y no por posición: los INSERT corren en paralelo tras cada
     // respuesta, y el de /invoices, que tocó Odoo, puede llegar después.
     const filas = await filasTras(previo, 2);
     const conOdoo = filas.find((f) => f.path === '/api/v1/public/invoices');
-    const sinOdoo = filas.find((f) => f.path === '/api/v1/public/inventory');
+    const sinOdoo = filas.find((f) => f.path === '/api/v1/public/pricing');
     expect(conOdoo?.odooCalls).toBeGreaterThanOrEqual(1);
     expect(sinOdoo?.odooCalls).toBe(0);
   });
@@ -153,10 +153,10 @@ describe('#29 · Bitácora: una fila por petición', () => {
   it('registra lo que corta el limitador: el 429, con su key', async () => {
     // Es la entrada de la alerta key-429. Si el 429 no llegara a la tabla, o
     // llegara sin key, la regla no tendría nada que contar.
-    const limitada = await nuevaKey({ limite: 1, scopes: ['INVENTORY_READ'] });
+    const limitada = await nuevaKey({ limite: 1, scopes: ['PRICING_READ'] });
     const previo = await ultimoId();
-    await get('/inventory', limitada.plaintext);
-    expect((await get('/inventory', limitada.plaintext)).status).toBe(429);
+    await get('/pricing', limitada.plaintext);
+    expect((await get('/pricing', limitada.plaintext)).status).toBe(429);
 
     const filas = await filasTras(previo, 2);
     // Por estado y no por posición: el orden de llegada de los INSERT no está

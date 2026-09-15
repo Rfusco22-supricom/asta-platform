@@ -4,6 +4,7 @@ import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
 import {
   listarFacturasHandler,
+  listarInventarioHandler,
   noImplementadoHandler,
   verFacturaHandler,
 } from '../controllers/public.controller.js';
@@ -52,7 +53,7 @@ export function crearPublicRouter(): Router {
   router.get('/invoices', requireScope('INVOICES_READ'), listarFacturasHandler);
   router.get('/invoices/:id', requireScope('INVOICES_READ'), verFacturaHandler);
 
-  router.get('/inventory', requireScope('INVENTORY_READ'), noImplementadoHandler);
+  router.get('/inventory', requireScope('INVENTORY_READ'), listarInventarioHandler);
   router.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);
   router.get('/recommender/compatible', requireScope('RECOMMENDER_READ'), noImplementadoHandler);
 

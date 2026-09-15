@@ -9,7 +9,7 @@ import type { ApiScope } from '@asta/shared-types';
  * Issue #29 — rate limiting de la API pública.
  *
  * Contra el servidor real y MySQL real, pero SIN Odoo: casi todo va contra
- * `/inventory`, que responde 501 sin consultar el ERP. Así los tests son rápidos y
+ * `/pricing`, que responde 501 sin consultar el ERP. Así los tests son rápidos y
  * lo único que se mide es el limitador.
  *
  * Cada test levanta su propia app. Los limitadores se crean por app
@@ -29,7 +29,7 @@ async function key(opciones: { limite: number; scopes?: ApiScope[] }) {
   const k = await issueApiKey({
     userId,
     name: `rate limit ${opciones.limite}`,
-    scopes: opciones.scopes ?? ['INVENTORY_READ'],
+    scopes: opciones.scopes ?? ['PRICING_READ'],
     rateLimitPerMinute: opciones.limite,
   });
   keysCreadas.push(k.id);
@@ -84,7 +84,7 @@ describe('#29 · Límite por API key', () => {
     try {
       const k = await key({ limite: 3 });
       const estados: number[] = [];
-      for (let i = 0; i < 4; i++) estados.push((await app.get('/inventory', k.plaintext)).status);
+      for (let i = 0; i < 4; i++) estados.push((await app.get('/pricing', k.plaintext)).status);
 
       expect(estados).toEqual([501, 501, 501, 429]);
     } finally {
@@ -100,8 +100,8 @@ describe('#29 · Límite por API key', () => {
 
       const deDos: number[] = [];
       const deCinco: number[] = [];
-      for (let i = 0; i < 3; i++) deDos.push((await app.get('/inventory', dos.plaintext)).status);
-      for (let i = 0; i < 6; i++) deCinco.push((await app.get('/inventory', cinco.plaintext)).status);
+      for (let i = 0; i < 3; i++) deDos.push((await app.get('/pricing', dos.plaintext)).status);
+      for (let i = 0; i < 6; i++) deCinco.push((await app.get('/pricing', cinco.plaintext)).status);
 
       expect(deDos).toEqual([501, 501, 429]);
       expect(deCinco).toEqual([501, 501, 501, 501, 501, 429]);
@@ -117,10 +117,10 @@ describe('#29 · Límite por API key', () => {
     try {
       const [abusona, vecina] = await Promise.all([key({ limite: 2 }), key({ limite: 2 })]);
 
-      for (let i = 0; i < 3; i++) await app.get('/inventory', abusona.plaintext);
-      expect((await app.get('/inventory', abusona.plaintext)).status).toBe(429);
+      for (let i = 0; i < 3; i++) await app.get('/pricing', abusona.plaintext);
+      expect((await app.get('/pricing', abusona.plaintext)).status).toBe(429);
 
-      expect((await app.get('/inventory', vecina.plaintext)).status).toBe(501);
+      expect((await app.get('/pricing', vecina.plaintext)).status).toBe(501);
     } finally {
       await app.cerrar();
     }
@@ -132,12 +132,12 @@ describe('#29 · Límite por API key', () => {
     const app = await nuevaApp();
     try {
       const k = await key({ limite: 2 });
-      await app.get('/inventory', k.plaintext);
-      await app.get('/inventory', k.plaintext);
-      expect((await app.get('/inventory', k.plaintext)).status).toBe(429);
+      await app.get('/pricing', k.plaintext);
+      await app.get('/pricing', k.plaintext);
+      expect((await app.get('/pricing', k.plaintext)).status).toBe(429);
 
       await prisma.apiKey.update({ where: { id: k.id }, data: { rateLimitPerMinute: 10 } });
-      expect((await app.get('/inventory', k.plaintext)).status).toBe(501);
+      expect((await app.get('/pricing', k.plaintext)).status).toBe(501);
     } finally {
       await app.cerrar();
     }
@@ -148,13 +148,13 @@ describe('#29 · Límite por API key', () => {
     // partner_id o scopes con una key válida no puede salir gratis.
     const app = await nuevaApp();
     try {
-      const sinScope = await key({ limite: 3, scopes: ['PRICING_READ'] });
+      const sinScope = await key({ limite: 3, scopes: ['INVENTORY_READ'] });
 
       const estados = [
-        (await app.get('/inventory', sinScope.plaintext)).status, // 403: sin INVENTORY_READ
-        (await app.get('/inventory?partner_id=1', sinScope.plaintext)).status, // 400: partner ajeno
-        (await app.get('/inventory', sinScope.plaintext)).status, // 403
-        (await app.get('/inventory', sinScope.plaintext)).status, // ya no llega: 429
+        (await app.get('/pricing', sinScope.plaintext)).status, // 403: sin PRICING_READ
+        (await app.get('/pricing?partner_id=1', sinScope.plaintext)).status, // 400: partner ajeno
+        (await app.get('/pricing', sinScope.plaintext)).status, // 403
+        (await app.get('/pricing', sinScope.plaintext)).status, // ya no llega: 429
       ];
       expect(estados).toEqual([403, 400, 403, 429]);
     } finally {
@@ -168,8 +168,8 @@ describe('#29 · Cabeceras', () => {
     const app = await nuevaApp();
     try {
       const k = await key({ limite: 5 });
-      const primera = await app.get('/inventory', k.plaintext);
-      const segunda = await app.get('/inventory', k.plaintext);
+      const primera = await app.get('/pricing', k.plaintext);
+      const segunda = await app.get('/pricing', k.plaintext);
 
       expect(primera.headers.get('ratelimit-limit')).toBe('5');
       expect(primera.headers.get('ratelimit-remaining')).toBe('4');
@@ -184,8 +184,8 @@ describe('#29 · Cabeceras', () => {
     const app = await nuevaApp();
     try {
       const k = await key({ limite: 1 });
-      await app.get('/inventory', k.plaintext);
-      const r = await app.get('/inventory', k.plaintext);
+      await app.get('/pricing', k.plaintext);
+      const r = await app.get('/pricing', k.plaintext);
 
       expect(r.status).toBe(429);
       expect(Number(r.headers.get('retry-after'))).toBeGreaterThan(0);
@@ -203,7 +203,7 @@ describe('#29 · Antes de autenticar: probar keys no sale gratis', () => {
     const app = await nuevaApp();
     try {
       const estados: number[] = [];
-      for (let i = 0; i < 51; i++) estados.push((await app.get('/inventory', KEY_INVENTADA)).status);
+      for (let i = 0; i < 51; i++) estados.push((await app.get('/pricing', KEY_INVENTADA)).status);
 
       expect(estados.slice(0, 50).every((s) => s === 401)).toBe(true);
       expect(estados[50]).toBe(429);
@@ -219,9 +219,9 @@ describe('#29 · Antes de autenticar: probar keys no sale gratis', () => {
     try {
       const k = await key({ limite: 500 });
       for (let i = 0; i < 60; i++) {
-        expect((await app.get('/inventory', k.plaintext)).status).toBe(501);
+        expect((await app.get('/pricing', k.plaintext)).status).toBe(501);
       }
-      expect((await app.get('/inventory', KEY_INVENTADA)).status).toBe(401);
+      expect((await app.get('/pricing', KEY_INVENTADA)).status).toBe(401);
     } finally {
       await app.cerrar();
     }
@@ -234,9 +234,9 @@ describe('#29 · Antes de autenticar: probar keys no sale gratis', () => {
     const app = await nuevaApp();
     try {
       const buena = await key({ limite: 500 });
-      for (let i = 0; i < 50; i++) await app.get('/inventory', KEY_INVENTADA);
+      for (let i = 0; i < 50; i++) await app.get('/pricing', KEY_INVENTADA);
 
-      expect((await app.get('/inventory', buena.plaintext)).status).toBe(429);
+      expect((await app.get('/pricing', buena.plaintext)).status).toBe(429);
     } finally {
       await app.cerrar();
     }
