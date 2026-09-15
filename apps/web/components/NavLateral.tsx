@@ -48,6 +48,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M22 19v-1.5a4 4 0 0 0-3-3.87M16.5 4.2a4 4 0 0 1 0 7.6" />
         </svg>
       );
+    case 'marca':
+      return (
+        <svg {...comun}>
+          <path d="M4 7.5h16M4 7.5v9a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-9" />
+          <path d="M7.5 4.5h9l3.5 3H4z" />
+          <path d="M10 12h4" />
+        </svg>
+      );
     case 'agentes':
       return (
         <svg {...comun}>

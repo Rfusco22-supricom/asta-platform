@@ -6,6 +6,7 @@ import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.j
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida } from '../services/invitation.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
+import { oportunidadesAsta } from '../services/asta.service.js';
 import { prisma } from '../config/prisma.js';
 
 /**
@@ -133,6 +134,25 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * Cuota de ASTA frente a la competencia, en toda la empresa.
+ *
+ * La versión acotada a la propia cartera vive en `/salesperson/asta`, con su
+ * propia acción. No es el mismo endpoint mirando el rol: ver la nota de
+ * `asta.propias.ver` en la matriz.
+ */
+adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => {
+  try {
+    const r = await oportunidadesAsta();
+    res.json({
+      data: r.oportunidades,
+      meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * Estadísticas de los agentes de venta (#96).

@@ -48,6 +48,8 @@ export const accionSchema = z.enum([
   'admin.usuarios.gestionar',
   'admin.reconciliacion.ver',
   'admin.agentes.ver',
+  'admin.asta.ver',
+  'asta.propias.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -116,6 +118,24 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Crear, invitar y desactivar usuarios',
+  },
+  'admin.asta.ver': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver la cuota de ASTA frente a la competencia en toda la empresa',
+  },
+  'asta.propias.ver': {
+    /*
+     * Acción APARTE de la del administrador, no la misma con otro alcance.
+     *
+     * Un solo endpoint que mirara el rol para decidir cuánto enseña es
+     * exactamente donde acaba colándose la cartera de otro: basta un `if` mal
+     * puesto. Con dos acciones y dos rutas, la del vendedor no tiene forma de
+     * devolver la empresa entera porque nunca recibe ese alcance.
+     */
+    roles: ['VENDEDOR'],
+    ambito: 'ninguno',
+    descripcion: 'Ver las oportunidades de ASTA en la propia cartera',
   },
   'admin.agentes.ver': {
     // Solo el SUPERADMIN. Un vendedor NO ve las cifras de los demás: la cartera

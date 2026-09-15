@@ -8,6 +8,7 @@ import {
 } from '../controllers/salesperson.controller.js';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
+import { oportunidadesAsta } from '../services/asta.service.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -52,3 +53,33 @@ salespersonRouter.delete(
   autorizar('cliente.notas.escribir'),
   borrarNotaHandler,
 );
+
+/**
+ * Oportunidades de ASTA en la PROPIA cartera.
+ *
+ * El alcance no es un parámetro: sale de `odooUserId` del token firmado. Un
+ * vendedor sin `res.users` asociado —dato mal sincronizado— recibe 403 en vez de
+ * una consulta sin filtro, que en Odoo devolvería la empresa entera.
+ */
+salespersonRouter.get('/asta', autorizar('asta.propias.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({
+        error: {
+          code: 'ROLE_NOT_ALLOWED',
+          message: 'Tu usuario no tiene cartera asociada en Odoo.',
+        },
+      });
+      return;
+    }
+
+    const r = await oportunidadesAsta({ soloDelVendedor: odooUserId });
+    res.json({
+      data: r.oportunidades,
+      meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
