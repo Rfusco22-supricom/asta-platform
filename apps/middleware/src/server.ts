@@ -12,6 +12,7 @@ import { adminRouter } from './routes/admin.js';
 import { accountRouter } from './routes/account.js';
 import { crearPublicRouter } from './routes/public.js';
 import { crearDescargasRouter } from './routes/descargas.js';
+import { crearDocsRouter } from './routes/docs.js';
 import { ocultarTokenDeUrl } from './services/enlacesFirmados.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { installAuditSinks } from './services/audit.service.js';
@@ -81,6 +82,7 @@ export function createApp() {
   app.use('/api/v1/account', corsPanel, accountRouter);
   app.use('/api/v1/public', crearPublicRouter());
   app.use('/api/v1/descargas', crearDescargasRouter());
+  app.use('/api/v1/docs', crearDocsRouter());
 
   // ── Health ────────────────────────────────────────────────────────────────
   /**

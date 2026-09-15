@@ -1,0 +1,1228 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API pública de Asta",
+    "version": "1.0.0",
+    "description": "## Primeros pasos\n\nLa API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, y las existencias del catálogo. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.\n\n- Entra al panel y abre **Mis API keys**.\n- Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias.\n- Copia la key en ese momento. **Solo se muestra una vez**; si la pierdes, crea otra y revoca la anterior.\n- Haz tu primera petición:\n\n```\ncurl \"https://{servidor}/api/v1/public/invoices?porPagina=5\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\"\n```\n\n## Autenticación\n\nEnvía la key en la cabecera `X-API-Key` en cada petición. También se acepta `Authorization: Bearer <key>`.\n\n- **Nunca** la pongas en la URL: las URLs quedan en logs, historiales y proxies.\n- Guárdala como un secreto del servidor, no en código que llegue a un navegador o a una app.\n- Una key por integración. Si una se filtra, revócala en el panel: deja de funcionar en el acto, y con ella los enlaces de PDF que haya emitido.\n- Si quieres que una key solo funcione desde ciertas IPs, pídelo a soporte. Desde cualquier otra IP responderá `401 INVALID_API_KEY`.\n\n## Límites de peticiones\n\n- **Por key:** 60 peticiones por minuto, salvo que se haya acordado otro límite para tu key.\n- **Autenticación fallida:** tras 50 peticiones con una key inválida desde la misma IP en 15 minutos, esa IP queda bloqueada hasta que termine la ventana, **también para las peticiones con una key válida**. Si tu integración reintenta en bucle con una key revocada, se bloquea a sí misma.\n- **Descargas de PDF:** 30 por minuto por IP.\n\nCada respuesta lleva `RateLimit-Limit`, `RateLimit-Remaining` y `RateLimit-Reset`. Al superar un límite la respuesta es `429 RATE_LIMITED` con `Retry-After` en segundos: espera ese tiempo antes de reintentar.\n\n## Paginación\n\nLos listados se paginan con `pagina` (desde 1) y `porPagina` (por defecto 50, máximo 100). `meta.total` es el total de resultados con esos filtros: sigue pidiendo páginas mientras `pagina × porPagina < total`.\n\nLas existencias pueden venir de una cache de hasta 60 segundos; `meta.desdeCache` lo indica.\n\n## Errores\n\nTodo error responde con la misma forma:\n\n```\n{\n  \"error\": {\n    \"code\": \"INVOICE_NOT_FOUND\",\n    \"message\": \"Factura no encontrada.\"\n  }\n}\n```\n\nPrograma contra `code`, nunca contra `message`, que es texto para personas y puede cambiar.\n\n| Status | `code` | Qué significa |\n|---|---|---|\n| 401 | `MISSING_API_KEY` | Falta la cabecera `X-API-Key`. |\n| 401 | `INVALID_API_KEY` | La key no existe, está revocada o caducada, su usuario está desactivado, o se usa desde una IP no permitida. Por seguridad no se distingue cuál. |\n| 403 | `INSUFFICIENT_SCOPE` | La key no tiene el permiso que exige este endpoint. `required` indica cuál. Crea una key con ese permiso. |\n| 400 | `PARTNER_ID_NOT_ALLOWED` | La petición lleva un `partner_id` que no es el tuyo. No hace falta enviarlo: el cliente sale siempre de la API key. |\n| 400 | `INVALID_QUERY` | Un parámetro no es válido. `message` explica cuál. |\n| 400 | `INVALID_INVOICE_ID` | El identificador de factura no es un número entero positivo. |\n| 404 | `INVOICE_NOT_FOUND` | La factura no existe o no es tuya. Es la misma respuesta en los dos casos, a propósito. |\n| 404 | `INVOICE_PDF_NOT_AVAILABLE` | La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor. |\n| 404 | `LINK_NOT_VALID` | El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo. |\n| 410 | `LINK_EXPIRED` | El enlace de descarga caducó. Pide uno nuevo. |\n| 409 | `INVENTORY_UNAVAILABLE` | Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor. |\n| 429 | `RATE_LIMITED` | Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`. |\n| 400 | `VALIDATION_ERROR` | Los datos enviados no son válidos. `message` explica cuáles. |\n| 503 | `ODOO_UNAVAILABLE` | El sistema de gestión no responde. Reintenta en unos minutos, con espera creciente. |\n| 500 | `INTERNAL_ERROR` | Error inesperado de nuestro lado. Si se repite, contacta con soporte indicando la hora. |\n\nAnte `503` o `500`, reintenta con espera creciente: 1 s, 2 s, 4 s… Ante `4xx`, no reintentes sin cambiar la petición.\n\n## Versiones y cambios\n\nLa versión va en la ruta: `/api/v1`. Dentro de una versión **no** hacemos cambios que rompan tu integración: no quitamos ni renombramos campos, no cambiamos su tipo ni su significado, y no hacemos obligatorio lo que era opcional.\n\nSí podemos, dentro de la misma versión:\n\n- Añadir campos a las respuestas. **Tu código debe ignorar los campos que no conoce.**\n- Añadir valores a `estadoPago`, `stock` y `error.code`, avisando con 30 días. **Ten siempre un caso por defecto**: un `stock` desconocido, trátalo como `agotado`; un `code` desconocido, por su status HTTP.\n- Añadir endpoints y parámetros opcionales.\n\nCuando haga falta un cambio incompatible saldrá `/api/v2`, y `v1` seguirá funcionando al menos 6 meses. Lo avisaremos por correo a los dueños de keys activas y con las cabeceras `Deprecation` y `Sunset` en cada respuesta de la versión que se retira.\n\nLa única excepción son los fallos de seguridad, que se corrigen de inmediato."
+  },
+  "servers": [
+    {
+      "url": "https://{servidor}"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Facturas",
+      "description": "Tus facturas y sus PDF."
+    },
+    {
+      "name": "Inventario",
+      "description": "Existencias del catálogo."
+    }
+  ],
+  "security": [
+    {
+      "ApiKey": []
+    }
+  ],
+  "paths": {
+    "/api/v1/public/invoices": {
+      "get": {
+        "operationId": "listarFacturas",
+        "summary": "Listar tus facturas",
+        "description": "Facturas contabilizadas de tu empresa, de la más reciente a la más antigua. Solo facturas: las notas de crédito no aparecen.\n\nPermiso necesario: `INVOICES_READ`.",
+        "tags": [
+          "Facturas"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "description": "Solo facturas emitidas desde esta fecha, inclusive (`YYYY-MM-DD`).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "description": "Solo facturas emitidas hasta esta fecha, inclusive (`YYYY-MM-DD`).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "estadoPago",
+            "in": "query",
+            "required": false,
+            "description": "Solo facturas en este estado de pago.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "not_paid",
+                "in_payment",
+                "paid",
+                "partial",
+                "reversed",
+                "invoicing_legacy"
+              ]
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "description": "Página, empezando en 1.",
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          {
+            "name": "porPagina",
+            "in": "query",
+            "required": false,
+            "description": "Resultados por página, hasta 100.",
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Una página de facturas.",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Peticiones permitidas en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Peticiones que quedan en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "Segundos hasta que se reinicia la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "description": "Identificador de la factura. Es el que se usa en `/invoices/{id}`."
+                          },
+                          "folio": {
+                            "type": "string",
+                            "description": "Número de la factura tal como aparece impreso."
+                          },
+                          "fecha": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Fecha de emisión (`YYYY-MM-DD`)."
+                          },
+                          "vencimiento": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Fecha de vencimiento (`YYYY-MM-DD`). `null` si no tiene."
+                          },
+                          "estadoPago": {
+                            "type": "string",
+                            "enum": [
+                              "not_paid",
+                              "in_payment",
+                              "paid",
+                              "partial",
+                              "reversed",
+                              "invoicing_legacy",
+                              "desconocido"
+                            ],
+                            "description": "Estado de pago: `not_paid` sin pagar, `partial` pagada en parte, `in_payment` pago registrado pendiente de conciliar, `paid` pagada, `reversed` anulada con nota de crédito, `invoicing_legacy` importada de un sistema anterior, `desconocido` sin estado calculado. Puede recibir valores nuevos: trata cualquier otro como `desconocido`."
+                          },
+                          "total": {
+                            "type": "number",
+                            "description": "Importe total, en la moneda de la compañía que emite la factura."
+                          },
+                          "saldo": {
+                            "type": "number",
+                            "description": "Importe pendiente de pago, en la misma moneda que `total`."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "folio",
+                          "fecha",
+                          "vencimiento",
+                          "estadoPago",
+                          "total",
+                          "saldo"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagina": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "description": "Página devuelta."
+                        },
+                        "porPagina": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "description": "Tamaño de página aplicado."
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total de resultados con estos filtros, en todas las páginas."
+                        }
+                      },
+                      "required": [
+                        "pagina",
+                        "porPagina",
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1001,
+                      "folio": "F-0001",
+                      "fecha": "2026-09-14",
+                      "vencimiento": "2026-10-14",
+                      "estadoPago": "not_paid",
+                      "total": 1250.4,
+                      "saldo": 1250.4
+                    }
+                  ],
+                  "meta": {
+                    "pagina": 1,
+                    "porPagina": 50,
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Códigos posibles: `INVALID_QUERY`, `PARTNER_ID_NOT_ALLOWED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Códigos posibles: `MISSING_API_KEY`, `INVALID_API_KEY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Códigos posibles: `INSUFFICIENT_SCOPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl \"https://{servidor}/api/v1/public/invoices?estadoPago=not_paid&porPagina=20\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\""
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    \"https://{servidor}/api/v1/public/invoices?estadoPago=not_paid&porPagina=20\",\n    headers={\"X-API-Key\": os.environ[\"ASTA_API_KEY\"]},\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    datos = json.load(respuesta)\nprint(datos)"
+          }
+        ]
+      }
+    },
+    "/api/v1/public/invoices/{id}": {
+      "get": {
+        "operationId": "verFactura",
+        "summary": "Ver una factura",
+        "description": "Una factura de tu empresa. Una factura que no existe y una de otra empresa dan la misma respuesta 404.\n\nPermiso necesario: `INVOICES_READ`.",
+        "tags": [
+          "Facturas"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador de la factura, el `id` del listado.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La factura.",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Peticiones permitidas en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Peticiones que quedan en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "Segundos hasta que se reinicia la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "description": "Identificador de la factura. Es el que se usa en `/invoices/{id}`."
+                        },
+                        "folio": {
+                          "type": "string",
+                          "description": "Número de la factura tal como aparece impreso."
+                        },
+                        "fecha": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Fecha de emisión (`YYYY-MM-DD`)."
+                        },
+                        "vencimiento": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Fecha de vencimiento (`YYYY-MM-DD`). `null` si no tiene."
+                        },
+                        "estadoPago": {
+                          "type": "string",
+                          "enum": [
+                            "not_paid",
+                            "in_payment",
+                            "paid",
+                            "partial",
+                            "reversed",
+                            "invoicing_legacy",
+                            "desconocido"
+                          ],
+                          "description": "Estado de pago: `not_paid` sin pagar, `partial` pagada en parte, `in_payment` pago registrado pendiente de conciliar, `paid` pagada, `reversed` anulada con nota de crédito, `invoicing_legacy` importada de un sistema anterior, `desconocido` sin estado calculado. Puede recibir valores nuevos: trata cualquier otro como `desconocido`."
+                        },
+                        "total": {
+                          "type": "number",
+                          "description": "Importe total, en la moneda de la compañía que emite la factura."
+                        },
+                        "saldo": {
+                          "type": "number",
+                          "description": "Importe pendiente de pago, en la misma moneda que `total`."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "folio",
+                        "fecha",
+                        "vencimiento",
+                        "estadoPago",
+                        "total",
+                        "saldo"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                },
+                "example": {
+                  "data": {
+                    "id": 1001,
+                    "folio": "F-0001",
+                    "fecha": "2026-09-14",
+                    "vencimiento": "2026-10-14",
+                    "estadoPago": "paid",
+                    "total": 1250.4,
+                    "saldo": 0
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Códigos posibles: `INVALID_INVOICE_ID`, `PARTNER_ID_NOT_ALLOWED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Códigos posibles: `MISSING_API_KEY`, `INVALID_API_KEY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Códigos posibles: `INSUFFICIENT_SCOPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Códigos posibles: `INVOICE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl \"https://{servidor}/api/v1/public/invoices/1001\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\""
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    \"https://{servidor}/api/v1/public/invoices/1001\",\n    headers={\"X-API-Key\": os.environ[\"ASTA_API_KEY\"]},\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    datos = json.load(respuesta)\nprint(datos)"
+          }
+        ]
+      }
+    },
+    "/api/v1/public/invoices/{id}/pdf": {
+      "get": {
+        "operationId": "enlacePdfFactura",
+        "summary": "Obtener el enlace al PDF de una factura",
+        "description": "Devuelve un enlace de descarga que caduca a los 5 minutos. El enlace NO necesita API key, así que se puede abrir en un navegador o reenviar: trátalo como una credencial mientras dure. Deja de funcionar si la key se revoca o pierde el permiso `INVOICES_READ`.\n\nPermiso necesario: `INVOICES_READ`.",
+        "tags": [
+          "Facturas"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identificador de la factura.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El enlace y su caducidad.",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Peticiones permitidas en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Peticiones que quedan en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "Segundos hasta que se reinicia la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "Enlace de descarga del PDF. No necesita API key: trátalo como una credencial."
+                        },
+                        "expiraEn": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "Momento en que el enlace deja de funcionar (UTC). Hoy, 5 minutos."
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiraEn"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                },
+                "example": {
+                  "data": {
+                    "url": "https://api.ejemplo.com/api/v1/descargas/facturas/eyJmIjoxMDAxfQ.ZmlybWE",
+                    "expiraEn": "2026-09-15T18:05:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Códigos posibles: `INVALID_INVOICE_ID`, `PARTNER_ID_NOT_ALLOWED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Códigos posibles: `MISSING_API_KEY`, `INVALID_API_KEY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Códigos posibles: `INSUFFICIENT_SCOPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Códigos posibles: `INVOICE_NOT_FOUND`, `INVOICE_PDF_NOT_AVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl \"https://{servidor}/api/v1/public/invoices/1001/pdf\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\""
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    \"https://{servidor}/api/v1/public/invoices/1001/pdf\",\n    headers={\"X-API-Key\": os.environ[\"ASTA_API_KEY\"]},\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    datos = json.load(respuesta)\nprint(datos)"
+          }
+        ]
+      }
+    },
+    "/api/v1/descargas/facturas/{token}": {
+      "get": {
+        "operationId": "descargarPdfFactura",
+        "summary": "Descargar el PDF de una factura",
+        "description": "La URL que devuelve `/invoices/{id}/pdf`. No lleva API key: la autoriza el propio enlace. Límite de 30 descargas por minuto por IP.",
+        "tags": [
+          "Facturas"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "description": "Parte final del enlace. No lo construyas: usa la `url` tal cual.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El PDF de la factura.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "application/pdf"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Códigos posibles: `LINK_NOT_VALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Códigos posibles: `LINK_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl \"$URL_DEL_ENLACE\" \\\n  -o factura.pdf"
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    os.environ[\"URL_DEL_ENLACE\"],\n    headers={},\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    with open(\"factura.pdf\", \"wb\") as f:\n        f.write(respuesta.read())"
+          }
+        ]
+      }
+    },
+    "/api/v1/public/inventory": {
+      "get": {
+        "operationId": "listarInventario",
+        "summary": "Consultar existencias",
+        "description": "Productos a la venta con su existencia en el almacén que te vende, descontando lo ya reservado. Se publica como estado, no como cantidad. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).\n\nPermiso necesario: `INVENTORY_READ`.",
+        "tags": [
+          "Inventario"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "query",
+            "required": false,
+            "description": "Referencia exacta del producto.",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Busca en el nombre y la referencia, sin distinguir mayúsculas. Mínimo 2 caracteres.",
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            }
+          },
+          {
+            "name": "printerId",
+            "in": "query",
+            "required": false,
+            "description": "Reservado para filtrar por impresora compatible. Todavía no disponible: responde 400.",
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          {
+            "name": "soloDisponibles",
+            "in": "query",
+            "required": false,
+            "description": "`true` para devolver solo productos con existencia (`disponible` o `bajo`).",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "description": "Página, empezando en 1.",
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
+          {
+            "name": "porPagina",
+            "in": "query",
+            "required": false,
+            "description": "Resultados por página, hasta 100.",
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Una página de productos.",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Peticiones permitidas en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Peticiones que quedan en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "Segundos hasta que se reinicia la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "description": "Identificador del producto."
+                          },
+                          "templateId": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "description": "Identificador del producto base que agrupa sus variantes."
+                          },
+                          "sku": {
+                            "description": "Referencia del producto. `null` si no tiene.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre": {
+                            "type": "string",
+                            "description": "Nombre del producto."
+                          },
+                          "categoria": {
+                            "description": "Categoría del producto. `null` si no tiene.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "stock": {
+                            "type": "string",
+                            "enum": [
+                              "disponible",
+                              "bajo",
+                              "agotado"
+                            ],
+                            "description": "Existencia en el almacén que te vende, descontando lo ya reservado: `disponible`, `bajo` (pocas unidades) o `agotado`. Puede recibir valores nuevos: trata cualquier otro como `agotado`."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "templateId",
+                          "sku",
+                          "nombre",
+                          "categoria",
+                          "stock"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagina": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "description": "Página devuelta."
+                        },
+                        "porPagina": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "description": "Tamaño de página aplicado."
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total de productos con estos filtros, en todas las páginas."
+                        },
+                        "desdeCache": {
+                          "type": "boolean",
+                          "description": "`true` si la respuesta sale de la cache: puede tener hasta 60 segundos de antigüedad."
+                        }
+                      },
+                      "required": [
+                        "pagina",
+                        "porPagina",
+                        "total",
+                        "desdeCache"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 2001,
+                      "templateId": 3001,
+                      "sku": "TON-0001",
+                      "nombre": "TÓNER NEGRO DE EJEMPLO",
+                      "categoria": "CONSUMIBLES",
+                      "stock": "disponible"
+                    }
+                  ],
+                  "meta": {
+                    "pagina": 1,
+                    "porPagina": 50,
+                    "total": 1,
+                    "desdeCache": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Códigos posibles: `INVALID_QUERY`, `PARTNER_ID_NOT_ALLOWED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Códigos posibles: `MISSING_API_KEY`, `INVALID_API_KEY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Códigos posibles: `INSUFFICIENT_SCOPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Códigos posibles: `INVENTORY_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl \"https://{servidor}/api/v1/public/inventory?q=toner&soloDisponibles=true\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\""
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    \"https://{servidor}/api/v1/public/inventory?q=toner&soloDisponibles=true\",\n    headers={\"X-API-Key\": os.environ[\"ASTA_API_KEY\"]},\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    datos = json.load(respuesta)\nprint(datos)"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Tu API key. Se crea en el panel, en «Mis API keys»."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Código del error. Programa contra él, no contra `message`. Pueden aparecer códigos nuevos: trátalos por su status HTTP.",
+                "examples": [
+                  "MISSING_API_KEY",
+                  "INVALID_API_KEY",
+                  "INSUFFICIENT_SCOPE",
+                  "PARTNER_ID_NOT_ALLOWED",
+                  "INVALID_QUERY",
+                  "INVALID_INVOICE_ID",
+                  "INVOICE_NOT_FOUND",
+                  "INVOICE_PDF_NOT_AVAILABLE",
+                  "LINK_NOT_VALID",
+                  "LINK_EXPIRED",
+                  "INVENTORY_UNAVAILABLE",
+                  "RATE_LIMITED",
+                  "VALIDATION_ERROR",
+                  "ODOO_UNAVAILABLE",
+                  "INTERNAL_ERROR"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "required": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "docs": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
+}
