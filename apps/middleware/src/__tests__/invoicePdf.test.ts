@@ -281,6 +281,36 @@ describe('#32 · Un enlace muere con su key', () => {
   });
 });
 
+describe('#32 · La lista de IPs de la key', () => {
+  it('se exige al EMITIR el enlace, pero no al descargar (decisión de #32)', async () => {
+    /*
+     * Decisión, no descuido. Quien restringe una key por IP es el cliente que
+     * integra desde su servidor, y ese servidor pide el enlace para dárselo a
+     * otro: un navegador, contabilidad. Exigir la misma IP en la descarga
+     * inutilizaría el enlace justo para los clientes más cuidadosos.
+     *
+     * Lo que acota el riesgo: el enlace se emite desde una IP permitida, dura
+     * 5 minutos, abre una sola factura y muere si se revoca la key.
+     *
+     * Si esto cambia, que sea cambiando este test a propósito.
+     */
+    const propia = await prepararUsuario(VE.partnerId, 've-ip');
+    await prisma.apiKeyAllowedIp.create({ data: { apiKeyId: propia.keyId, cidr: '127.0.0.1' } });
+
+    const enlace = await get(`/api/v1/public/invoices/${VE.facturaId}/pdf`, propia.key);
+    expect(enlace.status).toBe(200);
+    const url = ruta(enlace.body?.data?.url ?? '');
+
+    // La lista deja de incluir la IP desde la que se descarga: la key ya no
+    // podría emitir, pero el enlace emitido sigue abriendo.
+    await prisma.apiKeyAllowedIp.deleteMany({ where: { apiKeyId: propia.keyId } });
+    await prisma.apiKeyAllowedIp.create({ data: { apiKeyId: propia.keyId, cidr: '203.0.113.7' } });
+
+    expect((await get(`/api/v1/public/invoices/${VE.facturaId}/pdf`, propia.key)).status).toBe(401);
+    expect((await get(url)).status).toBe(200);
+  });
+});
+
 describe('#32 · Rechazos del endpoint del enlace', () => {
   it('sin API key → 401; id no numérico → 400', async () => {
     expect((await get(`/api/v1/public/invoices/${VE.facturaId}/pdf`)).status).toBe(401);
