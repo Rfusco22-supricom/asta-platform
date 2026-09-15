@@ -1,11 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { publicInvoiceListQuerySchema } from '@asta/shared-types';
+import { inventoryQuerySchema, publicInvoiceListQuerySchema } from '@asta/shared-types';
 import {
   getPartnerInvoice,
   invoiceExists,
   listPartnerInvoices,
 } from '../services/invoicing.service.js';
+import { almacenDelCliente, listarInventario } from '../services/inventory.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -116,6 +117,60 @@ export async function verFacturaHandler(
     }
 
     res.json({ data: factura });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * `GET /api/v1/public/inventory` (#30)
+ *
+ * El almacén sale del partner del token (ver `inventory.service.ts`). No hay
+ * parámetro que lo elija, y no debe haberlo.
+ */
+export async function listarInventarioHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const query = inventoryQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: z.prettifyError(query.error) },
+      });
+      return;
+    }
+
+    if (query.data.printerId !== undefined) {
+      // Ignorarlo devolvería el catálogo entero a quien pidió los tóners de una
+      // impresora. Falta la compatibilidad impresora-tóner: #56.
+      res.status(400).json({
+        error: {
+          code: 'INVALID_QUERY',
+          message: 'printerId todavía no está disponible: falta la compatibilidad impresora-tóner.',
+        },
+      });
+      return;
+    }
+
+    const partnerId = partnerDelToken(req);
+    const almacen = await almacenDelCliente(partnerId);
+    if (!almacen) {
+      // Un catálogo entero en "agotado" sería una respuesta verosímil y falsa.
+      req.log?.warn({ partnerId }, 'inventario: el cliente no tiene compañía o su compañía no tiene almacén');
+      res.status(409).json({
+        error: {
+          code: 'INVENTORY_UNAVAILABLE',
+          message: 'La cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
+        },
+      });
+      return;
+    }
+
+    const { pagina, porPagina } = query.data;
+    const { items, total, desdeCache } = await listarInventario(almacen, query.data);
+    res.json({ data: items, meta: { pagina, porPagina, total, desdeCache } });
   } catch (error) {
     next(error);
   }
