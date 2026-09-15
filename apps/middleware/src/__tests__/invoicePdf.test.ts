@@ -67,6 +67,50 @@ function errorDelContrato(body: unknown, code: string) {
 /** El camino relativo de la URL que devuelve la API, para pedirlo a este servidor. */
 const ruta = (url: string) => new URL(url).pathname;
 
+/**
+ * La misma ruta con UN carácter distinto en la firma, garantizando que los bytes
+ * firmados cambian de verdad.
+ *
+ * ── Por qué no vale cambiar el último carácter ───────────────────────────────
+ *
+ * Es lo que hacía antes, y hacía parpadear el test: fallaba una de cada
+ * dieciséis veces, al azar según la firma que tocara.
+ *
+ * Una firma HMAC-SHA256 son 32 bytes = 256 bits, y en base64url ocupa 43
+ * caracteres = 258 bits de capacidad. Al ÚLTIMO carácter le sobran dos bits que
+ * se descartan al decodificar, así que cuatro caracteres distintos producen los
+ * mismos bytes:
+ *
+ *     caracteres finales que decodifican IGUAL: 4 de 64
+ *     termina en 'A' -> se cambia por 'B': MISMA FIRMA
+ *     termina en 'C' -> se cambia por 'A': MISMA FIRMA
+ *     termina en 'E' -> se cambia por 'A': firma distinta
+ *
+ * Cuando la firma acababa en A, B, C o D, el «token alterado» seguía siendo
+ * válido, la descarga respondía 200 y el test fallaba — no por un fallo del
+ * código, sino porque no había alterado nada.
+ *
+ * Un carácter del MEDIO aporta sus seis bits enteros, así que cambiarlo siempre
+ * cambia los bytes. Se comprueba igualmente antes de usarlo: un test de
+ * seguridad que silenciosamente deja de alterar el token es peor que uno que
+ * parpadea, porque ese no avisa.
+ */
+function conFirmaAlterada(url: string): string {
+  const corte = url.lastIndexOf('/') + 1;
+  const [cuerpo, firma] = url.slice(corte).split('.');
+  expect(firma, 'el token debería ser cuerpo.firma').toBeTruthy();
+
+  const pos = Math.floor(firma.length / 2);
+  const otra = firma.slice(0, pos) + (firma[pos] === 'A' ? 'B' : 'A') + firma.slice(pos + 1);
+
+  expect(
+    Buffer.from(otra, 'base64url').equals(Buffer.from(firma, 'base64url')),
+    'la alteración no cambió los bytes de la firma: el test no probaría nada',
+  ).toBe(false);
+
+  return url.slice(0, corte) + cuerpo + '.' + otra;
+}
+
 async function prepararUsuario(partnerId: number, sufijo: string) {
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
   if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
@@ -246,8 +290,9 @@ describe('#32 · Un enlace no sirve para otra cosa', () => {
   it('un token alterado → 404', async () => {
     const enlace = await get(`/api/v1/public/invoices/${VE.facturaId}/pdf`, VE.key);
     const url = ruta(enlace.body?.data?.url ?? '');
-    const ultimo = url.at(-1) === 'A' ? 'B' : 'A';
-    expect((await get(url.slice(0, -1) + ultimo)).status).toBe(404);
+
+    const alterada = conFirmaAlterada(url);
+    expect((await get(alterada)).status).toBe(404);
   });
 
   it('un enlace caducado → 410 LINK_EXPIRED', async () => {
