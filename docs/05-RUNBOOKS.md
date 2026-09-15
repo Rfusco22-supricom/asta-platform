@@ -49,6 +49,27 @@ salida estándar y por código de salida, y a un webhook si se configura
 #16). El criterio de aceptación del issue —"un canal que alguien lee"— no está
 cumplido hasta que se configure uno.
 
+El comprobador se ejecuta así, y **desde #46 entra en la imagen**, así que
+funciona igual en desarrollo y en el contenedor:
+
+```bash
+pnpm alertas                     # en desarrollo
+node dist/cli/alertas.js         # en el contenedor
+```
+
+Vivía en `scripts/`, fuera de `apps/middleware/src`, y esa carpeta NO se copia a
+la imagen: en producción el comando no existía. Mismo tropiezo que el CLI de
+contraseñas (#74) y el de sync (#80).
+
+Códigos de salida, pensados para un cron: **1** si hay alguna crítica, **0** en
+los demás casos. Un aviso no hace fallar el trabajo a propósito — un cron que
+manda correo por cada aviso acaba en la papelera, y entonces el día de la crítica
+tampoco lo lee nadie.
+
+Y una advertencia que el propio comando ya da: si alguna regla **no se pudo
+evaluar**, no dice "sin alertas" en verde. Con MySQL inalcanzable fallan las siete
+reglas de base, y un verde ahí se leería como que todo va bien.
+
 ---
 
 ## `middleware-caido`
