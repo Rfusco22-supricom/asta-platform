@@ -127,14 +127,19 @@ export type ClientInvoicingResponse = z.infer<typeof clientInvoicingResponseSche
 
 /** Una factura, tal como la ve el cliente dueño de ella. */
 export const publicInvoiceSchema = z.object({
-  id: odooIdSchema,
-  folio: z.string(),
-  fecha: odooDateSchema.nullable(),
-  vencimiento: odooDateSchema.nullable(),
-  estadoPago: paymentStateSchema,
+  id: odooIdSchema.describe('Identificador de la factura. Es el que se usa en `/invoices/{id}`.'),
+  folio: z.string().describe('Número de la factura tal como aparece impreso.'),
+  fecha: odooDateSchema.nullable().describe('Fecha de emisión (`YYYY-MM-DD`).'),
+  vencimiento: odooDateSchema.nullable().describe('Fecha de vencimiento (`YYYY-MM-DD`). `null` si no tiene.'),
+  estadoPago: paymentStateSchema.describe(
+    'Estado de pago: `not_paid` sin pagar, `partial` pagada en parte, `in_payment` pago registrado ' +
+      'pendiente de conciliar, `paid` pagada, `reversed` anulada con nota de crédito, ' +
+      '`invoicing_legacy` importada de un sistema anterior, `desconocido` sin estado calculado. ' +
+      'Puede recibir valores nuevos: trata cualquier otro como `desconocido`.',
+  ),
   /** En moneda de la compañía, igual que el resumen del panel. */
-  total: montoSchema,
-  saldo: montoSchema,
+  total: montoSchema.describe('Importe total, en la moneda de la compañía que emite la factura.'),
+  saldo: montoSchema.describe('Importe pendiente de pago, en la misma moneda que `total`.'),
 });
 
 export type PublicInvoice = z.infer<typeof publicInvoiceSchema>;
@@ -148,23 +153,26 @@ export type PublicInvoice = z.infer<typeof publicInvoiceSchema>;
  * desconocidas simplemente se descartan.
  */
 export const publicInvoiceListQuerySchema = z.object({
-  desde: odooDateSchema.optional(),
-  hasta: odooDateSchema.optional(),
+  desde: odooDateSchema.optional().describe('Solo facturas emitidas desde esta fecha, inclusive (`YYYY-MM-DD`).'),
+  hasta: odooDateSchema.optional().describe('Solo facturas emitidas hasta esta fecha, inclusive (`YYYY-MM-DD`).'),
   /** `desconocido` no es un valor de Odoo sino la traducción de `false`: no se filtra por él. */
-  estadoPago: paymentStateSchema.exclude(['desconocido']).optional(),
-  pagina: z.coerce.number().int().positive().default(1),
-  porPagina: z.coerce.number().int().positive().max(100).default(50),
+  estadoPago: paymentStateSchema.exclude(['desconocido']).optional().describe('Solo facturas en este estado de pago.'),
+  pagina: z.coerce.number().int().positive().default(1).describe('Página, empezando en 1.'),
+  porPagina: z.coerce.number().int().positive().max(100).default(50).describe('Resultados por página, hasta 100.'),
 });
 
 export type PublicInvoiceListQuery = z.infer<typeof publicInvoiceListQuerySchema>;
 
+/** Metadatos de paginación de la API pública. */
+const publicPageMetaSchema = z.object({
+  pagina: z.number().int().positive().describe('Página devuelta.'),
+  porPagina: z.number().int().positive().describe('Tamaño de página aplicado.'),
+  total: z.number().int().nonnegative().describe('Total de resultados con estos filtros, en todas las páginas.'),
+});
+
 export const publicInvoiceListResponseSchema = z.object({
   data: z.array(publicInvoiceSchema),
-  meta: z.object({
-    pagina: z.number().int().positive(),
-    porPagina: z.number().int().positive(),
-    total: z.number().int().nonnegative(),
-  }),
+  meta: publicPageMetaSchema,
 });
 
 export type PublicInvoiceListResponse = z.infer<typeof publicInvoiceListResponseSchema>;
@@ -172,5 +180,15 @@ export type PublicInvoiceListResponse = z.infer<typeof publicInvoiceListResponse
 export const publicInvoiceDetailResponseSchema = z.object({
   data: publicInvoiceSchema,
 });
+
+/** Respuesta de `GET /public/invoices/:id/pdf` (#32). */
+export const publicInvoicePdfLinkResponseSchema = z.object({
+  data: z.object({
+    url: z.url().describe('Enlace de descarga del PDF. No necesita API key: trátalo como una credencial.'),
+    expiraEn: z.iso.datetime().describe('Momento en que el enlace deja de funcionar (UTC). Hoy, 5 minutos.'),
+  }),
+});
+
+export type PublicInvoicePdfLinkResponse = z.infer<typeof publicInvoicePdfLinkResponseSchema>;
 
 export type PublicInvoiceDetailResponse = z.infer<typeof publicInvoiceDetailResponseSchema>;

@@ -11,6 +11,20 @@ import { auditContext } from './auditContext.js';
  * query string: los query params acaban en logs de acceso, en el Referer y en el
  * historial de proxies.
  */
+/**
+ * La sección de autenticación de la documentación que sirve este servidor (#35).
+ *
+ * Antes era `https://docs.asta.mx/api/autenticacion`, un dominio que no es del
+ * proyecto: el 401 mandaba al cliente a una página que no existe.
+ *
+ * `req.get` puede no existir en las peticiones simuladas de los tests unitarios;
+ * sin él se usa el enlace relativo, que sigue siendo cierto.
+ */
+function enlaceDocsAutenticacion(req: Request): string {
+  const host = typeof req.get === 'function' ? req.get('host') : undefined;
+  return host ? `${req.protocol}://${host}/api/v1/docs#autenticacion` : '/api/v1/docs#autenticacion';
+}
+
 export function authApiKey(): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     // try/catch obligatorio: el middleware usa Express 4, que NO reenvía al
@@ -28,7 +42,7 @@ export function authApiKey(): RequestHandler {
           error: {
             code: 'MISSING_API_KEY',
             message: 'Falta el header X-API-Key.',
-            docs: 'https://docs.asta.mx/api/autenticacion',
+            docs: enlaceDocsAutenticacion(req),
           },
         });
         return;
@@ -113,7 +127,7 @@ export function scopeToOwnPartner(): RequestHandler {
         error: {
           code: 'MISSING_API_KEY',
           message: 'Falta el header X-API-Key.',
-          docs: 'https://docs.asta.mx/api/autenticacion',
+          docs: enlaceDocsAutenticacion(req),
         },
       });
       return;

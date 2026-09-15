@@ -42,14 +42,14 @@ import rateLimit from 'express-rate-limit';
  */
 
 /** Ventana del límite por key. `rateLimitPerMinute` se mide contra ella. */
-const VENTANA_POR_KEY_MS = 60_000;
+export const VENTANA_POR_KEY_MS = 60_000;
 
 /** Lo que `api_keys.rate_limit_per_minute` pone por defecto en el esquema. */
-const LIMITE_POR_KEY_POR_DEFECTO = 60;
+export const LIMITE_POR_KEY_POR_DEFECTO = 60;
 
 /** 401 por IP en la ventana de `preAuth` antes de cortar. */
-const FALLOS_DE_AUTENTICACION_POR_IP = 50;
-const VENTANA_PRE_AUTH_MS = 15 * 60_000;
+export const FALLOS_DE_AUTENTICACION_POR_IP = 50;
+export const VENTANA_PRE_AUTH_MS = 15 * 60_000;
 
 function apiKeyIdDe(req: Request): string {
   const id = req.identity?.apiKeyId;
