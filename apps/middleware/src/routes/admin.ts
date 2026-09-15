@@ -5,6 +5,7 @@ import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida } from '../services/invitation.service.js';
+import { estadisticasAgentes } from '../services/agentes.service.js';
 import { prisma } from '../config/prisma.js';
 
 /**
@@ -132,6 +133,26 @@ adminRouter.post(
     }
   },
 );
+
+/**
+ * Estadísticas de los agentes de venta (#96).
+ *
+ * Sin límite de frecuencia propio: son ~12 llamadas a Odoo, comparable a la
+ * cartera de un vendedor, y es una pantalla que se mira, no un trabajo que se
+ * dispara. El informe de reconciliación sí lo lleva porque recorre el ERP
+ * entero.
+ */
+adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, next) => {
+  try {
+    const r = await estadisticasAgentes();
+    res.json({
+      data: r.agentes,
+      meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /** Cuentas activas que todavia no pueden entrar: candidatas a invitar. */
 adminRouter.get('/users/without-access', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {

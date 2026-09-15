@@ -47,6 +47,7 @@ export const accionSchema = z.enum([
   'admin.sync.estado.ver',
   'admin.usuarios.gestionar',
   'admin.reconciliacion.ver',
+  'admin.agentes.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -115,6 +116,14 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Crear, invitar y desactivar usuarios',
+  },
+  'admin.agentes.ver': {
+    // Solo el SUPERADMIN. Un vendedor NO ve las cifras de los demás: la cartera
+    // de cada uno es suya, y una tabla comparativa dentro del panel convierte
+    // una herramienta de trabajo en un tablón de resultados.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver las estadísticas de los agentes de venta',
   },
   'admin.reconciliacion.ver': {
     roles: ['SUPERADMIN'],

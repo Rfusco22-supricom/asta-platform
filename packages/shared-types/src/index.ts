@@ -18,6 +18,7 @@
 export * from './common.js';
 export * from './identity.js';
 export * from './partners.js';
+export * from './agentes.js';
 export * from './invoicing.js';
 export * from './catalog.js';
 export * from './recommender.js';
