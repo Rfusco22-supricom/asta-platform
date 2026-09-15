@@ -84,7 +84,7 @@ beforeAll(async () => {
 
   buena = await nuevaKey();
   revocada = await nuevaKey();
-  await revokeApiKey(revocada.id, userId, 'test');
+  await revokeApiKey({ apiKeyId: revocada.id, actorId: userId, duenoEsperado: userId, reason: 'test' });
 
   server = await new Promise((resolve) => {
     const s = createApp().listen(0, () => resolve(s));

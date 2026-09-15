@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { destinoPara } from '@/lib/rutas';
 import { setSession } from '@/lib/session';
 
 /**
@@ -98,8 +99,8 @@ export default async function LoginPage({ searchParams }: Props) {
       usuario: data.usuario,
     });
 
-    // Mismo criterio que la raíz: cada rol a su sitio.
-    redirect(data.usuario.role === 'SUPERADMIN' ? '/admin' : '/cartera');
+    // La regla vive en un solo sitio: ver `lib/rutas.ts`.
+    redirect(destinoPara(data.usuario.role));
   }
 
   const MENSAJES: Record<string, string> = {

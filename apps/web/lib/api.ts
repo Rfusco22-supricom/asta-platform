@@ -8,6 +8,8 @@ import {
   invoicingSummarySchema,
   clientProfileSchema,
   apiErrorSchema,
+  apiKeySummarySchema,
+  type ApiKeySummary,
   type PortfolioRow,
   type PortfolioMeta,
   type InvoicingSummary,
@@ -285,6 +287,27 @@ export async function getSinAcceso(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+const apiKeysSchema = z.object({
+  data: z.array(apiKeySummarySchema),
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    vivas: z.number().int().nonnegative(),
+    maximo: z.number().int().positive(),
+  }),
+});
+
+export interface MisApiKeys {
+  filas: ApiKeySummary[];
+  vivas: number;
+  maximo: number;
+}
+
+/** Las API keys del cliente que pide (issue #28). */
+export async function getApiKeys(accessToken: string): Promise<MisApiKeys> {
+  const r = await request('/api/v1/account/api-keys', apiKeysSchema, accessToken);
+  return { filas: r.data, vivas: r.meta.vivas, maximo: r.meta.maximo };
+}
 
 export interface Sesiones {
   filas: SesionActiva[];

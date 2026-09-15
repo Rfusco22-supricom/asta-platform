@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "panel",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@asta/web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "middleware",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@asta/middleware", "dev"],
+      "port": 3001
+    }
+  ]
+}

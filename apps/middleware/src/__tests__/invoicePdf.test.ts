@@ -276,7 +276,12 @@ describe('#32 · Un enlace muere con su key', () => {
     const url = ruta(enlace.body?.data?.url ?? '');
     expect((await get(url)).status).toBe(200);
 
-    await revokeApiKey(propia.keyId, propia.userId, 'test #32');
+    await revokeApiKey({
+      apiKeyId: propia.keyId,
+      actorId: propia.userId,
+      duenoEsperado: propia.userId,
+      reason: 'test #32',
+    });
     expect((await get(url)).status).toBe(404);
   });
 });

@@ -9,6 +9,7 @@ import { metricasOdoo } from './odoo/metrics.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
+import { accountRouter } from './routes/account.js';
 import { crearPublicRouter } from './routes/public.js';
 import { crearDescargasRouter } from './routes/descargas.js';
 import { ocultarTokenDeUrl } from './services/enlacesFirmados.js';
@@ -79,6 +80,7 @@ export function createApp() {
   app.use('/api/v1/auth', corsPanel, authRouter);
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
   app.use('/api/v1/admin', corsPanel, adminRouter);
+  app.use('/api/v1/account', corsPanel, accountRouter);
   app.use('/api/v1/public', crearPublicRouter());
   app.use('/api/v1/descargas', crearDescargasRouter());
 
