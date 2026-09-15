@@ -253,28 +253,40 @@ describe('#30 · Qué existencia se publica', () => {
   });
 
   it('las unidades reservadas no cuentan como disponibles', async () => {
-    // Un producto con TODO lo físico comprometido: con qty_available saldría
-    // disponible.
-    const quants = await searchRead<{ product_id: [number, string]; quantity: number; reserved_quantity: number }>(
-      'stock.quant',
-      [['warehouse_id', '=', A.warehouseId], ['reserved_quantity', '>', 0], ['location_id.usage', '=', 'internal']],
-      ['product_id', 'quantity', 'reserved_quantity'],
-      { limit: 500 },
-    );
-    const ids = [...new Set(quants.map((q) => q.product_id[0]))];
-    const libre = await libreSegunQuants(A.warehouseId, ids);
-    const productos = await searchRead<{ id: number; default_code: string | false; qty_available: number }>(
-      'product.product',
-      [['id', 'in', ids], ['sale_ok', '=', true], ['detailed_type', '=', 'product'], ['default_code', '!=', false]],
-      ['default_code', 'qty_available'],
-      { context: { warehouse: A.warehouseId, allowed_company_ids: [A.companyId] } },
-    );
-    const comprometido = productos.find((p) => p.qty_available > 0 && (libre.get(p.id) ?? 0) <= 0);
-    if (!comprometido || !comprometido.default_code) {
-      throw new Error(`No hay productos con todo lo físico reservado en el almacén ${A.warehouseId}: el caso queda SIN PROBAR.`);
+    // Un producto cuyo ESTADO cambia al descontar lo reservado: con qty_available
+    // saldría mejor de lo que está.
+    //
+    // Antes se exigía un producto con TODO lo físico reservado, y solo en el
+    // almacén de A. Es una casualidad de los datos: hubo días sin ninguno, y el
+    // test fallaba sin que hubiera cambiado nada del código. Cualquier cambio de
+    // estado demuestra lo mismo, y se busca en los dos almacenes.
+    for (const cliente of [A, B]) {
+      const quants = await searchRead<{ product_id: [number, string] }>(
+        'stock.quant',
+        [['warehouse_id', '=', cliente.warehouseId], ['reserved_quantity', '>', 0], ['location_id.usage', '=', 'internal']],
+        ['product_id'],
+        { limit: 1000 },
+      );
+      const ids = [...new Set(quants.map((q) => q.product_id[0]))];
+      if (!ids.length) continue;
+      const libre = await libreSegunQuants(cliente.warehouseId, ids);
+      const productos = await searchRead<{ id: number; default_code: string | false; qty_available: number }>(
+        'product.product',
+        [['id', 'in', ids], ['sale_ok', '=', true], ['detailed_type', '=', 'product'], ['default_code', '!=', false]],
+        ['default_code', 'qty_available'],
+        { context: { warehouse: cliente.warehouseId, allowed_company_ids: [cliente.companyId] } },
+      );
+      const afectado = productos.find((p) => estadoDeStock(p.qty_available) !== estadoDeStock(libre.get(p.id) ?? 0));
+      if (!afectado || !afectado.default_code) continue;
+
+      const r = await get(`/inventory?sku=${encodeURIComponent(afectado.default_code)}`, cliente.key);
+      // Por id: un SKU puede estar repetido en la instancia.
+      const item = r.body?.data?.find((i) => i.id === afectado.id);
+      expect(item?.stock).toBe(estadoDeStock(libre.get(afectado.id) ?? 0));
+      expect(item?.stock).not.toBe(estadoDeStock(afectado.qty_available));
+      return;
     }
-    const r = await get(`/inventory?sku=${encodeURIComponent(comprometido.default_code)}`, A.key);
-    expect(r.body?.data?.[0]?.stock).toBe('agotado');
+    throw new Error('Ningún producto cambia de estado al descontar lo reservado, en ninguno de los dos almacenes: el caso queda SIN PROBAR.');
   });
 });
 

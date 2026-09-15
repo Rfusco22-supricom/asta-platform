@@ -77,7 +77,9 @@ export function estadoDeStock(libre: number, umbral = umbralStockBajo()): StockS
 /** La compañía de un cliente cambia rara vez; 10 min ahorra dos RPC por petición. */
 const cacheAlmacen = new CacheTtl<AlmacenCliente | null>(10 * 60_000, 5_000);
 /** 60 s, lo que pide #30. La clave lleva el almacén: ver `listarInventario`. */
-const cachePaginas = new CacheTtl<{ items: PublicInventoryItem[]; total: number }>(60_000, 1_000);
+/** Exportada porque la guía pública la cita (#35). */
+export const TTL_CACHE_INVENTARIO_MS = 60_000;
+const cachePaginas = new CacheTtl<{ items: PublicInventoryItem[]; total: number }>(TTL_CACHE_INVENTARIO_MS, 1_000);
 
 /** Solo para tests. */
 export function vaciarCachesInventario(): void {

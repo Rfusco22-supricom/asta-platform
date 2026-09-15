@@ -9,6 +9,8 @@ import {
   clientProfileSchema,
   apiErrorSchema,
   apiKeySummarySchema,
+  agentesRespuestaSchema,
+  type Agente,
   type ApiKeySummary,
   type PortfolioRow,
   type PortfolioMeta,
@@ -329,4 +331,26 @@ export interface Sesiones {
 export async function getSesiones(accessToken: string): Promise<Sesiones> {
   const r = await request('/api/v1/auth/sessions', sesionesRespuestaSchema, accessToken);
   return { filas: r.data, total: r.meta.total, otras: r.meta.otras };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Agentes {
+  filas: Agente[];
+  totales: {
+    agentes: number;
+    clientes: number;
+    facturado: number;
+    porCobrar: number;
+    sinAcceso: number;
+  };
+  generadoEn: string;
+  duracionMs: number;
+}
+
+/** Estadísticas de los agentes de venta (#96). */
+export async function getAgentes(accessToken: string): Promise<Agentes> {
+  const r = await request('/api/v1/admin/agentes', agentesRespuestaSchema, accessToken);
+  const { generadoEn, duracionMs, ...totales } = r.meta;
+  return { filas: r.data, totales, generadoEn, duracionMs };
 }
