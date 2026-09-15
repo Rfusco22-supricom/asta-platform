@@ -12,13 +12,16 @@ import { descargarPdfFacturaHandler } from '../controllers/descargas.controller.
  * memoria. Adivinar un token no es viable —HMAC-SHA256—, pero repetir uno válido
  * mil veces sí, y eso lo paga el ERP.
  */
+/** Descargas por IP por minuto. Exportada porque la guía pública la cita (#35). */
+export const DESCARGAS_POR_MINUTO_POR_IP = 30;
+
 export function crearDescargasRouter(): Router {
   const router = Router();
 
   router.use(
     rateLimit({
       windowMs: 60_000,
-      limit: 30,
+      limit: DESCARGAS_POR_MINUTO_POR_IP,
       standardHeaders: 'draft-6',
       legacyHeaders: false,
       message: { error: { code: 'RATE_LIMITED', message: 'Demasiadas descargas. Espera un minuto.' } },

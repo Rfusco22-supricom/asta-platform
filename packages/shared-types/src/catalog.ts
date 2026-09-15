@@ -60,13 +60,15 @@ export type Product = z.infer<typeof productSchema>;
  * impresora".
  */
 export const inventoryQuerySchema = z.object({
-  sku: z.string().min(1).optional(),
+  sku: z.string().min(1).optional().describe('Referencia exacta del producto.'),
   /** Búsqueda libre sobre nombre y referencia. */
-  q: z.string().min(2).optional(),
-  printerId: z.coerce.number().int().positive().optional(),
-  soloDisponibles: z.stringbool().default(false),
-  pagina: z.coerce.number().int().positive().default(1),
-  porPagina: z.coerce.number().int().positive().max(100).default(50),
+  q: z.string().min(2).optional().describe('Busca en el nombre y la referencia, sin distinguir mayúsculas. Mínimo 2 caracteres.'),
+  printerId: z.coerce.number().int().positive().optional().describe(
+    'Reservado para filtrar por impresora compatible. Todavía no disponible: responde 400.',
+  ),
+  soloDisponibles: z.stringbool().default(false).describe('`true` para devolver solo productos con existencia (`disponible` o `bajo`).'),
+  pagina: z.coerce.number().int().positive().default(1).describe('Página, empezando en 1.'),
+  porPagina: z.coerce.number().int().positive().max(100).default(50).describe('Resultados por página, hasta 100.'),
 });
 
 export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
@@ -105,13 +107,16 @@ export type PriceQuote = z.infer<typeof priceQuoteSchema>;
  * Sin cantidad: solo el estado. Ver `stockStatusSchema` y la decisión en #30.
  */
 export const publicInventoryItemSchema = z.object({
-  id: odooIdSchema,
-  templateId: odooIdSchema,
-  sku: z.string().nullable(),
-  nombre: z.string(),
-  categoria: z.string().nullable(),
+  id: odooIdSchema.describe('Identificador del producto.'),
+  templateId: odooIdSchema.describe('Identificador del producto base que agrupa sus variantes.'),
+  sku: z.string().nullable().describe('Referencia del producto. `null` si no tiene.'),
+  nombre: z.string().describe('Nombre del producto.'),
+  categoria: z.string().nullable().describe('Categoría del producto. `null` si no tiene.'),
   /** Existencia libre (física menos reservada) en el almacén que vende al cliente. */
-  stock: stockStatusSchema,
+  stock: stockStatusSchema.describe(
+    'Existencia en el almacén que te vende, descontando lo ya reservado: `disponible`, `bajo` ' +
+      '(pocas unidades) o `agotado`. Puede recibir valores nuevos: trata cualquier otro como `agotado`.',
+  ),
 });
 
 export type PublicInventoryItem = z.infer<typeof publicInventoryItemSchema>;
@@ -119,11 +124,11 @@ export type PublicInventoryItem = z.infer<typeof publicInventoryItemSchema>;
 export const publicInventoryListResponseSchema = z.object({
   data: z.array(publicInventoryItemSchema),
   meta: z.object({
-    pagina: z.number().int().positive(),
-    porPagina: z.number().int().positive(),
-    total: z.number().int().nonnegative(),
+    pagina: z.number().int().positive().describe('Página devuelta.'),
+    porPagina: z.number().int().positive().describe('Tamaño de página aplicado.'),
+    total: z.number().int().nonnegative().describe('Total de productos con estos filtros, en todas las páginas.'),
     /** true si la página salió de la cache de 60 s. */
-    desdeCache: z.boolean(),
+    desdeCache: z.boolean().describe('`true` si la respuesta sale de la cache: puede tener hasta 60 segundos de antigüedad.'),
   }),
 });
 
