@@ -503,20 +503,69 @@ export async function reglaKioscos(ahora = new Date()): Promise<Alerta | null> {
  * de alertas que se cae entero por una regla rota deja de avisar de TODO, y sin
  * hacer ruido.
  */
-export async function evaluarReglasDeBase(): Promise<{
+/**
+ * Lo que `/health` cuenta de sí mismo, ya interpretado.
+ *
+ * Va aparte de las reglas de base porque no sale de MySQL: lo tiene el proceso
+ * que está sirviendo, en memoria. Un comprobador externo lo consigue pidiendo
+ * `/health`, que ya publica las dos cosas — el estado agregado y la ventana de
+ * latencia real de Odoo.
+ */
+export interface EstadoSalud {
+  alcanzable: boolean;
+  status?: string;
+  detalle?: string;
+  latencia?: { muestras: number; p95: number | null };
+}
+
+/**
+ * TODAS las reglas de una pasada: las de base más las dos que dependen del
+ * proceso vivo.
+ *
+ * ── Por qué hacía falta ──────────────────────────────────────────────────────
+ *
+ * Las doce reglas de #46 estaban escritas y probadas —37 tests— y **no las
+ * ejecutaba nadie**: fuera de su propio fichero de tests, no aparecían en
+ * ninguna parte del código. Mismo patrón que #81 y #89: construido, nunca
+ * invocado. Una alerta que nadie evalúa no es media alerta, es ninguna, y encima
+ * da sensación de cobertura.
+ *
+ * Esto es la mitad que no depende de elegir canal. Con qué se entrega —correo,
+ * Slack, lo que sea— sigue sin decidirse; que las reglas CORRAN y den un
+ * resultado legible, no.
+ */
+export async function evaluarTodo(salud: EstadoSalud): Promise<{
   alertas: Alerta[];
   fallos: string[];
 }> {
-  const reglas: Array<[string, () => Promise<Alerta | null>]> = [
-    ['sync', reglaSync],
-    ['accesos-cruzados', reglaAccesosCruzados],
-    ['key-401', regla401PorKey],
-    ['key-429', regla429PorKey],
-    ['tasa-5xx', regla5xx],
-    ['n+1', reglaNMasUno],
-    ['kioscos', () => reglaKioscos()],
-  ];
+  const { alertas, fallos } = await evaluarReglasDeBase();
 
+  /*
+   * La salud va DELANTE en la lista.
+   *
+   * Si el middleware está caído, esa es la alerta que importa y el resto son
+   * consecuencia suya. Enterrarla entre avisos de latencia hace perder los
+   * primeros minutos, que son los que cuentan.
+   */
+  const deSalud = [reglaSalud(salud), salud.latencia ? reglaLatenciaOdoo(salud.latencia) : null];
+
+  return { alertas: [...deSalud.filter((a): a is Alerta => a !== null), ...alertas], fallos };
+}
+
+export type ReglaConNombre = [string, () => Promise<Alerta | null>];
+
+/**
+ * Ejecuta una lista de reglas aislando los fallos de cada una.
+ *
+ * Extraída para poder probar ESE aislamiento, que es la propiedad que hace que
+ * el comprobador sirva de algo y la única que no se puede comprobar con las
+ * reglas reales: haría falta romper una tabla a propósito. Con la lista por
+ * parámetro basta con pasarle una que lance.
+ */
+export async function ejecutarReglas(reglas: ReglaConNombre[]): Promise<{
+  alertas: Alerta[];
+  fallos: string[];
+}> {
   const alertas: Alerta[] = [];
   const fallos: string[] = [];
 
@@ -525,9 +574,51 @@ export async function evaluarReglasDeBase(): Promise<{
       const a = await fn();
       if (a) alertas.push(a);
     } catch (error) {
-      fallos.push(`${nombre}: ${error instanceof Error ? error.message : 'error'}`);
+      /*
+       * Recortado y en una sola línea.
+       *
+       * Un error de Prisma trae el fragmento de código, la consulta y varios
+       * saltos de línea: con la base inalcanzable, el informe pasaba a ser doce
+       * renglones de volcado por regla, y lo que importa —QUÉ regla no se pudo
+       * evaluar— quedaba enterrado. Quien esté de guardia necesita la primera
+       * línea, no la traza.
+       */
+      const crudo = error instanceof Error ? error.message : 'error';
+      const limpio = crudo
+        .split('\n')
+        // Fuera el marco de código de Prisma (`475 |`, `→ 478 const ...`) y la
+        // línea con la ruta absoluta del fichero: ninguna de las dos dice qué
+        // pasó, y juntas son diez renglones por regla.
+        // El marco de Prisma son líneas que empiezan por el número de línea
+        // (`475 const ...`) o por la flecha del punto de fallo (`→ 478 ...`).
+        .filter((l) => !/^\s*(→\s*)?\d+(\s|$)/.test(l) && !/^[A-Za-z]:\\|^\//.test(l.trim()))
+        .join(' ')
+        .replace(/Invalid `[^`]+` invocation in\s*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 140);
+      fallos.push(`${nombre}: ${limpio}`);
     }
   }
 
   return { alertas, fallos };
+}
+
+export function reglasDeBase(): ReglaConNombre[] {
+  return [
+    ['sync', reglaSync],
+    ['accesos-cruzados', reglaAccesosCruzados],
+    ['key-401', regla401PorKey],
+    ['key-429', regla429PorKey],
+    ['tasa-5xx', regla5xx],
+    ['n+1', reglaNMasUno],
+    ['kioscos', () => reglaKioscos()],
+  ];
+}
+
+export async function evaluarReglasDeBase(): Promise<{
+  alertas: Alerta[];
+  fallos: string[];
+}> {
+  return ejecutarReglas(reglasDeBase());
 }
