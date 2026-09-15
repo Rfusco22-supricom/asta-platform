@@ -30,7 +30,7 @@ import { build } from 'esbuild';
  */
 await build({
   /*
-   * DOS puntos de entrada, no uno.
+   * VARIOS puntos de entrada, no uno.
    *
    * El servidor es el obvio. El CLI de contraseñas es el que casi se queda
    * fuera: `002_seed.sql` crea el SuperAdmin SIN contraseña a propósito —un
@@ -41,7 +41,12 @@ await build({
    * Se descubrió preparando el primer despliegue real, con el contenedor ya
    * construido.
    */
-  entryPoints: ['src/server.ts', 'src/cli/set-password.ts', 'src/cli/sync-partners.ts'],
+  entryPoints: [
+    'src/server.ts',
+    'src/cli/set-password.ts',
+    'src/cli/sync-partners.ts',
+    'src/cli/sync-vendedores.ts',
+  ],
   outdir: 'dist',
   // Para que `src/cli/set-password.ts` salga en `dist/cli/`, y no en `dist/`.
   outbase: 'src',
