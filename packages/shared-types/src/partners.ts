@@ -139,3 +139,33 @@ export const clientProfileSchema = z.object({
 
 export type ClientProfile = z.infer<typeof clientProfileSchema>;
 export type TopProduct = z.infer<typeof topProductSchema>;
+
+/**
+ * Otros registros de Odoo que son el MISMO cliente (issue #50).
+ *
+ * El 34,5 % de lo facturado está repartido entre duplicados. Los totales del
+ * panel son exactos para el registro que se mira y aun así incompletos como
+ * retrato del cliente; esto es lo que permite decirlo en su ficha.
+ */
+export const hermanoSchema = z.object({
+  partnerId: odooIdSchema,
+  nombre: z.string(),
+  /** `rif` identifica; `nombre` solo se parece. */
+  motivo: z.enum(['rif', 'nombre']),
+  facturado: montoSchema,
+  facturas: z.number().int().nonnegative(),
+  vendedorNombre: z.string().nullable(),
+});
+
+export type Hermano = z.infer<typeof hermanoSchema>;
+
+export const hermanosRespuestaSchema = z.object({
+  data: z.object({
+    esteRegistro: montoSchema,
+    /** Lo facturado sumando este registro y sus hermanos. */
+    total: montoSchema,
+    hermanos: z.array(hermanoSchema),
+  }),
+});
+
+export type HermanosRespuesta = z.infer<typeof hermanosRespuestaSchema>;
