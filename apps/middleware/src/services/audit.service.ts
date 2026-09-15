@@ -32,6 +32,10 @@ export type AuditAction =
   | 'api_key.revoked'
   | 'user.role_changed'
   | 'sync.partners'
+  /// Alta de una cuenta de VENDEDOR desde Odoo (#81). Va aparte de
+  /// `sync.partners` porque no es lo mismo copiar un cliente que conceder
+  /// acceso a la facturación de una cartera entera.
+  | 'sync.vendedores'
   | 'user.invitado'
   | 'user.invitacion_aceptada';
 

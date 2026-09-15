@@ -171,7 +171,24 @@ DATABASE_URL="mysql://asta_migrador:CLAVE@HOST:3306/asta"   ./node_modules/.bin/
 
 # Poner la contraseña del SuperAdmin
 node dist/cli/set-password.js webmaster02@supricom.com.ve
+
+# Traer los clientes desde Odoo
+node dist/cli/sync-partners.js --completo
+
+# Dar de alta a los vendedores (#81). SIN --aplicar no escribe nada: enseña
+# la lista de quién tendría acceso y por qué, que es lo que hay que leer antes.
+node dist/cli/sync-vendedores.js
+node dist/cli/sync-vendedores.js --aplicar
 ```
+
+**El orden importa**: `sync-vendedores` va DESPUÉS de `sync-partners`. Casi
+ningún vendedor se crea de cero —ya está como cliente y lo que hace es subirle el
+rol—, así que al revés se crearían fichas sueltas que luego chocan con las del
+sync de clientes.
+
+Y las cuentas resultantes **no tienen contraseña**: el propio comando lista al
+final quién no puede entrar todavía. Cada una necesita un `set-password` o una
+invitación desde el panel.
 
 ```
 1. MySQL arriba y accesible
