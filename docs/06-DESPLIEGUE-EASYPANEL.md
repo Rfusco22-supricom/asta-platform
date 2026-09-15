@@ -1,14 +1,13 @@
 # Despliegue en EasyPanel
 
-> **Estado: sin probar.** Las imágenes están escritas pero **nadie las ha
-> construido todavía**. Docker no arranca en la máquina de desarrollo —un fallo
-> de Docker Desktop en Windows que pide reiniciar— así que la primera
-> construcción de verdad será la de EasyPanel. Es probable que salga algo a la
-> primera; la sección de problemas al final recoge lo que más suele fallar.
+> **Estado: desplegado.** Los dos servicios están en línea en EasyPanel y el
+> panel se usa. La sección de problemas al final recoge lo que ya ha fallado de
+> verdad, no lo que podría fallar.
 >
-> Lo que **sí** está verificado: `pnpm --filter @asta/middleware build` produce
-> un `dist/server.js` que **arranca y responde** `/health` con Odoo y MySQL en
-> verde, y `pnpm --filter @asta/web build` compila las 11 rutas.
+> **Lo primero que falló fue desplegar solo uno de los dos.** El panel enseñaba
+> «No existe la ruta GET /api/v1/admin/agentes» porque la web era del 15-sep y
+> el middleware del 11-sep. Desde entonces `/health` dice qué build corre: ver
+> «Saber qué build está corriendo» más abajo.
 
 ---
 
@@ -117,6 +116,15 @@ TRUSTED_PROXIES=<red de Docker o numero de saltos>
 
 LOG_LEVEL=info
 ```
+
+Y en **Build arguments** del servicio, no entre las variables de entorno:
+
+```bash
+VERSION_SHA=<sha corto del commit que se construye>
+```
+
+No es obligatorio: sin él `/health` informa igual de la fecha del build. Con él
+dice además el commit exacto.
 
 ### `asta-web`
 
@@ -238,7 +246,32 @@ Luego, en el navegador: entrar al panel, abrir un cliente, y mirar
 
 ---
 
+## Saber qué build está corriendo
+
+```bash
+curl -s http://asta-middleware:3001/health | jq .version
+```
+
+```json
+{ "sha": "559cb0d", "construido": "2026-09-15T19:15:09.921Z" }
+```
+
+`construido` es la fecha del bundle y **sale sin configurar nada**. `sha` solo
+aparece si el build recibió `VERSION_SHA`.
+
+**Los dos servicios se despliegan juntos.** El panel y el middleware van al
+mismo paso: una pantalla nueva necesita su ruta en el API, así que subir solo la
+web deja secciones que contestan «No existe la ruta». Antes de dar por bueno un
+despliegue, comparar esta fecha con la del último commit que se quería subir.
+
+---
+
 ## Si algo falla
+
+**Una sección del panel dice «No existe la ruta GET /api/v1/...».** El
+middleware es de una imagen anterior a esa pantalla. Mirar `/health` (arriba) y
+reconstruir `asta-middleware`. No hay que tocar la base: los permisos viven en
+el código, no en tablas.
 
 **El contenedor del middleware reinicia en bucle.** Mirar los primeros renglones
 del log: si faltan variables de entorno, `exigirEntornoValido()` las lista todas

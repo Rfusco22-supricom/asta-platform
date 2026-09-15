@@ -20,6 +20,7 @@ import { prisma } from './config/prisma.js';
 import { logger } from './utils/logger.js';
 import { exigirEntornoValido } from './config/validarEntorno.js';
 import { env } from './config/env.js';
+import { version } from './config/version.js';
 
 /**
  * Servidor del middleware.
@@ -106,8 +107,19 @@ export function createApp() {
    *     un sistema en pie.
    *
    * No lleva autenticación a propósito: un health que exige token no sirve
-   * para lo que existe. Por eso tampoco revela nada explotable — ni versiones,
-   * ni cadenas de conexión, ni credenciales.
+   * para lo que existe. Por eso no devuelve ni credenciales ni datos de nadie.
+   *
+   * La excepción deliberada es `version`. Aquí ponía que tampoco revelaba
+   * versiones, y era verdad hasta que hubo que averiguar a mano por qué el
+   * panel decía que una ruta no existía: el contenedor corría una imagen vieja
+   * y no había forma de preguntárselo (ver `config/version.ts`). Decir qué
+   * commit corre le ahorra ese rato a quien despliega, y también se lo da a
+   * quien quiera buscar fallos conocidos de ESA versión.
+   *
+   * El intercambio sale a cuenta SOLO porque el middleware no se publica a
+   * internet: al health únicamente llega quien ya está en la red interna
+   * (docs/06-DESPLIEGUE-EASYPANEL.md). Si alguna vez se expone, esto se quita
+   * antes que nada.
    */
   const TIMEOUT_SONDA_MS = 5000;
 
@@ -186,6 +198,7 @@ export function createApp() {
 
     res.status(sano ? 200 : 503).json({
       status: sano ? 'ok' : 'degraded',
+      version: version(),
       dependencias: {
         odoo: {
           ...odoo,
@@ -229,6 +242,8 @@ if (
   const app = createApp();
   const server = app.listen(PORT, () => {
     console.log(`middleware escuchando en http://localhost:${PORT}`);
+    const v = version();
+    console.log(`  build     ${v.sha ?? 'sin VERSION_SHA'} · ${v.construido ?? 'fecha desconocida'}`);
     console.log(`  health    GET  /health`);
     console.log(`  sesión    POST /api/v1/auth/login · /refresh · /logout`);
     console.log(`  vendedor  GET /api/v1/salesperson/portfolio`);
