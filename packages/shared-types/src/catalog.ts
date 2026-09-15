@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { montoSchema, odooIdSchema, paginationQuerySchema } from './common.js';
+import { montoSchema, odooIdSchema } from './common.js';
 
 /**
  * Catálogo, existencias y precios. Superficie de la API pública (Track B).
@@ -44,12 +44,29 @@ export const productSchema = z.object({
 
 export type Product = z.infer<typeof productSchema>;
 
-export const inventoryQuerySchema = paginationQuerySchema.extend({
+/**
+ * Query de `GET /api/v1/public/inventory` (#30).
+ *
+ * Pagina igual que `/invoices` (`pagina`/`porPagina`), y no por cursor: la API
+ * pública ya tiene esa forma y un cliente integrado no debería aprender dos.
+ *
+ * `soloDisponibles` usa `z.stringbool()` y no `z.coerce.boolean()`: el segundo
+ * hace `Boolean("false")`, que es `true`. Con él, `?soloDisponibles=false`
+ * filtraba.
+ *
+ * `printerId` se acepta en el schema para poder rechazarlo con un mensaje claro
+ * mientras no exista la compatibilidad impresora-tóner (#56). Ignorarlo en
+ * silencio devolvería el catálogo entero a quien pidió "los tóners de esta
+ * impresora".
+ */
+export const inventoryQuerySchema = z.object({
   sku: z.string().min(1).optional(),
   /** Búsqueda libre sobre nombre y referencia. */
   q: z.string().min(2).optional(),
-  printerId: odooIdSchema.optional(),
-  soloDisponibles: z.coerce.boolean().default(false),
+  printerId: z.coerce.number().int().positive().optional(),
+  soloDisponibles: z.stringbool().default(false),
+  pagina: z.coerce.number().int().positive().default(1),
+  porPagina: z.coerce.number().int().positive().max(100).default(50),
 });
 
 export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
@@ -77,3 +94,37 @@ export const priceQuoteSchema = z.object({
 });
 
 export type PriceQuote = z.infer<typeof priceQuoteSchema>;
+
+/**
+ * Un producto tal como lo devuelve `GET /api/v1/public/inventory`.
+ *
+ * Sin precio: el precio depende de la tarifa del cliente, y resolverla es #31,
+ * bloqueado por #3 y #5. Publicar aquí `list_price` sería peor que no publicar
+ * nada — en esta instancia vale 1 en productos cuyo precio base es 65.
+ *
+ * Sin cantidad: solo el estado. Ver `stockStatusSchema` y la decisión en #30.
+ */
+export const publicInventoryItemSchema = z.object({
+  id: odooIdSchema,
+  templateId: odooIdSchema,
+  sku: z.string().nullable(),
+  nombre: z.string(),
+  categoria: z.string().nullable(),
+  /** Existencia libre (física menos reservada) en el almacén que vende al cliente. */
+  stock: stockStatusSchema,
+});
+
+export type PublicInventoryItem = z.infer<typeof publicInventoryItemSchema>;
+
+export const publicInventoryListResponseSchema = z.object({
+  data: z.array(publicInventoryItemSchema),
+  meta: z.object({
+    pagina: z.number().int().positive(),
+    porPagina: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    /** true si la página salió de la cache de 60 s. */
+    desdeCache: z.boolean(),
+  }),
+});
+
+export type PublicInventoryListResponse = z.infer<typeof publicInventoryListResponseSchema>;
