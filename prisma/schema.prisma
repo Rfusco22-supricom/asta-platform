@@ -94,6 +94,47 @@ enum AuthTokenPurpose {
   EMAIL_VERIFY
 }
 
+/// Estado de una compatibilidad inferida (#56).
+///
+/// Es un enum y no un VARCHAR por lo que cuesta equivocarse: el recomendador
+/// sirve SOLO `VALIDADA`, así que un `'VALIDADO'` mal escrito haría desaparecer
+/// una compatibilidad buena —o, según cómo se escriba la consulta, enseñar una
+/// sin revisar—. Con un enum eso no compila ni entra en la base.
+enum CompatibilityStatus {
+  PROPUESTA
+  VALIDADA
+  RECHAZADA
+}
+
+/// De dónde salió un dato de compatibilidad. Importa para saber de qué fiarse
+/// al revisar: una tabla del fabricante no es lo mismo que un parseo del nombre.
+enum CompatibilitySource {
+  /// Tabla publicada por el fabricante.
+  FABRICANTE
+  /// Deducido del nombre o del código del producto.
+  PARSEO
+  /// Lo escribió una persona.
+  MANUAL
+  /// Una búsqueda sin resultado en el kiosco, que enseña un alias que falta.
+  BUSQUEDA
+}
+
+/// Qué es el consumible.
+enum CartridgeKind {
+  TONER
+  TINTA
+  DRUM
+  OTRO
+}
+
+/// Qué es el producto de Odoo respecto al cartucho: el del fabricante, o el
+/// compatible que ASTA vende en su lugar. La distinción es la venta: enseñar el
+/// compatible al lado del original es justo el trabajo del recomendador.
+enum ProductRelation {
+  ORIGINAL
+  COMPATIBLE
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // IDENTIDAD
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,16 +184,18 @@ model AppUser {
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
-  credentials          UserCredential?
-  sessions             UserSession[]
-  authTokens           AuthToken[]
-  apiKeys              ApiKey[]              @relation("ApiKeyOwner")
-  revokedKeys          ApiKey[]              @relation("ApiKeyRevoker")
-  kioskSessions        KioskSession[]
-  auditLogs            AuditLog[]            @relation("AuditActor")
-  recommendationEvents RecommendationEvent[]
-  clientNotes          ClientNote[]
-  tierMapUpdates       TierPricelistMap[]
+  credentials             UserCredential?
+  sessions                UserSession[]
+  authTokens              AuthToken[]
+  apiKeys                 ApiKey[]                @relation("ApiKeyOwner")
+  revokedKeys             ApiKey[]                @relation("ApiKeyRevoker")
+  kioskSessions           KioskSession[]
+  auditLogs               AuditLog[]              @relation("AuditActor")
+  recommendationEvents    RecommendationEvent[]
+  clientNotes             ClientNote[]
+  tierMapUpdates          TierPricelistMap[]
+  reviewedCompatibilities CartridgePrinterModel[] @relation("CompatibilityReviewer")
+  reviewedProductLinks    ProductCartridge[]      @relation("ProductCartridgeReviewer")
 
   @@index([role, isActive], map: "ix_app_users_role_active")
   @@index([assignedSalespersonId], map: "ix_app_users_salesperson")
@@ -492,12 +535,13 @@ model RecommendationEvent {
 
   /// El texto CRUDO que tecleó el cliente, sin normalizar. Los errores de tipeo
   /// son el dato: enseñan qué alias le faltan a cada modelo de impresora.
-  searchQuery      String  @map("search_query") @db.VarChar(200)
-  matchedPrinterId Int?    @map("matched_printer_id") @db.UnsignedInt
-  resultsCount     Int     @default(0) @map("results_count") @db.UnsignedSmallInt
-  clickedProductId Int?    @map("clicked_product_id") @db.UnsignedInt
+  searchQuery      String        @map("search_query") @db.VarChar(200)
+  matchedPrinterId Int?          @map("matched_printer_id") @db.UnsignedInt
+  matchedPrinter   PrinterModel? @relation(fields: [matchedPrinterId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_reco_printer")
+  resultsCount     Int           @default(0) @map("results_count") @db.UnsignedSmallInt
+  clickedProductId Int?          @map("clicked_product_id") @db.UnsignedInt
   /// Había producto compatible pero sin existencias: quiebre de venta medible.
-  wasOutOfStock    Boolean @default(false) @map("was_out_of_stock")
+  wasOutOfStock    Boolean       @default(false) @map("was_out_of_stock")
 
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
@@ -605,4 +649,193 @@ model AuditLog {
   @@index([actorId, createdAt], map: "ix_audit_actor_date")
   @@index([action, createdAt], map: "ix_audit_action_date")
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPATIBILIDAD IMPRESORA ↔ TÓNER (issues #56 y #101)
+//
+// Pedido de Track B. La data de compatibilidad NO se crea en Odoo —no hay
+// módulo para ello— y vive aquí. Odoo sigue siendo la fuente del producto, el
+// precio y el stock; estas tablas solo dicen QUÉ PRODUCTO SIRVE PARA QUÉ
+// IMPRESORA.
+//
+// ── Por qué hay un cartucho en medio ────────────────────────────────────────
+//
+// Porque el `default_code` de Odoo no es el código del cartucho, es el número
+// de pieza del fabricante: `8274B001AA` es en realidad el `PG-145XL`. Las
+// tablas que publican los fabricantes relacionan cartucho ↔ impresora, así que
+// el cruce necesita el cartucho como pieza intermedia:
+//
+//   printer_models ──< cartridge_printer_models >── cartridges ──< product_cartridges >── product.template
+//
+// Con eso, una tabla de fabricante se carga UNA vez y sirve para todos los
+// productos de ese cartucho, y un compatible de ASTA que cubre cuatro cartuchos
+// son cuatro filas, no cuarenta impresoras escritas a mano.
+//
+// ── Los dos eslabones se validan por separado ───────────────────────────────
+//
+// `cartridge_printer_models` y `product_cartridges` llevan cada uno su propio
+// `status`. Los dos se infieren y cualquiera de los dos mal le vende al cliente
+// un tóner que no le sirve, así que el recomendador sirve SOLO lo que está
+// VALIDADA en AMBOS. Un eslabón validado sobre otro sin revisar no vale.
+//
+// ── Nada de esto borra filas ────────────────────────────────────────────────
+//
+// No hay DELETE en ninguna de estas tablas, igual que en el resto del esquema:
+// una compatibilidad que resulta falsa se marca RECHAZADA y un alias malo se
+// desactiva. Se mantiene así a propósito —`asta_app` no tiene DELETE en ninguna
+// tabla (#44)— y además el descarte es el dato: dice qué inferencias falla el
+// importador, que es lo que hay que arreglar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Marca de impresora y de cartucho: HP, Canon, Epson, Brother, ASTA…
+///
+/// Una sola tabla para las dos cosas, y no es un atajo: `cartridges.brandId` es
+/// SIEMPRE el fabricante original —el CE278A es de HP aunque lo fabrique otro—
+/// y el compatible de ASTA se cuelga de ese mismo cartucho por
+/// `product_cartridges` con `relation = COMPATIBLE`.
+model PrinterBrand {
+  id   Int    @id @default(autoincrement()) @db.UnsignedInt
+  name String @db.VarChar(60)
+
+  /// `spiff.brand` de Odoo cuando exista la correspondencia. Solo informativo:
+  /// esta tabla no depende de Odoo ni se sincroniza con él.
+  odooBrandId Int? @map("odoo_brand_id") @db.UnsignedInt
+
+  printerModels PrinterModel[]
+  cartridges    Cartridge[]
+
+  @@unique([name], map: "uq_printer_brands_name")
+  @@map("printer_brands")
+}
+
+/// Un modelo de impresora, como lo escribe el fabricante.
+model PrinterModel {
+  id      Int          @id @default(autoincrement()) @db.UnsignedInt
+  brandId Int          @map("brand_id") @db.UnsignedInt
+  brand   PrinterBrand @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_printer_models_brand")
+
+  /// "LaserJet Pro M404dn", tal cual.
+  name           String @db.VarChar(120)
+  /// El mismo nombre sin mayúsculas, espacios, guiones ni acentos.
+  ///
+  /// Lo calcula la APLICACIÓN, no la base: la normalización quita acentos y eso
+  /// no se puede expresar en una columna generada de MySQL de forma portable.
+  /// Vive en código con tests (#38). El riesgo de que una fila entre con el
+  /// normalizado mal está en el importador, y es ahí donde hay que cubrirlo.
+  nameNormalized String @map("name_normalized") @db.VarChar(120)
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  aliases              PrinterModelAlias[]
+  cartridges           CartridgePrinterModel[]
+  recommendationEvents RecommendationEvent[]
+
+  @@unique([brandId, nameNormalized], map: "uq_printer_models_brand_name")
+  @@index([nameNormalized], map: "ix_printer_models_name")
+  @@map("printer_models")
+}
+
+/// Lo que la gente teclea de verdad: "hl2350", "M404", "L3150".
+///
+/// Es lo que hace útil la búsqueda del kiosco (#38). Los alias que salen de una
+/// búsqueda sin resultado (`source = BUSQUEDA`) son el camino por el que la
+/// tabla mejora sola: el cliente enseña cómo llama a su impresora.
+model PrinterModelAlias {
+  id             Int          @id @default(autoincrement()) @db.UnsignedInt
+  printerModelId Int          @map("printer_model_id") @db.UnsignedInt
+  printerModel   PrinterModel @relation(fields: [printerModelId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_aliases_model")
+
+  alias           String @db.VarChar(120)
+  aliasNormalized String @map("alias_normalized") @db.VarChar(120)
+
+  source CompatibilitySource
+
+  /// Un alias equivocado manda al cliente al tóner de otra impresora, así que
+  /// hace falta poder retirarlo. Se desactiva en vez de borrarse, para no romper
+  /// la regla de que aquí nadie borra filas y para que el importador no vuelva a
+  /// proponerlo mañana.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@unique([printerModelId, aliasNormalized], map: "uq_aliases_model_alias")
+  @@index([aliasNormalized], map: "ix_aliases_alias")
+  @@map("printer_model_aliases")
+}
+
+/// El cartucho del fabricante, independiente de qué producto lo venda.
+model Cartridge {
+  id      Int          @id @default(autoincrement()) @db.UnsignedInt
+  brandId Int          @map("brand_id") @db.UnsignedInt
+  brand   PrinterBrand @relation(fields: [brandId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_cartridges_brand")
+
+  /// "PG-145XL", "667", "CE278A".
+  code           String @db.VarChar(40)
+  codeNormalized String @map("code_normalized") @db.VarChar(40)
+
+  kind  CartridgeKind
+  color String?       @db.VarChar(20)
+
+  /// Páginas declaradas por el fabricante. Sirve para comparar el coste por
+  /// página entre el original y el compatible, que es el argumento de venta.
+  yieldPages Int? @map("yield_pages") @db.UnsignedInt
+
+  printerModels CartridgePrinterModel[]
+  products      ProductCartridge[]
+
+  @@unique([brandId, codeNormalized], map: "uq_cartridges_brand_code")
+  @@map("cartridges")
+}
+
+/// Qué cartucho usa cada impresora. Sale de las tablas del fabricante.
+model CartridgePrinterModel {
+  cartridgeId    Int          @map("cartridge_id") @db.UnsignedInt
+  cartridge      Cartridge    @relation(fields: [cartridgeId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_cpm_cartridge")
+  printerModelId Int          @map("printer_model_id") @db.UnsignedInt
+  printerModel   PrinterModel @relation(fields: [printerModelId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_cpm_printer")
+
+  source    CompatibilitySource
+  /// URL o documento del fabricante del que salió, para poder volver a mirarlo.
+  sourceRef String?             @map("source_ref") @db.VarChar(255)
+
+  status     CompatibilityStatus @default(PROPUESTA)
+  reviewedBy String?             @map("reviewed_by") @db.Char(36)
+  reviewer   AppUser?            @relation("CompatibilityReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_cpm_reviewer")
+  reviewedAt DateTime?           @map("reviewed_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@id([cartridgeId, printerModelId])
+  @@index([printerModelId, status], map: "ix_cpm_printer_status")
+  @@map("cartridge_printer_models")
+}
+
+/// Qué producto de Odoo ES, o SUSTITUYE A, qué cartucho.
+model ProductCartridge {
+  /// `product.template`, no la variante: la compatibilidad no depende del color
+  /// ni del formato. Sin FK hacia Odoo, igual que `odoo_partner_id` en el resto
+  /// del esquema — esta base no puede garantizar integridad contra el ERP.
+  odooProductTmplId Int       @map("odoo_product_tmpl_id") @db.UnsignedInt
+  cartridgeId       Int       @map("cartridge_id") @db.UnsignedInt
+  cartridge         Cartridge @relation(fields: [cartridgeId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_pc_cartridge")
+
+  relation ProductRelation
+  source   CompatibilitySource
+  /// El fragmento del nombre que lo justifica, o la nota de quien lo revisó.
+  /// Sin esto, revisar una propuesta obliga a repetir el trabajo del importador.
+  evidence String?             @db.VarChar(255)
+
+  status     CompatibilityStatus @default(PROPUESTA)
+  reviewedBy String?             @map("reviewed_by") @db.Char(36)
+  reviewer   AppUser?            @relation("ProductCartridgeReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_pc_reviewer")
+  reviewedAt DateTime?           @map("reviewed_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@id([odooProductTmplId, cartridgeId])
+  @@index([cartridgeId, status], map: "ix_pc_cartridge_status")
+  @@map("product_cartridges")
 }

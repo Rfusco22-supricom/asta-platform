@@ -133,6 +133,26 @@ GRANT SELECT, INSERT         ON asta.api_key_scopes       TO 'asta_app'@'localho
 GRANT SELECT, INSERT         ON asta.api_key_allowed_ips  TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
+-- Compatibilidad impresora <-> tóner (#101). Tampoco lleva DELETE.
+--
+-- Lino pidió DELETE para estas seis. No se concede, y no es por rigidez: estas
+-- tablas ya tienen su forma de retirar una fila sin borrarla —`estado`
+-- RECHAZADA en las dos de compatibilidad, `is_active` en los alias—, así que
+-- DELETE no habilita nada que el producto necesite.
+--
+-- Y el descarte ES el dato: una compatibilidad marcada RECHAZADA dice qué
+-- inferencia falla el importador. Borrarla tira justo lo que hace falta para
+-- arreglarlo, y además dejaría que dos personas propongan una y otra vez la
+-- misma fila mala sin que conste que ya se rechazó.
+-- -----------------------------------------------------------------------------
+GRANT SELECT, INSERT, UPDATE ON asta.printer_brands           TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.printer_models           TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.printer_model_aliases    TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.cartridges               TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.cartridge_printer_models TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.product_cartridges       TO 'asta_app'@'localhost';
+
+-- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
 --
 -- Un registro de auditoría que la aplicación puede reescribir no es un registro
@@ -260,6 +280,12 @@ GRANT SELECT ON asta.kiosk_devices         TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.kiosk_sessions        TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.recommendation_events TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_usage_monthly     TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.printer_brands           TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.printer_models           TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.printer_model_aliases    TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.cartridges               TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.cartridge_printer_models TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.product_cartridges       TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 
