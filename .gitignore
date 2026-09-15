@@ -55,3 +55,7 @@ backups/
 *.sql.gz.sha256
 odoo-config-*.json
 odoo-config-*.json.gz
+
+# El logo original que dejó el equipo en la raíz. La copia que se sirve vive en
+# apps/web/public/, que es la única carpeta de la que Next sirve estáticos.
+/public/

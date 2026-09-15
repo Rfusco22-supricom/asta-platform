@@ -137,7 +137,8 @@ adminRouter.post(
 adminRouter.get('/users/without-access', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
   try {
     const limite = Math.min(Number(req.query.limit ?? 50) || 50, 200);
-    res.json({ data: await listarSinAcceso(limite) });
+    const { usuarios, total } = await listarSinAcceso(limite);
+    res.json({ data: usuarios, meta: { total, mostrados: usuarios.length } });
   } catch (error) {
     next(error);
   }

@@ -1,37 +1,12 @@
 /**
  * A dónde pertenece cada rol.
  *
- * ── Por qué es una función y no un `?:` repetido ─────────────────────────────
+ * La regla ya no vive aquí: sale de `navegacion.ts`, que es la primera sección
+ * del menú de ese rol. Tenerla escrita aparte fue lo que hizo que un cliente
+ * aterrizara en un 403 —se arregló la raíz y el login se quedó con su copia—, y
+ * un menú que promete una sección a la que el enrutado no lleva es la misma
+ * historia otra vez.
  *
- * Estaba escrito dos veces —en la raíz y al terminar el login— con el comentario
- * «mismo criterio que la raíz» al lado de la copia. No era el mismo criterio:
- * era una copia, y en cuanto #28 añadió a los CLIENTES se arregló una y la otra
- * se quedó igual.
- *
- * El síntoma fue justo el que el texto de la raíz decía evitar: un cliente
- * entraba con su contraseña, aterrizaba en `/cartera` y leía «Tu rol no tiene
- * permiso para esta operación» en su primera pantalla del producto.
- *
- * Cualquier sitio nuevo que decida a dónde mandar a alguien entra aquí. Si un
- * rol pierde su destino, se ve en un fichero de veinte líneas y no repartido por
- * la aplicación.
+ * Se mantiene el fichero para no tocar los dos sitios que lo importan.
  */
-
-const CLIENTES = ['BRONCE', 'PLATA', 'GOLD'];
-
-export function destinoPara(role: string): string {
-  // Un SUPERADMIN no tiene cartera: la matriz de permisos se la niega a
-  // propósito, así que mandarle a /cartera sería un 403 nada más entrar.
-  if (role === 'SUPERADMIN') return '/admin';
-
-  /*
-   * Los clientes van a sus API keys (#28).
-   *
-   * No porque sea lo más importante para ellos, sino porque es lo único suyo
-   * que existe hoy. Cuando haya más pantallas de cliente, esto apuntará a su
-   * índice y dejará de ser un destino final.
-   */
-  if (CLIENTES.includes(role)) return '/cuenta/api-keys';
-
-  return '/cartera';
-}
+export { destinoPara } from './navegacion';

@@ -216,31 +216,58 @@ export async function aceptarInvitacion(
 }
 
 /** Candidatos a invitar: cuentas activas que todavía no pueden entrar. */
-export async function listarSinAcceso(limite = 50): Promise<
-  Array<{ id: string; email: string; nombre: string; role: string; invitacionPendiente: boolean }>
-> {
-  const usuarios = await prisma.appUser.findMany({
-    where: { isActive: true, credentials: null },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      role: true,
-      authTokens: {
-        where: { purpose: 'INVITE', usedAt: null, expiresAt: { gt: new Date() } },
-        select: { id: true },
-        take: 1,
-      },
-    },
-    orderBy: { fullName: 'asc' },
-    take: limite,
-  });
+export interface SinAcceso {
+  id: string;
+  email: string;
+  nombre: string;
+  role: string;
+  invitacionPendiente: boolean;
+}
 
-  return usuarios.map((u) => ({
-    id: u.id,
-    email: u.email,
-    nombre: u.fullName,
-    role: u.role,
-    invitacionPendiente: u.authTokens.length > 0,
-  }));
+/**
+ * Devuelve la lista acotada Y el total.
+ *
+ * El total no sobra: la lista viene limitada para no traerse cientos de filas a
+ * una pantalla donde se actúa de una en una, y enseñar «25 pendientes» cuando
+ * hay 2.271 haría creer que el trabajo se acabó.
+ *
+ * Antes ese total salía del informe de reconciliación, que recorre Odoo entero y
+ * está limitado por frecuencia. Al separar «Usuarios» en su propia sección, dos
+ * pantallas pasaron a pedir ese informe y la segunda se comía un «Espera unos
+ * minutos entre sincronizaciones». Un contador no puede costar un barrido del
+ * ERP.
+ */
+export async function listarSinAcceso(
+  limite = 50,
+): Promise<{ usuarios: SinAcceso[]; total: number }> {
+  const [usuarios, total] = await Promise.all([
+    prisma.appUser.findMany({
+      where: { isActive: true, credentials: null },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        authTokens: {
+          where: { purpose: 'INVITE', usedAt: null, expiresAt: { gt: new Date() } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+      orderBy: { fullName: 'asc' },
+      take: limite,
+    }),
+    prisma.appUser.count({ where: { isActive: true, credentials: null } }),
+  ]);
+
+  return {
+    usuarios: usuarios.map((u) => ({
+      id: u.id,
+      email: u.email,
+      nombre: u.fullName,
+      role: u.role,
+      invitacionPendiente: u.authTokens.length > 0,
+    })),
+    total,
+  };
 }

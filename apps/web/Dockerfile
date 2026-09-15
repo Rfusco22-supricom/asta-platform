@@ -57,16 +57,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # de megas que en su mayoría son herramientas de desarrollo.
 COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static     ./apps/web/.next/static
+COPY --from=build /app/apps/web/public          ./apps/web/public
 
-# No se copia `apps/web/public`: este proyecto NO tiene esa carpeta.
+# `public` SÍ se copia desde que existe (logotipo de la marca).
 #
-# Casi todos los proyectos de Next la traen y por eso se dio por hecha, pero
-# aquí el único estático es el favicon, y en App Router vive en `app/icon.svg`
-# —Next lo sirve como una ruta más y acaba dentro del build—. Un `COPY` de una
-# ruta que no existe no se ignora: rompe la construcción entera.
+# Esta línea estuvo quitada, con una nota que decía que el proyecto no tenía esa
+# carpeta y que si algún día se añadía había que volver a ponerla. Ese día es
+# este: el logo del lateral vive en `apps/web/public/asta-logo.png`.
 #
-# Si algún día se añade `apps/web/public`, hay que volver a poner:
-#   COPY --from=build /app/apps/web/public ./apps/web/public
+# Sin este COPY, el panel funciona perfectamente en desarrollo y en producción
+# sale el hueco del logo con un 404 — el fallo callado de siempre.
+#
+# `standalone` NO incluye `public`: Next lo dice en su documentación y es la
+# razón de que haga falta una línea propia.
 
 USER node
 

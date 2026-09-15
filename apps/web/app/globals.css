@@ -11,11 +11,11 @@
  */
 
 :root {
-  --bg: #fbfbfa;
+  --bg: #f2f4f7;
   --surface: #ffffff;
-  --surface-2: #f6f6f5;
-  --border: #e4e4e2;
-  --border-strong: #d0d0cd;
+  --surface-2: #f7f8fa;
+  --border: #e6e8ec;
+  --border-strong: #cfd3da;
 
   --text: #1a1a19;
   --text-2: #5c5c58;
@@ -746,4 +746,311 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     padding: 0 4px;
     vertical-align: middle;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARCO: LATERAL OSCURO, PROFUNDIDAD Y DEGRADADOS
+
+   Dirección visual pedida sobre la referencia: lateral oscuro flotante, esquina
+   generosa, azul en degradado para lo activo y sensación de relieve.
+
+   El relieve se hace con TRES capas, no con una sombra grande: un degradado que
+   da la dirección de la luz, una línea clara de 1 px arriba —el borde que
+   devuelve el brillo— y una sombra corta y tintada del mismo color. Es lo que
+   distingue un botón con volumen de una mancha azul con sombra debajo.
+
+   Lo que NO se ha copiado de la referencia: el fondo de página con color
+   saturado. Esto se mira horas y con tablas de ochocientas filas; un fondo azul
+   compite con los datos. La profundidad se queda; el ruido, fuera.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --lateral-1: #1b2233;
+  --lateral-2: #141a28;
+  --lateral-text: #98a2b8;
+  --lateral-text-fuerte: #ffffff;
+  --lateral-hover: rgba(255, 255, 255, 0.055);
+
+  /* El azul del propio logotipo, para que el acento y la marca sean el mismo. */
+  --primario: #1189dc;
+  --primario-claro: #35a5ee;
+  --primario-oscuro: #0c6fb4;
+  --primario-text: #ffffff;
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+
+  /* Sombras en dos pasos: el contacto y la difusión. Una sola sombra grande
+     hace que todo flote por igual y nada parezca apoyado. */
+  --sombra-card: 0 1px 2px rgba(17, 24, 39, 0.05), 0 8px 20px -12px rgba(17, 24, 39, 0.12);
+  --sombra-azul: 0 1px 2px rgba(12, 111, 180, 0.35), 0 8px 16px -6px rgba(17, 137, 220, 0.45);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 18px;
+}
+
+/* ── Lateral ──────────────────────────────────────────────────────────────── */
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  /* 160 grados y no 180: la luz entra por arriba a la izquierda, igual que en
+     las tarjetas y en el botón activo. Si cada elemento se ilumina por su lado,
+     el relieve se deshace. */
+  background: linear-gradient(160deg, var(--lateral-1) 0%, var(--lateral-2) 62%);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.16), 0 18px 36px -22px rgba(17, 24, 39, 0.5);
+  position: sticky;
+  top: 18px;
+  height: calc(100vh - 36px);
+  overflow: hidden;
+}
+
+.lateral-marca {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 22px 20px 24px;
+  /* Un velo del azul de marca en la esquina superior: da profundidad al panel
+     sin meter una imagen ni un borde más. */
+  background: radial-gradient(120% 90% at 0% 0%, rgba(17, 137, 220, 0.22), transparent 70%);
+}
+
+/*
+ * Recorte del logotipo.
+ *
+ * El PNG mide 3881x3105 y la tinta va de (94, 652) a (3798, 2106): un 21 % de
+ * margen transparente arriba y un 32 % abajo. Con `object-fit: contain` saldría
+ * pequeño y descolgado hacia arriba, así que se escala y se desplaza para que
+ * la caja contenga SOLO la tinta.
+ *
+ * escala = 126 / 3881 = 0.032466
+ *   izquierda   -94 x escala = -3.05 px
+ *   arriba     -652 x escala = -21.2 px
+ *   tinta      3704 x escala = 120 px  ·  1454 x escala = 47 px
+ *
+ * Si se cambia el fichero del logo, hay que volver a medir estas cuatro cifras.
+ */
+.marca-logo {
+  display: block;
+  position: relative;
+  width: 120px;
+  height: 47px;
+  overflow: hidden;
+}
+
+.marca-logo img {
+  position: absolute;
+  width: 126px;
+  height: auto;
+  left: -3.05px;
+  top: -21.2px;
+}
+
+.marca-ambito {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--lateral-text);
+}
+
+/* ── Navegación ───────────────────────────────────────────────────────────── */
+
+.nav { flex: 1; overflow-y: auto; padding: 0 12px; }
+
+.nav-grupo + .nav-grupo { margin-top: 22px; }
+
+.nav-titulo {
+  padding: 0 10px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(152, 162, 184, 0.7);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  margin-bottom: 3px;
+  border-radius: 11px;
+  color: var(--lateral-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  /* Solo color: desplazar el elemento al pasar por encima hace que el puntero
+     persiga al botón, y este menú se usa cien veces al día. */
+  transition: background-color .14s ease, color .14s ease, border-color .14s ease;
+}
+
+.nav-item:hover {
+  background: var(--lateral-hover);
+  color: var(--lateral-text-fuerte);
+  text-decoration: none;
+}
+
+/* Las tres capas del relieve. Ver la nota de la cabecera. */
+.nav-item.activa {
+  background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    var(--sombra-azul);
+  color: var(--primario-text);
+  font-weight: 600;
+}
+
+.nav-item svg { flex: none; opacity: .9; }
+.nav-item.activa svg { opacity: 1; }
+
+/* ── Pie del lateral ──────────────────────────────────────────────────────── */
+
+.lateral-pie {
+  padding: 14px 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11.5px;
+  color: rgba(152, 162, 184, 0.72);
+  line-height: 1.5;
+}
+
+.lateral-pie strong { display: block; color: var(--lateral-text); font-weight: 600; }
+
+/* ── Contenido ────────────────────────────────────────────────────────────── */
+
+.contenido { min-width: 0; padding-bottom: 32px; }
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 4px 22px;
+}
+
+.cabecera h1 {
+  margin: 0 0 3px;
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.cabecera p { margin: 0; color: var(--text-2); font-size: 13px; max-width: 70ch; }
+
+.cabecera-acciones { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+.chip-usuario {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 13px 5px 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--sombra-card);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, var(--primario-claro), var(--primario-oscuro));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.usuario-datos { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+
+.usuario-datos strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usuario-datos small { font-size: 11px; color: var(--text-3); }
+
+.btn-salir {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 15px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  box-shadow: var(--sombra-card);
+}
+
+.btn-salir:hover { color: var(--text); background: var(--surface-2); }
+
+/* ── Tarjetas ─────────────────────────────────────────────────────────────── */
+/*
+ * Se redondean y se elevan las superficies que YA existían, en vez de inventar
+ * clases nuevas: así el rediseño alcanza también a las pantallas que no se han
+ * tocado una por una.
+ */
+.panel, .table-wrap, .stat, .notice, .login-card {
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-card);
+}
+
+.stat {
+  padding: 17px 19px;
+  /* Un degradado muy corto, del blanco al gris del fondo: suficiente para que
+     la tarjeta tenga un arriba y un abajo. */
+  background: linear-gradient(170deg, var(--surface) 0%, var(--surface-2) 190%);
+}
+
+.stat-label { font-size: 11.5px; letter-spacing: 0.04em; }
+.stat-value { font-size: 27px; letter-spacing: -0.03em; }
+.stats { gap: 14px; margin-bottom: 24px; }
+
+/* Botón primario: mismas tres capas que la sección activa. */
+.btn {
+  border-radius: var(--radius-pill);
+  padding: 9px 18px;
+  font-weight: 550;
+  background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--sombra-azul);
+}
+
+.btn:hover { filter: brightness(1.06); }
+.btn:disabled { box-shadow: none; filter: none; }
+.btn-inline { padding: 7px 15px; }
+
+/* ── Estrecho ─────────────────────────────────────────────────────────────── */
+/*
+ * El lateral pasa a barra horizontal desplazable. No es un menú hamburguesa a
+ * propósito: son cuatro entradas, y esconderlas detrás de un botón cuesta un
+ * toque más cada vez para ahorrar 40 px de alto.
+ */
+@media (max-width: 880px) {
+  .app { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+
+  .lateral { position: static; height: auto; }
+  .lateral-marca { flex-direction: row; align-items: center; gap: 12px; padding: 14px 16px 12px; }
+  .nav { display: flex; gap: 6px; overflow-x: auto; padding: 0 12px 12px; }
+  .nav-grupo { display: flex; gap: 6px; }
+  .nav-grupo + .nav-grupo { margin-top: 0; }
+  .nav-titulo { display: none; }
+  .nav-item { white-space: nowrap; margin-bottom: 0; }
+  .lateral-pie { display: none; }
+
+  .cabecera { flex-wrap: wrap; padding: 4px 2px 16px; }
+  .cabecera-acciones { margin-left: 0; width: 100%; }
 }

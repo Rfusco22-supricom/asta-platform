@@ -11,7 +11,8 @@ import { clientTierSchema } from './identity.js';
 export const partnerSchema = z.object({
   id: odooIdSchema,
   nombre: z.string(),
-  email: z.email().nullable(),
+  /** Sin validar, por lo mismo que en `portfolioRowSchema`: se pinta, no se usa. */
+  email: z.string().nullable(),
   telefono: z.string().nullable(),
   /** res.users.id del vendedor asignado en Odoo. */
   vendedorOdooUserId: odooIdSchema.nullable(),
@@ -37,7 +38,23 @@ export type Partner = z.infer<typeof partnerSchema>;
 export const portfolioRowSchema = z.object({
   id: odooIdSchema,
   nombre: z.string(),
-  email: z.email().nullable(),
+  /**
+   * Tal como está en Odoo, SIN validar.
+   *
+   * Era `z.email()`, y un solo carácter tiraba la pantalla entera: el cliente
+   * ASG-Z SECURITY LANTECH tiene `"A"` en el campo de correo, y con eso el
+   * vendedor 428 no veía ninguno de sus 161 clientes — la respuesta completa
+   * fallaba el contrato por UNA fila. Hay ocho correos así en la instancia, cada
+   * uno capaz de apagarle la cartera a quien lo tenga.
+   *
+   * Aquí este campo se PINTA, no se usa para escribir a nadie. Validarlo
+   * convierte un problema de calidad de dato en Odoo —que además ya se reporta
+   * en el informe de reconciliación— en una caída de la herramienta.
+   *
+   * Donde sí se valida es al crear la cuenta: `esEmailPlausible` en el sync, que
+   * es justo por lo que estos clientes no tienen acceso al panel.
+   */
+  email: z.string().nullable(),
   telefono: z.string().nullable(),
   /** Nombre de la tarifa tal como viene de Odoo, sin normalizar. */
   tier: z.string().nullable(),

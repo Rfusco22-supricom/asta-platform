@@ -44,8 +44,7 @@ export default async function LoginPage({ searchParams }: Props) {
        * dispositivo y la IP que quedan registrados.
        */
       const cabeceras = await headers();
-      const ipCliente =
-        cabeceras.get('x-forwarded-for') ?? cabeceras.get('x-real-ip') ?? '';
+      const ipCliente = cabeceras.get('x-forwarded-for') ?? cabeceras.get('x-real-ip') ?? '';
 
       res = await fetch(`${MIDDLEWARE_URL}/api/v1/auth/login`, {
         method: 'POST',
@@ -66,9 +65,9 @@ export default async function LoginPage({ searchParams }: Props) {
     }
 
     if (!res.ok) {
-      const cuerpo = (await res.json().catch(() => null)) as
-        | { error?: { message?: string } }
-        | null;
+      const cuerpo = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
       const msg = cuerpo?.error?.message ?? '';
       // El bloqueo se distingue porque el usuario necesita saber que esperar le
       // sirve de algo. El resto de fallos comparten mensaje a propósito.
