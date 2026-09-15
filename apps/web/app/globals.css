@@ -1054,3 +1054,83 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
   .cabecera { flex-wrap: wrap; padding: 4px 2px 16px; }
   .cabecera-acciones { margin-left: 0; width: 100%; }
 }
+
+/* ── Menú del usuario ─────────────────────────────────────────────────────── */
+/*
+ * El chip deja de ser un adorno y pasa a ser un botón. Se conserva su aspecto
+ * —pastilla, avatar, nombre— y se le añade lo que lo delata como pulsable: el
+ * cursor, el chevron y una reacción al pasar por encima.
+ */
+
+.menu-usuario { position: relative; }
+
+button.chip-usuario {
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+  transition: border-color .13s ease, background-color .13s ease;
+}
+
+button.chip-usuario:hover { border-color: var(--border-strong); background: var(--surface-2); }
+
+button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
+
+.chip-usuario .chevron {
+  color: var(--text-3);
+  flex: none;
+  transition: transform .15s ease;
+}
+
+.chip-usuario .chevron.abierto { transform: rotate(180deg); }
+
+.menu-desplegable {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 210px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(17, 24, 39, 0.06), 0 16px 32px -12px rgba(17, 24, 39, 0.22);
+}
+
+.menu-cabecera {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.25;
+}
+
+/* El nombre completo, sin recortar: en el chip se corta por espacio, y este es
+   el único sitio donde se puede leer entero. */
+.menu-cabecera strong { font-size: 13px; font-weight: 600; }
+.menu-cabecera small { font-size: 11.5px; color: var(--text-3); }
+
+.menu-desplegable a,
+.menu-desplegable button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.menu-desplegable a:hover,
+.menu-desplegable button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.menu-desplegable .menu-peligro { color: var(--danger); }
+.menu-desplegable .menu-peligro:hover { background: var(--danger-soft); color: var(--danger); }

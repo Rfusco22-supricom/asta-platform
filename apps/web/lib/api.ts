@@ -10,6 +10,8 @@ import {
   apiErrorSchema,
   apiKeySummarySchema,
   agentesRespuestaSchema,
+  astaRespuestaSchema,
+  type OportunidadAsta,
   type Agente,
   type ApiKeySummary,
   type PortfolioRow,
@@ -354,3 +356,36 @@ export async function getAgentes(accessToken: string): Promise<Agentes> {
   const { generadoEn, duracionMs, ...totales } = r.meta;
   return { filas: r.data, totales, generadoEn, duracionMs };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Asta {
+  filas: OportunidadAsta[];
+  totales: {
+    clientes: number;
+    asta: number;
+    competencia: number;
+    cuota: number;
+    sinAsta: number;
+    sinAstaImporte: number;
+  };
+  generadoEn: string;
+  duracionMs: number;
+}
+
+/**
+ * Cuota de ASTA frente a la competencia.
+ *
+ * Dos rutas distintas y no una con parámetro: la del administrador devuelve
+ * toda la empresa, la del vendedor solo su cartera. El alcance lo fija el
+ * endpoint, no quien llama.
+ */
+async function pedirAsta(ruta: string, accessToken: string): Promise<Asta> {
+  const r = await request(ruta, astaRespuestaSchema, accessToken);
+  const { generadoEn, duracionMs, ...totales } = r.meta;
+  return { filas: r.data, totales, generadoEn, duracionMs };
+}
+
+export const getAstaEmpresa = (accessToken: string) => pedirAsta('/api/v1/admin/asta', accessToken);
+export const getAstaCartera = (accessToken: string) =>
+  pedirAsta('/api/v1/salesperson/asta', accessToken);

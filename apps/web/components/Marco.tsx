@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { clearSession } from '@/lib/session';
 import { ambitoDe, navegacionDe } from '@/lib/navegacion';
 import { NavLateral } from './NavLateral';
+import { MenuUsuario } from './MenuUsuario';
 
 /**
  * El marco de toda pantalla con sesión: menú lateral, cabecera y contenido.
@@ -102,25 +103,20 @@ export function Marco({
             {descripcion && <p>{descripcion}</p>}
           </div>
 
-          {/* Usuario arriba a la derecha, como en la referencia. Estaba en el
-              pie del lateral, donde el indicador de desarrollo de Next lo tapaba
-              justo encima del botón de salir. */}
+          {/*
+            El chip del usuario ABRE un menú: sesiones activas y cerrar sesión.
+            Antes era decorativo con el botón de Salir suelto al lado, y todo el
+            mundo intentaba pulsarlo igualmente porque es donde está en cualquier
+            herramienta.
+          */}
           <div className="cabecera-acciones">
             {acciones}
-            <span className="chip-usuario">
-              <span className="avatar" aria-hidden="true">
-                {iniciales(usuario.nombre)}
-              </span>
-              <span className="usuario-datos">
-                <strong title={usuario.nombre}>{usuario.nombre}</strong>
-                <small>{usuario.role.toLowerCase()}</small>
-              </span>
-            </span>
-            <form action={salir}>
-              <button type="submit" className="btn-salir">
-                Salir
-              </button>
-            </form>
+            <MenuUsuario
+              nombre={usuario.nombre}
+              rol={usuario.role}
+              iniciales={iniciales(usuario.nombre)}
+              salir={salir}
+            />
           </div>
         </header>
 
