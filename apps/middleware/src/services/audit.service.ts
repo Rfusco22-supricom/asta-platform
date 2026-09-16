@@ -41,6 +41,11 @@ export type AuditAction =
   /// retirar el acceso entero, y es lo primero que se mira cuando alguien
   /// pregunta por qué no puede entrar.
   | 'user.desactivado'
+  /// Una persona valida, rechaza o devuelve a pendiente compatibilidades
+  /// producto → cartucho (#56). Lo validado llega al cliente por el
+  /// recomendador: si un día sale un tóner equivocado, aquí está quién y cuándo.
+  | 'compatibilidad.revisada'
+  | 'cartucho.tipo_corregido'
   | 'user.invitado'
   | 'user.invitacion_aceptada';
 

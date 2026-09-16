@@ -14,6 +14,8 @@ import {
   reporteRespuestaSchema,
   type ReporteRespuesta,
   hermanosRespuestaSchema,
+  revisionRespuestaSchema,
+  type RevisionRespuesta,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -440,4 +442,20 @@ export async function getDuplicados(accessToken: string, partnerId: number): Pro
     accessToken,
   );
   return r.data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Propuestas producto → cartucho para revisar (#56). */
+export async function getRevisionCompatibilidades(
+  accessToken: string,
+  filtro: { estado?: string; marca?: string; q?: string; pagina?: number },
+): Promise<RevisionRespuesta> {
+  const qs = new URLSearchParams();
+  if (filtro.estado) qs.set('estado', filtro.estado);
+  if (filtro.marca) qs.set('marca', filtro.marca);
+  if (filtro.q) qs.set('q', filtro.q);
+  if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
+  const sufijo = qs.size ? `?${qs.toString()}` : '';
+  return request(`/api/v1/admin/compatibilidades/productos${sufijo}`, revisionRespuestaSchema, accessToken);
 }

@@ -1274,3 +1274,144 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
     min-width: 34px;
   }
 }
+
+/* ── Revisión de compatibilidades ─────────────────────────────────────────── */
+
+/* Las pestañas de estado son enlaces (cambian la URL), con el aspecto de .segmented. */
+.segmented .segmented-enlace {
+  font-size: 13px;
+  padding: 7px 13px;
+  color: var(--text-2);
+  text-decoration: none;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.segmented .segmented-enlace:last-child { border-right: 0; }
+.segmented .segmented-enlace[aria-current='page'] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.segmented .segmented-enlace:hover:not([aria-current='page']) { background: var(--surface-2); }
+
+.revision-filtros .filtro-campo .input { width: 260px; }
+.revision-filtros .select { min-width: 150px; }
+
+.revision-barra {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.revision-lote { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.revision-mensaje { font-size: 13px; }
+.revision-mensaje.error { color: var(--danger); }
+.revision-mensaje.ok { color: var(--positive); }
+
+/* minmax(0, 1fr) y min-width: 0: un hijo de grid no encoge por debajo de su
+   contenido, y la tabla ancha empujaba la página entera a un scroll lateral que
+   escondía las ventas y los botones de decidir. Así el scroll queda en su tabla. */
+.revision-productos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.revision-producto { min-width: 0; }
+.revision-producto > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.revision-producto .num .zero { color: var(--text-3); font-size: 12.5px; }
+
+/* Los candidatos de otro estado se ven, pero atenuados: dan contexto, no se deciden aquí. */
+.revision-contexto td { color: var(--text-3); }
+.revision-contexto .codigo-cartucho { color: var(--text-2); }
+
+.codigo-cartucho { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.evidencia {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.select-compacto { font-size: 12.5px; padding: 4px 6px; }
+
+.revision-producto thead th,
+.revision-producto tbody td { padding-left: 10px; padding-right: 10px; }
+
+/* Botón arriba y enlaces debajo, en vez de en fila: la columna de decidir es la
+   que más importa y la que antes quedaba cortada. */
+.revision-acciones { text-align: right; }
+.revision-acciones > .btn { display: block; margin-left: auto; padding: 6px 12px; }
+.revision-acciones > .btn-link { display: inline-block; margin-top: 4px; white-space: nowrap; }
+.revision-acciones > .btn-link + .btn-link { margin-left: 10px; }
+.btn-validar { background: var(--positive); }
+.btn-link:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }
+
+.tag.estado-pendiente { color: var(--warning); }
+.tag.estado-validada { color: var(--positive); }
+.tag.estado-rechazada { color: var(--danger); }
+
+.paginacion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+@media (max-width: 640px) {
+  .revision-filtros .filtro-campo,
+  .revision-filtros .filtro-campo .input,
+  .revision-filtros .select { width: 100%; }
+  .revision-producto > header { flex-direction: column; gap: 4px; }
+  .revision-producto .num { text-align: left; }
+}
+
+/* Tablet y móvil: las pestañas de estado y las casillas de la revisión también se tocan con el dedo. */
+@media (pointer: coarse) {
+  .segmented .segmented-enlace { display: inline-flex; align-items: center; min-height: 44px; }
+  .revision-productos input[type='checkbox'],
+  .revision-barra input[type='checkbox'] { width: 22px; height: 22px; }
+}
+
+/* El degradado azul que el rediseño pone en .btn va más abajo en la hoja y
+   tapaba el rojo de .btn-peligro: «Rechazar» o «Cerrar sesión» se veían como la
+   acción principal. Con dos clases, la acción peligrosa vuelve a verse peligrosa. */
+.btn.btn-peligro { background: var(--danger); }
+.btn.btn-validar { background: var(--positive); }
+
+/* Móvil: cada candidato como bloque apilado en vez de fila de tabla. Con seis
+   columnas, validar exigía desplazar cada tabla de lado. */
+@media (max-width: 640px) {
+  .revision-producto thead { display: none; }
+  .revision-producto table,
+  .revision-producto tbody { display: block; }
+  .revision-producto tbody tr {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .revision-producto tbody tr:last-child { border-bottom: 0; }
+  .revision-producto tbody td { display: block; padding: 0; border: 0; }
+  .revision-producto tbody td:nth-child(1) { grid-column: 1; grid-row: 1 / span 4; }
+  .revision-producto tbody td:nth-child(2),
+  .revision-producto tbody td:nth-child(5),
+  .revision-producto tbody td:nth-child(6) { grid-column: 2 / 4; }
+  .revision-producto tbody td:nth-child(3) { grid-column: 2; }
+  .revision-producto tbody td:nth-child(4) { grid-column: 3; }
+  .revision-producto .select-compacto { width: 100%; }
+  .revision-acciones { text-align: left; }
+  .revision-acciones > .btn { display: inline-block; margin: 0 12px 0 0; }
+  .revision-acciones > .btn-link { margin-top: 0; }
+  .revision-producto .table-wrap { overflow-x: visible; }
+}

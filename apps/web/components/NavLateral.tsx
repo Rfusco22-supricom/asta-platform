@@ -86,6 +86,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M11 12h10M18 12v3M15 12v2" />
         </svg>
       );
+    case 'compatibilidades':
+      // Un cartucho que encaja en su hueco.
+      return (
+        <svg {...comun}>
+          <rect x="3" y="8" width="18" height="11" rx="2" />
+          <path d="M8 8V5h8v3M9 13.5l2 2 4-4" />
+        </svg>
+      );
     case 'sesiones':
       return (
         <svg {...comun}>
