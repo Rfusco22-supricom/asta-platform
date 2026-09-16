@@ -48,6 +48,14 @@ export const authEnvSchema = z.object({
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(8),
   /** Minutos de bloqueo tras agotar los intentos. */
   LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
+
+  /**
+   * El personal (VENDEDOR, SUPERADMIN) puede entrar con su contraseña de Odoo
+   * (#85). `false` lo apaga en el acto sin desplegar: solo queda la contraseña
+   * del panel. Es el interruptor para cuando Odoo bloquee cuentas, cambie la
+   * autenticación o haya que cortar el camino por seguridad.
+   */
+  LOGIN_ODOO: z.stringbool().default(true),
 });
 
 export type AuthEnv = z.infer<typeof authEnvSchema>;

@@ -109,6 +109,44 @@ export function invalidateUid(): void {
   uidPromise = null;
 }
 
+/** Odoo no contestó: ni sí ni no. No es lo mismo que una contraseña incorrecta. */
+export class OdooNoDisponible extends Error {
+  constructor() {
+    super('Odoo no respondió al comprobar la contraseña');
+    this.name = 'OdooNoDisponible';
+  }
+}
+
+/**
+ * ¿Es `password` la contraseña de Odoo de `login`? Devuelve el uid, o `false`.
+ *
+ * Lo usa el login del personal (#85). Es la ÚNICA función del middleware por la
+ * que pasa una contraseña de Odoo que no es la del usuario de servicio, así que:
+ *
+ *   · no registra nada: ni la contraseña, ni el login, ni los parámetros. Los
+ *     errores se relanzan como `OdooNoDisponible`, sin el error original, que
+ *     en algunas librerías XML-RPC incluye el cuerpo de la petición.
+ *   · no toca `uidPromise`: autenticar a una persona no puede cambiar la sesión
+ *     del usuario de servicio.
+ *   · no pasa por `registrarRpc`, para que las métricas no mezclen logins con
+ *     lecturas.
+ *
+ * Con la verificación en dos pasos activada, Odoo responde `false` aunque la
+ * contraseña sea buena: no hay forma de distinguirlo desde aquí.
+ */
+export async function autenticarEnOdoo(login: string, password: string): Promise<number | false> {
+  try {
+    const uid = await call<number | false>(commonClient, 'authenticate', [env.ODOO_DB, login, password, {}]);
+    return typeof uid === 'number' && uid > 0 ? uid : false;
+  } catch (error) {
+    // Un fallo XML-RPC con `faultCode` es Odoo contestando que no: por ejemplo su
+    // propio freno tras varios intentos («Too many login failures»). Eso es un
+    // rechazo, no una caída, y no debe decirle al usuario que Odoo no responde.
+    if (error && typeof error === 'object' && 'faultCode' in error) return false;
+    throw new OdooNoDisponible();
+  }
+}
+
 /**
  * Envoltorio de `execute_kw`, la única puerta al ERP.
  *

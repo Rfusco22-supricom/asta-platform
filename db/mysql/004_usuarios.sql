@@ -157,6 +157,10 @@ GRANT SELECT, INSERT, UPDATE ON asta.product_cartridges       TO 'asta_app'@'loc
 -- otro usuario.
 GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
 
+-- Contador de intentos del personal que entra con Odoo (#85). Se lee y se
+-- actualiza en cada login; nunca se borra una fila.
+GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost';
+
 -- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
 --
@@ -292,6 +296,9 @@ GRANT SELECT ON asta.cartridges               TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.cartridge_printer_models TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.product_cartridges       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
+
+-- Solo contadores de intentos, no material de credencial: sirve para investigar bloqueos.
+GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 
