@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   apiErrorSchema,
+  compatibleQuerySchema,
   HTTP_STATUS_BY_ERROR,
   inventoryQuerySchema,
   publicInventoryListResponseSchema,
@@ -8,6 +9,9 @@ import {
   publicInvoiceListQuerySchema,
   publicInvoiceListResponseSchema,
   publicInvoicePdfLinkResponseSchema,
+  printerSearchQuerySchema,
+  publicCompatibleResponseSchema,
+  publicPrinterSearchResponseSchema,
   type ErrorCode,
 } from '@asta/shared-types';
 import { GUIA, guiaEnMarkdown } from './guia.js';
@@ -108,6 +112,7 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   INVOICE_PDF_NOT_AVAILABLE: 'La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor.',
   LINK_NOT_VALID: 'El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo.',
   LINK_EXPIRED: 'El enlace de descarga caducó. Pide uno nuevo.',
+  PRINTER_NOT_FOUND: 'La impresora no existe o se retiró del catálogo. Vuelve a buscarla con `/recommender/printers`.',
   INVENTORY_UNAVAILABLE: 'Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
   RATE_LIMITED: 'Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos. `message` explica cuáles.',
@@ -308,7 +313,60 @@ export const OPERACIONES: Operacion[] = [
     errores: ['INVALID_QUERY', 'INVENTORY_UNAVAILABLE', ...ERRORES_CON_KEY],
     ejemplo: { ruta: '/api/v1/public/inventory', query: { q: 'toner', soloDisponibles: 'true' }, conKey: true },
   },
+  {
+    metodo: 'get',
+    ruta: '/api/v1/public/recommender/printers',
+    id: 'buscarImpresoras',
+    resumen: 'Buscar una impresora',
+    descripcion:
+      'Encuentra el modelo de impresora a partir de lo que teclea una persona, con o sin marca, guiones ni espacios: `hl2350` encuentra la HL-L2350DW. Si no hay coincidencias, `sugerencias` trae modelos parecidos para preguntar «¿quisiste decir…?». El catálogo puede tardar hasta 5 minutos en reflejar un modelo nuevo.',
+    scope: 'RECOMMENDER_READ',
+    query: printerSearchQuerySchema,
+    exito: {
+      schema: publicPrinterSearchResponseSchema,
+      descripcion: 'Las impresoras que coinciden, o sugerencias si no coincide ninguna.',
+      ejemploRespuesta: { data: [{ id: 42, marca: 'HP', nombre: 'LaserJet Pro M404dn' }], sugerencias: [] },
+    },
+    errores: ['INVALID_QUERY', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/recommender/printers', query: { q: 'm404dn' }, conKey: true },
+  },
+  {
+    metodo: 'get',
+    ruta: '/api/v1/public/recommender/printers/{printerId}/compatible',
+    id: 'productosCompatibles',
+    resumen: 'Productos compatibles con una impresora',
+    descripcion:
+      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si todavía no hay ninguna, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
+    scope: 'RECOMMENDER_READ',
+    parametrosRuta: [{ nombre: 'printerId', descripcion: 'El `id` de la impresora, de `/recommender/printers`.', esquema: { type: 'integer', minimum: 1 } }],
+    query: compatibleQuerySchema,
+    exito: {
+      schema: publicCompatibleResponseSchema,
+      descripcion: 'Los productos compatibles.',
+      ejemploRespuesta: {
+        data: [
+          {
+            id: 2001,
+            templateId: 3001,
+            sku: 'TON-0001',
+            nombre: 'TÓNER NEGRO DE EJEMPLO',
+            stock: 'disponible',
+            tipo: 'original',
+            cartuchos: [{ marca: 'HP', codigo: 'CF258A', tipo: 'toner', color: 'negro', rendimientoPaginas: 3000 }],
+          },
+        ],
+        meta: { impresora: { id: 42, marca: 'HP', nombre: 'LaserJet Pro M404dn' }, sinCompatibilidadesCargadas: false, desdeCache: false },
+      },
+    },
+    errores: ['INVALID_QUERY', 'PRINTER_NOT_FOUND', 'INVENTORY_UNAVAILABLE', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/recommender/printers/{printerId}/compatible', valores: { printerId: '42' }, conKey: true },
+  },
 ];
+
+function etiquetaDe(ruta: string): string {
+  if (ruta.includes('/recommender/')) return 'Recomendador';
+  return ruta.includes('inventory') ? 'Inventario' : 'Facturas';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Documento
@@ -375,7 +433,7 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
         operationId: op.id,
         summary: op.resumen,
         description: op.scope ? `${op.descripcion}\n\nPermiso necesario: \`${op.scope}\`.` : op.descripcion,
-        tags: [op.ruta.includes('inventory') ? 'Inventario' : 'Facturas'],
+        tags: [etiquetaDe(op.ruta)],
         security: op.scope ? [{ ApiKey: [] }] : [],
         parameters: parametros,
         responses: respuestas,
@@ -398,6 +456,7 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
     tags: [
       { name: 'Facturas', description: 'Tus facturas y sus PDF.' },
       { name: 'Inventario', description: 'Existencias del catálogo.' },
+      { name: 'Recomendador', description: 'Qué producto le sirve a una impresora.' },
     ],
     security: [{ ApiKey: [] }],
     paths,
