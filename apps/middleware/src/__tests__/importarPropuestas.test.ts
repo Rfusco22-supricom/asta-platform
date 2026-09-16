@@ -38,6 +38,13 @@ const IDS = [...PRODUCTOS, NUEVO].map((p) => p.id);
 const CODIGOS_DE_PRUEBA = ['pg999xl', '998a', 'w9998a', 'cb997a', 'cb998a', 'ce998a', 'dr998', '997'];
 
 let marcasPrevias: string[] = [];
+/**
+ * Vitest ejecuta `afterAll` aunque `beforeAll` falle. Sin esta marca, justo
+ * cuando la comprobación detecta cartuchos reales con estos códigos, la limpieza
+ * los borraría —y por el ON DELETE CASCADE, sus compatibilidades validadas— y,
+ * con `marcasPrevias` aún vacío, también todas las marcas sin cartuchos.
+ */
+let baseComprobada = false;
 
 async function propuestasDePrueba() {
   return prisma.productCartridge.findMany({
@@ -54,9 +61,15 @@ beforeAll(async () => {
     throw new Error('Los cartuchos o productos de prueba ya existen en la base: el test no puede distinguir lo suyo. Límpialos a mano.');
   }
   marcasPrevias = (await prisma.printerBrand.findMany({ select: { name: true } })).map((m) => m.name);
+  baseComprobada = true;
 });
 
 afterAll(async () => {
+  if (!baseComprobada) {
+    // La base no estaba limpia o no se pudo leer: nada de lo que hay es de este test.
+    await prisma.$disconnect();
+    return;
+  }
   await prisma.productCartridge.deleteMany({ where: { odooProductTmplId: { in: IDS } } });
   await prisma.cartridge.deleteMany({ where: { codeNormalized: { in: CODIGOS_DE_PRUEBA } } });
   // Una marca solo se borra si la creó este test Y no le quedan cartuchos.
