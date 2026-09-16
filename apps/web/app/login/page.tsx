@@ -71,7 +71,9 @@ export default async function LoginPage({ searchParams }: Props) {
       const msg = cuerpo?.error?.message ?? '';
       // El bloqueo se distingue porque el usuario necesita saber que esperar le
       // sirve de algo. El resto de fallos comparten mensaje a propósito.
-      redirect(`/login?error=${/bloquead/i.test(msg) ? 'bloqueada' : 'credenciales'}`);
+      // Odoo sin responder también se distingue: sin esto, quien entra con la
+      // contraseña de Odoo leería «contraseña incorrecta» y la cambiaría para nada.
+      redirect(`/login?error=${/bloquead/i.test(msg) ? 'bloqueada' : /odoo/i.test(msg) ? 'odoo' : 'credenciales'}`);
     }
 
     const { data } = (await res.json()) as {
@@ -108,6 +110,7 @@ export default async function LoginPage({ searchParams }: Props) {
     faltan: 'Escribe tu correo y tu contraseña.',
     red: 'No se pudo contactar con el servidor. Comprueba que el middleware esté arriba.',
     cerrada: 'Tu sesión se cerró. Vuelve a entrar.',
+    odoo: 'No se pudo comprobar tu contraseña con Odoo. Inténtalo en unos minutos, o entra con la contraseña del panel si tienes una.',
   };
 
   return (
@@ -151,6 +154,17 @@ export default async function LoginPage({ searchParams }: Props) {
           <button type="submit" className="btn">
             Entrar
           </button>
+
+          {/*
+            Sin esto, un vendedor con la contraseña del panel y otro con la de
+            Odoo no saben cuál escribir. Lo de la verificación en dos pasos va
+            aquí, para todos, y no en el error: en el error le diría a
+            cualquiera qué cuentas la tienen activada.
+          */}
+          <p className="login-ayuda">
+            <strong>Equipo de ventas:</strong> entra con tu usuario y contraseña de Odoo, o con la contraseña del panel si
+            te la dieron. Si en Odoo tienes la verificación en dos pasos, usa la del panel.
+          </p>
         </form>
       </div>
     </div>

@@ -185,6 +185,7 @@ model AppUser {
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   credentials             UserCredential?
+  staffLoginGuard         StaffLoginGuard?
   sessions                UserSession[]
   authTokens              AuthToken[]
   apiKeys                 ApiKey[]                @relation("ApiKeyOwner")
@@ -228,6 +229,27 @@ model UserCredential {
   lockedUntil    DateTime? @map("locked_until") @db.DateTime(3)
 
   @@map("user_credentials")
+}
+
+/// Bloqueo por intentos del PERSONAL (VENDEDOR y SUPERADMIN), que puede entrar con
+/// su contraseña de Odoo o con la del panel (#85).
+///
+/// Aparte de `user_credentials` porque el personal que entra con Odoo no tiene
+/// fila allí —no hay contraseña del panel que guardar— y el contador tiene que
+/// existir igual. Y es UN contador para los dos caminos: si cada uno llevara el
+/// suyo, quien ataca tendría el doble de intentos.
+///
+/// El bloqueo se comprueba ANTES de preguntar a Odoo: quien aporree el login del
+/// panel no puede aporrear con él las cuentas del ERP.
+model StaffLoginGuard {
+  userId String  @id @map("user_id") @db.Char(36)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_staff_login_guards_user")
+
+  failedAttempts Int       @default(0) @map("failed_attempts") @db.UnsignedSmallInt
+  lockedUntil    DateTime? @map("locked_until") @db.DateTime(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("staff_login_guards")
 }
 
 /// Refresh tokens.
