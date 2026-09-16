@@ -10,6 +10,11 @@ import { reporte } from '../services/reportes.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { prisma } from '../config/prisma.js';
+import { z } from 'zod';
+import { revisionDecisionSchema, revisionQuerySchema, tipoCartuchoCambioSchema } from '@asta/shared-types';
+import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
+import { recordAudit } from '../services/audit.service.js';
+import { auditContext } from '../middleware/auditContext.js';
 
 /**
  * Operaciones de administración. Solo SUPERADMIN.
@@ -227,6 +232,78 @@ adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'),
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ese usuario no existe.' } });
       return;
     }
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Revisión de compatibilidades (#56)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Propuestas producto → cartucho, lo más vendido primero. */
+adminRouter.get('/compatibilidades/productos', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const consulta = revisionQuerySchema.safeParse(req.query);
+    if (!consulta.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: z.prettifyError(consulta.error) } });
+      return;
+    }
+    res.json(await listarParaRevision(consulta.data));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Validar, rechazar o devolver a pendiente una o varias filas.
+ *
+ * Todo o nada: si alguna ya no está en el estado que se vio en pantalla, 409 y
+ * no se toca ninguna. Ver `aplicarRevision`.
+ */
+adminRouter.post('/compatibilidades/productos/revision', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = revisionDecisionSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await aplicarRevision(cuerpo.data, req.identity.appUserId);
+    recordAudit({
+      action: 'compatibilidad.revisada',
+      ...auditContext(req),
+      targetType: 'product_cartridges',
+      targetId: cuerpo.data.filas.length === 1 ? `${cuerpo.data.filas[0].templateId}:${cuerpo.data.filas[0].cartridgeId}` : null,
+      metadata: {
+        decision: cuerpo.data.decision,
+        relacion: cuerpo.data.relacion ?? null,
+        filas: cuerpo.data.filas.map((f) => ({ templateId: f.templateId, cartridgeId: f.cartridgeId, antes: f.estadoEsperado })),
+      },
+    });
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Corrige el tipo de un cartucho (tóner, tinta, tambor, otro), en todos sus productos. */
+adminRouter.patch('/compatibilidades/cartuchos/:cartridgeId', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const id = z.coerce.number().int().positive().max(4_294_967_295).safeParse(req.params.cartridgeId);
+    const cuerpo = tipoCartuchoCambioSchema.safeParse(req.body);
+    if (!id.success || !cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Cartucho o tipo no válido.' } });
+      return;
+    }
+    const { anterior } = await corregirTipoCartucho(id.data, cuerpo.data.tipo);
+    recordAudit({
+      action: 'cartucho.tipo_corregido',
+      ...auditContext(req),
+      targetType: 'cartridges',
+      targetId: String(id.data),
+      metadata: { antes: anterior, despues: cuerpo.data.tipo },
+    });
+    res.json({ data: { cartridgeId: id.data, tipo: cuerpo.data.tipo } });
+  } catch (error) {
     next(error);
   }
 });

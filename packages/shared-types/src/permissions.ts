@@ -52,6 +52,7 @@ export const accionSchema = z.enum([
   'asta.propias.ver',
   'admin.reportes.ver',
   'reportes.propios.ver',
+  'admin.compatibilidades.revisar',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -162,6 +163,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver las estadísticas de los agentes de venta',
+  },
+  'admin.compatibilidades.revisar': {
+    // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).
+    // Un error aquí le vende un tóner que no le sirve: solo administración.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Validar o rechazar qué producto corresponde a qué cartucho',
   },
   'admin.reconciliacion.ver': {
     roles: ['SUPERADMIN'],
