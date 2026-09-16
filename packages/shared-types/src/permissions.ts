@@ -50,6 +50,8 @@ export const accionSchema = z.enum([
   'admin.agentes.ver',
   'admin.asta.ver',
   'asta.propias.ver',
+  'admin.reportes.ver',
+  'reportes.propios.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -136,6 +138,22 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['VENDEDOR'],
     ambito: 'ninguno',
     descripcion: 'Ver las oportunidades de ASTA en la propia cartera',
+  },
+  'admin.reportes.ver': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver los reportes de facturacion de toda la empresa',
+  },
+  'reportes.propios.ver': {
+    /*
+     * Aparte de la del administrador, por la misma razon que `asta.propias.ver`:
+     * un unico endpoint que mirara el rol para decidir cuanto ensena es donde
+     * acaba colandose la facturacion de toda la empresa en la pantalla de un
+     * vendedor. La ruta del vendedor nunca recibe el alcance de la empresa.
+     */
+    roles: ['VENDEDOR'],
+    ambito: 'ninguno',
+    descripcion: 'Ver los reportes de la propia cartera',
   },
   'admin.agentes.ver': {
     // Solo el SUPERADMIN. Un vendedor NO ve las cifras de los demás: la cartera

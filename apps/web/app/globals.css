@@ -1134,3 +1134,143 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 
 .menu-desplegable .menu-peligro { color: var(--danger); }
 .menu-desplegable .menu-peligro:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* ── Reportes ──────────────────────────────────────────────────────────────
+   El selector de periodo son enlaces, no botones con JavaScript: la URL lleva
+   las fechas, así que un reporte se puede guardar en favoritos o pasarle el
+   enlace a alguien y los dos ven exactamente lo mismo. */
+
+.periodos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.periodo {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.periodo:hover {
+  border-color: var(--primario);
+  color: var(--text);
+}
+
+.periodo--activo,
+.periodo--activo:hover {
+  background: var(--primario);
+  border-color: var(--primario);
+  color: #fff;
+}
+
+.panel-nota {
+  margin: -6px 0 16px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* La serie mensual: doce columnas, sin librería de gráficas. */
+.serie {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  min-height: 190px;
+  overflow-x: auto;
+}
+
+.serie-col {
+  flex: 1 1 0;
+  min-width: 44px;
+  /* Con tres meses en vez de doce, sin tope cada barra se convierte en una losa
+     que no dice nada mejor que una barra normal. */
+  max-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.serie-monto {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* La pista da la altura; la barra crece dentro en porcentaje. Sin ella, todas
+   las barras medirían lo que mide su propio contenido. */
+.serie-pista {
+  width: 100%;
+  height: 130px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+.serie-barra {
+  width: 100%;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--primario), color-mix(in srgb, var(--primario) 65%, #000));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+}
+
+.serie-mes {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* Cuota de ASTA frente al resto. */
+.cuota-barra {
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.cuota-asta {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primario), color-mix(in srgb, var(--primario) 60%, #2ee6a8));
+  /* Una cuota del 0,3 % tiene que verse: sin esto la barra desaparece y parece
+     que el dato no cargó. */
+  min-width: 3px;
+}
+
+.cuota-pie {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.cuota-otros {
+  color: var(--text-2);
+}
+
+.pie-criterio {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+@media (max-width: 640px) {
+  .serie-monto {
+    display: none;
+  }
+  .serie-col {
+    min-width: 34px;
+  }
+}

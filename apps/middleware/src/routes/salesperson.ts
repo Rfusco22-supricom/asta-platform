@@ -10,6 +10,8 @@ import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
+import { reporte } from '../services/reportes.service.js';
+import { rangoDeLaPeticion } from '../services/rango.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -99,6 +101,33 @@ salespersonRouter.get('/asta', autorizar('asta.propias.ver'), async (req, res, n
       data: r.oportunidades,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Reportes de la PROPIA cartera.
+ *
+ * El alcance no es un parámetro: sale del `odooUserId` del token firmado, igual
+ * que en `/asta`. Un vendedor no puede pedir el reporte de otro porque no hay
+ * forma de nombrarlo.
+ */
+salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({
+        error: {
+          code: 'ROLE_NOT_ALLOWED',
+          message: 'Tu usuario no tiene cartera asociada en Odoo.',
+        },
+      });
+      return;
+    }
+
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json(await reporte({ ...rango, soloDelVendedor: odooUserId }));
   } catch (error) {
     next(error);
   }

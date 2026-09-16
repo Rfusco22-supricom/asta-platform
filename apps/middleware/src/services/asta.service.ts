@@ -82,7 +82,7 @@ export function vaciarCacheAsta(): void {
   cacheProductos.vaciar();
 }
 
-async function productosEnCompetencia(): Promise<{ asta: number[]; otros: number[] }> {
+export async function productosEnCompetencia(): Promise<{ asta: number[]; otros: number[] }> {
   const enCache = cacheProductos.get('todos');
   if (enCache !== undefined) return enCache;
 

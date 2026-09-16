@@ -42,6 +42,7 @@ export const errorCodeSchema = z.enum([
   'VALIDATION_ERROR',
   'INVALID_QUERY',
   'INVALID_PARTNER_ID',
+  'INVALID_DATE_RANGE',
   /** `:id` de factura que no es un entero positivo. */
   'INVALID_INVOICE_ID',
 
@@ -117,6 +118,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   VALIDATION_ERROR: 400,
   INVALID_QUERY: 400,
   INVALID_PARTNER_ID: 400,
+  INVALID_DATE_RANGE: 400,
   INVALID_INVOICE_ID: 400,
 
   NOT_FOUND: 404,
