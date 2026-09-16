@@ -1,20 +1,17 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getRevisionCompatibilidades, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { RevisionLista } from './RevisionLista';
-import { Pestanas } from './Pestanas';
+import { FormularioCompatibilidad } from '@/components/FormularioCompatibilidad';
+import { getRevisionImpresoras, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { Pestanas } from '../Pestanas';
+import { RevisionImpresoras } from './RevisionImpresoras';
 
 /**
- * Revisión de compatibilidades: qué producto de Odoo es, o sustituye a, qué
- * cartucho (#56).
+ * Compatibilidades → Impresoras: a qué impresora le sirve cada cartucho (#56).
  *
- * El recomendador del kiosco (#39) solo enseña lo que alguien validó aquí. Antes
- * de esta pantalla la única forma de validar era editar MySQL a mano, así que
- * el recomendador no podía devolver nada.
- *
- * Lo más vendido va primero: el top 20 de consumibles es el 39 % del importe, y
- * es sobre él que se mide si el kiosco sale.
+ * Aquí se revisa lo que trajo el importador de `compatibilidad_productos` y lo
+ * que proponen los vendedores, y se añade lo que falta. Lo añadido por un
+ * administrador queda validado.
  */
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +26,7 @@ function texto(v: string | string[] | undefined): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
-export default async function CompatibilidadesPage({
+export default async function ImpresorasPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -38,15 +35,13 @@ export default async function CompatibilidadesPage({
   const params = await searchParams;
   const estado = ESTADOS.find((e) => e.valor === params.estado)?.valor ?? 'PROPUESTA';
   const marca = texto(params.marca);
-  // Una sola letra la rechaza el middleware; aquí se ignora en vez de romper la pantalla.
   const q = texto(params.q) && texto(params.q)!.length >= 2 ? texto(params.q) : undefined;
   const pagina = Math.max(1, Number(params.pagina) || 1);
 
   let datos;
   try {
-    datos = await getRevisionCompatibilidades(sesion.accessToken, { estado, marca, q, pagina });
+    datos = await getRevisionImpresoras(sesion.accessToken, { estado, marca, q, pagina });
   } catch (error) {
-    // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
@@ -59,24 +54,20 @@ export default async function CompatibilidadesPage({
     );
   }
 
-  const { porEstado, totalProductos, porPagina, marcas } = datos.meta;
+  const { porEstado, totalCartuchos, porPagina, marcas } = datos.meta;
   const total = porEstado.PROPUESTA + porEstado.VALIDADA + porEstado.RECHAZADA;
-  const paginas = Math.max(1, Math.ceil(totalProductos / porPagina));
-
+  const paginas = Math.max(1, Math.ceil(totalCartuchos / porPagina));
   const enlace = (cambios: Record<string, string | number | undefined>) => {
     const qs = new URLSearchParams();
-    const todo = { estado, marca, q, ...cambios };
-    for (const [k, v] of Object.entries(todo)) if (v !== undefined && v !== '' && !(k === 'pagina' && String(v) === '1')) qs.set(k, String(v));
-    return `/admin/compatibilidades${qs.size ? `?${qs}` : ''}`;
+    for (const [k, v] of Object.entries({ estado, marca, q, ...cambios })) {
+      if (v !== undefined && v !== '' && !(k === 'pagina' && String(v) === '1')) qs.set(k, String(v));
+    }
+    return `/admin/compatibilidades/impresoras${qs.size ? `?${qs}` : ''}`;
   };
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Compatibilidades"
-      descripcion="Qué producto es, o sustituye a, qué cartucho. El kiosco solo recomienda lo validado."
-    >
-      <Pestanas actual="productos" />
+    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Qué cartucho le sirve a cada impresora. El kiosco solo recomienda lo validado.">
+      <Pestanas actual="impresoras" />
 
       <section className="stats">
         <div className="stat">
@@ -84,14 +75,16 @@ export default async function CompatibilidadesPage({
           <div className="stat-value" style={{ color: porEstado.PROPUESTA ? 'var(--warning)' : undefined }}>
             {porEstado.PROPUESTA.toLocaleString('es-VE')}
           </div>
-          <div className="stat-sub">propuestas sin revisar</div>
+          <div className="stat-sub">impresora ↔ cartucho sin revisar</div>
         </div>
         <div className="stat">
           <div className="stat-label">Validadas</div>
           <div className="stat-value" style={{ color: 'var(--positive)' }}>
             {porEstado.VALIDADA.toLocaleString('es-VE')}
           </div>
-          <div className="stat-sub">{!total ? 'nada cargado' : porEstado.VALIDADA > 0 && porEstado.VALIDADA / total < 0.01 ? 'menos del 1 % del total' : `${Math.round((porEstado.VALIDADA / total) * 100)} % del total`}</div>
+          <div className="stat-sub">
+            {!total ? 'nada cargado' : porEstado.VALIDADA > 0 && porEstado.VALIDADA / total < 0.01 ? 'menos del 1 % del total' : `${Math.round((porEstado.VALIDADA / total) * 100)} % del total`}
+          </div>
         </div>
         <div className="stat">
           <div className="stat-label">Rechazadas</div>
@@ -100,11 +93,13 @@ export default async function CompatibilidadesPage({
         </div>
       </section>
 
-      <form className="filtros revision-filtros" action="/admin/compatibilidades" method="get">
+      <FormularioCompatibilidad como="admin" marcas={marcas} />
+
+      <form className="filtros revision-filtros" action="/admin/compatibilidades/impresoras" method="get">
         <input type="hidden" name="estado" value={estado} />
         <div className="filtro-campo">
           <label htmlFor="q">Buscar</label>
-          <input id="q" name="q" className="input" defaultValue={q} placeholder="Producto, referencia o cartucho" />
+          <input id="q" name="q" className="input" defaultValue={q} placeholder="Impresora o cartucho: m404, CF258A" />
         </div>
         <div className="filtro-campo">
           <label htmlFor="marca">Marca del cartucho</label>
@@ -136,7 +131,7 @@ export default async function CompatibilidadesPage({
           ))}
         </nav>
         <span className="count">
-          {totalProductos.toLocaleString('es-VE')} {totalProductos === 1 ? 'producto' : 'productos'} · lo más vendido primero
+          {totalCartuchos.toLocaleString('es-VE')} {totalCartuchos === 1 ? 'cartucho' : 'cartuchos'} · lo más vendido primero
         </span>
       </div>
 
@@ -144,15 +139,14 @@ export default async function CompatibilidadesPage({
         <div className="table-wrap">
           <div className="empty">
             {total === 0
-              ? 'Todavía no hay propuestas. Se cargan con pnpm cartuchos:importar.'
+              ? 'Todavía no hay compatibilidades. Se cargan con importar-compatibilidades, o se añaden con el formulario de arriba.'
               : q || marca
                 ? 'Nada coincide con estos filtros.'
                 : { PROPUESTA: 'No queda nada pendiente de revisar.', VALIDADA: 'Todavía no hay nada validado.', RECHAZADA: 'No hay nada rechazado.' }[estado]}
           </div>
         </div>
       ) : (
-        // La key fuerza a vaciar la selección al cambiar de página o de filtro.
-        <RevisionLista key={`${estado}|${marca}|${q}|${pagina}`} productos={datos.data} estado={estado} />
+        <RevisionImpresoras key={`${estado}|${marca}|${q}|${pagina}`} cartuchos={datos.data} estado={estado} />
       )}
 
       {paginas > 1 && (

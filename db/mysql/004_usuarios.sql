@@ -152,6 +152,11 @@ GRANT SELECT, INSERT, UPDATE ON asta.cartridges               TO 'asta_app'@'loc
 GRANT SELECT, INSERT, UPDATE ON asta.cartridge_printer_models TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON asta.product_cartridges       TO 'asta_app'@'localhost';
 
+-- La tabla que se mantiene a mano en phpMyAdmin: FUENTE del importador de
+-- compatibilidades. La aplicación solo la lee; se edita desde phpMyAdmin con
+-- otro usuario.
+GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
+
 -- Contador de intentos del personal que entra con Odoo (#85). Se lee y se
 -- actualiza en cada login; nunca se borra una fila.
 GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost';
@@ -290,6 +295,8 @@ GRANT SELECT ON asta.printer_model_aliases    TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.cartridges               TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.cartridge_printer_models TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.product_cartridges       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
+
 -- Solo contadores de intentos, no material de credencial: sirve para investigar bloqueos.
 GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
 

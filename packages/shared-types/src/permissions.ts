@@ -53,6 +53,7 @@ export const accionSchema = z.enum([
   'admin.reportes.ver',
   'reportes.propios.ver',
   'admin.compatibilidades.revisar',
+  'compatibilidades.proponer',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -170,6 +171,14 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Validar o rechazar qué producto corresponde a qué cartucho',
+  },
+  'compatibilidades.proponer': {
+    // Acción APARTE de la del administrador, como en ASTA y reportes: la ruta del
+    // vendedor solo sabe crear PROPUESTAS y ver las suyas. No hay un parámetro
+    // que la convierta en validar, porque no lo recibe.
+    roles: ['VENDEDOR'],
+    ambito: 'ninguno',
+    descripcion: 'Proponer compatibilidades impresora ↔ cartucho y ver las propias',
   },
   'admin.reconciliacion.ver': {
     roles: ['SUPERADMIN'],

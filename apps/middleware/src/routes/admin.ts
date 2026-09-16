@@ -11,8 +11,19 @@ import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
-import { revisionDecisionSchema, revisionQuerySchema, tipoCartuchoCambioSchema } from '@asta/shared-types';
+import {
+  nuevaCompatibilidadSchema,
+  revisionDecisionSchema,
+  revisionImpresorasDecisionSchema,
+  revisionQuerySchema,
+  tipoCartuchoCambioSchema,
+} from '@asta/shared-types';
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
+import {
+  anadirCompatibilidad,
+  aplicarRevisionImpresoras,
+  listarImpresorasParaRevision,
+} from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -303,6 +314,73 @@ adminRouter.patch('/compatibilidades/cartuchos/:cartridgeId', autorizar('admin.c
       metadata: { antes: anterior, despues: cuerpo.data.tipo },
     });
     res.json({ data: { cartridgeId: id.data, tipo: cuerpo.data.tipo } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Tramo impresora → cartucho: cartuchos con sus impresoras, lo más vendido primero. */
+adminRouter.get('/compatibilidades/impresoras', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const consulta = revisionQuerySchema.safeParse(req.query);
+    if (!consulta.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: z.prettifyError(consulta.error) } });
+      return;
+    }
+    res.json(await listarImpresorasParaRevision(consulta.data));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Validar, rechazar o devolver a pendiente relaciones impresora → cartucho. Todo o nada. */
+adminRouter.post('/compatibilidades/impresoras/revision', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = revisionImpresorasDecisionSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await aplicarRevisionImpresoras(cuerpo.data, req.identity.appUserId);
+    recordAudit({
+      action: 'compatibilidad.revisada',
+      ...auditContext(req),
+      targetType: 'cartridge_printer_models',
+      targetId: cuerpo.data.filas.length === 1 ? `${cuerpo.data.filas[0].cartridgeId}:${cuerpo.data.filas[0].printerModelId}` : null,
+      metadata: {
+        decision: cuerpo.data.decision,
+        filas: cuerpo.data.filas.map((f) => ({ cartridgeId: f.cartridgeId, printerModelId: f.printerModelId, antes: f.estadoEsperado })),
+      },
+    });
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Añadir una compatibilidad. Desde ESTA ruta nace VALIDADA: la añade un
+ * administrador, que es quien valida. La del vendedor vive en
+ * `/salesperson/compatibilidades` y solo sabe proponer.
+ */
+adminRouter.post('/compatibilidades/impresoras', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = nuevaCompatibilidadSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await anadirCompatibilidad(cuerpo.data, { autorId: req.identity.appUserId, validar: true });
+    if (r.creada) {
+      recordAudit({
+        action: 'compatibilidad.anadida',
+        ...auditContext(req),
+        targetType: 'cartridge_printer_models',
+        targetId: `${r.cartridgeId}:${r.printerModelId}`,
+        metadata: { ...cuerpo.data, estado: r.estado, impresoraNueva: r.impresoraNueva, cartuchoNuevo: r.cartuchoNuevo },
+      });
+    }
+    res.status(r.creada ? 201 : 200).json({ data: r });
   } catch (error) {
     next(error);
   }

@@ -46,6 +46,7 @@ const ESPERADO: Record<AppRole, Accion[]> = {
   VENDEDOR: [
     'asta.propias.ver',
     'reportes.propios.ver',
+    'compatibilidades.proponer',
     'cartera.ver',
     'cliente.ver',
     'cliente.perfil.ver',

@@ -4,6 +4,28 @@
 > EasyPanel: `_prisma_migrations` **no existe**. Hasta que esto se haga, no se
 > puede aplicar ninguna migración nueva.
 
+> **Tabla creada a mano en producción: `compatibilidad_productos`.** Existe allí
+> (se mantiene desde phpMyAdmin) y desde el PR de compatibilidades impresora ↔
+> cartucho está en `schema.prisma`. **Antes de ese PR, el diff del paso 1 proponía
+> `DROP TABLE compatibilidad_productos`**: si ves esa línea, estás con un esquema
+> viejo — no apliques el script. Los tipos de columna del modelo se dedujeron del
+> contenido; si el diff propone un `ALTER TABLE compatibilidad_productos MODIFY`,
+> no borra datos, pero conviene ajustar el modelo a lo que hay y repetir.
+
+## Después de la línea base: cargar las compatibilidades
+
+Con las migraciones aplicadas, desde la consola del contenedor del middleware:
+
+```bash
+node dist/cli/importar-propuestas.js                 # producto → cartucho, desde Odoo
+node dist/cli/importar-compatibilidades.js           # SIMULACRO: impresora → cartucho
+node dist/cli/importar-compatibilidades.js --aplicar
+```
+
+En ese orden: así los códigos de `compatibilidad_productos` cruzan con los
+cartuchos que ya salieron de Odoo. Los dos se pueden repetir sin pisar lo
+revisado. Todo entra como pendiente y se revisa en el panel, Compatibilidades.
+
 ---
 
 ## El problema, en una frase
