@@ -13,3 +13,9 @@
 # Los .sql se aplican con el cliente de mysql en el servidor. El CRLF no los
 # rompe, pero ensucia los mensajes de error y los diffs entre entornos.
 *.sql text eol=lf
+
+# docs/api/openapi.json lo genera `pnpm openapi` con LF, y el test
+# "docs/api/openapi.json está al día con el código" (docsApi.test.ts) lo compara
+# byte a byte con lo que genera el código. Con CRLF en el working tree el test
+# falla aunque el contenido sea idéntico, en cuanto Git vuelve a sacar el fichero.
+docs/api/openapi.json text eol=lf
