@@ -45,7 +45,7 @@ export function vaciarCachesRevision(): void {
 }
 
 /** Importe vendido por plantilla de CONSUMIBLES en los últimos 12 meses. */
-async function ventasPorPlantilla(): Promise<Map<number, number>> {
+export async function ventasPorPlantilla(): Promise<Map<number, number>> {
   const enCache = cacheVentas.get('');
   if (enCache) return enCache;
 
@@ -215,7 +215,7 @@ export class RevisionDesactualizada extends Error {
   readonly status = 409;
   readonly code: ErrorCode = 'CONFLICT';
 
-  constructor(readonly filas: Array<{ templateId: number; cartridgeId: number }>) {
+  constructor(readonly filas: Array<Record<string, number>>) {
     super('Alguien cambió estas compatibilidades mientras las mirabas. No se guardó nada: vuelve a decidir sobre lo que hay ahora.');
     this.name = 'RevisionDesactualizada';
   }
@@ -250,7 +250,7 @@ export async function aplicarRevision(decision: RevisionDecision, revisorId: str
   };
 
   return prisma.$transaction(async (tx) => {
-    const desactualizadas: Array<{ templateId: number; cartridgeId: number }> = [];
+    const desactualizadas: Array<Record<string, number>> = [];
     for (const f of decision.filas) {
       const r = await tx.productCartridge.updateMany({
         where: { odooProductTmplId: f.templateId, cartridgeId: f.cartridgeId, status: f.estadoEsperado },

@@ -46,6 +46,10 @@ export type AuditAction =
   /// recomendador: si un día sale un tóner equivocado, aquí está quién y cuándo.
   | 'compatibilidad.revisada'
   | 'cartucho.tipo_corregido'
+  /// Alguien añadió una compatibilidad impresora ↔ cartucho desde el panel. El
+  /// estado con que nació (VALIDADA si fue un admin, PROPUESTA si fue un
+  /// vendedor) va en los metadatos.
+  | 'compatibilidad.anadida'
   | 'user.invitado'
   | 'user.invitacion_aceptada';
 

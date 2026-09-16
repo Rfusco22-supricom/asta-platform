@@ -12,6 +12,11 @@ import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
 import { reporte } from '../services/reportes.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
+import { z } from 'zod';
+import { nuevaCompatibilidadSchema } from '@asta/shared-types';
+import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
+import { recordAudit } from '../services/audit.service.js';
+import { auditContext } from '../middleware/auditContext.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -128,6 +133,49 @@ salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req
 
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
     res.json(await reporte({ ...rango, soloDelVendedor: odooUserId }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compatibilidades (#56)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Proponer «a esta impresora le sirve este cartucho».
+ *
+ * Nace PROPUESTA, siempre: el vendedor conoce a sus clientes y sus equipos, pero
+ * lo que llega al kiosco lo valida un administrador. Esta ruta no recibe ni
+ * sabe pasar otra cosa. La del administrador es otra, con otra acción.
+ */
+salespersonRouter.post('/compatibilidades', autorizar('compatibilidades.proponer'), async (req, res, next) => {
+  try {
+    const cuerpo = nuevaCompatibilidadSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await anadirCompatibilidad(cuerpo.data, { autorId: req.identity.appUserId, validar: false });
+    if (r.creada) {
+      recordAudit({
+        action: 'compatibilidad.anadida',
+        ...auditContext(req),
+        targetType: 'cartridge_printer_models',
+        targetId: `${r.cartridgeId}:${r.printerModelId}`,
+        metadata: { ...cuerpo.data, estado: r.estado, impresoraNueva: r.impresoraNueva, cartuchoNuevo: r.cartuchoNuevo },
+      });
+    }
+    res.status(r.creada ? 201 : 200).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Lo que ha propuesto quien pregunta, con su estado. Nunca lo de otros. */
+salespersonRouter.get('/compatibilidades/propias', autorizar('compatibilidades.proponer'), async (req, res, next) => {
+  try {
+    res.json({ data: await propuestasDe(req.identity.appUserId) });
   } catch (error) {
     next(error);
   }

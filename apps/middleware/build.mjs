@@ -47,6 +47,10 @@ await build({
     'src/cli/sync-partners.ts',
     'src/cli/sync-vendedores.ts',
     'src/cli/alertas.ts',
+    // Los importadores de compatibilidades (#56): el script de `scripts/` no
+    // entra en la imagen, y en producción hay que poder ejecutarlos.
+    'src/cli/importar-propuestas.ts',
+    'src/cli/importar-compatibilidades.ts',
   ],
   outdir: 'dist',
   // Para que `src/cli/set-password.ts` salga en `dist/cli/`, y no en `dist/`.

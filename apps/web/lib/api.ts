@@ -16,6 +16,10 @@ import {
   hermanosRespuestaSchema,
   revisionRespuestaSchema,
   type RevisionRespuesta,
+  revisionImpresorasRespuestaSchema,
+  type RevisionImpresorasRespuesta,
+  propuestasPropiasRespuestaSchema,
+  type PropuestaPropia,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -458,4 +462,24 @@ export async function getRevisionCompatibilidades(
   if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
   const sufijo = qs.size ? `?${qs.toString()}` : '';
   return request(`/api/v1/admin/compatibilidades/productos${sufijo}`, revisionRespuestaSchema, accessToken);
+}
+
+/** Cartuchos con las impresoras a las que sirven, para revisar (#56). */
+export async function getRevisionImpresoras(
+  accessToken: string,
+  filtro: { estado?: string; marca?: string; q?: string; pagina?: number },
+): Promise<RevisionImpresorasRespuesta> {
+  const qs = new URLSearchParams();
+  if (filtro.estado) qs.set('estado', filtro.estado);
+  if (filtro.marca) qs.set('marca', filtro.marca);
+  if (filtro.q) qs.set('q', filtro.q);
+  if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
+  const sufijo = qs.size ? `?${qs.toString()}` : '';
+  return request(`/api/v1/admin/compatibilidades/impresoras${sufijo}`, revisionImpresorasRespuestaSchema, accessToken);
+}
+
+/** Las compatibilidades que ha propuesto el vendedor de la sesión. */
+export async function getPropuestasPropias(accessToken: string): Promise<PropuestaPropia[]> {
+  const r = await request('/api/v1/salesperson/compatibilidades/propias', propuestasPropiasRespuestaSchema, accessToken);
+  return r.data;
 }
