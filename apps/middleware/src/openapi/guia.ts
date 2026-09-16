@@ -43,12 +43,12 @@ export const GUIA: Seccion[] = [
     id: 'primeros-pasos',
     titulo: 'Primeros pasos',
     bloques: [
-      { tipo: 'p', texto: 'La API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, y las existencias del catálogo. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.' },
+      { tipo: 'p', texto: 'La API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, las existencias del catálogo y qué productos le sirven a una impresora. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.' },
       {
         tipo: 'lista',
         items: [
           'Entra al panel y abre **Mis API keys**.',
-          'Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias.',
+          'Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias, `RECOMMENDER_READ` para el recomendador de impresoras.',
           'Copia la key en ese momento. **Solo se muestra una vez**; si la pierdes, crea otra y revoca la anterior.',
           'Haz tu primera petición:',
         ],

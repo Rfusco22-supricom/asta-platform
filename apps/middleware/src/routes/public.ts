@@ -3,6 +3,8 @@ import { authApiKey, requireScope, scopeToOwnPartner } from '../middleware/apiKe
 import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
 import {
+  buscarImpresorasHandler,
+  compatiblesHandler,
   enlacePdfFacturaHandler,
   listarFacturasHandler,
   listarInventarioHandler,
@@ -57,7 +59,8 @@ export function crearPublicRouter(): Router {
 
   router.get('/inventory', requireScope('INVENTORY_READ'), listarInventarioHandler);
   router.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);
-  router.get('/recommender/compatible', requireScope('RECOMMENDER_READ'), noImplementadoHandler);
+  router.get('/recommender/printers', requireScope('RECOMMENDER_READ'), buscarImpresorasHandler);
+  router.get('/recommender/printers/:printerId/compatible', requireScope('RECOMMENDER_READ'), compatiblesHandler);
 
   return router;
 }

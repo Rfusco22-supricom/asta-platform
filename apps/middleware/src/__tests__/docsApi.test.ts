@@ -53,9 +53,7 @@ describe('#35 · Qué se documenta', () => {
   it('los endpoints que responden 501 NO están documentados', () => {
     // La política de versiones: no son contrato hasta que se implementen.
     const spec = JSON.stringify(construirOpenApi());
-    for (const ruta of ['/api/v1/public/pricing', '/api/v1/public/recommender']) {
-      expect(spec).not.toContain(ruta);
-    }
+    expect(spec).not.toContain('/api/v1/public/pricing');
   });
 
   it('cada operación tiene id único, parámetros de ruta declarados y ejemplos de curl y Python', () => {
@@ -130,6 +128,7 @@ describe('#35 · Errores', () => {
       'services/enlacesFirmados.ts',
       'services/invoicePdf.service.ts',
       'services/inventory.service.ts',
+      'services/recomendador/recomendador.service.ts',
     ];
     const emitidos = new Set<string>();
     for (const f of ficheros) {

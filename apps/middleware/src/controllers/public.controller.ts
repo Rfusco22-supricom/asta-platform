@@ -1,6 +1,13 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { inventoryQuerySchema, publicInvoiceListQuerySchema } from '@asta/shared-types';
+import {
+  compatibleQuerySchema,
+  inventoryQuerySchema,
+  printerIdParamSchema,
+  printerSearchQuerySchema,
+  publicInvoiceListQuerySchema,
+} from '@asta/shared-types';
+import { buscarImpresoras, compatiblesDe } from '../services/recomendador/recomendador.service.js';
 import {
   getPartnerInvoice,
   invoiceExists,
@@ -229,6 +236,70 @@ export async function listarInventarioHandler(
     const { pagina, porPagina } = query.data;
     const { items, total, desdeCache } = await listarInventario(almacen, query.data);
     res.json({ data: items, meta: { pagina, porPagina, total, desdeCache } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** `GET /api/v1/public/recommender/printers` (#39) */
+export async function buscarImpresorasHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const query = printerSearchQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: z.prettifyError(query.error) },
+      });
+      return;
+    }
+
+    const { impresoras, sugerencias } = await buscarImpresoras(query.data.q, query.data.limit);
+    res.json({ data: impresoras, sugerencias });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * `GET /api/v1/public/recommender/printers/:printerId/compatible` (#39)
+ *
+ * La existencia es la del almacén del cliente del token, como en `/inventory`:
+ * sin almacén se responde lo mismo que allí, no una lista entera en "agotado".
+ */
+export async function compatiblesHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params = printerIdParamSchema.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'printerId debe ser un número entero positivo.' } });
+      return;
+    }
+    const query = compatibleQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: z.prettifyError(query.error) },
+      });
+      return;
+    }
+
+    const partnerId = partnerDelToken(req);
+    const almacen = await almacenDelCliente(partnerId);
+    if (!almacen) {
+      req.log?.warn({ partnerId }, 'recomendador: el cliente no tiene compañía o su compañía no tiene almacén');
+      throw new InventarioNoDisponible(partnerId);
+    }
+
+    const r = await compatiblesDe(params.data.printerId, almacen, query.data.soloDisponibles);
+    res.json({
+      data: r.items,
+      meta: { impresora: r.impresora, sinCompatibilidadesCargadas: r.sinCompatibilidadesCargadas, desdeCache: r.desdeCache },
+    });
   } catch (error) {
     next(error);
   }

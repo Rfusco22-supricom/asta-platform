@@ -6,6 +6,8 @@ import { searchRead } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { construirOpenApi, OPERACIONES, urlDeEjemplo } from '../openapi/especificacion.js';
+import { normalizarModelo } from '../services/recomendador/normalizar.js';
+import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
 
 /**
  * #35 · Los ejemplos de la documentación funcionan.
@@ -29,6 +31,19 @@ const keysCreadas: string[] = [];
 let key = '';
 /** Valores reales para los `{marcadores}` de las rutas de ejemplo. */
 const valores: Record<string, string> = {};
+
+/**
+ * Compatibilidad de ejemplo para el recomendador (#39). La base de desarrollo
+ * puede no tener ninguna validada, y un ejemplo que devuelve `data: []` no
+ * enseña nada.
+ *
+ * La impresora del ejemplo puede existir de verdad: si existe se usa y NO se
+ * borra. El cartucho lleva un código que no existe (`ZZDOCS404`) y es lo único
+ * que se crea siempre; al borrarlo, el ON DELETE CASCADE se lleva sus dos filas
+ * de compatibilidad y nada más.
+ */
+const CARTUCHO_DOCS = 'zzdocs404';
+const fixture: { comprobado: boolean; marcaCreada?: number; impresoraCreada?: number } = { comprobado: false };
 
 beforeAll(async () => {
   const ultimo = await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
@@ -66,12 +81,63 @@ beforeAll(async () => {
     });
     usuariosCreados.push(usuario.id);
   }
-  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ'], rateLimitPerMinute: 1000 });
+  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ'], rateLimitPerMinute: 1000 });
   keysCreadas.push(k.id);
   key = k.plaintext;
+
+  // ── Recomendador ──────────────────────────────────────────────────────────
+  if (await prisma.cartridge.count({ where: { codeNormalized: CARTUCHO_DOCS } })) {
+    throw new Error(`El cartucho ${CARTUCHO_DOCS} ya existe: el test no puede distinguir lo suyo. Límpialo a mano.`);
+  }
+  fixture.comprobado = true;
+
+  const [producto] = await searchRead<{ product_tmpl_id: [number, string] }>(
+    'product.product',
+    [['sale_ok', '=', true], ['detailed_type', '=', 'product'], ['company_id', '=', false], ['categ_id', 'child_of', 2614]],
+    ['product_tmpl_id'],
+    { limit: 1, order: 'id' },
+  );
+  if (!producto) throw new Error('No hay un consumible a la venta para el ejemplo del recomendador.');
+
+  let marca = await prisma.printerBrand.findUnique({ where: { name: 'HP' } });
+  if (!marca) {
+    marca = await prisma.printerBrand.create({ data: { name: 'HP' } });
+    fixture.marcaCreada = marca.id;
+  }
+  const nombre = 'LaserJet Pro M404dn';
+  let impresora = await prisma.printerModel.findUnique({
+    where: { brandId_nameNormalized: { brandId: marca.id, nameNormalized: normalizarModelo(nombre) } },
+  });
+  if (impresora && !impresora.isActive) throw new Error(`La impresora ${nombre} existe pero está desactivada: el ejemplo daría 404.`);
+  if (!impresora) {
+    impresora = await prisma.printerModel.create({ data: { brandId: marca.id, name: nombre, nameNormalized: normalizarModelo(nombre) } });
+    fixture.impresoraCreada = impresora.id;
+  }
+  valores.printerId = String(impresora.id);
+
+  await prisma.cartridge.create({
+    data: {
+      brandId: marca.id,
+      code: 'ZZDOCS404',
+      codeNormalized: CARTUCHO_DOCS,
+      kind: 'TONER',
+      printerModels: { create: { printerModelId: impresora.id, source: 'MANUAL', status: 'VALIDADA' } },
+      products: { create: { odooProductTmplId: producto.product_tmpl_id[0], relation: 'ORIGINAL', source: 'MANUAL', status: 'VALIDADA' } },
+    },
+  });
+  vaciarCachesRecomendador();
 }, 180_000);
 
 afterAll(async () => {
+  // Vitest ejecuta afterAll aunque beforeAll falle: sin la comprobación hecha,
+  // el cartucho que haya con ese código no es de este test.
+  if (fixture.comprobado) {
+    await prisma.cartridge.deleteMany({ where: { codeNormalized: CARTUCHO_DOCS } });
+    if (fixture.impresoraCreada) await prisma.printerModel.deleteMany({ where: { id: fixture.impresoraCreada } });
+    if (fixture.marcaCreada) {
+      await prisma.printerBrand.deleteMany({ where: { id: fixture.marcaCreada, cartridges: { none: {} }, printerModels: { none: {} } } });
+    }
+  }
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });

@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { apiErrorSchema, errorCodeSchema, HTTP_STATUS_BY_ERROR } from '@asta/shared-types';
 import { errorHandler } from '../middleware/errorHandler.js';
 import { InventarioNoDisponible } from '../services/inventory.service.js';
+import { ImpresoraNoEncontrada } from '../services/recomendador/recomendador.service.js';
 import { ForbiddenPartnerAccess, PartnerNotFound } from '../services/partners.service.js';
 import { OdooError } from '../odoo/client.js';
 
@@ -66,6 +67,7 @@ describe('el cuerpo de error cumple el contrato', () => {
    */
   const casos: Array<[string, unknown, number]> = [
     ['InventarioNoDisponible', new InventarioNoDisponible(1001), 409],
+    ['ImpresoraNoEncontrada', new ImpresoraNoEncontrada(42), 404],
     ['ForbiddenPartnerAccess', new ForbiddenPartnerAccess(428, 105982), 403],
     ['PartnerNotFound', new PartnerNotFound(999999), 404],
     ['OdooError', new OdooError('cayó', 'res.partner', 'search_read'), 503],
