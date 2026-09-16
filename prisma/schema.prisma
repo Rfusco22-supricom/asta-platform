@@ -195,6 +195,7 @@ model AppUser {
   clientNotes             ClientNote[]
   tierMapUpdates          TierPricelistMap[]
   reviewedCompatibilities CartridgePrinterModel[] @relation("CompatibilityReviewer")
+  proposedCompatibilities CartridgePrinterModel[] @relation("CompatibilityProposer")
   reviewedProductLinks    ProductCartridge[]      @relation("ProductCartridgeReviewer")
 
   @@index([role, isActive], map: "ix_app_users_role_active")
@@ -806,6 +807,13 @@ model CartridgePrinterModel {
   reviewer   AppUser?            @relation("CompatibilityReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_cpm_reviewer")
   reviewedAt DateTime?           @map("reviewed_at") @db.DateTime(3)
 
+  /// Quién la AÑADIÓ desde el panel. Null si salió de un importador.
+  ///
+  /// Aparte de `reviewedBy` porque no es lo mismo: un vendedor propone y un
+  /// administrador valida, y los dos tienen que constar.
+  createdBy String?  @map("created_by") @db.Char(36)
+  creator   AppUser? @relation("CompatibilityProposer", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_cpm_creator")
+
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
   @@id([cartridgeId, printerModelId])
@@ -838,4 +846,31 @@ model ProductCartridge {
   @@id([odooProductTmplId, cartridgeId])
   @@index([cartridgeId, status], map: "ix_pc_cartridge_status")
   @@map("product_cartridges")
+}
+
+/// La tabla de compatibilidades que se mantiene A MANO en phpMyAdmin: cada fila
+/// es un cartucho (`code`) y, en texto libre, las impresoras donde sirve.
+///
+/// No la creó este proyecto: ya existía en producción. Está aquí por dos motivos.
+///
+///   · Para que la LÍNEA BASE de Prisma (docs/09) no la vea como deriva. Sin
+///     este modelo, `prisma migrate diff` contra producción propone
+///     `DROP TABLE compatibilidad_productos`, y aplicar ese script la borra.
+///   · Para que `importar-compatibilidades` la lea con tipos.
+///
+/// Es FUENTE, no destino: la aplicación solo la lee. Lo revisado vive en
+/// `printer_models` y `cartridge_printer_models`, y volver a importar no pisa
+/// nada de eso. Ver `services/recomendador/importarCompatibilidades.ts`.
+///
+/// Los tipos se dedujeron del contenido, no del `SHOW CREATE TABLE` de
+/// producción (salió cortado). Si no coinciden, el paso 1 de docs/09 lo dirá
+/// como un `ALTER ... MODIFY`, que no borra datos: ajustar aquí y repetir.
+model CompatibilidadProducto {
+  id             Int     @id @default(autoincrement())
+  code           String  @db.VarChar(50)
+  marca          String  @db.VarChar(50)
+  modelo         String  @db.Text
+  rendimientoPag Int?    @map("rendimiento_pag")
+
+  @@map("compatibilidad_productos")
 }

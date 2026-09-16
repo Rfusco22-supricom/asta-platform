@@ -152,6 +152,11 @@ GRANT SELECT, INSERT, UPDATE ON asta.cartridges               TO 'asta_app'@'loc
 GRANT SELECT, INSERT, UPDATE ON asta.cartridge_printer_models TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON asta.product_cartridges       TO 'asta_app'@'localhost';
 
+-- La tabla que se mantiene a mano en phpMyAdmin: FUENTE del importador de
+-- compatibilidades. La aplicación solo la lee; se edita desde phpMyAdmin con
+-- otro usuario.
+GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
+
 -- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
 --
@@ -286,6 +291,7 @@ GRANT SELECT ON asta.printer_model_aliases    TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.cartridges               TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.cartridge_printer_models TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.product_cartridges       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 
