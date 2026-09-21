@@ -19,6 +19,7 @@ import {
   tipoCartuchoCambioSchema,
 } from '@asta/shared-types';
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
+import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
 import {
   anadirCompatibilidad,
   aplicarRevisionImpresoras,
@@ -243,6 +244,23 @@ adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'),
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ese usuario no existe.' } });
       return;
     }
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Estadísticas del recomendador (#43)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Qué buscan los clientes, qué no encuentran y dónde se pierden ventas.
+ * `?desde=&hasta=` como los reportes; sin ellos, los últimos doce meses.
+ */
+adminRouter.get('/recomendador/estadisticas', autorizar('admin.recomendador.ver'), async (req, res, next) => {
+  try {
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json({ data: await estadisticasRecomendador(rango) });
+  } catch (error) {
     next(error);
   }
 });

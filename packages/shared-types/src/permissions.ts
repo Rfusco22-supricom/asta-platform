@@ -54,6 +54,7 @@ export const accionSchema = z.enum([
   'reportes.propios.ver',
   'admin.compatibilidades.revisar',
   'compatibilidades.proponer',
+  'admin.recomendador.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -171,6 +172,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Validar o rechazar qué producto corresponde a qué cartucho',
+  },
+  'admin.recomendador.ver': {
+    // Qué buscan los clientes y dónde se pierden ventas (#43). Es información
+    // comercial de toda la empresa: solo administración.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver qué buscan los clientes en el recomendador y dónde faltan existencias',
   },
   'compatibilidades.proponer': {
     // Acción APARTE de la del administrador, como en ASTA y reportes: la ruta del
