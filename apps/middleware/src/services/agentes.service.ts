@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead, readGroup } from '../odoo/client.js';
+import { authEnv } from '../config/authEnv.js';
 
 /**
  * Estadísticas de los agentes de venta, para el panel de administración.
@@ -215,7 +216,8 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
         ? {
             email: c.email,
             activa: c.isActive,
-            puedeEntrar: c.isActive && c.credentials !== null,
+            // Con el login de Odoo (#85), el personal entra sin contraseña del panel.
+            puedeEntrar: c.isActive && (c.credentials !== null || authEnv().LOGIN_ODOO),
             ultimoAcceso: c.lastLoginAt?.toISOString() ?? null,
           }
         : null,

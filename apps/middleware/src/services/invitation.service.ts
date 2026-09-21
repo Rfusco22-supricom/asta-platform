@@ -1,7 +1,9 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { emitirSecreto, hashSecreto, caducaEnDias, haCaducado } from '../auth/tokens.js';
 import { evaluarFortaleza, hashPassword } from '../auth/password.js';
 import { recordAudit } from './audit.service.js';
+import { authEnv } from '../config/authEnv.js';
 
 /**
  * Invitaciones (issue #16).
@@ -240,9 +242,16 @@ export interface SinAcceso {
 export async function listarSinAcceso(
   limite = 50,
 ): Promise<{ usuarios: SinAcceso[]; total: number }> {
+  // El personal con usuario de Odoo ya puede entrar con esa contraseña (#85):
+  // no es alguien sin acceso, y proponerlo para invitar solo haría ruido.
+  const sinAcceso: Prisma.AppUserWhereInput = {
+    isActive: true,
+    credentials: null,
+    ...(authEnv().LOGIN_ODOO ? { NOT: { role: { in: ['VENDEDOR', 'SUPERADMIN'] }, odooUserId: { not: null } } } : {}),
+  };
   const [usuarios, total] = await Promise.all([
     prisma.appUser.findMany({
-      where: { isActive: true, credentials: null },
+      where: sinAcceso,
       select: {
         id: true,
         email: true,
@@ -257,7 +266,7 @@ export async function listarSinAcceso(
       orderBy: { fullName: 'asc' },
       take: limite,
     }),
-    prisma.appUser.count({ where: { isActive: true, credentials: null } }),
+    prisma.appUser.count({ where: sinAcceso }),
   ]);
 
   return {
