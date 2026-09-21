@@ -27,6 +27,12 @@ export const publicPrinterSchema = z.object({
 
 export type PublicPrinter = z.infer<typeof publicPrinterSchema>;
 
+/**
+ * Identificador de una búsqueda (#43). Texto y no número: es un BIGINT, y en
+ * JSON un entero de ese tamaño pierde precisión.
+ */
+export const busquedaIdSchema = z.string().regex(/^[1-9]\d{0,18}$/, 'busquedaId tiene que ser el que devolvió la búsqueda.');
+
 /** Query de `GET /api/v1/public/recommender/printers`. */
 export const printerSearchQuerySchema = z.object({
   /**
@@ -46,6 +52,11 @@ export const publicPrinterSearchResponseSchema = z.object({
    * PREGUNTAR ("¿quisiste decir…?"), no afirmar que es la impresora del cliente.
    */
   sugerencias: z.array(publicPrinterSchema).describe('Solo si no hubo coincidencias: modelos parecidos, para preguntar «¿quisiste decir…?». No los trates como coincidencias.'),
+  meta: z.object({
+    busquedaId: busquedaIdSchema
+      .nullable()
+      .describe('Identificador de esta búsqueda. Mándalo en `/compatible` y al registrar un clic, para que la búsqueda, la impresora elegida y el producto elegido cuenten como una sola visita. `null` si no se pudo registrar: la búsqueda funciona igual.'),
+  }),
 });
 
 export type PublicPrinterSearchResponse = z.infer<typeof publicPrinterSearchResponseSchema>;
@@ -53,6 +64,7 @@ export type PublicPrinterSearchResponse = z.infer<typeof publicPrinterSearchResp
 /** Query de `GET /api/v1/public/recommender/printers/{printerId}/compatible`. */
 export const compatibleQuerySchema = z.object({
   soloDisponibles: z.stringbool().default(false).describe('`true` para devolver solo productos con existencia (`disponible` o `bajo`).'),
+  busquedaId: busquedaIdSchema.optional().describe('El `meta.busquedaId` de la búsqueda de la que viene el cliente, si la hubo.'),
 });
 
 export type CompatibleQuery = z.infer<typeof compatibleQuerySchema>;
@@ -108,24 +120,19 @@ export const publicCompatibleResponseSchema = z.object({
 export type PublicCompatibleResponse = z.infer<typeof publicCompatibleResponseSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Telemetría del kiosco (issue #43)
+// Telemetría (issue #43)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Evento que el kiosco envía tras cada interacción.
- *
- * Esta data no se puede reconstruir después: cada día sin instrumentar es un día
- * de información perdida sobre qué impresoras tiene el mercado.
+ * La búsqueda, sus resultados, la impresora elegida y si estaba agotado los
+ * registra el SERVIDOR al responder: no se pueden falsear. Solo el clic lo avisa
+ * el cliente, porque ocurre en su pantalla. Ver `telemetria.service.ts`.
  */
-export const recommendationEventSchema = z.object({
-  /** El texto crudo que tecleó el cliente, SIN normalizar: los typos enseñan qué alias faltan. */
-  searchQuery: z.string().max(200),
-  /** `printer_models.id`, de MySQL. */
-  matchedPrinterId: z.number().int().positive().nullable(),
-  resultsCount: z.number().int().nonnegative(),
-  clickedProductId: odooIdSchema.nullable(),
-  /** Quiebre de venta medible: había producto compatible pero sin existencias. */
-  wasOutOfStock: z.boolean().default(false),
+export const busquedaIdParamSchema = z.object({ busquedaId: busquedaIdSchema });
+
+/** Cuerpo de `POST /api/v1/public/recommender/busquedas/{busquedaId}/clic`. */
+export const clicRecomendadorSchema = z.object({
+  productId: odooIdSchema.describe('El `id` del producto que eligió el cliente, tal como vino en `/compatible`.'),
 });
 
-export type RecommendationEvent = z.infer<typeof recommendationEventSchema>;
+export type ClicRecomendador = z.infer<typeof clicRecomendadorSchema>;

@@ -29,13 +29,17 @@ import { openApiVersionada, RUTA_OPENAPI } from '../../../../scripts/generar-ope
 
 type Json = Record<string, unknown>;
 
-/** Rutas GET montadas en un router de Express 4, sin las que responden 501. */
+/**
+ * Rutas montadas en un router de Express 4, sin las que responden 501, como
+ * `MÉTODO ruta`. Con el método: antes solo se miraban los GET, y un POST sin
+ * documentar no lo notaba nadie (#43).
+ */
 function rutasMontadas(router: Router, prefijo: string): string[] {
   const capas = (router as unknown as { stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown }> } }> }).stack;
   return capas
-    .filter((c) => c.route?.methods.get)
+    .filter((c) => c.route)
     .filter((c) => !c.route!.stack.some((s) => s.handle === noImplementadoHandler))
-    .map((c) => `${prefijo}${c.route!.path.replace(/:(\w+)/g, '{$1}')}`);
+    .flatMap((c) => Object.keys(c.route!.methods).map((m) => `${m.toUpperCase()} ${prefijo}${c.route!.path.replace(/:(\w+)/g, '{$1}')}`));
 }
 
 describe('#35 · Qué se documenta', () => {
@@ -46,8 +50,11 @@ describe('#35 · Qué se documenta', () => {
       ...rutasMontadas(crearPublicRouter(), '/api/v1/public'),
       ...rutasMontadas(crearDescargasRouter(), '/api/v1/descargas'),
     ].sort();
-    expect(OPERACIONES.map((o) => o.ruta).sort()).toEqual(montadas);
-    expect(Object.keys(construirOpenApi().paths as Json).sort()).toEqual(montadas);
+    expect(OPERACIONES.map((o) => `${o.metodo.toUpperCase()} ${o.ruta}`).sort()).toEqual(montadas);
+    const enOpenApi = Object.entries(construirOpenApi().paths as Record<string, Json>).flatMap(([ruta, metodos]) =>
+      Object.keys(metodos).map((m) => `${m.toUpperCase()} ${ruta}`),
+    );
+    expect(enOpenApi.sort()).toEqual(montadas);
   });
 
   it('los endpoints que responden 501 NO están documentados', () => {
@@ -57,9 +64,11 @@ describe('#35 · Qué se documenta', () => {
   });
 
   it('cada operación tiene id único, parámetros de ruta declarados y ejemplos de curl y Python', () => {
-    const spec = construirOpenApi() as { paths: Record<string, { get: Json }> };
+    const spec = construirOpenApi() as { paths: Record<string, Record<string, Json>> };
     const ids = new Set<string>();
-    for (const [ruta, { get }] of Object.entries(spec.paths)) {
+    // Todas las operaciones de cada ruta, no solo el GET: desde #43 hay un POST.
+    const operaciones = Object.entries(spec.paths).flatMap(([ruta, metodos]) => Object.values(metodos).map((get) => [ruta, get] as const));
+    for (const [ruta, get] of operaciones) {
       expect(ids.has(get.operationId as string)).toBe(false);
       ids.add(get.operationId as string);
 
@@ -97,7 +106,18 @@ describe('#35 · Lo que la especificación promete', () => {
 
   it('sin el ruido de la conversión', () => {
     expect(texto).not.toContain(String(Number.MAX_SAFE_INTEGER));
-    expect(texto).not.toContain('"pattern"');
+    // El ruido era el `pattern` que zod añade a cada fecha. Un `pattern` que
+    // explica un formato de verdad —el de `busquedaId`, #43— sí se documenta.
+    const conFechaYPatron: string[] = [];
+    const recorrer = (n: unknown, ruta: string): void => {
+      if (Array.isArray(n)) return n.forEach((x, i) => recorrer(x, `${ruta}[${i}]`));
+      if (!n || typeof n !== 'object') return;
+      const o = n as Json;
+      if ('pattern' in o && ['date', 'date-time'].includes(String(o.format))) conFechaYPatron.push(ruta);
+      for (const [k, v] of Object.entries(o)) recorrer(v, `${ruta}.${k}`);
+    };
+    recorrer(JSON.parse(texto), '$');
+    expect(conFechaYPatron).toEqual([]);
   });
 });
 
@@ -106,9 +126,9 @@ describe('#35 · Errores', () => {
     for (const code of Object.keys(CODIGOS_PUBLICOS)) {
       expect(errorCodeSchema.safeParse(code).success, code).toBe(true);
     }
-    const spec = construirOpenApi() as { paths: Record<string, { get: { responses: Record<string, { description: string }> } }> };
+    const spec = construirOpenApi() as { paths: Record<string, Record<string, { responses: Record<string, { description: string }> }>> };
     for (const op of OPERACIONES) {
-      const respuestas = spec.paths[op.ruta].get.responses;
+      const respuestas = spec.paths[op.ruta][op.metodo].responses;
       for (const code of op.errores) {
         expect(CODIGOS_PUBLICOS[code], `${code} en ${op.ruta} sin explicación en la tabla`).toBeDefined();
         expect(respuestas[HTTP_STATUS_BY_ERROR[code]]?.description, `${code} en ${op.ruta}`).toContain(code);

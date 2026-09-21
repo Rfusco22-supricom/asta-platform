@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   apiErrorSchema,
+  clicRecomendadorSchema,
   compatibleQuerySchema,
   HTTP_STATUS_BY_ERROR,
   inventoryQuerySchema,
@@ -114,6 +115,7 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   LINK_EXPIRED: 'El enlace de descarga caducó. Pide uno nuevo.',
   PRINTER_NOT_FOUND: 'La impresora no existe, se retiró del catálogo o todavía no tiene compatibilidades verificadas. Vuelve a buscarla con `/recommender/printers`.',
   INVENTORY_UNAVAILABLE: 'Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
+  SEARCH_NOT_FOUND: 'La búsqueda no existe, no es tuya o pasaron más de 30 minutos. Es la misma respuesta en los tres casos, a propósito.',
   RATE_LIMITED: 'Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos. `message` explica cuáles.',
   ODOO_UNAVAILABLE: 'El sistema de gestión no responde. Reintenta en unos minutos, con espera creciente.',
@@ -158,6 +160,8 @@ export interface EjemploPeticion {
   conKey: boolean;
   /** La respuesta es un archivo, no JSON. */
   binario?: boolean;
+  /** Cuerpo JSON: la petición es un POST. */
+  cuerpo?: Record<string, unknown>;
 }
 
 /**
@@ -173,8 +177,9 @@ export function urlDeEjemplo(base: string, e: EjemploPeticion, valores = e.valor
 export function curlDe(base: string, e: EjemploPeticion): string {
   // La descarga usa la `url` que devolvió la API, tal cual: no se construye.
   const url = e.binario ? '$URL_DEL_ENLACE' : urlDeEjemplo(base, e);
-  const lineas = [`curl "${url}"`];
+  const lineas = [`curl ${e.cuerpo ? '-X POST ' : ''}"${url}"`];
   if (e.conKey) lineas.push('  -H "X-API-Key: $ASTA_API_KEY"');
+  if (e.cuerpo) lineas.push('  -H "Content-Type: application/json"', `  -d '${JSON.stringify(e.cuerpo)}'`);
   if (e.binario) lineas.push('  -o factura.pdf');
   return lineas.join(' \\\n');
 }
@@ -188,11 +193,20 @@ export function pythonDe(base: string, e: EjemploPeticion): string {
     '',
     'peticion = urllib.request.Request(',
     `    ${url},`,
-    `    headers=${cabeceras},`,
+    ...(e.cuerpo
+      ? [
+          `    data=json.dumps(${JSON.stringify(e.cuerpo)}).encode(),`,
+          `    headers={**${cabeceras}, "Content-Type": "application/json"},`,
+          '    method="POST",',
+        ]
+      : [`    headers=${cabeceras},`]),
     ')',
     'with urllib.request.urlopen(peticion) as respuesta:',
   ];
-  if (e.binario) {
+  if (e.cuerpo) {
+    // 204: sin cuerpo que leer.
+    lineas.push('    print(respuesta.status)');
+  } else if (e.binario) {
     lineas.push('    with open("factura.pdf", "wb") as f:', '        f.write(respuesta.read())');
   } else {
     lineas.push('    datos = json.load(respuesta)', 'print(datos)');
@@ -205,7 +219,7 @@ export function pythonDe(base: string, e: EjemploPeticion): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface Operacion {
-  metodo: 'get';
+  metodo: 'get' | 'post';
   ruta: string;
   id: string;
   resumen: string;
@@ -213,7 +227,10 @@ export interface Operacion {
   scope: string | null;
   parametrosRuta?: Array<{ nombre: string; descripcion: string; esquema: Json }>;
   query?: z.ZodObject;
-  exito: { schema?: z.ZodType; binario?: boolean; descripcion: string; ejemploRespuesta?: unknown };
+  /** Cuerpo JSON de la petición. */
+  cuerpo?: z.ZodObject;
+  /** `sinCuerpo`: responde 204, sin nada que leer. */
+  exito: { schema?: z.ZodType; binario?: boolean; sinCuerpo?: boolean; descripcion: string; ejemploRespuesta?: unknown };
   errores: ErrorCode[];
   ejemplo: EjemploPeticion;
 }
@@ -319,13 +336,13 @@ export const OPERACIONES: Operacion[] = [
     id: 'buscarImpresoras',
     resumen: 'Buscar una impresora',
     descripcion:
-      'Encuentra el modelo de impresora a partir de lo que teclea una persona, con o sin marca, guiones ni espacios: `hl2350` encuentra la HL-L2350DW. Si no hay coincidencias, `sugerencias` trae modelos parecidos para preguntar «¿quisiste decir…?». El catálogo puede tardar hasta 5 minutos en reflejar un modelo nuevo.',
+      'Encuentra el modelo de impresora a partir de lo que teclea una persona, con o sin marca, guiones ni espacios: `hl2350` encuentra la HL-L2350DW. Si no hay coincidencias, `sugerencias` trae modelos parecidos para preguntar «¿quisiste decir…?». El catálogo puede tardar hasta 5 minutos en reflejar un modelo nuevo. Cada búsqueda devuelve `meta.busquedaId`: mándalo en `/compatible` y al registrar el clic, para que la visita cuente entera.',
     scope: 'RECOMMENDER_READ',
     query: printerSearchQuerySchema,
     exito: {
       schema: publicPrinterSearchResponseSchema,
       descripcion: 'Las impresoras que coinciden, o sugerencias si no coincide ninguna.',
-      ejemploRespuesta: { data: [{ id: 42, marca: 'HP', nombre: 'LaserJet Pro M404dn' }], sugerencias: [] },
+      ejemploRespuesta: { data: [{ id: 42, marca: 'HP', nombre: 'LaserJet Pro M404dn' }], sugerencias: [], meta: { busquedaId: '1052' } },
     },
     errores: ['INVALID_QUERY', ...ERRORES_CON_KEY],
     ejemplo: { ruta: '/api/v1/public/recommender/printers', query: { q: 'm404dn' }, conKey: true },
@@ -336,7 +353,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'productosCompatibles',
     resumen: 'Productos compatibles con una impresora',
     descripcion:
-      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
+      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.',
     scope: 'RECOMMENDER_READ',
     parametrosRuta: [{ nombre: 'printerId', descripcion: 'El `id` de la impresora, de `/recommender/printers`.', esquema: { type: 'integer', minimum: 1 } }],
     query: compatibleQuerySchema,
@@ -360,6 +377,22 @@ export const OPERACIONES: Operacion[] = [
     },
     errores: ['INVALID_QUERY', 'PRINTER_NOT_FOUND', 'INVENTORY_UNAVAILABLE', ...ERRORES_CON_KEY],
     ejemplo: { ruta: '/api/v1/public/recommender/printers/{printerId}/compatible', valores: { printerId: '42' }, conKey: true },
+  },
+  {
+    metodo: 'post',
+    ruta: '/api/v1/public/recommender/busquedas/{busquedaId}/clic',
+    id: 'registrarClic',
+    resumen: 'Registrar el producto elegido',
+    descripcion:
+      'Avisa de qué producto eligió el cliente tras una búsqueda. Sirve para saber qué se busca y qué se elige, y así tener en existencia lo que el mercado necesita. Solo vale para tus propias búsquedas y durante los 30 minutos siguientes: fuera de eso responde `404`.',
+    scope: 'RECOMMENDER_READ',
+    parametrosRuta: [
+      { nombre: 'busquedaId', descripcion: 'El `meta.busquedaId` que devolvió `/recommender/printers`.', esquema: { type: 'string' } },
+    ],
+    cuerpo: clicRecomendadorSchema,
+    exito: { sinCuerpo: true, descripcion: 'Registrado.' },
+    errores: ['VALIDATION_ERROR', 'SEARCH_NOT_FOUND', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/recommender/busquedas/{busquedaId}/clic', valores: { busquedaId: '1052' }, conKey: true, cuerpo: { productId: 2001 } },
   },
 ];
 
@@ -399,7 +432,9 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
       ...(op.query ? parametrosDeQuery(op.query) : []),
     ];
 
-    const respuestas: Record<string, Json> = {
+    const respuestas: Record<string, Json> = op.exito.sinCuerpo
+      ? { 204: { description: op.exito.descripcion, headers: op.scope ? CABECERAS_RATE_LIMIT : undefined } }
+      : {
       200: op.exito.binario
         ? {
             description: op.exito.descripcion,
@@ -436,6 +471,9 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
         tags: [etiquetaDe(op.ruta)],
         security: op.scope ? [{ ApiKey: [] }] : [],
         parameters: parametros,
+        ...(op.cuerpo
+          ? { requestBody: { required: true, content: { 'application/json': { schema: esquemaDeEntrada(op.cuerpo) } } } }
+          : {}),
         responses: respuestas,
         'x-codeSamples': [
           { lang: 'curl', label: 'curl', source: curlDe(base, op.ejemplo) },

@@ -65,6 +65,11 @@ export const errorCodeSchema = z.enum([
    * legítimo le dice que pida otro, y no revela nada que el token no diga ya.
    */
   'LINK_EXPIRED',
+  /**
+   * La búsqueda del recomendador no existe, es de otro cliente o pasaron más de
+   * 30 minutos (#43). La misma respuesta para los tres, a propósito.
+   */
+  'SEARCH_NOT_FOUND',
 
   // Conflicto
   'CONFLICT',
@@ -129,6 +134,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   INVOICE_PDF_NOT_AVAILABLE: 404,
   LINK_NOT_VALID: 404,
   LINK_EXPIRED: 410,
+  SEARCH_NOT_FOUND: 404,
 
   CONFLICT: 409,
   IDEMPOTENCY_KEY_REUSED: 409,

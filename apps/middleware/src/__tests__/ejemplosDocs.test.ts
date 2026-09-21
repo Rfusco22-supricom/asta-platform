@@ -26,6 +26,7 @@ import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
+let idTelemetriaInicial = 0n;
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 let key = '';
@@ -48,6 +49,8 @@ const fixture: { comprobado: boolean; marcaCreada?: number; impresoraCreada?: nu
 beforeAll(async () => {
   const ultimo = await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
   idBitacoraInicial = ultimo?.id ?? 0n;
+  // Desde #43 el recomendador escribe recommendation_events: se borra lo de este test.
+  idTelemetriaInicial = (await prisma.recommendationEvent.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }))?.id ?? 0n;
 
   const app = createApp();
   await new Promise<void>((resolve) => {
@@ -139,6 +142,7 @@ afterAll(async () => {
     }
   }
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
+  await prisma.recommendationEvent.deleteMany({ where: { id: { gt: idTelemetriaInicial } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   await new Promise<void>((resolve) => server?.close(() => resolve()));
@@ -156,6 +160,20 @@ describe('#35 · Cada ejemplo, ejecutado', () => {
         const r = await fetch(`${base}${new URL(data.url).pathname}`);
         expect(r.status).toBe(200);
         expect(Buffer.from(await r.arrayBuffer()).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+        return;
+      }
+
+      if (op.ejemplo.cuerpo) {
+        // El clic (#43) necesita una búsqueda de verdad: primero se busca, como
+        // hará quien copie el ejemplo, y con su busquedaId se manda el cuerpo.
+        const b = await fetch(`${base}/api/v1/public/recommender/printers?q=${encodeURIComponent(valores.q ?? 'zz')}`, { headers: { 'X-API-Key': key } });
+        const { meta } = (await b.json()) as { meta: { busquedaId: string } };
+        const r = await fetch(urlDeEjemplo(base, op.ejemplo, { ...valores, busquedaId: meta.busquedaId }), {
+          method: 'POST',
+          headers: { 'X-API-Key': key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(op.ejemplo.cuerpo),
+        });
+        expect(r.status, await r.text()).toBe(op.exito.sinCuerpo ? 204 : 200);
         return;
       }
 
