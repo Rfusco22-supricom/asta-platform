@@ -60,8 +60,9 @@ export function vaciarCachesRecomendador(): void {
 }
 
 /**
- * La impresora no existe o está desactivada. La misma respuesta para los dos
- * casos: una impresora retirada lo está porque su ficha era un error.
+ * La impresora no existe, está desactivada o todavía no tiene ningún cartucho
+ * validado. La misma respuesta para los tres: una impresora retirada lo está
+ * porque su ficha era un error, y una sin revisar puede serlo.
  *
  * Se lanza para que el status lo ponga `errorHandler`. Ver `InventarioNoDisponible`.
  */
@@ -75,12 +76,32 @@ export class ImpresoraNoEncontrada extends Error {
   }
 }
 
+/**
+ * Qué impresoras existen PARA EL CLIENTE: activas y con al menos un cartucho
+ * VALIDADO.
+ *
+ * Sin la segunda condición, el catálogo público era toda la tabla
+ * `printer_models`, y a esa tabla se llega sin revisión (revisión de #111/#112):
+ *
+ *   · el importador de `compatibilidad_productos` crea sus 309 modelos desde
+ *     texto libre, con las erratas que el propio importador reconoce («P560» por
+ *     «P1560»), activos;
+ *   · un VENDEDOR que propone una compatibilidad crea la impresora, activa, con el
+ *     nombre que escriba. Comprobado: «Visita www.ejemplo-falso.com 4455» salía
+ *     en el buscador de cualquier cliente al instante.
+ *
+ * La compatibilidad nace PROPUESTA, pero la impresora ya era pública. Se aplica
+ * en los DOS caminos —búsqueda y `/compatible` por id— porque los ids son
+ * consecutivos: sin filtrar el segundo, recorrer ids leía los mismos nombres.
+ */
+const IMPRESORA_PUBLICABLE = { isActive: true, cartridges: { some: { status: 'VALIDADA' as const } } };
+
 async function catalogoDeImpresoras(): Promise<ModeloBuscable[]> {
   const enCache = cacheCatalogo.get('');
   if (enCache) return enCache;
 
   const modelos = await prisma.printerModel.findMany({
-    where: { isActive: true },
+    where: IMPRESORA_PUBLICABLE,
     select: {
       id: true,
       name: true,
@@ -135,7 +156,7 @@ export async function compatiblesDe(printerId: number, almacen: AlmacenCliente, 
   if (enCache) return { ...enCache, desdeCache: true };
 
   const modelo = await prisma.printerModel.findFirst({
-    where: { id: printerId, isActive: true },
+    where: { id: printerId, ...IMPRESORA_PUBLICABLE },
     select: { id: true, name: true, brand: { select: { name: true } } },
   });
   if (!modelo) throw new ImpresoraNoEncontrada(printerId);

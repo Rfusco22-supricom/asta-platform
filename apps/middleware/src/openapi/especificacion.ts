@@ -112,7 +112,7 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   INVOICE_PDF_NOT_AVAILABLE: 'La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor.',
   LINK_NOT_VALID: 'El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo.',
   LINK_EXPIRED: 'El enlace de descarga caducó. Pide uno nuevo.',
-  PRINTER_NOT_FOUND: 'La impresora no existe o se retiró del catálogo. Vuelve a buscarla con `/recommender/printers`.',
+  PRINTER_NOT_FOUND: 'La impresora no existe, se retiró del catálogo o todavía no tiene compatibilidades verificadas. Vuelve a buscarla con `/recommender/printers`.',
   INVENTORY_UNAVAILABLE: 'Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
   RATE_LIMITED: 'Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos. `message` explica cuáles.',
@@ -336,7 +336,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'productosCompatibles',
     resumen: 'Productos compatibles con una impresora',
     descripcion:
-      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si todavía no hay ninguna, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
+      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
     scope: 'RECOMMENDER_READ',
     parametrosRuta: [{ nombre: 'printerId', descripcion: 'El `id` de la impresora, de `/recommender/printers`.', esquema: { type: 'integer', minimum: 1 } }],
     query: compatibleQuerySchema,
