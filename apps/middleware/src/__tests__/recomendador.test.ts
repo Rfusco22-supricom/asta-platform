@@ -32,14 +32,15 @@ import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.
  *   P1 activa    ← C1 VALIDADA  → Ta ORIGINAL VALIDADA, Tb PROPUESTA, Tc RECHAZADA
  *                ← C2 PROPUESTA → Td ORIGINAL VALIDADA
  *                ← C3 VALIDADA  → Ta COMPATIBLE VALIDADA, Te ORIGINAL VALIDADA
- *   P2 desactivada, P3 activa sin nada validado
+ *   P2 desactivada, P3 activa con solo una PROPUESTA
+ *   P4 activa ← C4 VALIDADA → ningún producto validado (revisión de #111/#112)
  *
  * Esperado para P1: Ta (compatible, cartuchos C1 y C3) y Te (original). Ni Tb,
  * ni Tc, ni Td.
  */
 
 const MARCA = 'ZZ_REC_MARCA';
-const CODIGOS = ['zzrec1', 'zzrec2', 'zzrec3'];
+const CODIGOS = ['zzrec1', 'zzrec2', 'zzrec3', 'zzrec4'];
 
 let server: Server;
 let base = '';
@@ -50,7 +51,7 @@ let key = '';
 let keySinScope = '';
 let comprobado = false;
 
-const P: Record<'P1' | 'P2' | 'P3', number> = { P1: 0, P2: 0, P3: 0 };
+const P: Record<'P1' | 'P2' | 'P3' | 'P4', number> = { P1: 0, P2: 0, P3: 0, P4: 0 };
 const T: Record<'Ta' | 'Tb' | 'Tc' | 'Td' | 'Te', number> = { Ta: 0, Tb: 0, Tc: 0, Td: 0, Te: 0 };
 
 async function get<B>(path: string, k = key) {
@@ -112,7 +113,8 @@ beforeAll(async () => {
   const p1 = await impresora('ZZ-Rec 9991dw');
   const p2 = await impresora('ZZ-Rec 9992dw', false);
   const p3 = await impresora('ZZ-Rec 9993');
-  [P.P1, P.P2, P.P3] = [p1.id, p2.id, p3.id];
+  const p4 = await impresora('ZZ-Rec 9994');
+  [P.P1, P.P2, P.P3, P.P4] = [p1.id, p2.id, p3.id, p4.id];
   await prisma.printerModelAlias.createMany({
     data: [
       { printerModelId: p1.id, alias: 'zzcorto991', aliasNormalized: 'zzcorto991', source: 'MANUAL' },
@@ -125,6 +127,7 @@ beforeAll(async () => {
   const c1 = await cartucho('ZZREC1', { color: 'negro', yieldPages: 3000 });
   const c2 = await cartucho('ZZREC2');
   const c3 = await cartucho('ZZREC3');
+  const c4 = await cartucho('ZZREC4');
 
   await prisma.cartridgePrinterModel.createMany({
     data: [
@@ -133,6 +136,10 @@ beforeAll(async () => {
       { cartridgeId: c3.id, printerModelId: p1.id, source: 'MANUAL', status: 'VALIDADA' },
       // P2 desactivada, con una compatibilidad validada: la desactivación manda.
       { cartridgeId: c1.id, printerModelId: p2.id, source: 'MANUAL', status: 'VALIDADA' },
+      // P3 solo con una PROPUESTA: como la impresora que crea un vendedor al proponer.
+      { cartridgeId: c2.id, printerModelId: p3.id, source: 'MANUAL', status: 'PROPUESTA' },
+      // P4 con un cartucho validado que ningún producto validado vende.
+      { cartridgeId: c4.id, printerModelId: p4.id, source: 'MANUAL', status: 'VALIDADA' },
     ],
   });
   await prisma.productCartridge.createMany({
@@ -178,6 +185,14 @@ describe('#39 · Buscar impresoras', () => {
   it('no encuentra por un alias desactivado', async () => {
     const r = await get<PublicPrinterSearchResponse>('/recommender/printers?q=zzretirado991');
     expect(r.body.data.map((p) => p.id)).not.toContain(P.P1);
+  });
+
+  it('una impresora sin ningún cartucho validado no sale en el buscador (revisión de #111/#112)', async () => {
+    const r = await get<PublicPrinterSearchResponse>('/recommender/printers?q=zzrec9993');
+    expect([...r.body.data, ...r.body.sugerencias].map((p) => p.id)).not.toContain(P.P3);
+    // Y una con un cartucho validado, aunque aún no tenga productos, sí.
+    const conCartucho = await get<PublicPrinterSearchResponse>('/recommender/printers?q=zzrec9994');
+    expect(conCartucho.body.data.map((p) => p.id)).toContain(P.P4);
   });
 
   it('una impresora desactivada no sale ni como coincidencia ni como sugerencia', async () => {
@@ -271,11 +286,20 @@ describe('#39 · Productos compatibles', () => {
 });
 
 describe('#39 · Casos límite y errores', () => {
-  it('impresora sin nada validado → data vacío y sinCompatibilidadesCargadas', async () => {
-    const r = await get<PublicCompatibleResponse>(`/recommender/printers/${P.P3}/compatible`);
+  it('cartucho validado sin ningún producto validado → data vacío y sinCompatibilidadesCargadas', async () => {
+    const r = await get<PublicCompatibleResponse>(`/recommender/printers/${P.P4}/compatible`);
     expect(r.status).toBe(200);
     expect(r.body.data).toEqual([]);
     expect(r.body.meta.sinCompatibilidadesCargadas).toBe(true);
+  });
+
+  it('impresora sin ningún cartucho validado → el mismo 404 que una inexistente (revisión de #111/#112)', async () => {
+    // Los ids son consecutivos: si este camino respondiera 200, recorrerlos
+    // leería el nombre de cada impresora sin revisar.
+    const a = await get<unknown>(`/recommender/printers/${P.P3}/compatible`);
+    const b = await get<unknown>('/recommender/printers/4000000000/compatible');
+    expect(a.status).toBe(404);
+    expect(a.body).toEqual(b.body);
   });
 
   it('desactivada o inexistente → el mismo 404 PRINTER_NOT_FOUND', async () => {
