@@ -40,6 +40,7 @@ let server: Server;
 let base = '';
 let comprobado = false;
 let idBitacoraInicial = 0n;
+let idTelemetriaInicial = 0n;
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 
@@ -116,6 +117,8 @@ beforeAll(async () => {
 
   const ultimo = await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
   idBitacoraInicial = ultimo?.id ?? 0n;
+  // Desde #43 el recomendador escribe recommendation_events: se borra lo de este test.
+  idTelemetriaInicial = (await prisma.recommendationEvent.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }))?.id ?? 0n;
 
   const app = createApp();
   await new Promise<void>((resolve) => {
@@ -156,11 +159,15 @@ beforeAll(async () => {
   const marca = await prisma.printerBrand.create({ data: { name: MARCA } });
   const crear = (name: string) => prisma.printerModel.create({ data: { brandId: marca.id, name, nameNormalized: normalizarModelo(name) } });
   const p1 = await crear('ZZ-Ais 7771dw');
-  await crear('ZZ-Ais 7772dw');
-  await crear('ZZ-Ais 7773dw');
+  const p2 = await crear('ZZ-Ais 7772dw');
+  const p3 = await crear('ZZ-Ais 7773dw');
   impresora = p1.id;
   const cartucho = await prisma.cartridge.create({ data: { brandId: marca.id, code: 'ZZAIS1', codeNormalized: CODIGO, kind: 'TONER' } });
-  await prisma.cartridgePrinterModel.create({ data: { cartridgeId: cartucho.id, printerModelId: p1.id, source: 'MANUAL', status: 'VALIDADA' } });
+  // Las tres con el cartucho VALIDADO: desde #115 una impresora sin ninguno no
+  // es pública, y el test de `limit` necesita tres coincidencias visibles.
+  await prisma.cartridgePrinterModel.createMany({
+    data: [p1, p2, p3].map((p) => ({ cartridgeId: cartucho.id, printerModelId: p.id, source: 'MANUAL' as const, status: 'VALIDADA' as const })),
+  });
   await prisma.productCartridge.create({
     data: { odooProductTmplId: producto.templateId, cartridgeId: cartucho.id, relation: 'ORIGINAL', source: 'MANUAL', status: 'VALIDADA' },
   });
@@ -175,6 +182,7 @@ afterAll(async () => {
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
+    await prisma.recommendationEvent.deleteMany({ where: { id: { gt: idTelemetriaInicial } } });
     await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
     await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   }

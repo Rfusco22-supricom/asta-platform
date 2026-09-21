@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import {
+  busquedaIdParamSchema,
+  clicRecomendadorSchema,
   compatibleQuerySchema,
   inventoryQuerySchema,
   printerIdParamSchema,
@@ -8,6 +10,7 @@ import {
   publicInvoiceListQuerySchema,
 } from '@asta/shared-types';
 import { buscarImpresoras, compatiblesDe } from '../services/recomendador/recomendador.service.js';
+import { leerBusquedaId, registrarBusqueda, registrarClic, registrarConsulta } from '../services/recomendador/telemetria.service.js';
 import {
   getPartnerInvoice,
   invoiceExists,
@@ -42,6 +45,13 @@ import { auditContext } from '../middleware/auditContext.js';
 function partnerDelToken(req: Request): number {
   const id = req.scopedPartnerId;
   if (!id) throw new Error('scopedPartnerId ausente: la ruta no pasó por scopeToOwnPartner()');
+  return id;
+}
+
+/** El usuario dueño de la API key. Misma lógica que `partnerDelToken`. */
+function usuarioDelToken(req: Request): string {
+  const id = req.identity?.appUserId;
+  if (!id) throw new Error('identity.appUserId ausente: la ruta no pasó por authApiKey()');
   return id;
 }
 
@@ -257,7 +267,13 @@ export async function buscarImpresorasHandler(
     }
 
     const { impresoras, sugerencias } = await buscarImpresoras(query.data.q, query.data.limit);
-    res.json({ data: impresoras, sugerencias });
+    // La consulta CRUDA, antes de validar: `query.data.q` es la misma, pero así
+    // queda claro que no se normaliza nada (#43).
+    const busquedaId = await registrarBusqueda(
+      { userId: usuarioDelToken(req), consulta: String(req.query.q), coincidencias: impresoras.map((i) => i.id) },
+      req.log,
+    );
+    res.json({ data: impresoras, sugerencias, meta: { busquedaId } });
   } catch (error) {
     next(error);
   }
@@ -296,10 +312,56 @@ export async function compatiblesHandler(
     }
 
     const r = await compatiblesDe(params.data.printerId, almacen, query.data.soloDisponibles);
+    await registrarConsulta(
+      {
+        userId: usuarioDelToken(req),
+        busquedaId: query.data.busquedaId ? leerBusquedaId(query.data.busquedaId) : null,
+        printerId: params.data.printerId,
+        items: r.items,
+        soloDisponibles: query.data.soloDisponibles,
+      },
+      req.log,
+    );
     res.json({
       data: r.items,
       meta: { impresora: r.impresora, sinCompatibilidadesCargadas: r.sinCompatibilidadesCargadas, desdeCache: r.desdeCache },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * `POST /api/v1/public/recommender/busquedas/:busquedaId/clic` (#43)
+ *
+ * El único paso del embudo que avisa el cliente: el clic ocurre en su pantalla.
+ * Una búsqueda que no existe, es de otro cliente o caducó responde el mismo 404:
+ * distinguirlas le diría al que prueba ids cuáles son de otros.
+ */
+export async function clicRecomendadorHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params = busquedaIdParamSchema.safeParse(req.params);
+    const cuerpo = clicRecomendadorSchema.safeParse(req.body);
+    if (!params.success || !cuerpo.success) {
+      res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: z.prettifyError((params.error ?? cuerpo.error)!) },
+      });
+      return;
+    }
+    const registrado = await registrarClic({
+      userId: usuarioDelToken(req),
+      busquedaId: leerBusquedaId(params.data.busquedaId)!,
+      productId: cuerpo.data.productId,
+    });
+    if (!registrado) {
+      res.status(404).json({ error: { code: 'SEARCH_NOT_FOUND', message: 'Búsqueda no encontrada o caducada.' } });
+      return;
+    }
+    res.status(204).end();
   } catch (error) {
     next(error);
   }

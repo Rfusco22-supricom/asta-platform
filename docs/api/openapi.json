@@ -3,7 +3,7 @@
   "info": {
     "title": "API pública de Asta",
     "version": "1.0.0",
-    "description": "## Primeros pasos\n\nLa API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, las existencias del catálogo y qué productos le sirven a una impresora. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.\n\n- Entra al panel y abre **Mis API keys**.\n- Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias, `RECOMMENDER_READ` para el recomendador de impresoras.\n- Copia la key en ese momento. **Solo se muestra una vez**; si la pierdes, crea otra y revoca la anterior.\n- Haz tu primera petición:\n\n```\ncurl \"https://{servidor}/api/v1/public/invoices?porPagina=5\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\"\n```\n\n## Autenticación\n\nEnvía la key en la cabecera `X-API-Key` en cada petición. También se acepta `Authorization: Bearer <key>`.\n\n- **Nunca** la pongas en la URL: las URLs quedan en logs, historiales y proxies.\n- Guárdala como un secreto del servidor, no en código que llegue a un navegador o a una app.\n- Una key por integración. Si una se filtra, revócala en el panel: deja de funcionar en el acto, y con ella los enlaces de PDF que haya emitido.\n- Si quieres que una key solo funcione desde ciertas IPs, pídelo a soporte. Desde cualquier otra IP responderá `401 INVALID_API_KEY`.\n\n## Límites de peticiones\n\n- **Por key:** 60 peticiones por minuto, salvo que se haya acordado otro límite para tu key.\n- **Autenticación fallida:** tras 50 peticiones con una key inválida desde la misma IP en 15 minutos, esa IP queda bloqueada hasta que termine la ventana, **también para las peticiones con una key válida**. Si tu integración reintenta en bucle con una key revocada, se bloquea a sí misma.\n- **Descargas de PDF:** 30 por minuto por IP.\n\nCada respuesta lleva `RateLimit-Limit`, `RateLimit-Remaining` y `RateLimit-Reset`. Al superar un límite la respuesta es `429 RATE_LIMITED` con `Retry-After` en segundos: espera ese tiempo antes de reintentar.\n\n## Paginación\n\nLos listados se paginan con `pagina` (desde 1) y `porPagina` (por defecto 50, máximo 100). `meta.total` es el total de resultados con esos filtros: sigue pidiendo páginas mientras `pagina × porPagina < total`.\n\nLas existencias pueden venir de una cache de hasta 60 segundos; `meta.desdeCache` lo indica.\n\n## Errores\n\nTodo error responde con la misma forma:\n\n```\n{\n  \"error\": {\n    \"code\": \"INVOICE_NOT_FOUND\",\n    \"message\": \"Factura no encontrada.\"\n  }\n}\n```\n\nPrograma contra `code`, nunca contra `message`, que es texto para personas y puede cambiar.\n\n| Status | `code` | Qué significa |\n|---|---|---|\n| 401 | `MISSING_API_KEY` | Falta la cabecera `X-API-Key`. |\n| 401 | `INVALID_API_KEY` | La key no existe, está revocada o caducada, su usuario está desactivado, o se usa desde una IP no permitida. Por seguridad no se distingue cuál. |\n| 403 | `INSUFFICIENT_SCOPE` | La key no tiene el permiso que exige este endpoint. `required` indica cuál. Crea una key con ese permiso. |\n| 400 | `PARTNER_ID_NOT_ALLOWED` | La petición lleva un `partner_id` que no es el tuyo. No hace falta enviarlo: el cliente sale siempre de la API key. |\n| 400 | `INVALID_QUERY` | Un parámetro no es válido. `message` explica cuál. |\n| 400 | `INVALID_INVOICE_ID` | El identificador de factura no es un número entero positivo. |\n| 404 | `INVOICE_NOT_FOUND` | La factura no existe o no es tuya. Es la misma respuesta en los dos casos, a propósito. |\n| 404 | `INVOICE_PDF_NOT_AVAILABLE` | La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor. |\n| 404 | `LINK_NOT_VALID` | El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo. |\n| 410 | `LINK_EXPIRED` | El enlace de descarga caducó. Pide uno nuevo. |\n| 404 | `PRINTER_NOT_FOUND` | La impresora no existe, se retiró del catálogo o todavía no tiene compatibilidades verificadas. Vuelve a buscarla con `/recommender/printers`. |\n| 409 | `INVENTORY_UNAVAILABLE` | Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor. |\n| 429 | `RATE_LIMITED` | Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`. |\n| 400 | `VALIDATION_ERROR` | Los datos enviados no son válidos. `message` explica cuáles. |\n| 503 | `ODOO_UNAVAILABLE` | El sistema de gestión no responde. Reintenta en unos minutos, con espera creciente. |\n| 500 | `INTERNAL_ERROR` | Error inesperado de nuestro lado. Si se repite, contacta con soporte indicando la hora. |\n\nAnte `503` o `500`, reintenta con espera creciente: 1 s, 2 s, 4 s… Ante `4xx`, no reintentes sin cambiar la petición.\n\n## Versiones y cambios\n\nLa versión va en la ruta: `/api/v1`. Dentro de una versión **no** hacemos cambios que rompan tu integración: no quitamos ni renombramos campos, no cambiamos su tipo ni su significado, y no hacemos obligatorio lo que era opcional.\n\nSí podemos, dentro de la misma versión:\n\n- Añadir campos a las respuestas. **Tu código debe ignorar los campos que no conoce.**\n- Añadir valores a `estadoPago`, `stock` y `error.code`, avisando con 30 días. **Ten siempre un caso por defecto**: un `stock` desconocido, trátalo como `agotado`; un `code` desconocido, por su status HTTP.\n- Añadir endpoints y parámetros opcionales.\n\nCuando haga falta un cambio incompatible saldrá `/api/v2`, y `v1` seguirá funcionando al menos 6 meses. Lo avisaremos por correo a los dueños de keys activas y con las cabeceras `Deprecation` y `Sunset` en cada respuesta de la versión que se retira.\n\nLa única excepción son los fallos de seguridad, que se corrigen de inmediato."
+    "description": "## Primeros pasos\n\nLa API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, las existencias del catálogo y qué productos le sirven a una impresora. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.\n\n- Entra al panel y abre **Mis API keys**.\n- Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias, `RECOMMENDER_READ` para el recomendador de impresoras.\n- Copia la key en ese momento. **Solo se muestra una vez**; si la pierdes, crea otra y revoca la anterior.\n- Haz tu primera petición:\n\n```\ncurl \"https://{servidor}/api/v1/public/invoices?porPagina=5\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\"\n```\n\n## Autenticación\n\nEnvía la key en la cabecera `X-API-Key` en cada petición. También se acepta `Authorization: Bearer <key>`.\n\n- **Nunca** la pongas en la URL: las URLs quedan en logs, historiales y proxies.\n- Guárdala como un secreto del servidor, no en código que llegue a un navegador o a una app.\n- Una key por integración. Si una se filtra, revócala en el panel: deja de funcionar en el acto, y con ella los enlaces de PDF que haya emitido.\n- Si quieres que una key solo funcione desde ciertas IPs, pídelo a soporte. Desde cualquier otra IP responderá `401 INVALID_API_KEY`.\n\n## Límites de peticiones\n\n- **Por key:** 60 peticiones por minuto, salvo que se haya acordado otro límite para tu key.\n- **Autenticación fallida:** tras 50 peticiones con una key inválida desde la misma IP en 15 minutos, esa IP queda bloqueada hasta que termine la ventana, **también para las peticiones con una key válida**. Si tu integración reintenta en bucle con una key revocada, se bloquea a sí misma.\n- **Descargas de PDF:** 30 por minuto por IP.\n\nCada respuesta lleva `RateLimit-Limit`, `RateLimit-Remaining` y `RateLimit-Reset`. Al superar un límite la respuesta es `429 RATE_LIMITED` con `Retry-After` en segundos: espera ese tiempo antes de reintentar.\n\n## Paginación\n\nLos listados se paginan con `pagina` (desde 1) y `porPagina` (por defecto 50, máximo 100). `meta.total` es el total de resultados con esos filtros: sigue pidiendo páginas mientras `pagina × porPagina < total`.\n\nLas existencias pueden venir de una cache de hasta 60 segundos; `meta.desdeCache` lo indica.\n\n## Errores\n\nTodo error responde con la misma forma:\n\n```\n{\n  \"error\": {\n    \"code\": \"INVOICE_NOT_FOUND\",\n    \"message\": \"Factura no encontrada.\"\n  }\n}\n```\n\nPrograma contra `code`, nunca contra `message`, que es texto para personas y puede cambiar.\n\n| Status | `code` | Qué significa |\n|---|---|---|\n| 401 | `MISSING_API_KEY` | Falta la cabecera `X-API-Key`. |\n| 401 | `INVALID_API_KEY` | La key no existe, está revocada o caducada, su usuario está desactivado, o se usa desde una IP no permitida. Por seguridad no se distingue cuál. |\n| 403 | `INSUFFICIENT_SCOPE` | La key no tiene el permiso que exige este endpoint. `required` indica cuál. Crea una key con ese permiso. |\n| 400 | `PARTNER_ID_NOT_ALLOWED` | La petición lleva un `partner_id` que no es el tuyo. No hace falta enviarlo: el cliente sale siempre de la API key. |\n| 400 | `INVALID_QUERY` | Un parámetro no es válido. `message` explica cuál. |\n| 400 | `INVALID_INVOICE_ID` | El identificador de factura no es un número entero positivo. |\n| 404 | `INVOICE_NOT_FOUND` | La factura no existe o no es tuya. Es la misma respuesta en los dos casos, a propósito. |\n| 404 | `INVOICE_PDF_NOT_AVAILABLE` | La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor. |\n| 404 | `LINK_NOT_VALID` | El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo. |\n| 410 | `LINK_EXPIRED` | El enlace de descarga caducó. Pide uno nuevo. |\n| 404 | `PRINTER_NOT_FOUND` | La impresora no existe, se retiró del catálogo o todavía no tiene compatibilidades verificadas. Vuelve a buscarla con `/recommender/printers`. |\n| 409 | `INVENTORY_UNAVAILABLE` | Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor. |\n| 404 | `SEARCH_NOT_FOUND` | La búsqueda no existe, no es tuya o pasaron más de 30 minutos. Es la misma respuesta en los tres casos, a propósito. |\n| 429 | `RATE_LIMITED` | Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`. |\n| 400 | `VALIDATION_ERROR` | Los datos enviados no son válidos. `message` explica cuáles. |\n| 503 | `ODOO_UNAVAILABLE` | El sistema de gestión no responde. Reintenta en unos minutos, con espera creciente. |\n| 500 | `INTERNAL_ERROR` | Error inesperado de nuestro lado. Si se repite, contacta con soporte indicando la hora. |\n\nAnte `503` o `500`, reintenta con espera creciente: 1 s, 2 s, 4 s… Ante `4xx`, no reintentes sin cambiar la petición.\n\n## Versiones y cambios\n\nLa versión va en la ruta: `/api/v1`. Dentro de una versión **no** hacemos cambios que rompan tu integración: no quitamos ni renombramos campos, no cambiamos su tipo ni su significado, y no hacemos obligatorio lo que era opcional.\n\nSí podemos, dentro de la misma versión:\n\n- Añadir campos a las respuestas. **Tu código debe ignorar los campos que no conoce.**\n- Añadir valores a `estadoPago`, `stock` y `error.code`, avisando con 30 días. **Ten siempre un caso por defecto**: un `stock` desconocido, trátalo como `agotado`; un `code` desconocido, por su status HTTP.\n- Añadir endpoints y parámetros opcionales.\n\nCuando haga falta un cambio incompatible saldrá `/api/v2`, y `v1` seguirá funcionando al menos 6 meses. Lo avisaremos por correo a los dueños de keys activas y con las cabeceras `Deprecation` y `Sunset` en cada respuesta de la versión que se retira.\n\nLa única excepción son los fallos de seguridad, que se corrigen de inmediato."
   },
   "servers": [
     {
@@ -1169,7 +1169,7 @@
       "get": {
         "operationId": "buscarImpresoras",
         "summary": "Buscar una impresora",
-        "description": "Encuentra el modelo de impresora a partir de lo que teclea una persona, con o sin marca, guiones ni espacios: `hl2350` encuentra la HL-L2350DW. Si no hay coincidencias, `sugerencias` trae modelos parecidos para preguntar «¿quisiste decir…?». El catálogo puede tardar hasta 5 minutos en reflejar un modelo nuevo.\n\nPermiso necesario: `RECOMMENDER_READ`.",
+        "description": "Encuentra el modelo de impresora a partir de lo que teclea una persona, con o sin marca, guiones ni espacios: `hl2350` encuentra la HL-L2350DW. Si no hay coincidencias, `sugerencias` trae modelos parecidos para preguntar «¿quisiste decir…?». El catálogo puede tardar hasta 5 minutos en reflejar un modelo nuevo. Cada búsqueda devuelve `meta.busquedaId`: mándalo en `/compatible` y al registrar el clic, para que la visita cuente entera.\n\nPermiso necesario: `RECOMMENDER_READ`.",
         "tags": [
           "Recomendador"
         ],
@@ -1284,11 +1284,32 @@
                         ]
                       },
                       "description": "Solo si no hubo coincidencias: modelos parecidos, para preguntar «¿quisiste decir…?». No los trates como coincidencias."
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "busquedaId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[1-9]\\d{0,18}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Identificador de esta búsqueda. Mándalo en `/compatible` y al registrar un clic, para que la búsqueda, la impresora elegida y el producto elegido cuenten como una sola visita. `null` si no se pudo registrar: la búsqueda funciona igual."
+                        }
+                      },
+                      "required": [
+                        "busquedaId"
+                      ]
                     }
                   },
                   "required": [
                     "data",
-                    "sugerencias"
+                    "sugerencias",
+                    "meta"
                   ]
                 },
                 "example": {
@@ -1299,7 +1320,10 @@
                       "nombre": "LaserJet Pro M404dn"
                     }
                   ],
-                  "sugerencias": []
+                  "sugerencias": [],
+                  "meta": {
+                    "busquedaId": "1052"
+                  }
                 }
               }
             }
@@ -1391,7 +1415,7 @@
       "get": {
         "operationId": "productosCompatibles",
         "summary": "Productos compatibles con una impresora",
-        "description": "Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).\n\nPermiso necesario: `RECOMMENDER_READ`.",
+        "description": "Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.\n\nPermiso necesario: `RECOMMENDER_READ`.",
         "tags": [
           "Recomendador"
         ],
@@ -1419,6 +1443,16 @@
             "schema": {
               "type": "boolean",
               "default": false
+            }
+          },
+          {
+            "name": "busquedaId",
+            "in": "query",
+            "required": false,
+            "description": "El `meta.busquedaId` de la búsqueda de la que viene el cliente, si la hubo.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d{0,18}$"
             }
           }
         ],
@@ -1741,6 +1775,167 @@
           }
         ]
       }
+    },
+    "/api/v1/public/recommender/busquedas/{busquedaId}/clic": {
+      "post": {
+        "operationId": "registrarClic",
+        "summary": "Registrar el producto elegido",
+        "description": "Avisa de qué producto eligió el cliente tras una búsqueda. Sirve para saber qué se busca y qué se elige, y así tener en existencia lo que el mercado necesita. Solo vale para tus propias búsquedas y durante los 30 minutos siguientes: fuera de eso responde `404`.\n\nPermiso necesario: `RECOMMENDER_READ`.",
+        "tags": [
+          "Recomendador"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "busquedaId",
+            "in": "path",
+            "required": true,
+            "description": "El `meta.busquedaId` que devolvió `/recommender/printers`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "description": "El `id` del producto que eligió el cliente, tal como vino en `/compatible`."
+                  }
+                },
+                "required": [
+                  "productId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Registrado.",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Peticiones permitidas en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Peticiones que quedan en la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "Segundos hasta que se reinicia la ventana.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Códigos posibles: `VALIDATION_ERROR`, `PARTNER_ID_NOT_ALLOWED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Códigos posibles: `MISSING_API_KEY`, `INVALID_API_KEY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Códigos posibles: `INSUFFICIENT_SCOPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Códigos posibles: `SEARCH_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Códigos posibles: `RATE_LIMITED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos que hay que esperar.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Códigos posibles: `INTERNAL_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Códigos posibles: `ODOO_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "curl",
+            "label": "curl",
+            "source": "curl -X POST \"https://{servidor}/api/v1/public/recommender/busquedas/1052/clic\" \\\n  -H \"X-API-Key: $ASTA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"productId\":2001}'"
+          },
+          {
+            "lang": "Python",
+            "label": "Python",
+            "source": "import json, os, urllib.request\n\npeticion = urllib.request.Request(\n    \"https://{servidor}/api/v1/public/recommender/busquedas/1052/clic\",\n    data=json.dumps({\"productId\":2001}).encode(),\n    headers={**{\"X-API-Key\": os.environ[\"ASTA_API_KEY\"]}, \"Content-Type\": \"application/json\"},\n    method=\"POST\",\n)\nwith urllib.request.urlopen(peticion) as respuesta:\n    print(respuesta.status)"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1775,6 +1970,7 @@
                   "LINK_EXPIRED",
                   "PRINTER_NOT_FOUND",
                   "INVENTORY_UNAVAILABLE",
+                  "SEARCH_NOT_FOUND",
                   "RATE_LIMITED",
                   "VALIDATION_ERROR",
                   "ODOO_UNAVAILABLE",

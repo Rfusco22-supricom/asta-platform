@@ -4,6 +4,7 @@ import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
 import {
   buscarImpresorasHandler,
+  clicRecomendadorHandler,
   compatiblesHandler,
   enlacePdfFacturaHandler,
   listarFacturasHandler,
@@ -61,6 +62,7 @@ export function crearPublicRouter(): Router {
   router.get('/pricing', requireScope('PRICING_READ'), noImplementadoHandler);
   router.get('/recommender/printers', requireScope('RECOMMENDER_READ'), buscarImpresorasHandler);
   router.get('/recommender/printers/:printerId/compatible', requireScope('RECOMMENDER_READ'), compatiblesHandler);
+  router.post('/recommender/busquedas/:busquedaId/clic', requireScope('RECOMMENDER_READ'), clicRecomendadorHandler);
 
   return router;
 }
