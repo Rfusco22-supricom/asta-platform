@@ -21,7 +21,16 @@ const TIPOS = [
   { valor: 'OTRO', titulo: 'Otro (chip, kit…)' },
 ];
 
-export function FormularioCompatibilidad({ como, marcas = [] }: { como: 'admin' | 'vendedor'; marcas?: string[] }) {
+export function FormularioCompatibilidad({
+  como,
+  marcas = [],
+  codigoInicial,
+}: {
+  como: 'admin' | 'vendedor';
+  marcas?: string[];
+  /** Cartucho que falta, si se llegó desde la cobertura del top (#56). */
+  codigoInicial?: string;
+}) {
   const router = useRouter();
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tono: 'ok' | 'error'; texto: string } | null>(null);
@@ -78,9 +87,11 @@ export function FormularioCompatibilidad({ como, marcas = [] }: { como: 'admin' 
     <section className="panel formulario-compatibilidad">
       <h2>Añadir compatibilidad</h2>
       <p className="formulario-nota">
-        {como === 'admin'
-          ? 'Lo que añades aquí queda validado y el kiosco lo recomienda en cuanto el cartucho tenga un producto validado.'
-          : 'Lo que propones aquí lo revisa un administrador antes de que el kiosco lo recomiende.'}
+        {codigoInicial
+          ? `${codigoInicial} todavía no tiene ninguna impresora validada: es uno de los más vendidos y el kiosco no lo puede recomendar. Di qué impresora lo usa.`
+          : como === 'admin'
+            ? 'Lo que añades aquí queda validado y el kiosco lo recomienda en cuanto el cartucho tenga un producto validado.'
+            : 'Lo que propones aquí lo revisa un administrador antes de que el kiosco lo recomiende.'}
       </p>
       <form onSubmit={enviar}>
         <datalist id="marcas-impresora">
@@ -99,7 +110,7 @@ export function FormularioCompatibilidad({ como, marcas = [] }: { como: 'admin' 
           </div>
           <div className="filtro-campo">
             <label htmlFor="fc-codigo">Código del cartucho</label>
-            <input id="fc-codigo" name="codigoCartucho" className="input" required minLength={2} maxLength={40} placeholder="CF258A" />
+            <input id="fc-codigo" name="codigoCartucho" className="input" required minLength={2} maxLength={40} placeholder="CF258A" defaultValue={codigoInicial} />
           </div>
           <div className="filtro-campo">
             <label htmlFor="fc-tipo">Tipo</label>
