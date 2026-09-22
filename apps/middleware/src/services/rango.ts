@@ -11,7 +11,14 @@ export interface RangoPedido {
   hasta: string;
 }
 
+/**
+ * Sin `status`, `errorHandler` no lo reconocía como error tipado y lo servía
+ * como un 500 "error no controlado": `/admin/reportes?desde=2026-02-31`
+ * respondía error interno en vez de explicar la fecha. Visto al reutilizarlo en
+ * las estadísticas del recomendador (#43).
+ */
 export class RangoInvalido extends Error {
+  readonly status = 400;
   readonly code = 'INVALID_DATE_RANGE' as const;
   constructor(mensaje: string) {
     super(mensaje);

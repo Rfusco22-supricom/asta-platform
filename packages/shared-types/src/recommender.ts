@@ -136,3 +136,71 @@ export const clicRecomendadorSchema = z.object({
 });
 
 export type ClicRecomendador = z.infer<typeof clicRecomendadorSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Estadísticas del recomendador para el panel (issue #43)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lo que sale de `recommendation_events` para el dashboard del SuperAdmin.
+ *
+ * Es de uso interno, no de la API pública: por eso lleva ids de impresora y de
+ * producto sin más contexto que el nombre.
+ */
+export const estadisticasRecomendadorSchema = z.object({
+  desde: z.iso.date(),
+  hasta: z.iso.date(),
+  totales: z.object({
+    /** Búsquedas por texto. No incluye las consultas directas. */
+    busquedas: z.number().int().nonnegative(),
+    /** Búsquedas que no encontraron ninguna impresora: la lista de alias que faltan. */
+    sinResultado: z.number().int().nonnegative(),
+    /** Búsquedas en las que se llegó a elegir impresora. */
+    conImpresora: z.number().int().nonnegative(),
+    /** Búsquedas que terminaron en el clic de un producto. */
+    conClic: z.number().int().nonnegative(),
+    /** Visitas con productos compatibles y ninguno en existencia: ventas perdidas. */
+    quiebres: z.number().int().nonnegative(),
+    /** Consultas de compatibles sin búsqueda previa: integraciones que ya sabían su impresora. */
+    consultasDirectas: z.number().int().nonnegative(),
+  }),
+  /**
+   * Agrupadas por su forma normalizada ("HL-2350" y "hl 2350" son la misma), con
+   * el texto más frecuente como ejemplo: es el alias que habría que añadir.
+   */
+  sinResultado: z.array(
+    z.object({
+      normalizada: z.string(),
+      ejemplo: z.string(),
+      /**
+       * Textos distintos que cayeron en el grupo, SIN contar mayúsculas: la
+       * colación de MySQL ya junta "epson l999" y "Epson L999" al agrupar.
+       */
+      variantes: z.number().int().positive(),
+      veces: z.number().int().positive(),
+      ultimaVez: z.iso.datetime(),
+    }),
+  ),
+  impresoras: z.array(
+    z.object({
+      printerModelId: z.number().int().positive(),
+      marca: z.string().nullable(),
+      nombre: z.string().nullable(),
+      veces: z.number().int().positive(),
+      quiebres: z.number().int().nonnegative(),
+    }),
+  ),
+  productos: z.array(
+    z.object({
+      productId: odooIdSchema,
+      /** null si Odoo no respondió: el resto del informe sale igual. */
+      nombre: z.string().nullable(),
+      sku: z.string().nullable(),
+      clics: z.number().int().positive(),
+    }),
+  ),
+});
+
+export type EstadisticasRecomendador = z.infer<typeof estadisticasRecomendadorSchema>;
+
+export const estadisticasRecomendadorRespuestaSchema = z.object({ data: estadisticasRecomendadorSchema });
