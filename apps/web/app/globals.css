@@ -1453,3 +1453,42 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 }
 
 .login-ayuda { margin: 14px 0 0; font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+
+/* ── Recomendador: atar una búsqueda sin resultado a su impresora ─────────── */
+
+.alias-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.alias-campos { display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+.alias-campos .input { flex: 1 1 200px; max-width: 320px; }
+.alias-candidatas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.alias-candidatas .btn { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+.alias-candidatas .btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); filter: none; }
+.alias-panel .revision-mensaje { display: block; margin: 10px 0 0; }
+.sin-kiosco { color: var(--warning); font-weight: 400; }
+
+/* Móvil: cada búsqueda sin resultado, apilada. Con cuatro columnas, el botón de
+   atarla a su impresora —que es la acción de la pantalla— quedaba tras el scroll. */
+@media (max-width: 640px) {
+  .tabla-busquedas thead { display: none; }
+  .tabla-busquedas,
+  .tabla-busquedas tbody { display: block; }
+  .tabla-busquedas tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabla-busquedas tbody tr:last-child { border-bottom: 0; }
+  .tabla-busquedas tbody td { display: block; padding: 0; border: 0; }
+  .tabla-busquedas tbody td:nth-child(1) { grid-column: 1 / 3; }
+  .tabla-busquedas tbody td:nth-child(2) { text-align: left; }
+  .tabla-busquedas tbody td:nth-child(2)::before { content: 'veces: '; color: var(--text-3); }
+  .tabla-busquedas tbody td:nth-child(4) { grid-column: 1 / 3; text-align: left !important; }
+  .alias-campos .input { max-width: none; }
+}

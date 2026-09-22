@@ -86,6 +86,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M11 12h10M18 12v3M15 12v2" />
         </svg>
       );
+    case 'recomendador':
+      // Una lupa sobre una hoja: lo que la gente busca.
+      return (
+        <svg {...comun}>
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="M15.8 15.8 21 21M8.5 11h5M11 8.5v5" />
+        </svg>
+      );
     case 'compatibilidades':
       // Un cartucho que encaja en su hueco.
       return (

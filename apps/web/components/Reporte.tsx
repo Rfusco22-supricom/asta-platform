@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Reporte } from '@/lib/api';
+import { Periodos } from '@/components/Periodos';
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
@@ -17,39 +18,6 @@ import { money, moneyCompact } from '@/lib/formato';
  * empiezan a circular desactualizados; mientras el número viva solo aquí, el que
  * se mira es el de hoy.
  */
-
-const PRESETS = [
-  { clave: '12m', etiqueta: 'Últimos 12 meses' },
-  { clave: 'anio', etiqueta: 'Este año' },
-  { clave: 'trimestre', etiqueta: 'Últimos 3 meses' },
-  { clave: 'anterior', etiqueta: 'Año pasado' },
-] as const;
-
-export type Preset = (typeof PRESETS)[number]['clave'];
-
-/**
- * Las fechas de cada preset.
- *
- * Vive aquí y no en el servidor para que el enlace de cada botón sea explícito:
- * la URL lleva las fechas, así que un reporte se puede guardar o pasar a otro y
- * enseña lo mismo. Un `?preset=anio` guardado en marzo enseñaría otra cosa en
- * diciembre.
- */
-export function fechasDe(preset: Preset, hoy = new Date()): { desde: string; hasta: string } {
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const hasta = iso(hoy);
-
-  if (preset === 'anio') return { desde: `${hoy.getUTCFullYear()}-01-01`, hasta };
-  if (preset === 'anterior') {
-    const y = hoy.getUTCFullYear() - 1;
-    return { desde: `${y}-01-01`, hasta: `${y}-12-31` };
-  }
-
-  const d = new Date(hoy);
-  d.setUTCMonth(d.getUTCMonth() - (preset === 'trimestre' ? 2 : 11));
-  d.setUTCDate(1);
-  return { desde: iso(d), hasta };
-}
 
 function Metrica({
   etiqueta,
@@ -139,21 +107,7 @@ export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) 
 
   return (
     <>
-      <div className="periodos">
-        {PRESETS.map((p) => {
-          const { desde, hasta } = fechasDe(p.clave);
-          const activo = datos.periodo.desde === desde && datos.periodo.hasta === hasta;
-          return (
-            <Link
-              key={p.clave}
-              href={`${base}?desde=${desde}&hasta=${hasta}`}
-              className={`periodo${activo ? ' periodo--activo' : ''}`}
-            >
-              {p.etiqueta}
-            </Link>
-          );
-        })}
-      </div>
+      <Periodos base={base} periodo={datos.periodo} />
 
       {!hayAlgo ? (
         <div className="notice">
