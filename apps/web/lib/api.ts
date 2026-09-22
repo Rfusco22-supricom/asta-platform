@@ -20,6 +20,10 @@ import {
   type RevisionImpresorasRespuesta,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
+  estadisticasRecomendadorRespuestaSchema,
+  type EstadisticasRecomendador,
+  busquedaImpresorasRespuestaSchema,
+  type BusquedaImpresorasRespuesta,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -476,6 +480,21 @@ export async function getRevisionImpresoras(
   if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
   const sufijo = qs.size ? `?${qs.toString()}` : '';
   return request(`/api/v1/admin/compatibilidades/impresoras${sufijo}`, revisionImpresorasRespuestaSchema, accessToken);
+}
+
+/** Qué buscan los clientes en el recomendador y dónde se pierden ventas (#43). */
+export async function getEstadisticasRecomendador(
+  accessToken: string,
+  rango?: { desde: string; hasta: string },
+): Promise<EstadisticasRecomendador> {
+  const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
+  const r = await request(`/api/v1/admin/recomendador/estadisticas${qs}`, estadisticasRecomendadorRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** Impresoras que coinciden con un texto, para atarle un alias (#43). */
+export async function buscarImpresorasAdmin(accessToken: string, q: string): Promise<BusquedaImpresorasRespuesta> {
+  return request(`/api/v1/admin/compatibilidades/impresoras/buscar?q=${encodeURIComponent(q)}`, busquedaImpresorasRespuestaSchema, accessToken);
 }
 
 /** Las compatibilidades que ha propuesto el vendedor de la sesión. */

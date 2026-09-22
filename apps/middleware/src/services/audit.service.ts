@@ -50,6 +50,10 @@ export type AuditAction =
   /// estado con que nació (VALIDADA si fue un admin, PROPUESTA si fue un
   /// vendedor) va en los metadatos.
   | 'compatibilidad.anadida'
+  /// Alguien ató una búsqueda sin resultado a una impresora como alias (#43).
+  /// Un alias equivocado manda al cliente al tóner de otra impresora, así que
+  /// tiene que constar quién lo puso.
+  | 'alias.anadido'
   | 'user.invitado'
   | 'user.invitacion_aceptada';
 

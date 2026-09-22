@@ -228,3 +228,51 @@ export const propuestaPropiaSchema = z.object({
 export const propuestasPropiasRespuestaSchema = z.object({ data: z.array(propuestaPropiaSchema) });
 
 export type PropuestaPropia = z.infer<typeof propuestaPropiaSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alias de impresora desde el panel (#43)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lo que alguien tecleó en el kiosco y no encontró nada, atado a la impresora que
+ * buscaba. Es la forma de que el recomendador aprenda de sus propios fallos: la
+ * lista de búsquedas sin resultado (#43) es justo la lista de alias que faltan.
+ */
+export const nuevoAliasSchema = z.object({
+  printerModelId: z.number().int().positive().max(4_294_967_295),
+  /** El texto tal cual se buscó. Se normaliza al guardarlo, igual que la búsqueda. */
+  alias: z.string().trim().min(2).max(120),
+});
+
+export type NuevoAlias = z.infer<typeof nuevoAliasSchema>;
+
+export const nuevoAliasRespuestaSchema = z.object({
+  data: z.object({
+    printerModelId: z.number().int().positive(),
+    alias: z.string(),
+    /** false si ese alias ya existía en esa impresora: no se duplica ni se reactiva. */
+    creado: z.boolean(),
+    /** Ya estaba, pero desactivado: alguien lo retiró por equivocar al cliente. */
+    estabaDesactivado: z.boolean(),
+  }),
+});
+
+const impresoraElegibleSchema = z.object({
+  printerModelId: z.number().int().positive(),
+  marca: z.string(),
+  nombre: z.string(),
+  /**
+   * false mientras no tenga ninguna compatibilidad VALIDADA: el kiosco no la
+   * enseña (#111/#112), así que un alias sobre ella todavía no arregla nada.
+   */
+  visibleEnKiosco: z.boolean(),
+});
+
+/** Impresoras que coinciden con lo tecleado, para elegir a cuál atar el alias. */
+export const busquedaImpresorasRespuestaSchema = z.object({
+  data: z.array(impresoraElegibleSchema),
+  /** Solo si no hubo coincidencias: los parecidos, para preguntar. */
+  sugerencias: z.array(impresoraElegibleSchema),
+});
+
+export type BusquedaImpresorasRespuesta = z.infer<typeof busquedaImpresorasRespuestaSchema>;

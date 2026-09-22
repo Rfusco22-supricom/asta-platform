@@ -11,6 +11,7 @@ import { prisma } from '../../config/prisma.js';
 import { normalizarModelo } from './normalizar.js';
 import { formasDelCodigo } from './separarModelos.js';
 import { RevisionDesactualizada, RevisionInvalida, ventasPorPlantilla } from './revision.service.js';
+import { ImpresoraNoEncontrada, invalidarCatalogoImpresoras } from './recomendador.service.js';
 
 /**
  * El tramo impresora → cartucho: revisarlo y AÑADIR compatibilidades desde el
@@ -193,6 +194,7 @@ export async function anadirCompatibilidad(
     if (!impresora) {
       impresora = await tx.printerModel.create({ data: { brandId: marcaImpresora.id, name: nombreModelo, nameNormalized } });
       impresoraNueva = true;
+      invalidarCatalogoImpresoras();
     }
 
     const formas = formasDelCodigo(datos.codigoCartucho, marcaCartucho.name);
@@ -255,4 +257,46 @@ export async function propuestasDe(autorId: string): Promise<PropuestaPropia[]> 
     creadaEn: f.createdAt.toISOString(),
     revisadoEn: f.reviewedAt?.toISOString() ?? null,
   }));
+}
+
+/**
+ * Atar una búsqueda sin resultado a una impresora, como alias (#43).
+ *
+ * La lista de búsquedas fallidas del panel ES la lista de alias que faltan: si
+ * varios clientes teclean «hl2350» y nadie encuentra nada, lo que falta no es
+ * producto, es ese alias. Al añadirlo, la misma búsqueda empieza a funcionar.
+ *
+ * `source = BUSQUEDA` a propósito: distingue lo que enseñó un cliente de lo que
+ * escribió una persona del equipo, que es lo que el esquema (#101) quería poder
+ * separar después.
+ *
+ * Un alias que ya existe NO se toca, ni siquiera para reactivarlo: si alguien lo
+ * desactivó fue porque mandaba al cliente al tóner de otra impresora, y eso se
+ * decide mirándolo, no volviéndolo a teclear.
+ *
+ * Quién lo añadió queda en la AUDITORÍA (`alias.anadido`), no en la tabla:
+ * `printer_model_aliases` no tiene columna de autor y no hace falta una migración
+ * para saberlo.
+ */
+export async function anadirAlias(
+  datos: { printerModelId: number; alias: string },
+): Promise<{ printerModelId: number; alias: string; creado: boolean; estabaDesactivado: boolean }> {
+  const aliasNormalized = normalizarModelo(datos.alias).slice(0, 120);
+  if (!aliasNormalized) throw new RevisionInvalida('Ese texto no deja nada que buscar.');
+
+  const impresora = await prisma.printerModel.findFirst({ where: { id: datos.printerModelId, isActive: true }, select: { id: true } });
+  if (!impresora) throw new ImpresoraNoEncontrada(datos.printerModelId);
+
+  const ya = await prisma.printerModelAlias.findUnique({
+    where: { printerModelId_aliasNormalized: { printerModelId: datos.printerModelId, aliasNormalized } },
+    select: { isActive: true },
+  });
+  if (ya) return { printerModelId: datos.printerModelId, alias: datos.alias.trim(), creado: false, estabaDesactivado: !ya.isActive };
+
+  await prisma.printerModelAlias.create({
+    data: { printerModelId: datos.printerModelId, alias: datos.alias.trim().slice(0, 120), aliasNormalized, source: 'BUSQUEDA' },
+  });
+  // Para que la misma búsqueda funcione YA, y no dentro de cinco minutos.
+  invalidarCatalogoImpresoras();
+  return { printerModelId: datos.printerModelId, alias: datos.alias.trim(), creado: true, estabaDesactivado: false };
 }

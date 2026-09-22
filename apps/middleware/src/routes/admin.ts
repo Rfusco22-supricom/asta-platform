@@ -13,6 +13,8 @@ import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
   nuevaCompatibilidadSchema,
+  nuevoAliasSchema,
+  printerSearchQuerySchema,
   revisionDecisionSchema,
   revisionImpresorasDecisionSchema,
   revisionQuerySchema,
@@ -21,10 +23,12 @@ import {
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
 import {
+  anadirAlias,
   anadirCompatibilidad,
   aplicarRevisionImpresoras,
   listarImpresorasParaRevision,
 } from '../services/recomendador/revisionImpresoras.service.js';
+import { buscarImpresorasPanel } from '../services/recomendador/recomendador.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -399,6 +403,51 @@ adminRouter.post('/compatibilidades/impresoras', autorizar('admin.compatibilidad
       });
     }
     res.status(r.creada ? 201 : 200).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Impresoras que coinciden con lo tecleado, para atarles un alias (#43).
+ *
+ * Misma REGLA de búsqueda que el kiosco, pero sobre todas las impresoras
+ * activas: hay que poder atarle un alias a una recién importada, que el kiosco
+ * todavía no enseña. Cada fila dice si el kiosco la ve.
+ */
+adminRouter.get('/compatibilidades/impresoras/buscar', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const q = printerSearchQuerySchema.safeParse(req.query);
+    if (!q.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: z.prettifyError(q.error) } });
+      return;
+    }
+    const r = await buscarImpresorasPanel(q.data.q, q.data.limit);
+    res.json({ data: r.impresoras, sugerencias: r.sugerencias });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Ata una búsqueda sin resultado a una impresora, como alias (#43). */
+adminRouter.post('/compatibilidades/alias', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = nuevoAliasSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await anadirAlias(cuerpo.data);
+    if (r.creado) {
+      recordAudit({
+        action: 'alias.anadido',
+        ...auditContext(req),
+        targetType: 'printer_model_aliases',
+        targetId: String(r.printerModelId),
+        metadata: { alias: r.alias, fuente: 'BUSQUEDA' },
+      });
+    }
+    res.status(r.creado ? 201 : 200).json({ data: r });
   } catch (error) {
     next(error);
   }

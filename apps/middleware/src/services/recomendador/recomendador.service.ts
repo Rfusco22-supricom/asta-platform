@@ -46,12 +46,23 @@ interface FilaProducto {
  * a cada búsqueda. 5 minutos evita leer miles de filas por tecla en el kiosco.
  */
 export const TTL_CATALOGO_IMPRESORAS_MS = 5 * 60_000;
-const cacheCatalogo = new CacheTtl<ModeloBuscable[]>(TTL_CATALOGO_IMPRESORAS_MS, 1);
+const cacheCatalogo = new CacheTtl<ModeloBuscable[]>(TTL_CATALOGO_IMPRESORAS_MS, 2);
 /** El mismo TTL que el inventario: la guía promete "hasta 60 s" para las existencias. */
 const cacheCompatibles = new CacheTtl<{ impresora: PublicPrinter; items: PublicCompatibleItem[]; sinCompatibilidadesCargadas: boolean }>(
   TTL_CACHE_INVENTARIO_MS,
   2_000,
 );
+
+/**
+ * El catálogo de impresoras cambió: hay que volver a leerlo.
+ *
+ * Lo llama quien añade un alias o una impresora desde el panel (#43, #56). Sin
+ * esto, quien acaba de atar «hl2350» a su impresora la buscaría y seguiría sin
+ * encontrarla hasta cinco minutos después, y parecería que no se guardó.
+ */
+export function invalidarCatalogoImpresoras(): void {
+  cacheCatalogo.vaciar();
+}
 
 /** Solo para tests. */
 export function vaciarCachesRecomendador(): void {
@@ -96,12 +107,19 @@ export class ImpresoraNoEncontrada extends Error {
  */
 const IMPRESORA_PUBLICABLE = { isActive: true, cartridges: { some: { status: 'VALIDADA' as const } } };
 
-async function catalogoDeImpresoras(): Promise<ModeloBuscable[]> {
-  const enCache = cacheCatalogo.get('');
+/**
+ * @param soloPublicables true para el catálogo del kiosco. El PANEL necesita el
+ *   otro: para atarle un alias a una impresora (#43) hay que poder encontrarla
+ *   aunque todavía no tenga ninguna compatibilidad validada — es justo el caso
+ *   de las 309 que importó el parseo.
+ */
+async function catalogoDeImpresoras(soloPublicables = true): Promise<ModeloBuscable[]> {
+  const clave = soloPublicables ? 'publicables' : 'todas';
+  const enCache = cacheCatalogo.get(clave);
   if (enCache) return enCache;
 
   const modelos = await prisma.printerModel.findMany({
-    where: IMPRESORA_PUBLICABLE,
+    where: soloPublicables ? IMPRESORA_PUBLICABLE : { isActive: true },
     select: {
       id: true,
       name: true,
@@ -110,7 +128,7 @@ async function catalogoDeImpresoras(): Promise<ModeloBuscable[]> {
     },
   });
   const catalogo = modelos.map((m) => ({ id: m.id, nombre: m.name, marca: m.brand.name, aliases: m.aliases.map((a) => a.alias) }));
-  cacheCatalogo.set('', catalogo);
+  cacheCatalogo.set(clave, catalogo);
   return catalogo;
 }
 
@@ -119,6 +137,38 @@ export async function buscarImpresoras(q: string, limit: number): Promise<{ impr
   // Construidas campo a campo: la puntuación es interna.
   const aPublica = (c: { id: number; marca: string; nombre: string }): PublicPrinter => ({ id: c.id, marca: c.marca, nombre: c.nombre });
   return { impresoras: coincidencias.slice(0, limit).map(aPublica), sugerencias: sugerencias.slice(0, limit).map(aPublica) };
+}
+
+/**
+ * La misma búsqueda, para el PANEL: incluye las impresoras que el kiosco todavía
+ * no enseña, y dice cuáles son.
+ *
+ * Sin esto no se le puede atar un alias (#43) a una impresora recién importada,
+ * que es justo donde más falta hace. El aviso importa: un alias sobre una
+ * impresora sin compatibilidades validadas no arregla nada todavía, y quien lo
+ * añade tiene que saberlo.
+ */
+export async function buscarImpresorasPanel(
+  q: string,
+  limit: number,
+): Promise<{ impresoras: ImpresoraPanel[]; sugerencias: ImpresoraPanel[] }> {
+  const [todas, publicables] = await Promise.all([catalogoDeImpresoras(false), catalogoDeImpresoras(true)]);
+  const visibles = new Set(publicables.map((m) => m.id));
+  const { coincidencias, sugerencias } = buscarModelos(q, todas);
+  const aFila = (c: { id: number; marca: string; nombre: string }): ImpresoraPanel => ({
+    printerModelId: c.id,
+    marca: c.marca,
+    nombre: c.nombre,
+    visibleEnKiosco: visibles.has(c.id),
+  });
+  return { impresoras: coincidencias.slice(0, limit).map(aFila), sugerencias: sugerencias.slice(0, limit).map(aFila) };
+}
+
+export interface ImpresoraPanel {
+  printerModelId: number;
+  marca: string;
+  nombre: string;
+  visibleEnKiosco: boolean;
 }
 
 const TIPO_CARTUCHO: Record<CartridgeKind, PublicCompatibleItem['cartuchos'][number]['tipo']> = {
