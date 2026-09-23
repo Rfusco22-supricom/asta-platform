@@ -18,6 +18,7 @@
     "cartuchos:proponer": "tsx scripts/proponer-cartuchos.ts",
     "cartuchos:importar": "tsx scripts/importar-propuestas-cartuchos.ts",
     "compatibilidades:importar": "tsx apps/middleware/src/cli/importar-compatibilidades.ts",
+    "impresoras:importar": "tsx apps/middleware/src/cli/importar-impresoras.ts",
     "compatibilidades:cargar-csv": "tsx scripts/cargar-compatibilidad-csv.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
