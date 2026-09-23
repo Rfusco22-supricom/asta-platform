@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getRevisionCompatibilidades, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getRevisionCompatibilidades, getCoberturaTop, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { RevisionLista } from './RevisionLista';
 import { Pestanas } from './Pestanas';
+import { Cobertura } from './Cobertura';
 
 /**
  * Revisión de compatibilidades: qué producto de Odoo es, o sustituye a, qué
@@ -43,8 +44,13 @@ export default async function CompatibilidadesPage({
   const pagina = Math.max(1, Number(params.pagina) || 1);
 
   let datos;
+  let cobertura;
   try {
-    datos = await getRevisionCompatibilidades(sesion.accessToken, { estado, marca, q, pagina });
+    // En paralelo: las dos leen ventas de Odoo, y la cache es la misma.
+    [datos, cobertura] = await Promise.all([
+      getRevisionCompatibilidades(sesion.accessToken, { estado, marca, q, pagina }),
+      getCoberturaTop(sesion.accessToken),
+    ]);
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
@@ -77,6 +83,8 @@ export default async function CompatibilidadesPage({
       descripcion="Qué producto es, o sustituye a, qué cartucho. El kiosco solo recomienda lo validado."
     >
       <Pestanas actual="productos" />
+
+      <Cobertura datos={cobertura} />
 
       <section className="stats">
         <div className="stat">

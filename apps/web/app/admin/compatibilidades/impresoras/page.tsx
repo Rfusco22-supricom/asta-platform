@@ -37,6 +37,8 @@ export default async function ImpresorasPage({
   const marca = texto(params.marca);
   const q = texto(params.q) && texto(params.q)!.length >= 2 ? texto(params.q) : undefined;
   const pagina = Math.max(1, Number(params.pagina) || 1);
+  // Se llega así desde la cobertura del top: el cartucho que falta, ya escrito.
+  const cartucho = texto(params.cartucho);
 
   let datos;
   try {
@@ -93,7 +95,7 @@ export default async function ImpresorasPage({
         </div>
       </section>
 
-      <FormularioCompatibilidad como="admin" marcas={marcas} />
+      <FormularioCompatibilidad como="admin" marcas={marcas} codigoInicial={cartucho} />
 
       <form className="filtros revision-filtros" action="/admin/compatibilidades/impresoras" method="get">
         <input type="hidden" name="estado" value={estado} />

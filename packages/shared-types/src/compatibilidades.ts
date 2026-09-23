@@ -276,3 +276,50 @@ export const busquedaImpresorasRespuestaSchema = z.object({
 });
 
 export type BusquedaImpresorasRespuesta = z.infer<typeof busquedaImpresorasRespuestaSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cobertura del top de ventas (#56, Fase 4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Qué le falta a un producto para que el kiosco pueda recomendarlo:
+ *
+ *   · `sin_cartucho`  nadie ha validado qué cartucho es → la pestaña Productos
+ *   · `sin_impresora` el cartucho está, pero ninguna impresora validada lo usa
+ *                     → la pestaña Impresoras
+ *   · `completo`      la cadena entera: impresora → cartucho → producto
+ */
+export const estadoCoberturaSchema = z.enum(['completo', 'sin_cartucho', 'sin_impresora']);
+export type EstadoCobertura = z.infer<typeof estadoCoberturaSchema>;
+
+export const coberturaTopSchema = z.object({
+  productos: z.array(
+    z.object({
+      templateId: odooIdSchema,
+      nombre: z.string().nullable(),
+      sku: z.string().nullable(),
+      ventas12m: z.number().nonnegative(),
+      estado: estadoCoberturaSchema,
+      /**
+       * Códigos de sus cartuchos ya validados. Con `sin_impresora` son por dónde
+       * seguir: lo que falta se arregla buscando EL CARTUCHO en la pestaña de
+       * impresoras, no la referencia del producto, que allí no encuentra nada.
+       */
+      cartuchos: z.array(z.string()),
+    }),
+  ),
+  totales: z.object({
+    top: z.number().int().nonnegative(),
+    completos: z.number().int().nonnegative(),
+    /** Por PRODUCTOS, como fija el umbral de #7, no por importe. */
+    porcentaje: z.number().int().min(0).max(100),
+    /** El tramo de #7 ya aplicado: `> 85` procede, `60–85` con respaldo, `< 60` pospuesta. */
+    tramo: z.enum(['procede', 'con_respaldo', 'pospuesta']),
+    importeTop: z.number().nonnegative(),
+    importeCubierto: z.number().nonnegative(),
+  }),
+});
+
+export type CoberturaTop = z.infer<typeof coberturaTopSchema>;
+
+export const coberturaTopRespuestaSchema = z.object({ data: coberturaTopSchema });

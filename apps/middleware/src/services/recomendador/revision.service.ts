@@ -82,7 +82,7 @@ export async function ventasPorPlantilla(): Promise<Map<number, number>> {
 }
 
 /** Nombre, referencia y si sigue a la venta, de cada plantilla. Las archivadas también. */
-async function plantillas(ids: number[]): Promise<Map<number, { nombre: string; sku: string | null; activo: boolean }>> {
+export async function plantillas(ids: number[]): Promise<Map<number, { nombre: string; sku: string | null; activo: boolean }>> {
   const resultado = new Map<number, { nombre: string; sku: string | null; activo: boolean }>();
   const faltan: number[] = [];
   for (const id of ids) {

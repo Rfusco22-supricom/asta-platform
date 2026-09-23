@@ -29,6 +29,7 @@ import {
   listarImpresorasParaRevision,
 } from '../services/recomendador/revisionImpresoras.service.js';
 import { buscarImpresorasPanel } from '../services/recomendador/recomendador.service.js';
+import { coberturaDelTop } from '../services/recomendador/cobertura.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -448,6 +449,20 @@ adminRouter.post('/compatibilidades/alias', autorizar('admin.compatibilidades.re
       });
     }
     res.status(r.creado ? 201 : 200).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Cuánto del top de ventas puede recomendar ya el kiosco (#56, Fase 4).
+ *
+ * Misma acción que la revisión: es la cifra que dice a quien revisa cuánto le
+ * queda, y la que decide si la Fase 5 sale.
+ */
+adminRouter.get('/compatibilidades/cobertura', autorizar('admin.compatibilidades.revisar'), async (_req, res, next) => {
+  try {
+    res.json({ data: await coberturaDelTop() });
   } catch (error) {
     next(error);
   }

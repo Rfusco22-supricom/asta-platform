@@ -1492,3 +1492,20 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   .tabla-busquedas tbody td:nth-child(4) { grid-column: 1 / 3; text-align: left !important; }
   .alias-campos .input { max-width: none; }
 }
+
+/* ── Cobertura del top de ventas (#56) ────────────────────────────────────── */
+
+.cobertura-cabecera { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: flex-start; margin-bottom: 14px; }
+.cobertura-pct { font-size: 38px; font-weight: 640; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cobertura-nota { flex: 1 1 320px; }
+.cobertura-nota p { margin: 0 0 4px; font-size: 13.5px; }
+.tabla-cobertura td a { text-decoration: underline; text-underline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .tabla-cobertura thead { display: none; }
+  .tabla-cobertura,
+  .tabla-cobertura tbody { display: block; }
+  .tabla-cobertura tbody tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 12px 10px; border-bottom: 1px solid var(--border); }
+  .tabla-cobertura tbody td { display: block; padding: 0; border: 0; }
+  .tabla-cobertura tbody td:nth-child(3) { grid-column: 1 / 3; }
+}

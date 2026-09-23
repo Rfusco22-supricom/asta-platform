@@ -24,6 +24,8 @@ import {
   type EstadisticasRecomendador,
   busquedaImpresorasRespuestaSchema,
   type BusquedaImpresorasRespuesta,
+  coberturaTopRespuestaSchema,
+  type CoberturaTop,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -489,6 +491,12 @@ export async function getEstadisticasRecomendador(
 ): Promise<EstadisticasRecomendador> {
   const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
   const r = await request(`/api/v1/admin/recomendador/estadisticas${qs}`, estadisticasRecomendadorRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** Cuánto del top de ventas puede recomendar ya el kiosco (#56, Fase 4). */
+export async function getCoberturaTop(accessToken: string): Promise<CoberturaTop> {
+  const r = await request('/api/v1/admin/compatibilidades/cobertura', coberturaTopRespuestaSchema, accessToken);
   return r.data;
 }
 
