@@ -28,6 +28,7 @@
     "check:env": "tsx scripts/check-env.ts",
     "check:grants": "tsx scripts/check-grants.ts",
     "alertas": "tsx apps/middleware/src/cli/alertas.ts",
+    "kiosco:cerrar-sesiones": "tsx apps/middleware/src/cli/cerrar-sesiones-kiosco.ts",
     "backup:verificar": "tsx scripts/verify-restore.ts",
     "analizar:duplicados": "tsx scripts/analizar-duplicados.ts",
     "backup:odoo": "tsx scripts/backup-odoo-config.ts",

@@ -26,10 +26,27 @@ pnpm --filter @asta/mobile test      # lógica: cliente de la API y temporizador
    - **Modo dispositivo dedicado** (device owner), si se compran tablets para
      esto: impide salir incluso sin nadie delante.
 
+## La sesión (#41)
+
+La tablet es un dispositivo **compartido**: lo que queda en pantalla es del
+cliente anterior. Al tocar la pantalla de atracción empieza una sesión que:
+
+- **se cierra sola a los 4 minutos** sin que nadie toque;
+- **avisa 30 segundos antes**, con «Sigo aquí», porque cerrarle la sesión a
+  alguien que está comparando dos tóners parece una avería;
+- se puede cerrar a mano con **«Terminar»**, siempre visible;
+- **al cerrarse no queda nada suyo**: las pantallas se desmontan, y con ellas la
+  búsqueda, el modelo elegido y los resultados.
+
+Del lado del servidor, `pnpm kiosco:cerrar-sesiones` cierra las filas de
+`kiosk_sessions` vencidas que la tablet no pudo cerrar —se apagó, se quedó sin
+red—. Va en un cron, como las alertas; está en `docs/05-RUNBOOKS.md`.
+
+Hoy se consulta como **visitante**: sin precios y sin nada personal en pantalla.
+La sesión se construye ahora para no tener que añadirla cuando sí los haya (#31).
+
 ## Lo que todavía no hace
 
-- **Sesión de cliente y cierre a los 4 minutos** (#41). Hoy se consulta como
-  visitante: sin precios y sin nada personal en pantalla.
 - **Modo sin conexión** (#42). Ahora, sin red, lo dice y no enseña datos viejos.
 - **Token de dispositivo** (#40). La tablet usa la API key de la tienda porque
   `kiosk_devices` todavía no dice a qué almacén pertenece cada tablet, y la
