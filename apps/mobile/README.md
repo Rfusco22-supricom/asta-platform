@@ -45,9 +45,29 @@ red—. Va en un cron, como las alertas; está en `docs/05-RUNBOOKS.md`.
 Hoy se consulta como **visitante**: sin precios y sin nada personal en pantalla.
 La sesión se construye ahora para no tener que añadirla cuando sí los haya (#31).
 
-## Lo que todavía no hace
+## Sin conexión (#42)
 
-- **Modo sin conexión** (#42). Ahora, sin red, lo dice y no enseña datos viejos.
+La tienda se queda sin internet a media mañana y la tablet sigue sirviendo:
+
+- **Se guarda lo que se consulta** —búsquedas y compatibles—, no el catálogo
+  entero: cada tienda usa un puñado de modelos y son los que se repiten.
+- **Sin red se enseña lo último que se supo, con su fecha** («de hace 6 min») y
+  un aviso de que la existencia puede haber cambiado. Caduca a las 12 horas:
+  cubre una jornada, y más allá ya no dice nada útil.
+- **También rescata cuando el ERP no responde** y la red va bien, que es el corte
+  más probable: el middleware contesta `503 ODOO_UNAVAILABLE` y la tablet enseña
+  lo guardado en vez de un error.
+- **Un 403 o un 404 NO se tapan con la caché.** Ahí el servidor contestó: tapar
+  un 403 escondería que la tablet está mal configurada.
+- **El estado está siempre visible**, también en la pantalla de atracción, y
+  distingue tres cosas, porque se arreglan en sitios distintos: **en línea**
+  (verde), **sin datos en vivo** (amarillo: el ERP no responde, pero buscar
+  impresoras sigue funcionando) y **sin conexión** (rojo: la tablet no llega al
+  servidor). Es para el personal.
+- **Al volver la red, la pantalla se pone al día sola.** Mientras está caída se
+  comprueba cada 15 s con `/health`; con la red buena no se sondea.
+
+## Lo que todavía no hace
 - **Token de dispositivo** (#40). La tablet usa la API key de la tienda porque
   `kiosk_devices` todavía no dice a qué almacén pertenece cada tablet, y la
   existencia que se publica es la del almacén del cliente del token. Pedido en

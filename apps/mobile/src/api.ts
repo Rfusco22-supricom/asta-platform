@@ -53,13 +53,31 @@ export interface Busqueda {
   busquedaId: string | null;
 }
 
-export type Resultado<T> = { ok: true; datos: T } | { ok: false; motivo: 'red' | 'servidor' | 'permiso'; estado?: number };
+/**
+ * `erp` es su propio motivo, y no `servidor`: el middleware contestó y dijo que
+ * el ERP no responde. Es el corte más probable —Odoo cae, la tienda tiene wifi—
+ * y ahí la caché SÍ rescata, mientras que un 500 nuestro o un 403 no.
+ */
+export type MotivoFallo = 'red' | 'erp' | 'servidor' | 'permiso';
+
+export type Resultado<T> = { ok: true; datos: T } | { ok: false; motivo: MotivoFallo; estado?: number };
 
 export interface Config {
   base: string;
   apiKey: string;
   /** Inyectable para los tests. */
   fetch?: typeof fetch;
+}
+
+/** El 503 del middleware cuando Odoo no responde (`ODOO_UNAVAILABLE`). */
+async function esErpCaido(res: Response): Promise<boolean> {
+  if (res.status !== 503) return false;
+  try {
+    const cuerpo = (await res.clone().json()) as { error?: { code?: string } };
+    return cuerpo.error?.code === 'ODOO_UNAVAILABLE';
+  } catch {
+    return false;
+  }
 }
 
 async function pedir<T>(config: Config, ruta: string, opciones: RequestInit = {}): Promise<Resultado<T>> {
@@ -77,7 +95,7 @@ async function pedir<T>(config: Config, ruta: string, opciones: RequestInit = {}
   }
 
   if (res.status === 401 || res.status === 403) return { ok: false, motivo: 'permiso', estado: res.status };
-  if (!res.ok) return { ok: false, motivo: 'servidor', estado: res.status };
+  if (!res.ok) return { ok: false, motivo: (await esErpCaido(res)) ? 'erp' : 'servidor', estado: res.status };
   if (res.status === 204) return { ok: true, datos: undefined as T };
 
   try {
