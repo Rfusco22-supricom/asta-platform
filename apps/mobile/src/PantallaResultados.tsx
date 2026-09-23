@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { compatiblesDe, registrarClic, type Config, type Impresora, type ProductoCompatible } from './api.js';
+import { registrarClic, type Config, type Impresora, type ProductoCompatible } from './api.js';
+import { AvisoDatosGuardados } from './AvisoDatosGuardados.js';
+import type { CacheLocal } from './cache.js';
+import type { Informe } from './conexion.js';
+import { compatiblesConCache } from './datos.js';
 import { colorDeStock, TEMA, textoDeStock } from './tema.js';
 
 /**
@@ -16,28 +20,43 @@ import { colorDeStock, TEMA, textoDeStock } from './tema.js';
 
 interface Props {
   config: Config;
+  cache: CacheLocal;
   impresora: Impresora;
   busquedaId: string | null;
   alVolver: () => void;
   alTocar: () => void;
+  alConectar: (informe: Informe) => void;
+  /** Cambia al volver la red: la pantalla se pone al día sola (#42). */
+  recarga: number;
 }
 
-export function PantallaResultados({ config, impresora, busquedaId, alVolver, alTocar }: Props) {
+export function PantallaResultados({ config, cache, impresora, busquedaId, alVolver, alTocar, alConectar, recarga }: Props) {
   const [productos, setProductos] = useState<ProductoCompatible[] | null>(null);
+  const [guardadoEn, setGuardadoEn] = useState<number | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
 
   useEffect(() => {
     let vigente = true;
     void (async () => {
-      const r = await compatiblesDe(config, impresora.id, busquedaId);
+      const r = await compatiblesConCache(config, cache, impresora.id, busquedaId, alConectar);
       if (!vigente) return;
-      if (r.ok) setProductos(r.datos);
-      else setFallo(r.motivo === 'red' ? 'Sin conexión. Avisa a alguien del mostrador.' : 'No pudimos consultarlo ahora mismo.');
+      if (r.ok) {
+        setProductos(r.datos);
+        setGuardadoEn(r.desdeCache ? r.guardadoEn : null);
+        setFallo(null);
+      } else {
+        setFallo(
+          r.motivo === 'red' || r.motivo === 'erp'
+            ? 'Ahora mismo no podemos consultar esta impresora, y no la habíamos consultado antes. Pregunta en el mostrador.'
+            : 'No pudimos consultarlo ahora mismo.',
+        );
+      }
     })();
     return () => {
       vigente = false;
     };
-  }, [config, impresora.id, busquedaId]);
+    // `recarga` cambia cuando vuelve la red: se vuelve a pedir lo mismo, en vivo.
+  }, [config, cache, impresora.id, busquedaId, alConectar, recarga]);
 
   return (
     <View style={estilos.todo} onTouchStart={alTocar}>
@@ -62,13 +81,16 @@ export function PantallaResultados({ config, impresora, busquedaId, alVolver, al
 
       {productos && productos.length > 0 && (
         <ScrollView contentContainerStyle={{ gap: TEMA.espacio.s }} onScrollBeginDrag={alTocar}>
+          {guardadoEn !== null && <AvisoDatosGuardados guardadoEn={guardadoEn} />}
           {productos.map((p) => (
             <Pressable
               key={p.id}
               style={estilos.tarjeta}
               onPress={() => {
                 alTocar();
-                registrarClic(config, busquedaId, p.id);
+                // Sin conexión no se registra: el clic se perderia y no merece
+                // una cola que sobreviva a la sesión (#41).
+                if (guardadoEn === null) registrarClic(config, busquedaId, p.id);
               }}
               accessibilityRole="button"
             >
