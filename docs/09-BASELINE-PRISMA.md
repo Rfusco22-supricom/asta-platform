@@ -20,11 +20,24 @@ Con las migraciones aplicadas, desde la consola del contenedor del middleware:
 node dist/cli/importar-propuestas.js                 # producto → cartucho, desde Odoo
 node dist/cli/importar-compatibilidades.js           # SIMULACRO: impresora → cartucho
 node dist/cli/importar-compatibilidades.js --aplicar
+node dist/cli/importar-impresoras.js                 # SIMULACRO: impresoras del nombre
+node dist/cli/importar-impresoras.js --aplicar
 ```
 
-En ese orden: así los códigos de `compatibilidad_productos` cruzan con los
-cartuchos que ya salieron de Odoo. Los dos se pueden repetir sin pisar lo
-revisado. Todo entra como pendiente y se revisa en el panel, Compatibilidades.
+En ese orden, y el orden importa:
+
+1. **`importar-propuestas`** saca los cartuchos de los nombres de Odoo. Sin él no
+   hay con qué cruzar.
+2. **`importar-compatibilidades`** lee `compatibilidad_productos`, la tabla que
+   se mantiene a mano, así que sus códigos cruzan con los cartuchos del paso 1 en
+   vez de duplicarlos.
+3. **`importar-impresoras`** (#129) lee las impresoras que los propios nombres de
+   Odoo mencionan —"LaserJet P3010/3015d", "ML-1916/1915"— y las ata a los
+   cartuchos del paso 1. Es el único que no necesita datos de fuera, y es el que
+   llena `printer_models` cuando la tabla de mano no está disponible.
+
+Los tres se pueden repetir sin pisar lo revisado, y los tres tienen simulacro.
+Todo entra como pendiente y se revisa en el panel, Compatibilidades.
 
 ---
 
