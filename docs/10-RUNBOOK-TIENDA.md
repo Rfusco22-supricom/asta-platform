@@ -38,7 +38,9 @@ Es el corte más probable: Odoo se cae o va lentísimo, y la tienda tiene wifi.
 - **Buscar la impresora**, entera: el catálogo de modelos es de nuestra base.
 - **Ver qué tóner le sirve**, si esa impresora ya se consultó en las últimas
   12 horas. Sale con la hora de cuándo se supo.
-- El panel: **la cartera y las facturas NO**, que salen de Odoo en vivo.
+- El panel: **la cartera y las facturas NO**, que salen de Odoo en vivo. La
+  pestaña de **Compatibilidades tampoco abre**, aunque ese trabajo es de nuestra
+  base y debería poder seguir: está abierto en #127.
 
 ### Qué NO funciona
 
