@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { buscarImpresoras, type Config, type Impresora } from './api.js';
+import type { Config, Impresora } from './api.js';
+import { AvisoDatosGuardados } from './AvisoDatosGuardados.js';
+import type { CacheLocal } from './cache.js';
+import { buscarConCache } from './datos.js';
 import { TEMA } from './tema.js';
 
 /**
@@ -22,17 +25,28 @@ import { TEMA } from './tema.js';
 
 interface Props {
   config: Config;
+  cache: CacheLocal;
   alElegir: (impresora: Impresora, busquedaId: string | null) => void;
   alTocar: () => void;
+  /** Lo llama la capa de datos con el resultado: alimenta el indicador (#42). */
+  alConectar: (ok: boolean) => void;
 }
 
 type Estado =
   | { fase: 'vacio' }
   | { fase: 'buscando' }
-  | { fase: 'resultados'; impresoras: Impresora[]; sugerencias: Impresora[]; busquedaId: string | null; consulta: string }
+  | {
+      fase: 'resultados';
+      impresoras: Impresora[];
+      sugerencias: Impresora[];
+      busquedaId: string | null;
+      consulta: string;
+      /** Cuándo se guardó, si esto sale de la caché (#42). */
+      guardadoEn: number | null;
+    }
   | { fase: 'error'; motivo: 'red' | 'servidor' | 'permiso' };
 
-export function PantallaBuscar({ config, alElegir, alTocar }: Props) {
+export function PantallaBuscar({ config, cache, alElegir, alTocar, alConectar }: Props) {
   const [texto, setTexto] = useState('');
   const [estado, setEstado] = useState<Estado>({ fase: 'vacio' });
 
@@ -41,12 +55,12 @@ export function PantallaBuscar({ config, alElegir, alTocar }: Props) {
     if (consulta.length < 2) return;
     alTocar();
     setEstado({ fase: 'buscando' });
-    const r = await buscarImpresoras(config, consulta);
+    const r = await buscarConCache(config, cache, consulta, alConectar);
     if (!r.ok) {
       setEstado({ fase: 'error', motivo: r.motivo });
       return;
     }
-    setEstado({ fase: 'resultados', ...r.datos, consulta });
+    setEstado({ fase: 'resultados', ...r.datos, consulta, guardadoEn: r.desdeCache ? r.guardadoEn : null });
   };
 
   return (
@@ -77,7 +91,7 @@ export function PantallaBuscar({ config, alElegir, alTocar }: Props) {
       {estado.fase === 'error' && (
         <Text style={estilos.error}>
           {estado.motivo === 'red'
-            ? 'Sin conexión. Avisa a alguien del mostrador.'
+            ? 'Sin conexión, y esta impresora no la habíamos consultado antes. Pregunta en el mostrador.'
             : estado.motivo === 'permiso'
               ? 'Esta tablet no está autorizada. Avisa a alguien del mostrador.'
               : 'No pudimos buscar ahora mismo. Inténtalo otra vez.'}
@@ -86,6 +100,7 @@ export function PantallaBuscar({ config, alElegir, alTocar }: Props) {
 
       {estado.fase === 'resultados' && (
         <ScrollView style={estilos.lista} contentContainerStyle={{ gap: TEMA.espacio.s }} onScrollBeginDrag={alTocar}>
+          {estado.guardadoEn !== null && <AvisoDatosGuardados guardadoEn={estado.guardadoEn} />}
           {estado.impresoras.length === 0 && estado.sugerencias.length === 0 && (
             <Text style={estilos.error}>No encontramos «{estado.consulta}». Prueba con el modelo completo, o pregunta en el mostrador.</Text>
           )}
