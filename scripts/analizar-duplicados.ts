@@ -1,8 +1,8 @@
 // Solo para poner el .env en process.env. No valida nada ni lanza (issue #9).
 import '../apps/middleware/src/config/dotenv.js';
 import { writeFileSync } from 'node:fs';
-import { searchRead, readGroup } from '../apps/middleware/src/odoo/client.js';
-import { agrupar, gruposParaCubrir, resumir, type Grupo, type Registro } from '../apps/middleware/src/services/duplicados.js';
+import { agrupar, gruposParaCubrir, resumir } from '../apps/middleware/src/services/duplicados.js';
+import { registrosDeOdoo } from '../apps/middleware/src/services/duplicados.service.js';
 
 /**
  * `pnpm analizar:duplicados` — la lista de fusiones que de verdad importan (#50).
@@ -40,64 +40,14 @@ async function main(): Promise<void> {
   console.log('\n  Analizando clientes duplicados en Odoo…\n');
 
   /*
-   * Solo clientes de PRIMER NIVEL y activos.
+   * La lectura de Odoo la hace el servicio, que es el mismo que alimenta la
+   * pantalla del panel (#50).
    *
-   * Las sucursales (`parent_id != false`) no son duplicados: son parte legítima
-   * de la estructura de un cliente, y el panel ya las consolida bajo la matriz
-   * con `child_of`. Incluirlas llenaría el informe de falsos positivos.
+   * Estaba duplicada aquí. Dos copias de «qué cuenta como cliente» —primer
+   * nivel, activo, con `customer_rank`— es como el informe de la terminal y el
+   * del panel acaban dando cifras distintas y nadie sabe cuál creer.
    */
-  const partners = await searchRead<{
-    id: number;
-    name: string;
-    vat: string | false;
-    user_id: [number, string] | false;
-  }>(
-    'res.partner',
-    [
-      ['customer_rank', '>', 0],
-      ['parent_id', '=', false],
-      ['active', '=', true],
-    ],
-    ['id', 'name', 'vat', 'user_id'],
-  );
-
-  // Facturación por partner comercial, en UNA consulta agrupada y no una por
-  // cliente: son casi 3000 y a un RPC cada uno esto no terminaría.
-  const grupos = await readGroup<{
-    commercial_partner_id: [number, string] | false;
-    amount_total_signed: number;
-    __count: number;
-  }>(
-    'account.move',
-    [
-      ['move_type', '=', 'out_invoice'],
-      ['state', '=', 'posted'],
-    ],
-    ['amount_total_signed:sum'],
-    ['commercial_partner_id'],
-  );
-
-  const facturacion = new Map<number, { monto: number; facturas: number }>();
-  for (const g of grupos) {
-    if (!g.commercial_partner_id) continue;
-    facturacion.set(g.commercial_partner_id[0], {
-      monto: g.amount_total_signed ?? 0,
-      facturas: g.__count,
-    });
-  }
-
-  const registros: Registro[] = partners.map((p) => {
-    const f = facturacion.get(p.id);
-    return {
-      id: p.id,
-      nombre: p.name,
-      rif: p.vat || null,
-      vendedorId: p.user_id ? p.user_id[0] : null,
-      vendedor: p.user_id ? p.user_id[1] : null,
-      facturas: f?.facturas ?? 0,
-      monto: f?.monto ?? 0,
-    };
-  });
+  const registros = await registrosDeOdoo();
 
   const todos = agrupar(registros);
   const r = resumir(todos, registros);

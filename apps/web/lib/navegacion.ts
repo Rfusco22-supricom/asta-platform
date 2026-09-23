@@ -51,6 +51,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
         { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
         { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
+        { href: '/admin/duplicados', titulo: 'Duplicados', icono: 'duplicados' },
       ],
     },
     MI_CUENTA,
