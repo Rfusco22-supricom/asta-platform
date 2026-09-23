@@ -11,7 +11,7 @@
     "probe": "tsx scripts/odoo-probe.ts",
     "probe:json": "tsx scripts/odoo-probe.ts --json",
     "seed:issues": "bash scripts/seed-issues.sh",
-    "typecheck": "tsc --noEmit && tsc -p packages/shared-types/tsconfig.json && tsc -p apps/middleware/tsconfig.json && tsc -p apps/web/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p packages/shared-types/tsconfig.json && tsc -p apps/middleware/tsconfig.json && tsc -p apps/web/tsconfig.json && tsc -p apps/mobile/tsconfig.json",
     "verify:invoicing": "tsx scripts/verify-invoicing.ts",
     "openapi": "tsx scripts/generar-openapi.ts",
     "keys:pendientes": "tsx scripts/keys-pendientes-rotacion.ts",
