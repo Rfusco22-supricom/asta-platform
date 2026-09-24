@@ -3,6 +3,7 @@ import type { ErrorCode, PublicCompatibleItem, PublicPrinter } from '@asta/share
 import { prisma } from '../../config/prisma.js';
 import { searchRead, type OdooDomain } from '../../odoo/client.js';
 import { CacheTtl } from '../../utils/cacheTtl.js';
+import { anotarCacheHit } from '../../utils/contextoPeticion.js';
 import { estadoDeStock, TTL_CACHE_INVENTARIO_MS, umbralStockBajo, type AlmacenCliente } from '../inventory.service.js';
 import { buscarModelos, type ModeloBuscable } from './buscarModelos.js';
 
@@ -203,7 +204,10 @@ export interface Compatibles {
 export async function compatiblesDe(printerId: number, almacen: AlmacenCliente, soloDisponibles: boolean): Promise<Compatibles> {
   const clave = JSON.stringify([almacen.companyId, almacen.warehouseId, umbralStockBajo(), printerId, soloDisponibles]);
   const enCache = cacheCompatibles.get(clave);
-  if (enCache) return { ...enCache, desdeCache: true };
+  if (enCache) {
+    anotarCacheHit();
+    return { ...enCache, desdeCache: true };
+  }
 
   const modelo = await prisma.printerModel.findFirst({
     where: { id: printerId, ...IMPRESORA_PUBLICABLE },

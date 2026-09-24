@@ -18,12 +18,18 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  */
 export interface ContextoPeticion {
   odooCalls: number;
+  /**
+   * La respuesta salió entera de cache, sin preguntar a Odoo (#34). Es lo que
+   * escribe `api_request_logs.cache_hit`: sin ella la tasa de acierto no se
+   * puede medir y la cache no se puede ajustar.
+   */
+  cacheHit: boolean;
 }
 
 const almacen = new AsyncLocalStorage<ContextoPeticion>();
 
 export function nuevoContexto(): ContextoPeticion {
-  return { odooCalls: 0 };
+  return { odooCalls: 0, cacheHit: false };
 }
 
 /**
@@ -40,4 +46,10 @@ export function ejecutarEnContexto(contexto: ContextoPeticion, fn: () => void): 
 export function anotarRpcOdoo(): void {
   const contexto = almacen.getStore();
   if (contexto) contexto.odooCalls++;
+}
+
+/** Marca la petición en curso como servida desde cache, si la hay. */
+export function anotarCacheHit(): void {
+  const contexto = almacen.getStore();
+  if (contexto) contexto.cacheHit = true;
 }

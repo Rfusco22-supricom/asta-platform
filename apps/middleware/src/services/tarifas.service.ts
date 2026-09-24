@@ -40,6 +40,8 @@ export interface TarifaConCompania {
   tarifa: TarifaLeida;
   /** Compañía del partner comercial, desde la que se leyó. `null` si no tiene. */
   companyId: number | null;
+  /** El partner comercial: si cambia él, cambia la tarifa de todos sus contactos. */
+  raizId: number;
 }
 
 /**
@@ -69,9 +71,10 @@ export async function leerTarifasConCompania(partnerIds: number[]): Promise<Map<
 
   const porCompania = new Map<number, number[]>();
   for (const id of partnerIds) {
-    const compania = companiaDe.get(raizDe.get(id) ?? id) ?? null;
+    const raizId = raizDe.get(id) ?? id;
+    const compania = companiaDe.get(raizId) ?? null;
     if (compania === null) {
-      resultado.set(id, { tarifa: false, companyId: null });
+      resultado.set(id, { tarifa: false, companyId: null, raizId });
       continue;
     }
     const grupo = porCompania.get(compania);
@@ -88,7 +91,7 @@ export async function leerTarifasConCompania(partnerIds: number[]): Promise<Map<
       // entre las activas, y con él resucitaría una archivada (#31).
       { context: { allowed_company_ids: [compania] } },
     );
-    for (const f of filas) resultado.set(f.id, { tarifa: f.property_product_pricelist, companyId: compania });
+    for (const f of filas) resultado.set(f.id, { tarifa: f.property_product_pricelist, companyId: compania, raizId: raizDe.get(f.id) ?? f.id });
   }
 
   return resultado;
