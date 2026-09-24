@@ -1,6 +1,7 @@
 import type { ErrorCode, PublicPrice } from '@asta/shared-types';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
+import { anotarCacheHit } from '../utils/contextoPeticion.js';
 import { leerTarifasConCompania } from './tarifas.service.js';
 
 /**
@@ -105,8 +106,11 @@ export function parametrosDeTarifa(entrada: Record<string, unknown> | undefined)
 
 type Resolucion = { ok: true; tarifa: TarifaCliente } | { ok: false; motivo: TarifaNoDisponible['motivo'] };
 
+/** En cache, con el partner comercial: para invalidar cuando cambia él (#34). */
+type ResolucionEnCache = Resolucion & { raizId: number };
+
 /** 10 min, como el almacén de `/inventory`: la tarifa de un cliente cambia rara vez. */
-const cacheTarifas = new CacheTtl<Resolucion>(10 * 60_000, 5_000);
+const cacheTarifas = new CacheTtl<ResolucionEnCache>(10 * 60_000, 5_000);
 
 /**
  * Los precios. 5 min, lo que pide #31.
@@ -130,6 +134,34 @@ export function vaciarCachesPrecios(): void {
   cachePrecios.vaciar();
 }
 
+// ── Invalidación (#34) ───────────────────────────────────────────────────────
+// La llama `vigilanteCambios.ts` cuando Odoo dice que algo cambió. Borra solo lo
+// afectado: el TTL sigue siendo el tope, esto solo lo adelanta.
+
+/** Cambió una tarifa o alguna de sus reglas. */
+export function invalidarPreciosDeTarifas(pricelistIds: ReadonlySet<number>): number {
+  return (
+    cachePrecios.borrarSi((clave) => pricelistIds.has((JSON.parse(clave) as [number])[0])) +
+    // La validación de la tarifa también: puede haberse archivado o cambiado de compañía.
+    cacheTarifas.borrarSi((_, r) => r.ok && pricelistIds.has(r.tarifa.pricelistId))
+  );
+}
+
+/**
+ * Cambió un producto: su referencia, si se vende, si está archivado.
+ *
+ * Van también todas las entradas SIN producto (`sku_no_encontrado`,
+ * `sku_ambiguo`): el cambio puede ser justo que ahora esa referencia exista.
+ */
+export function invalidarPreciosDeProductos(productIds: ReadonlySet<number>): number {
+  return cachePrecios.borrarSi((_, p) => p.productId === null || productIds.has(p.productId));
+}
+
+/** Cambió un cliente o su empresa: su tarifa o su compañía pueden ser otras. */
+export function invalidarTarifasDeClientes(partnerIds: ReadonlySet<number>): number {
+  return cacheTarifas.borrarSi((clave, r) => partnerIds.has(Number(clave)) || partnerIds.has(r.raizId));
+}
+
 interface Log {
   warn: (obj: unknown, msg?: string) => void;
 }
@@ -146,6 +178,7 @@ export async function tarifaDelCliente(partnerId: number, enIdentidad: number | 
     r = await resolverTarifa(partnerId);
     cacheTarifas.set(clave, r);
   }
+  // Solo la tarifa sale de cache aquí: el hit de la petición lo decide `preciosDe`.
 
   if (!r.ok) {
     log?.warn({ partnerId, motivo: r.motivo }, 'precios: el cliente no tiene una tarifa válida');
@@ -160,11 +193,12 @@ export async function tarifaDelCliente(partnerId: number, enIdentidad: number | 
   return r.tarifa;
 }
 
-async function resolverTarifa(partnerId: number): Promise<Resolucion> {
+async function resolverTarifa(partnerId: number): Promise<ResolucionEnCache> {
   const leida = (await leerTarifasConCompania([partnerId])).get(partnerId);
-  if (!leida?.companyId) return { ok: false, motivo: 'sin_compania' };
-  if (!leida.tarifa) return { ok: false, motivo: 'sin_tarifa' };
-  return validarTarifa(leida.tarifa[0], leida.companyId);
+  const raizId = leida?.raizId ?? partnerId;
+  if (!leida?.companyId) return { ok: false, motivo: 'sin_compania', raizId };
+  if (!leida.tarifa) return { ok: false, motivo: 'sin_tarifa', raizId };
+  return { ...(await validarTarifa(leida.tarifa[0], leida.companyId)), raizId };
 }
 
 /**
@@ -256,6 +290,9 @@ export async function preciosDe(tarifa: TarifaCliente, skus: string[], log?: Log
   }
   const desdeCache = resueltos.size > 0;
   const pendientes = skus.filter((s) => !resueltos.has(s));
+  // Para la métrica de #34, solo cuenta la respuesta ENTERA sin Odoo. `desdeCache`
+  // sigue diciendo al cliente si algún precio puede tener hasta 5 minutos.
+  if (pendientes.length === 0) anotarCacheHit();
 
   if (pendientes.length > 0) {
     const nuevos = await consultarOdoo(tarifa, pendientes, log);

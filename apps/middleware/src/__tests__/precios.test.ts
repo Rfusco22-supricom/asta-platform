@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Server } from 'node:http';
 import { publicPricingResponseSchema, type PublicPrice } from '@asta/shared-types';
 import { createApp } from '../server.js';
@@ -7,7 +7,15 @@ import { executeKw, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey } from '../services/apiKey.service.js';
-import { reglaAplicable, vaciarCachesPrecios, validarTarifa, type Regla } from '../services/pricing.service.js';
+import {
+  invalidarPreciosDeProductos,
+  invalidarPreciosDeTarifas,
+  invalidarTarifasDeClientes,
+  reglaAplicable,
+  vaciarCachesPrecios,
+  validarTarifa,
+  type Regla,
+} from '../services/pricing.service.js';
 
 /**
  * #31 — `GET /api/v1/public/pricing`, con el gate de aislamiento heredado de #36.
@@ -336,6 +344,56 @@ describe('#31 · La cache no cruza tarifas', () => {
     expect(primera.body!.meta!.desdeCache).toBe(false);
     expect(segunda.body!.meta!.desdeCache).toBe(true);
     expect(segunda.body!.data).toEqual(primera.body!.data);
+  });
+});
+
+describe('#34 · Invalidación y métrica de acierto', () => {
+  it('invalidar la tarifa de A no toca la cache de B', async () => {
+    vaciarCachesPrecios();
+    const sku = [skusDistintos[3]];
+    await Promise.all([precios(sku, A.key), precios(sku, B.key)]);
+
+    expect(invalidarPreciosDeTarifas(new Set([A.pricelistId]))).toBeGreaterThan(0);
+    const [ra, rb] = await Promise.all([precios(sku, A.key), precios(sku, B.key)]);
+    expect(ra.body!.meta!.desdeCache).toBe(false);
+    expect(rb.body!.meta!.desdeCache).toBe(true);
+  });
+
+  it('invalidar un producto se lleva sus precios en todas las tarifas', async () => {
+    vaciarCachesPrecios();
+    const r = await precios([skusDistintos[4]], A.key);
+    await precios([skusDistintos[4]], B.key);
+    expect(invalidarPreciosDeProductos(new Set([r.body!.data![0].productId!]))).toBe(2);
+  });
+
+  it('invalidar un cliente vuelve a resolver su tarifa, y solo la suya', async () => {
+    vaciarCachesPrecios();
+    await Promise.all([precios(skusDistintos.slice(0, 1), A.key), precios(skusDistintos.slice(0, 1), B.key)]);
+    expect(invalidarTarifasDeClientes(new Set([A.partnerId]))).toBe(1);
+  });
+
+  it('la bitácora marca cache_hit solo cuando la respuesta sale ENTERA de cache', async () => {
+    vaciarCachesPrecios();
+    const sku = skusDistintos[5];
+    const desde = new Date();
+    await precios([sku], A.key); // de Odoo
+    await precios([sku], A.key); // de cache
+    await precios([sku, skusDistintos[6]], A.key); // mitad y mitad: no es un acierto
+
+    // Las filas se escriben al terminar cada respuesta, en diferido.
+    await vi.waitFor(
+      async () => {
+        expect(await prisma.apiRequestLog.count({ where: { apiKeyId: A.keyId, createdAt: { gte: desde } } })).toBe(3);
+      },
+      { timeout: 10_000, interval: 200 },
+    );
+    const filas = await prisma.apiRequestLog.findMany({
+      where: { apiKeyId: A.keyId, createdAt: { gte: desde } },
+      orderBy: { createdAt: 'asc' },
+      select: { cacheHit: true, odooCalls: true },
+    });
+    expect(filas.map((f) => f.cacheHit)).toEqual([false, true, false]);
+    expect(filas[1].odooCalls).toBe(0);
   });
 });
 

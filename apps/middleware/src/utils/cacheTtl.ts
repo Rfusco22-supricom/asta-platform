@@ -41,6 +41,23 @@ export class CacheTtl<V> {
     this.entradas.clear();
   }
 
+  /**
+   * Borra las entradas que cumplan `pred`. Devuelve cuántas.
+   *
+   * Para invalidar por lo que cambió en Odoo (#34) sin vaciar lo demás: si
+   * cambia una regla de la tarifa 15836, los precios de la 15863 siguen valiendo.
+   */
+  borrarSi(pred: (clave: string, valor: V) => boolean): number {
+    let borradas = 0;
+    for (const [clave, e] of this.entradas) {
+      if (pred(clave, e.valor)) {
+        this.entradas.delete(clave);
+        borradas++;
+      }
+    }
+    return borradas;
+  }
+
   get tamanio(): number {
     return this.entradas.size;
   }
