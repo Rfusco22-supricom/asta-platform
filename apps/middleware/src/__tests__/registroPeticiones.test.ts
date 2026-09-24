@@ -107,6 +107,8 @@ afterAll(async () => {
 
 describe('#29 · Bitácora: una fila por petición', () => {
   it('una petición deja su fila con todo lo que leen las alertas', async () => {
+    // `/pricing` sin `skus`: responde 400 antes de tocar Odoo. Hasta #31 era un
+    // 501; lo que importa es que no dependa del ERP.
     const previo = await ultimoId();
     await get('/pricing', buena.plaintext);
 
@@ -116,8 +118,8 @@ describe('#29 · Bitácora: una fila por petición', () => {
       odooPartnerId: PARTNER_FICTICIO,
       method: 'GET',
       path: '/api/v1/public/pricing',
-      statusCode: 501,
-      errorCode: 'NOT_IMPLEMENTED',
+      statusCode: 400,
+      errorCode: 'INVALID_QUERY',
       odooCalls: 0,
     });
     expect(f.durationMs).toBeGreaterThanOrEqual(0);

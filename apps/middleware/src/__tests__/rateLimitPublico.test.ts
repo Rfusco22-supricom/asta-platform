@@ -9,8 +9,11 @@ import type { ApiScope } from '@asta/shared-types';
  * Issue #29 — rate limiting de la API pública.
  *
  * Contra el servidor real y MySQL real, pero SIN Odoo: casi todo va contra
- * `/pricing`, que responde 501 sin consultar el ERP. Así los tests son rápidos y
- * lo único que se mide es el limitador.
+ * `/pricing` sin `skus`, que responde 400 antes de consultar el ERP. Así los
+ * tests son rápidos y lo único que se mide es el limitador.
+ *
+ * Hasta #31 era un 501: `/pricing` no estaba implementado. Lo que importa es
+ * que la respuesta no dependa de Odoo, no cuál sea.
  *
  * Cada test levanta su propia app. Los limitadores se crean por app
  * (`crearLimitadoresPublicos`), así que un test no hereda las peticiones de otro.
@@ -68,7 +71,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Sin esto, los 401, 429 y 501 de este fichero quedarían en la ventana de las
+  // Sin esto, los 401, 429 y 400 de este fichero quedarían en la ventana de las
   // alertas y harían saltar —o callar— las reglas de alerts.test.ts.
   await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
@@ -86,7 +89,7 @@ describe('#29 · Límite por API key', () => {
       const estados: number[] = [];
       for (let i = 0; i < 4; i++) estados.push((await app.get('/pricing', k.plaintext)).status);
 
-      expect(estados).toEqual([501, 501, 501, 429]);
+      expect(estados).toEqual([400, 400, 400, 429]);
     } finally {
       await app.cerrar();
     }
@@ -103,8 +106,8 @@ describe('#29 · Límite por API key', () => {
       for (let i = 0; i < 3; i++) deDos.push((await app.get('/pricing', dos.plaintext)).status);
       for (let i = 0; i < 6; i++) deCinco.push((await app.get('/pricing', cinco.plaintext)).status);
 
-      expect(deDos).toEqual([501, 501, 429]);
-      expect(deCinco).toEqual([501, 501, 501, 501, 501, 429]);
+      expect(deDos).toEqual([400, 400, 429]);
+      expect(deCinco).toEqual([400, 400, 400, 400, 400, 429]);
     } finally {
       await app.cerrar();
     }
@@ -120,7 +123,7 @@ describe('#29 · Límite por API key', () => {
       for (let i = 0; i < 3; i++) await app.get('/pricing', abusona.plaintext);
       expect((await app.get('/pricing', abusona.plaintext)).status).toBe(429);
 
-      expect((await app.get('/pricing', vecina.plaintext)).status).toBe(501);
+      expect((await app.get('/pricing', vecina.plaintext)).status).toBe(400);
     } finally {
       await app.cerrar();
     }
@@ -137,7 +140,7 @@ describe('#29 · Límite por API key', () => {
       expect((await app.get('/pricing', k.plaintext)).status).toBe(429);
 
       await prisma.apiKey.update({ where: { id: k.id }, data: { rateLimitPerMinute: 10 } });
-      expect((await app.get('/pricing', k.plaintext)).status).toBe(501);
+      expect((await app.get('/pricing', k.plaintext)).status).toBe(400);
     } finally {
       await app.cerrar();
     }
@@ -219,7 +222,7 @@ describe('#29 · Antes de autenticar: probar keys no sale gratis', () => {
     try {
       const k = await key({ limite: 500 });
       for (let i = 0; i < 60; i++) {
-        expect((await app.get('/pricing', k.plaintext)).status).toBe(501);
+        expect((await app.get('/pricing', k.plaintext)).status).toBe(400);
       }
       expect((await app.get('/pricing', KEY_INVENTADA)).status).toBe(401);
     } finally {

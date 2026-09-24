@@ -37,6 +37,12 @@ export const errorCodeSchema = z.enum([
    * sobre otro cliente, es que ese parámetro no tiene sentido con una API key.
    */
   'PARTNER_ID_NOT_ALLOWED',
+  /**
+   * `/pricing` con un parámetro de tarifa o de compañía (#31). La tarifa sale
+   * del cliente de la API key: ese parámetro no tiene sentido, y mandarlo es un
+   * intento de ver los precios de otra lista. Se rechaza y se audita.
+   */
+  'PRICELIST_NOT_ALLOWED',
 
   // Entrada
   'VALIDATION_ERROR',
@@ -82,6 +88,12 @@ export const errorCodeSchema = z.enum([
    * se le puede decir nada cierto sobre existencias.
    */
   'INVENTORY_UNAVAILABLE',
+  /**
+   * El cliente no tiene una tarifa válida desde la que darle precios (#31): no
+   * tiene compañía, o su tarifa está archivada o es de otra compañía. Como
+   * `INVENTORY_UNAVAILABLE`: mejor ningún precio que el de otra lista.
+   */
+  'PRICELIST_UNAVAILABLE',
 
   // Límites
   'RATE_LIMITED',
@@ -119,6 +131,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   INSUFFICIENT_SCOPE: 403,
   PARTNER_NOT_IN_PORTFOLIO: 403,
   PARTNER_ID_NOT_ALLOWED: 400,
+  PRICELIST_NOT_ALLOWED: 400,
 
   VALIDATION_ERROR: 400,
   INVALID_QUERY: 400,
@@ -139,6 +152,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   CONFLICT: 409,
   IDEMPOTENCY_KEY_REUSED: 409,
   INVENTORY_UNAVAILABLE: 409,
+  PRICELIST_UNAVAILABLE: 409,
 
   RATE_LIMITED: 429,
 
