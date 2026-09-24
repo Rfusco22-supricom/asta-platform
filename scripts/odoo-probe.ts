@@ -571,14 +571,40 @@ async function probePricelists(): Promise<void> {
   // El mecanismo puede funcionar y no usarse: hay que mirar a qué tarifa
   // apunta cada cliente. Si todos apuntan a la misma, la diferenciación
   // por nivel es 0% en la práctica aunque las reglas estén bien cargadas.
-  const clientes = await probe('tarifa asignada por cliente', () =>
-    searchRead('res.partner', [['customer_rank', '>', 0]],
-      ['property_product_pricelist'], { limit: 20_000 }));
+  //
+  // `property_product_pricelist` depende de la compañía desde la que se lee:
+  // sin `allowed_company_ids` sale la de la compañía por defecto del usuario, y
+  // este probe concluyó «todos en [15866]» cuando dos tercios estaban en otras.
+  // Se lee cada cliente desde la compañía de su partner comercial, como
+  // `leerTarifas` en el middleware.
+  const clientes = await probe('tarifa asignada por cliente', async () => {
+    const filas = await searchRead<{ id: number; commercial_partner_id: [number, string] | false }>(
+      'res.partner', [['customer_rank', '>', 0]], ['commercial_partner_id'], { limit: 20_000 });
+    const raices = [...new Set(filas.map((f) => (f.commercial_partner_id ? f.commercial_partner_id[0] : f.id)))];
+    const comerciales = await searchRead<{ id: number; company_id: [number, string] | false }>(
+      'res.partner', [['id', 'in', raices]], ['company_id']);
+    const companiaDe = new Map(comerciales.map((c) => [c.id, c.company_id ? c.company_id[0] : null]));
+    const porCompania = new Map<number | null, number[]>();
+    for (const f of filas) {
+      const c = companiaDe.get(f.commercial_partner_id ? f.commercial_partner_id[0] : f.id) ?? null;
+      porCompania.set(c, [...(porCompania.get(c) ?? []), f.id]);
+    }
+    const out: Array<{ property_product_pricelist: unknown }> = [];
+    for (const [c, ids] of porCompania) {
+      if (c === null) {
+        out.push(...ids.map(() => ({ property_product_pricelist: false })));
+        continue;
+      }
+      out.push(...(await searchRead<{ property_product_pricelist: unknown }>('res.partner', [['id', 'in', ids]],
+        ['property_product_pricelist'], { context: { allowed_company_ids: [c] } })));
+    }
+    return out;
+  });
 
   const reparto = new Map<string, number>();
   for (const c of clientes ?? []) {
     const pl = c.property_product_pricelist;
-    const clave = Array.isArray(pl) ? `[${pl[0]}] ${pl[1]}` : 'sin tarifa asignada';
+    const clave = Array.isArray(pl) ? `[${pl[0]}] ${pl[1]}` : 'sin tarifa (cliente sin compañía)';
     reparto.set(clave, (reparto.get(clave) ?? 0) + 1);
   }
   const repartoOrdenado = [...reparto.entries()].sort((a, b) => b[1] - a[1]);

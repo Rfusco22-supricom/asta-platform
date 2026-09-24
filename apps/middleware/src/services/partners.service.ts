@@ -1,6 +1,7 @@
 import type { ClientTier, Partner } from '@asta/shared-types';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { isUnmappedPricelist, tierFromPricelist } from '../config/tiers.js';
+import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 
 /**
  * Clientes y cartera de vendedores.
@@ -20,12 +21,6 @@ interface PartnerRow {
   user_id: [number, string] | false;
   /** Empresa matriz cuando el partner es un contacto hijo. */
   commercial_partner_id: [number, string] | false;
-  /**
-   * Campo `property` (vive en ir.property). Se puede LEER con search_read, pero
-   * NO se puede agrupar: `read_group` sobre él falla con
-   * "Cannot convert field to SQL". Verificado en Fase 0.
-   */
-  property_product_pricelist: [number, string] | false;
   /** Odoo lo incrementa al facturarle. 0 = nunca ha comprado. */
   customer_rank: number;
 }
@@ -37,7 +32,9 @@ const PARTNER_FIELDS = [
   'phone',
   'user_id',
   'commercial_partner_id',
-  'property_product_pricelist',
+  // `property_product_pricelist` se lee aparte, desde la compañía de cada
+  // cliente: junto al resto sale el de la compañía del usuario de servicio.
+  // Ver `tarifas.service.ts` y `conTarifas`.
   'customer_rank',
 ] as const;
 
@@ -74,8 +71,8 @@ function limpiar(valor: string | false): string | null {
   return t.length > 0 ? t : null;
 }
 
-function mapPartner(row: PartnerRow): PartnerWithTier {
-  const pricelistId = row.property_product_pricelist ? row.property_product_pricelist[0] : null;
+function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined): PartnerWithTier {
+  const pricelistId = idTarifa(tarifa);
 
   return {
     id: row.id,
@@ -87,11 +84,17 @@ function mapPartner(row: PartnerRow): PartnerWithTier {
     commercialPartnerId: row.commercial_partner_id ? row.commercial_partner_id[0] : row.id,
     pricelistId,
     /** Nombre de la tarifa, que es lo más parecido a un "tier" que hay hoy en Odoo. */
-    tier: row.property_product_pricelist ? row.property_product_pricelist[1] : null,
+    tier: nombreTarifa(tarifa),
     tierDerivado: tierFromPricelist(pricelistId),
     tarifaSinMapear: isUnmappedPricelist(pricelistId),
     esCliente: (row.customer_rank ?? 0) > 0,
   };
+}
+
+/** Las filas con su tarifa, leída desde la compañía de cada cliente. */
+async function conTarifas(rows: PartnerRow[]): Promise<PartnerWithTier[]> {
+  const tarifas = await leerTarifas(rows.map((r) => r.id));
+  return rows.map((r) => mapPartner(r, tarifas.get(r.id)));
 }
 
 export async function getPartner(partnerId: number): Promise<PartnerWithTier | null> {
@@ -100,7 +103,8 @@ export async function getPartner(partnerId: number): Promise<PartnerWithTier | n
     [['id', '=', partnerId]],
     [...PARTNER_FIELDS],
   );
-  return rows[0] ? mapPartner(rows[0]) : null;
+  const [partner] = await conTarifas(rows);
+  return partner ?? null;
 }
 
 /** Varios partners de una sola llamada. Evita el N+1 contra el ERP. */
@@ -111,7 +115,7 @@ export async function getPartners(partnerIds: number[]): Promise<PartnerWithTier
     [['id', 'in', partnerIds]],
     [...PARTNER_FIELDS],
   );
-  return rows.map(mapPartner);
+  return conTarifas(rows);
 }
 
 /** Cartera de un vendedor: los partners cuyo `user_id` es él. */
@@ -127,7 +131,7 @@ export async function getPartnersBySalesperson(odooUserId: number): Promise<Part
     order: 'name asc',
   });
 
-  return rows.map(mapPartner);
+  return conTarifas(rows);
 }
 
 export class ForbiddenPartnerAccess extends Error {
