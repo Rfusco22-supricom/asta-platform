@@ -4,6 +4,7 @@ import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
 import { tierFromPricelist } from '../config/tiers.js';
 import { recordAudit } from './audit.service.js';
+import { idTarifa, leerTarifas, nombreTarifa } from './tarifas.service.js';
 
 /**
  * Sincronización res.partner → app_users (issue #15).
@@ -71,7 +72,6 @@ interface PartnerRow {
   customer_rank: number;
   user_id: [number, string] | false;
   commercial_partner_id: [number, string] | false;
-  property_product_pricelist: [number, string] | false;
 }
 
 const CAMPOS = [
@@ -83,7 +83,8 @@ const CAMPOS = [
   'customer_rank',
   'user_id',
   'commercial_partner_id',
-  'property_product_pricelist',
+  // `property_product_pricelist` NO va aquí: leído junto al resto, sale el de la
+  // compañía por defecto del usuario de servicio. Ver `tarifas.service.ts`.
 ] as const;
 
 const ENTIDAD = 'res.partner';
@@ -182,6 +183,7 @@ export async function sincronizarPartners(
 
     const aProcesar = opciones.limite ? filas.slice(0, opciones.limite) : filas;
     resumen.leidos = aProcesar.length;
+    const tarifas = await leerTarifas(aProcesar.map((f) => f.id));
 
     // ── Resolver conflictos de email ANTES de escribir ──────────────────────
     // Se agrupan por correo y se elige un ganador por lote. Hacerlo fila a fila
@@ -262,7 +264,8 @@ export async function sincronizarPartners(
           continue;
         }
 
-        const pricelistId = f.property_product_pricelist ? f.property_product_pricelist[0] : null;
+        const tarifa = tarifas.get(f.id);
+        const pricelistId = idTarifa(tarifa);
         const odooUserId = f.user_id ? f.user_id[0] : null;
 
         const datos = {
@@ -271,9 +274,7 @@ export async function sincronizarPartners(
           phone: f.phone ? String(f.phone).trim() || null : null,
           role: rolDe(pricelistId, false),
           odooPricelistId: pricelistId,
-          odooPricelistName: f.property_product_pricelist
-            ? f.property_product_pricelist[1]
-            : null,
+          odooPricelistName: nombreTarifa(tarifa),
           odooCommercialId: f.commercial_partner_id ? f.commercial_partner_id[0] : f.id,
           isCustomer: (f.customer_rank ?? 0) > 0,
           syncStatus: 'SYNCED' as const,

@@ -22,8 +22,8 @@ export const productSchema = z.object({
   descripcion: z.string().nullable(),
   marca: z.string().nullable(),
   /**
-   * Precio ya resuelto según la tarifa del solicitante. El middleware lo calcula
-   * con `context: { pricelist }` derivado del token, jamás de la petición.
+   * Precio ya resuelto según la tarifa del solicitante, derivada del token y
+   * jamás de la petición. Ver `pricing.service.ts` (#31).
    */
   precio: montoSchema,
   /** ID de la tarifa aplicada. Se expone para que el cliente pueda auditarlo. */
@@ -73,36 +73,76 @@ export const inventoryQuerySchema = z.object({
 
 export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
 
+/** Máximo de referencias por consulta de precios. */
+export const MAX_SKUS_PRECIOS = 100;
+
 /**
- * Consulta de precios en lote.
+ * Query de `GET /api/v1/public/pricing` (#31): precios en lote.
  *
  * Existe en lote a propósito: sin ella, un cliente que quiere cotizar 50 SKUs
- * hace 50 requests, que son 50 RPC contra Odoo. El límite de 100 es el punto
- * donde una sola consulta a Odoo sigue siendo barata.
+ * hace 50 requests. Con él son dos lecturas a Odoo, sean 1 o 100.
+ *
+ * Separadas por comas, y no con el parámetro repetido: ninguna de las 3.762
+ * referencias de la instancia lleva coma, y `?skus=A&skus=B` llega a Express
+ * como un array que es fácil leer a medias. Las repetidas se cuentan una vez.
+ *
+ * NO hay parámetro de tarifa ni de compañía, y no debe haberlo: la tarifa sale
+ * del cliente de la API key. Ver `pricing.service.ts`.
  */
 export const pricingQuerySchema = z.object({
-  skus: z.array(z.string().min(1)).min(1).max(100),
+  skus: z
+    .string()
+    .min(1)
+    .describe(
+      `Referencias de producto separadas por comas, hasta ${MAX_SKUS_PRECIOS}. ` +
+        'Exactas, distinguiendo mayúsculas. Codifica la URL: algunas referencias llevan `+`, `#` o espacios.',
+    )
+    .transform((v) => [...new Set(v.split(',').map((s) => s.trim()).filter(Boolean))])
+    .pipe(z.array(z.string()).min(1, 'skus no trae ninguna referencia').max(MAX_SKUS_PRECIOS, `Como mucho ${MAX_SKUS_PRECIOS} referencias por consulta`)),
 });
 
 export type PricingQuery = z.infer<typeof pricingQuerySchema>;
 
-export const priceQuoteSchema = z.object({
-  sku: z.string(),
-  productId: odooIdSchema.nullable(),
-  /** null cuando el SKU no existe o no está disponible para este cliente. */
-  precio: montoSchema.nullable(),
-  pricelistId: odooIdSchema.nullable(),
-  motivo: z.enum(['ok', 'sku_no_encontrado', 'sin_precio_en_tarifa']),
+/**
+ * Por qué una referencia no trae precio, o `ok` si lo trae.
+ *
+ * `sin_precio_en_tarifa` cubre tanto la regla que no existe como la que vale
+ * 0.00: en esta instancia el 84 % de los productos tiene algún 0.00 en las
+ * tarifas principales, y publicarlo como precio sería un incidente comercial.
+ */
+export const motivoPrecioSchema = z.enum(['ok', 'sku_no_encontrado', 'sku_ambiguo', 'sin_precio_en_tarifa']);
+export type MotivoPrecio = z.infer<typeof motivoPrecioSchema>;
+
+export const publicPriceSchema = z.object({
+  sku: z.string().describe('La referencia, tal como se pidió.'),
+  productId: odooIdSchema.nullable().describe('Identificador del producto, el mismo de `/inventory`. `null` si no se encontró.'),
+  precio: montoSchema
+    .nullable()
+    .describe('Precio unitario de tu tarifa, sin impuestos, en la moneda de `meta.moneda`. `null` cuando no hay precio: nunca se publica 0.'),
+  motivo: motivoPrecioSchema.describe(
+    '`ok`, o por qué no hay precio: `sku_no_encontrado` (no existe o no está a la venta), `sku_ambiguo` ' +
+      '(la referencia la comparten varios productos) o `sin_precio_en_tarifa`. Puede recibir valores nuevos: trata cualquier otro como «sin precio».',
+  ),
 });
 
-export type PriceQuote = z.infer<typeof priceQuoteSchema>;
+export type PublicPrice = z.infer<typeof publicPriceSchema>;
+
+export const publicPricingResponseSchema = z.object({
+  data: z.array(publicPriceSchema).describe('Una entrada por referencia pedida, en el mismo orden.'),
+  meta: z.object({
+    moneda: z.string().describe('Moneda de los precios (ISO 4217), la de tu tarifa.'),
+    desdeCache: z.boolean().describe('`true` si algún precio sale de la cache: puede tener hasta 5 minutos de antigüedad.'),
+  }),
+});
+
+export type PublicPricingResponse = z.infer<typeof publicPricingResponseSchema>;
 
 /**
  * Un producto tal como lo devuelve `GET /api/v1/public/inventory`.
  *
- * Sin precio: el precio depende de la tarifa del cliente, y resolverla es #31,
- * bloqueado por #3 y #5. Publicar aquí `list_price` sería peor que no publicar
- * nada — en esta instancia vale 1 en productos cuyo precio base es 65.
+ * Sin precio: sale de `/pricing` (#31), que lo resuelve con la tarifa del
+ * cliente. Publicar aquí `list_price` sería peor que no publicar nada — en esta
+ * instancia vale 1 en productos cuyo precio base es 65.
  *
  * Sin cantidad: solo el estado. Ver `stockStatusSchema` y la decisión en #30.
  */

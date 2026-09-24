@@ -8,6 +8,7 @@ import { issueApiKey } from '../services/apiKey.service.js';
 import { construirOpenApi, OPERACIONES, urlDeEjemplo } from '../openapi/especificacion.js';
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
+import { leerTarifas } from '../services/tarifas.service.js';
 
 /**
  * #35 · Los ejemplos de la documentación funcionan.
@@ -84,9 +85,29 @@ beforeAll(async () => {
     });
     usuariosCreados.push(usuario.id);
   }
-  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ'], rateLimitPerMinute: 1000 });
+  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ', 'PRICING_READ'], rateLimitPerMinute: 1000 });
   keysCreadas.push(k.id);
   key = k.plaintext;
+
+  // ── Precios (#31) ────────────────────────────────────────────────────────
+  // Una referencia con precio real en la tarifa de ESTE cliente: un ejemplo que
+  // devuelve `precio: null` cumple el schema y no enseña nada.
+  const tarifa = (await leerTarifas([partnerId])).get(partnerId);
+  if (!tarifa) throw new Error(`El cliente ${partnerId} no tiene tarifa: el ejemplo de /pricing no probaría nada.`);
+  const reglas = await searchRead<{ product_tmpl_id: [number, string] }>(
+    'product.pricelist.item',
+    [['pricelist_id', '=', tarifa[0]], ['applied_on', '=', '1_product'], ['compute_price', '=', 'fixed'], ['fixed_price', '>', 0]],
+    ['product_tmpl_id'],
+    { limit: 50, order: 'id desc' },
+  );
+  const conSku = await searchRead<{ default_code: string | false }>(
+    'product.product',
+    [['product_tmpl_id', 'in', reglas.map((r) => r.product_tmpl_id[0])], ['sale_ok', '=', true], ['default_code', '!=', false]],
+    ['default_code'],
+    { limit: 1 },
+  );
+  if (!conSku[0]?.default_code) throw new Error('No hay una referencia con precio para el ejemplo de /pricing.');
+  valores.sku = conSku[0].default_code;
 
   // ── Recomendador ──────────────────────────────────────────────────────────
   if (await prisma.cartridge.count({ where: { codeNormalized: CARTUCHO_DOCS } })) {

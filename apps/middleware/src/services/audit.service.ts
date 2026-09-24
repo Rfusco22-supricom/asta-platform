@@ -26,6 +26,9 @@ import { prisma } from '../config/prisma.js';
 
 export type AuditAction =
   | 'access.denied.partner'
+  /// `/pricing` con un parámetro de tarifa o de compañía (#31): alguien intentó
+  /// ver los precios de otra lista.
+  | 'access.denied.pricelist'
   | 'access.denied.role'
   | 'access.denied.auth'
   | 'api_key.created'

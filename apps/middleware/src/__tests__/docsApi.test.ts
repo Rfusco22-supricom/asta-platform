@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Router } from 'express';
-import { errorCodeSchema, HTTP_STATUS_BY_ERROR, inventoryQuerySchema, publicInvoiceListQuerySchema } from '@asta/shared-types';
+import { errorCodeSchema, HTTP_STATUS_BY_ERROR, inventoryQuerySchema, MAX_SKUS_PRECIOS, publicInvoiceListQuerySchema } from '@asta/shared-types';
 import { CODIGOS_PUBLICOS, construirOpenApi, OPERACIONES } from '../openapi/especificacion.js';
 import { LIMITES_DOCUMENTADOS } from '../openapi/guia.js';
 import { paginaDocumentacion } from '../openapi/pagina.js';
@@ -16,6 +16,7 @@ import {
 } from '../middleware/rateLimitPublico.js';
 import { TTL_ENLACE_SEGUNDOS } from '../services/enlacesFirmados.js';
 import { TTL_CACHE_INVENTARIO_MS } from '../services/inventory.service.js';
+import { TTL_CACHE_PRECIOS_MS } from '../services/pricing.service.js';
 import { openApiVersionada, RUTA_OPENAPI } from '../../../../scripts/generar-openapi.js';
 
 /**
@@ -59,8 +60,15 @@ describe('#35 · Qué se documenta', () => {
 
   it('los endpoints que responden 501 NO están documentados', () => {
     // La política de versiones: no son contrato hasta que se implementen.
-    const spec = JSON.stringify(construirOpenApi());
-    expect(spec).not.toContain('/api/v1/public/pricing');
+    //
+    // Antes comprobaba solo `/pricing`, el único 501 que había; con #31 dejó de
+    // serlo y la comprobación se quedaba sin objeto. Ahora mira todos los que haya.
+    const capas = (crearPublicRouter() as unknown as { stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }> }).stack;
+    const sinImplementar = capas
+      .filter((c) => c.route?.stack.some((s) => s.handle === noImplementadoHandler))
+      .map((c) => `/api/v1/public${c.route!.path.replace(/:(\w+)/g, '{$1}')}`);
+    const documentadas = Object.keys(construirOpenApi().paths as Json);
+    expect(documentadas.filter((r) => sinImplementar.includes(r))).toEqual([]);
   });
 
   it('cada operación tiene id único, parámetros de ruta declarados y ejemplos de curl y Python', () => {
@@ -148,6 +156,7 @@ describe('#35 · Errores', () => {
       'services/enlacesFirmados.ts',
       'services/invoicePdf.service.ts',
       'services/inventory.service.ts',
+      'services/pricing.service.ts',
       'services/recomendador/recomendador.service.ts',
     ];
     const emitidos = new Set<string>();
@@ -187,6 +196,8 @@ describe('#35 · Ejemplos y cifras', () => {
     expect(L.descargasPorMinutoPorIp).toBe(DESCARGAS_POR_MINUTO_POR_IP);
     expect(L.enlacePdfMinutos * 60).toBe(TTL_ENLACE_SEGUNDOS);
     expect(L.cacheInventarioSegundos * 1000).toBe(TTL_CACHE_INVENTARIO_MS);
+    expect(L.cachePreciosMinutos * 60_000).toBe(TTL_CACHE_PRECIOS_MS);
+    expect(L.maxSkusPorConsulta).toBe(MAX_SKUS_PRECIOS);
 
     for (const schema of [publicInvoiceListQuerySchema, inventoryQuerySchema]) {
       expect(schema.parse({}).porPagina).toBe(L.porPaginaPorDefecto);
