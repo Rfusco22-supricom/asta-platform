@@ -12,14 +12,21 @@ import { TEMA } from './tema.js';
 export function AvisoDatosGuardados({ guardadoEn }: { guardadoEn: number }) {
   return (
     <View style={estilos.caja}>
-      <Text style={estilos.texto}>
-        Esto es lo último que sabemos, de {haceCuanto(guardadoEn)}: ahora mismo no podemos consultar la existencia. Confírmala en el mostrador.
-      </Text>
+      <Text style={estilos.titulo}>Datos de {haceCuanto(guardadoEn)}</Text>
+      <Text style={estilos.texto}>Ahora mismo no podemos consultar la existencia. Confírmala en el mostrador.</Text>
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  caja: { backgroundColor: TEMA.color.bajo, borderRadius: TEMA.radio, padding: TEMA.espacio.m },
-  texto: { color: TEMA.color.fondo, fontSize: TEMA.texto.etiqueta, fontWeight: '600' },
+  caja: {
+    backgroundColor: TEMA.color.bajoSuave,
+    borderLeftWidth: 8,
+    borderLeftColor: TEMA.color.bajo,
+    borderRadius: TEMA.radio,
+    padding: TEMA.espacio.m,
+    gap: 4,
+  },
+  titulo: { color: TEMA.color.bajo, fontSize: TEMA.texto.etiqueta, fontFamily: TEMA.fuente.titulo },
+  texto: { color: TEMA.color.tinta, fontSize: TEMA.texto.etiqueta, fontFamily: TEMA.fuente.cuerpo },
 });

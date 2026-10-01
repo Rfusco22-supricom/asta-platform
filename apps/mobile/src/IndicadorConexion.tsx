@@ -7,28 +7,42 @@ import { TEMA } from './tema.js';
  *
  * Es para el PERSONAL, no para el cliente: si la tablet lleva media mañana sin
  * red, alguien tiene que verlo sin ponerse a buscar una impresora para
- * descubrirlo. Por eso está siempre, aunque en verde sea casi invisible.
+ * descubrirlo. Por eso está siempre, aunque en verde sea casi invisible; cuando
+ * algo falla se convierte en una etiqueta de color que sí se ve.
  */
 const SEGUN_ESTADO = {
-  conectado: { color: TEMA.color.disponible, texto: 'En línea' },
-  sin_conexion: { color: TEMA.color.agotado, texto: 'Sin conexión' },
+  conectado: { color: TEMA.color.disponible, fondo: TEMA.color.disponibleSuave, texto: 'En línea' },
+  sin_conexion: { color: TEMA.color.agotado, fondo: TEMA.color.agotadoSuave, texto: 'Sin conexión' },
   // La búsqueda funciona; lo que no se sabe es la existencia.
-  sin_datos_vivos: { color: TEMA.color.bajo, texto: 'Sin datos en vivo' },
+  sin_datos_vivos: { color: TEMA.color.bajo, fondo: TEMA.color.bajoSuave, texto: 'Sin datos en vivo' },
 } as const;
 
-export function IndicadorConexion({ estado }: { estado: EstadoConexion }) {
-  const { color, texto } = SEGUN_ESTADO[estado];
+export function IndicadorConexion({ estado, sobreAzul = false }: { estado: EstadoConexion; sobreAzul?: boolean }) {
+  const { color, fondo, texto } = SEGUN_ESTADO[estado];
+  const enCalma = estado === 'conectado';
   return (
-    <View style={estilos.fila} accessibilityRole="text" accessibilityLabel={texto}>
-      <View style={[estilos.punto, { backgroundColor: color }]} />
-      <Text style={[estilos.texto, estado !== 'conectado' && estilos.textoAviso]}>{texto}</Text>
+    <View
+      style={[estilos.fila, !enCalma && { backgroundColor: fondo, paddingHorizontal: TEMA.espacio.s }]}
+      accessibilityRole="text"
+      accessibilityLabel={texto}
+    >
+      <View style={[estilos.punto, { backgroundColor: enCalma && sobreAzul ? TEMA.color.sobreAzul : color }]} />
+      <Text
+        style={[
+          estilos.texto,
+          { color: enCalma ? (sobreAzul ? TEMA.color.sobreAzul : TEMA.color.tintaTenue) : color },
+          !enCalma && estilos.textoAviso,
+        ]}
+      >
+        {texto}
+      </Text>
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  fila: { flexDirection: 'row', alignItems: 'center', gap: TEMA.espacio.xs },
-  punto: { width: 14, height: 14, borderRadius: 7 },
-  texto: { color: TEMA.color.textoTenue, fontSize: TEMA.texto.etiqueta },
-  textoAviso: { fontWeight: '700' },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: TEMA.espacio.xs, height: 40, borderRadius: TEMA.radio },
+  punto: { width: 12, height: 12, borderRadius: 6 },
+  texto: { fontFamily: TEMA.fuente.medio, fontSize: TEMA.texto.etiqueta },
+  textoAviso: { fontFamily: TEMA.fuente.fuerte },
 });
