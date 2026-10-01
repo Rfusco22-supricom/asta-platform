@@ -26,7 +26,7 @@ export interface Correo {
   texto: string;
   html: string;
   /** Solo para el log: qué plantilla es. */
-  plantilla: 'reseteo' | 'invitacion';
+  plantilla: 'reseteo' | 'invitacion' | 'alertas';
 }
 
 /** Lo único que se usa de un transporte de nodemailer. Lo implementan los tests. */
@@ -122,4 +122,71 @@ export function plantillaInvitacion(d: { para: string; nombre: string; url: stri
     `El enlace caduca en ${d.dias} días y solo sirve una vez. Si no esperabas este correo, puedes ignorarlo.`,
   );
   return { para: d.para, asunto: 'Tu acceso al panel de ASTA', texto, html, plantilla: 'invitacion' };
+}
+
+/** Lo que necesita la plantilla de alertas de cada aviso (#46). */
+export interface AvisoParaCorreo {
+  tipo: 'nueva' | 'cambiada' | 'recordatorio' | 'resuelta';
+  severidad: string;
+  titulo: string;
+  detalle: string;
+  /** Enlace completo al runbook. */
+  enlace: string;
+  desde: Date;
+}
+
+const ETIQUETA_AVISO: Record<AvisoParaCorreo['tipo'], string> = {
+  nueva: 'NUEVA',
+  cambiada: 'CAMBIÓ DE GRAVEDAD',
+  recordatorio: 'SIGUE ACTIVA',
+  resuelta: 'RESUELTA',
+};
+
+/**
+ * Un correo con todos los avisos de una pasada. El asunto dice lo grave primero:
+ * es lo único que se lee en la bandeja.
+ */
+export function plantillaAlertas(para: string, avisos: AvisoParaCorreo[]): Correo {
+  const criticas = avisos.filter((a) => a.tipo !== 'resuelta' && a.severidad === 'critica').length;
+  const resueltas = avisos.filter((a) => a.tipo === 'resuelta').length;
+  const abiertas = avisos.length - resueltas;
+  const partes = [
+    criticas ? `${criticas} crítica${criticas === 1 ? '' : 's'}` : '',
+    abiertas - criticas ? `${abiertas - criticas} aviso${abiertas - criticas === 1 ? '' : 's'}` : '',
+    resueltas ? `${resueltas} resuelta${resueltas === 1 ? '' : 's'}` : '',
+  ].filter(Boolean);
+  const asunto = `[ASTA] ${criticas ? '🔴' : abiertas ? '🟡' : '✅'} ${partes.join(' · ')}`;
+
+  const hora = (d: Date) => d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  const lineaTexto = (a: AvisoParaCorreo) =>
+    [
+      `${ETIQUETA_AVISO[a.tipo]} · ${a.tipo === 'resuelta' ? '' : a.severidad === 'critica' ? 'CRÍTICA · ' : 'aviso · '}${a.titulo}`,
+      a.detalle,
+      a.tipo === 'nueva' ? '' : `Activa desde ${hora(a.desde)}.`,
+      `Qué hacer: ${a.enlace}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+  const texto = [...avisos.map(lineaTexto), '', 'Comprobador de alertas de ASTA (#46). Avisa cuando algo empieza, cambia o se resuelve, y recuerda cada pocas horas lo que sigue.'].join('\n\n');
+
+  const color = (a: AvisoParaCorreo) => (a.tipo === 'resuelta' ? '#1a7f37' : a.severidad === 'critica' ? '#cf222e' : '#9a6700');
+  const html = `<!doctype html><html lang="es"><body style="margin:0;padding:24px;background:#f4f5f7;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1d2433">
+<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px">
+<p style="margin:0 0 16px;font-weight:700;font-size:18px;color:#0b6bcb">asta · alertas</p>
+${avisos
+  .map(
+    (a) => `<div style="border-left:4px solid ${color(a)};padding:8px 12px;margin:0 0 14px">
+<p style="margin:0;font-size:12px;font-weight:700;color:${color(a)}">${escapar(ETIQUETA_AVISO[a.tipo])}${a.tipo === 'resuelta' ? '' : a.severidad === 'critica' ? ' · CRÍTICA' : ' · aviso'}</p>
+<p style="margin:4px 0;font-weight:600">${escapar(a.titulo)}</p>
+${a.detalle ? `<p style="margin:4px 0;line-height:1.45">${escapar(a.detalle)}</p>` : ''}
+${a.tipo === 'nueva' ? '' : `<p style="margin:4px 0;font-size:12.5px;color:#6b7280">Activa desde ${escapar(hora(a.desde))}.</p>`}
+<p style="margin:6px 0 0"><a href="${escapar(a.enlace)}" style="color:#0b6bcb">Qué hacer</a></p>
+</div>`,
+  )
+  .join('\n')}
+<p style="margin:16px 0 0;font-size:12px;color:#6b7280">Comprobador de alertas de ASTA (#46). Avisa cuando algo empieza, cambia o se resuelve, y recuerda cada pocas horas lo que sigue.</p>
+</div></body></html>`;
+
+  return { para, asunto, texto, html, plantilla: 'alertas' };
 }

@@ -2,6 +2,8 @@
 import '../config/dotenv.js';
 import { prisma } from '../config/prisma.js';
 import { evaluarTodo, type Alerta } from '../services/alerts.service.js';
+import { cargarEstados, decidirAvisos, guardarEstados, todoComoNuevo, type Aviso, type EstadoAlerta, type TipoAviso } from '../services/avisosAlertas.service.js';
+import { correoConfigurado, enviarCorreo, plantillaAlertas } from '../services/correo.service.js';
 
 /**
  * `pnpm alertas` — comprueba el estado y avisa (issue #46).
@@ -20,11 +22,17 @@ import { evaluarTodo, type Alerta } from '../services/alerts.service.js';
  * crítico. Eso ya sirve: cualquier cron decente manda por correo la salida de un
  * trabajo que falla, y un supervisor de procesos puede reaccionar al código.
  *
- * Si hay `ALERTAS_WEBHOOK_URL`, además se manda ahí como JSON. Vale para Slack,
- * Discord, Telegram por un puente, o lo que sea que el equipo lea de verdad.
+ * Además, a los canales configurados:
  *
- * NO se manda por correo desde aquí: no hay SMTP configurado (es el bloqueo de
- * #53 y #16). Cuando lo haya, es un sumidero más, no una reescritura.
+ *   · `ALERTAS_CORREO`: direcciones separadas por comas. Necesita el SMTP de
+ *     #53; sin él no se envía, y se dice.
+ *   · `ALERTAS_WEBHOOK_URL`: cualquier webhook que acepte `{"text": "..."}`
+ *     (Slack, Discord, Google Chat).
+ *
+ * A los canales NO va todo en cada pasada: solo lo que empieza, cambia de
+ * gravedad o se resuelve, y un recordatorio cada `ALERTAS_RECORDATORIO_HORAS`
+ * (4 por defecto) de lo que sigue. Ver `avisosAlertas.service.ts`. La salida
+ * estándar sí lo enseña todo siempre.
  */
 
 const VERDE = '\x1b[32m';
@@ -92,28 +100,115 @@ async function consultarSalud(): Promise<Salud> {
   }
 }
 
-async function enviarAlWebhook(alertas: Alerta[]): Promise<void> {
-  const url = process.env.ALERTAS_WEBHOOK_URL;
-  if (!url || alertas.length === 0) return;
+/**
+ * Enlace completo al runbook. En la terminal basta la ruta del repositorio; en
+ * un correo hace falta algo que se pueda pulsar.
+ */
+function enlaceRunbook(runbook: string): string {
+  const base = process.env.ALERTAS_RUNBOOK_BASE ?? 'https://github.com/Rfusco22-supricom/asta-platform/blob/main/';
+  return base.replace(/\/?$/, '/') + runbook;
+}
 
-  const texto = alertas
-    .map((a) => `${a.severidad === 'critica' ? '🔴' : '🟡'} *${a.titulo}*\n${a.detalle}\n${a.runbook}`)
+const SIMBOLO: Record<TipoAviso, string> = { nueva: '', cambiada: '↕ ', recordatorio: '⏳ ', resuelta: '✅ ' };
+
+/** `true` si llegó; `false` si falló. Sin URL configurada no hay nada que decir: `null`. */
+async function enviarAlWebhook(avisos: Aviso[]): Promise<boolean | null> {
+  const url = process.env.ALERTAS_WEBHOOK_URL;
+  if (!url) return null;
+
+  const texto = avisos
+    .map((a) => {
+      const color = a.tipo === 'resuelta' ? '' : a.severidad === 'critica' ? '🔴 ' : '🟡 ';
+      return `${SIMBOLO[a.tipo]}${color}*${a.titulo}*${a.tipo === 'resuelta' ? ' — resuelta' : ''}\n${a.detalle}\n${enlaceRunbook(a.runbook)}`.trim();
+    })
     .join('\n\n');
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // `text` es lo que entienden Slack y Discord sin configurar nada más;
-      // `alertas` va al lado para quien quiera tratarlas como datos.
-      body: JSON.stringify({ text: texto, alertas }),
+      // `text` es lo que entienden Slack, Discord y Google Chat sin configurar
+      // nada más; `avisos` va al lado para quien quiera tratarlos como datos.
+      body: JSON.stringify({ text: texto, avisos }),
       signal: AbortSignal.timeout(10_000),
     });
+    return res.ok;
   } catch (error) {
     // Que falle el aviso no puede tumbar la comprobación: las alertas ya se
     // imprimieron, y el código de salida sigue diciendo la verdad.
-    console.error(
-      `  (no se pudo avisar al webhook: ${error instanceof Error ? error.message : 'error'})`,
+    console.error(`  (no se pudo avisar al webhook: ${error instanceof Error ? error.message : 'error'})`);
+    return false;
+  }
+}
+
+/** Las direcciones de `ALERTAS_CORREO`, separadas por comas. */
+function destinatarios(): string[] {
+  return (process.env.ALERTAS_CORREO ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
+}
+
+/** `true` si salió; `false` si falló; `null` si no hay direcciones o no hay SMTP. */
+async function enviarPorCorreo(avisos: Aviso[]): Promise<boolean | null> {
+  const para = destinatarios();
+  if (para.length === 0 || !correoConfigurado()) return null;
+  const { enviado } = await enviarCorreo(
+    plantillaAlertas(
+      para.join(', '),
+      avisos.map((a) => ({ tipo: a.tipo, severidad: a.severidad, titulo: a.titulo, detalle: a.detalle, enlace: enlaceRunbook(a.runbook), desde: a.desde })),
+    ),
+  );
+  return enviado;
+}
+
+/**
+ * Decide qué toca avisar en esta pasada, lo manda y lo recuerda.
+ *
+ * El orden importa: primero se envía y DESPUÉS se guarda. Al revés, si fallara
+ * el envío, el estado diría que ya se avisó y la alerta no volvería a salir
+ * hasta el recordatorio. Y solo se guarda si algún canal entregó, o si no hay
+ * ninguno configurado (entonces la salida estándar es el canal).
+ */
+async function avisar(alertas: Alerta[], hayReglasSinEvaluar: boolean): Promise<void> {
+  const ahora = new Date();
+  const recordatorioMs = Number(process.env.ALERTAS_RECORDATORIO_HORAS ?? 4) * 3600_000;
+
+  let avisos: Aviso[];
+  let escribir: EstadoAlerta[] = [];
+  let conMemoria = true;
+  try {
+    ({ avisos, escribir } = decidirAvisos(alertas, await cargarEstados(), { ahora, recordatorioMs, hayReglasSinEvaluar }));
+  } catch {
+    // Sin poder leer qué se avisó, se avisa de todo: repetir molesta, callar no.
+    conMemoria = false;
+    avisos = todoComoNuevo(alertas, ahora);
+  }
+
+  if (avisos.length === 0) {
+    console.log(`  ${GRIS}Sin novedades: nada que avisar (lo activo ya se avisó).${FIN}`);
+    return;
+  }
+
+  const [webhook, correo] = await Promise.all([enviarAlWebhook(avisos), enviarPorCorreo(avisos)]);
+  const canales = [webhook, correo].filter((r) => r !== null);
+  const entregado = canales.length === 0 || canales.some((r) => r === true);
+
+  const cuenta = (t: TipoAviso) => avisos.filter((a) => a.tipo === t).length;
+  console.log(
+    `  ${GRIS}Avisos: ${cuenta('nueva')} nuevas · ${cuenta('cambiada')} cambiadas · ` +
+      `${cuenta('recordatorio')} recordatorios · ${cuenta('resuelta')} resueltas` +
+      ` → webhook ${webhook === null ? 'sin configurar' : webhook ? 'enviado' : 'FALLÓ'}` +
+      `, correo ${correo === null ? 'sin configurar' : correo ? 'enviado' : 'FALLÓ'}.${FIN}`,
+  );
+
+  if (!entregado) {
+    console.log(`  ${AMARILLO}Ningún canal entregó: se volverá a intentar en la próxima pasada.${FIN}`);
+    return;
+  }
+  if (conMemoria) {
+    await guardarEstados(escribir).catch((e: unknown) =>
+      console.error(`  (no se pudo guardar qué se avisó: ${e instanceof Error ? e.message : 'error'})`),
     );
   }
 }
@@ -177,7 +272,7 @@ async function main(): Promise<void> {
     console.log('');
   }
 
-  await enviarAlWebhook(alertas);
+  await avisar(alertas, fallos.length > 0);
   await prisma.$disconnect();
 
   const plural = (n: number, una: string, varias: string) =>
