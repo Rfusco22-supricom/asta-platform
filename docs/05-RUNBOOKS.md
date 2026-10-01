@@ -19,6 +19,56 @@ cron cada pocos minutos.
 
 ---
 
+## Dónde llegan
+
+**Por correo**, a las direcciones de `ALERTAS_CORREO`, con el SMTP de #53.
+Opcionalmente también a un webhook (`ALERTAS_WEBHOOK_URL`). Sin ninguno de los
+dos, la salida estándar y el código de salida son el canal.
+
+**No llega todo en cada pasada.** El cron corre cada pocos minutos, y un buzón
+que repite lo mismo cada cinco minutos acaba filtrado a la papelera. A los
+canales va:
+
+| Cuándo | Asunto |
+|---|---|
+| una alerta empieza | `NUEVA` |
+| cambia de gravedad (un aviso que pasa a crítica, o al revés) | `CAMBIÓ DE GRAVEDAD` |
+| sigue activa y hace 4 horas del último aviso (`ALERTAS_RECORDATORIO_HORAS`) | `SIGUE ACTIVA` |
+| deja de salir | `RESUELTA` |
+
+Que cambien los números del detalle no cuenta como cambio: «70 h sin sincronizar»
+crece en cada pasada. La memoria de lo avisado está en la tabla `alert_states`.
+
+Tres reglas de prudencia:
+
+- **Si alguna regla no se pudo evaluar** (MySQL caído, una consulta que falla),
+  no se da nada por resuelto en esa pasada: que una alerta no salga no significa
+  que se haya arreglado.
+- **Si no se puede leer `alert_states`**, se avisa de todo como nuevo. Repetir
+  molesta; callar una crítica sería peor.
+- **Si ningún canal entrega** (el SMTP rechaza, el webhook no responde), no se
+  apunta como avisado: se vuelve a intentar en la siguiente pasada.
+
+Para empezar de cero (por ejemplo, después de una prueba):
+`DELETE FROM alert_states;` con un usuario que tenga DELETE, que no es `asta_app`.
+
+## Cómo se programa
+
+En el contenedor del middleware el comando es:
+
+```bash
+node dist/cli/alertas.js
+```
+
+Cada 5 minutos, desde el programador de tareas de EasyPanel o cualquier cron que
+pueda ejecutar órdenes en ese contenedor. **Va aparte del middleware a
+propósito**: la alerta más importante es «el middleware no responde», y esa no la
+puede dar él mismo. Si el programador solo puede lanzar órdenes DENTRO del propio
+contenedor del middleware, esa alerta concreta no saldrá cuando el contenedor
+esté caído; en ese caso conviene además un monitor externo de `/health`.
+
+---
+
 ## Qué NO está cubierto todavía
 
 Conviene saberlo antes de confiar en esta lista.
