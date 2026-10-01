@@ -45,12 +45,12 @@ export const GUIA: Seccion[] = [
     id: 'primeros-pasos',
     titulo: 'Primeros pasos',
     bloques: [
-      { tipo: 'p', texto: 'La API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, las existencias del catálogo, los precios de tu tarifa y qué productos le sirven a una impresora. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.' },
+      { tipo: 'p', texto: 'La API da acceso a los datos de **tu empresa**: tus facturas y sus PDF, tus pedidos, las existencias del catálogo, los precios de tu tarifa y qué productos le sirven a una impresora. Todo lo que devuelve es tuyo; no hay forma de pedir datos de otra empresa.' },
       {
         tipo: 'lista',
         items: [
           'Entra al panel y abre **Mis API keys**.',
-          'Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `INVENTORY_READ` para existencias, `PRICING_READ` para precios, `RECOMMENDER_READ` para el recomendador de impresoras.',
+          'Crea una key con los permisos que necesite tu integración: `INVOICES_READ` para facturas, `ORDERS_READ` para pedidos, `INVENTORY_READ` para existencias, `PRICING_READ` para precios, `RECOMMENDER_READ` para el recomendador de impresoras.',
           'Copia la key en ese momento. **Solo se muestra una vez**; si la pierdes, crea otra y revoca la anterior.',
           'Haz tu primera petición:',
         ],
@@ -135,7 +135,7 @@ export const GUIA: Seccion[] = [
         tipo: 'lista',
         items: [
           'Añadir campos a las respuestas. **Tu código debe ignorar los campos que no conoce.**',
-          `Añadir valores a \`estadoPago\`, \`stock\`, \`motivo\` y \`error.code\`, avisando con ${L.avisoEnumeracionesDias} días. **Ten siempre un caso por defecto**: un \`stock\` desconocido, trátalo como \`agotado\`; un \`code\` desconocido, por su status HTTP.`,
+          `Añadir valores a \`estadoPago\`, \`estado\`, \`stock\`, \`motivo\` y \`error.code\`, avisando con ${L.avisoEnumeracionesDias} días. **Ten siempre un caso por defecto**: un \`stock\` desconocido, trátalo como \`agotado\`; un \`code\` desconocido, por su status HTTP.`,
           'Añadir endpoints y parámetros opcionales.',
         ],
       },

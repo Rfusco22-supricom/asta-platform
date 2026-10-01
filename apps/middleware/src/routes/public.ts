@@ -9,8 +9,10 @@ import {
   enlacePdfFacturaHandler,
   listarFacturasHandler,
   listarInventarioHandler,
+  listarPedidosHandler,
   preciosHandler,
   verFacturaHandler,
+  verPedidoHandler,
 } from '../controllers/public.controller.js';
 
 /**
@@ -57,6 +59,9 @@ export function crearPublicRouter(): Router {
   router.get('/invoices', requireScope('INVOICES_READ'), listarFacturasHandler);
   router.get('/invoices/:id', requireScope('INVOICES_READ'), verFacturaHandler);
   router.get('/invoices/:id/pdf', requireScope('INVOICES_READ'), enlacePdfFacturaHandler);
+
+  router.get('/orders', requireScope('ORDERS_READ'), listarPedidosHandler);
+  router.get('/orders/:orderId', requireScope('ORDERS_READ'), verPedidoHandler);
 
   router.get('/inventory', requireScope('INVENTORY_READ'), listarInventarioHandler);
   router.get('/pricing', requireScope('PRICING_READ'), preciosHandler);

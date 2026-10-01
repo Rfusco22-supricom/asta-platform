@@ -5,10 +5,12 @@ import {
   clicRecomendadorSchema,
   compatibleQuerySchema,
   inventoryQuerySchema,
+  orderIdParamSchema,
   printerIdParamSchema,
   pricingQuerySchema,
   printerSearchQuerySchema,
   publicInvoiceListQuerySchema,
+  publicOrderListQuerySchema,
 } from '@asta/shared-types';
 import { buscarImpresoras, compatiblesDe } from '../services/recomendador/recomendador.service.js';
 import { leerBusquedaId, registrarBusqueda, registrarClic, registrarConsulta } from '../services/recomendador/telemetria.service.js';
@@ -25,6 +27,7 @@ import {
 import { buscarPdfDeFactura, PdfNoDisponible } from '../services/invoicePdf.service.js';
 import { parametrosDeTarifa, preciosDe, TarifaForzada, tarifaDelCliente } from '../services/pricing.service.js';
 import { firmarEnlace } from '../services/enlacesFirmados.js';
+import { esPedidoAjeno, listarPedidos, verPedido } from '../services/orders.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -297,6 +300,81 @@ export async function preciosHandler(
     const tarifa = await tarifaDelCliente(partnerDelToken(req), req.identity?.odooPricelistId ?? null, req.log);
     const { precios, desdeCache } = await preciosDe(tarifa, query.data.skus, req.log);
     res.json({ data: precios, meta: { moneda: tarifa.moneda, desdeCache } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** `GET /api/v1/public/orders` (#33) */
+export async function listarPedidosHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const query = publicOrderListQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: z.prettifyError(query.error) },
+      });
+      return;
+    }
+
+    const { pagina, porPagina, desde, hasta, estado } = query.data;
+    const { pedidos, total } = await listarPedidos(partnerDelToken(req), {
+      desde,
+      hasta,
+      estado,
+      limit: porPagina,
+      offset: (pagina - 1) * porPagina,
+    });
+    res.json({ data: pedidos, meta: { pagina, porPagina, total } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * `GET /api/v1/public/orders/:orderId` (#33)
+ *
+ * Como `verFacturaHandler`: un pedido de otro cliente responde EXACTAMENTE igual
+ * que uno que no existe o que está en borrador. Tras el 404 se mira si era de
+ * otro cliente, y si lo era se audita; esa comprobación corre siempre, así que
+ * tampoco hay diferencia de tiempo que delate cuál fue.
+ */
+export async function verPedidoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const params = orderIdParamSchema.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: { code: 'INVALID_ORDER_ID', message: 'id de pedido inválido' } });
+      return;
+    }
+
+    const partnerId = partnerDelToken(req);
+    const pedido = await verPedido(partnerId, params.data.orderId);
+    if (!pedido) {
+      if (await esPedidoAjeno(partnerId, params.data.orderId)) {
+        recordAudit({
+          action: 'access.denied.partner',
+          ...auditContext(req),
+          targetType: 'sale.order',
+          targetId: String(params.data.orderId),
+          metadata: {
+            via: 'api_key',
+            apiKeyId: req.identity?.apiKeyId ?? null,
+            partnerDelToken: partnerId,
+            path: req.path,
+          },
+        });
+      }
+      res.status(404).json({ error: { code: 'ORDER_NOT_FOUND', message: 'Pedido no encontrado.' } });
+      return;
+    }
+    res.json({ data: pedido });
   } catch (error) {
     next(error);
   }

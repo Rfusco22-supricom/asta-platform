@@ -28,8 +28,10 @@ import { issueApiKey } from '../services/apiKey.service.js';
  *
  * Quedan pendientes las que dependen de endpoints sin implementar:
  *
- *   · pedidos de B por id, y crear un pedido a nombre de B   (#33)
- *   · key BRONCE forzando la tarifa GOLD                     (#31)
+ *   · crear un pedido a nombre de B   (#33, espera a staging: #13)
+ *
+ * Y dos ya tienen su sitio: «key de A pidiendo el pedido de B» está en
+ * `pedidos.test.ts` y «forzar la tarifa de otro» en `precios.test.ts`.
  *
  * ── Por qué contra Odoo real ─────────────────────────────────────────────────
  *
