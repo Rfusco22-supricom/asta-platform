@@ -42,7 +42,7 @@ beforeAll(async () => {
   comprobado = true;
 
   const device = await prisma.kioskDevice.create({
-    data: { label: ETIQUETA, storeLocation: 'Pruebas', tokenHash: 'f'.repeat(64), isActive: true },
+    data: { label: ETIQUETA, storeLocation: 'Pruebas', odooCompanyId: 1, odooWarehouseId: 1, tokenHash: 'f'.repeat(64), isActive: true },
   });
   deviceId = device.id;
 
