@@ -245,8 +245,10 @@ adminRouter.get('/duplicados', autorizar('admin.duplicados.ver'), async (_req, r
 adminRouter.get('/users/without-access', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
   try {
     const limite = Math.min(Number(req.query.limit ?? 50) || 50, 200);
-    const { usuarios, total } = await listarSinAcceso(limite);
-    res.json({ data: usuarios, meta: { total, mostrados: usuarios.length } });
+    // Una letra suelta devuelve medio listado y no ayuda a encontrar a nadie.
+    const q = typeof req.query.q === 'string' && req.query.q.trim().length >= 2 ? req.query.q.trim().slice(0, 100) : undefined;
+    const { usuarios, total, coincidencias } = await listarSinAcceso(limite, q);
+    res.json({ data: usuarios, meta: { total, coincidencias, mostrados: usuarios.length, ...(q ? { busqueda: q } : {}) } });
   } catch (error) {
     next(error);
   }

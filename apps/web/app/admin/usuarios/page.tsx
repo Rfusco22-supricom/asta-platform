@@ -22,11 +22,16 @@ import { Invitaciones } from '../Invitaciones';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsuariosPage() {
+export default async function UsuariosPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const sesion = await requireSession();
+  // Una letra suelta la ignora el middleware; aquí también, para que la pantalla
+  // no diga que buscó algo que no buscó.
+  const q = (await searchParams).q?.trim();
+  const busqueda = q && q.length >= 2 ? q : undefined;
 
   let candidatos: Awaited<ReturnType<typeof getSinAcceso>>['filas'] = [];
   let total = 0;
+  let coincidencias = 0;
 
   try {
     /*
@@ -38,9 +43,10 @@ export default async function UsuariosPage() {
      * pedían y la segunda respondía «Espera unos minutos entre
      * sincronizaciones». Un contador no puede costar un barrido del ERP.
      */
-    const r = await getSinAcceso(sesion.accessToken, 25);
+    const r = await getSinAcceso(sesion.accessToken, 25, busqueda);
     candidatos = r.filas;
     total = r.total;
+    coincidencias = r.coincidencias;
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
@@ -75,7 +81,7 @@ export default async function UsuariosPage() {
           </p>
         </div>
       ) : (
-        <Invitaciones candidatos={candidatos} total={total} />
+        <Invitaciones candidatos={candidatos} total={total} coincidencias={coincidencias} busqueda={busqueda} />
       )}
     </Marco>
   );

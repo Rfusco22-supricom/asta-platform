@@ -295,6 +295,8 @@ const sinAccesoSchema = z.object({
   ),
   meta: z.object({
     total: z.number().int().nonnegative(),
+    /** Las que cumplen la búsqueda. Sin búsqueda, igual que `total`. */
+    coincidencias: z.number().int().nonnegative(),
     mostrados: z.number().int().nonnegative(),
   }),
 });
@@ -305,15 +307,15 @@ export interface SinAcceso {
   filas: CandidatoInvitacion[];
   /** Cuántos hay EN TOTAL, no cuántos se muestran. Ver la nota del servicio. */
   total: number;
+  /** Cuántos cumplen la búsqueda. */
+  coincidencias: number;
 }
 
-export async function getSinAcceso(accessToken: string, limite = 25): Promise<SinAcceso> {
-  const r = await request(
-    `/api/v1/admin/users/without-access?limit=${limite}`,
-    sinAccesoSchema,
-    accessToken,
-  );
-  return { filas: r.data, total: r.meta.total };
+export async function getSinAcceso(accessToken: string, limite = 25, busqueda?: string): Promise<SinAcceso> {
+  const qs = new URLSearchParams({ limit: String(limite) });
+  if (busqueda) qs.set('q', busqueda);
+  const r = await request(`/api/v1/admin/users/without-access?${qs}`, sinAccesoSchema, accessToken);
+  return { filas: r.data, total: r.meta.total, coincidencias: r.meta.coincidencias };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
