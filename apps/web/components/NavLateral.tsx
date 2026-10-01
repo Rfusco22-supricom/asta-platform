@@ -102,6 +102,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M8 8V5h8v3M9 13.5l2 2 4-4" />
         </svg>
       );
+    case 'duplicados':
+      // Dos fichas iguales, una encima de otra: el mismo cliente dos veces.
+      return (
+        <svg {...comun}>
+          <rect x="3" y="7" width="12" height="12" rx="2" />
+          <path d="M8 4h11a2 2 0 0 1 2 2v11" />
+        </svg>
+      );
     case 'sesiones':
       return (
         <svg {...comun}>

@@ -1509,3 +1509,73 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   .tabla-cobertura tbody td { display: block; padding: 0; border: 0; }
   .tabla-cobertura tbody td:nth-child(3) { grid-column: 1 / 3; }
 }
+
+/* ── Clientes duplicados (#50) ────────────────────────────────────────────── */
+
+/* La escalera «N fusiones cubren el X %»: en fila, porque se lee como una
+   progresión y no como una lista de cuatro datos independientes. */
+.duplicados-escalera {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 10px 0 12px;
+  padding: 0;
+}
+.duplicados-escalera li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.duplicados-escalera strong { font-size: 15px; font-weight: 640; }
+.duplicados-escalera span { color: var(--text-3); }
+
+/* Cada grupo es un `tbody` con su cabecera. La línea gruesa arriba es lo que
+   separa un cliente del siguiente: sin ella, 400 filas parecen una sola lista y
+   no se ve qué registros suman entre sí. */
+.tabla-duplicados tbody.duplicados-grupo { border-top: 2px solid var(--border); }
+.tabla-duplicados tbody.duplicados-grupo:first-of-type { border-top: 0; }
+.tabla-duplicados tr.duplicados-cabecera { background: var(--surface-2); }
+.tabla-duplicados tr.duplicados-cabecera:hover { background: var(--surface-2); }
+.tabla-duplicados tr.duplicados-cabecera td { padding-top: 11px; padding-bottom: 11px; }
+
+.duplicados-orden {
+  display: inline-block;
+  min-width: 22px;
+  margin-right: 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.duplicados-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 5px; margin-left: 30px; }
+.duplicados-aviso { font-size: 12px; color: var(--warning); font-weight: 560; }
+
+/* El enlace a Odoo no parte en dos líneas: es una columna de una palabra. */
+.tabla-duplicados td:last-child { white-space: nowrap; }
+
+.duplicados-id { color: var(--text-3); font-family: var(--mono); font-size: 12px; margin-right: 6px; }
+.duplicados-flecha { margin-left: 8px; font-size: 12px; color: var(--positive); font-weight: 560; white-space: nowrap; }
+
+/* El destino de la fusión, marcado en el borde izquierdo: es la única fila del
+   grupo sobre la que hay que decidir algo. */
+.tabla-duplicados tr.duplicados-destino td:first-child { box-shadow: inset 3px 0 0 var(--positive); }
+
+/* Móvil: cada registro apilado. Con cinco columnas, el enlace a Odoo —la acción
+   de la pantalla— quedaba fuera de la vista tras el scroll horizontal. */
+@media (max-width: 720px) {
+  .tabla-duplicados thead { display: none; }
+  .tabla-duplicados,
+  .tabla-duplicados tbody { display: block; }
+  .tabla-duplicados tbody tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 11px 10px; border-bottom: 1px solid var(--border); }
+  .tabla-duplicados tbody td { display: block; padding: 0; border: 0; }
+  .tabla-duplicados tbody td:first-child { grid-column: 1 / 3; }
+  .tabla-duplicados tbody td.num { text-align: left; }
+  /* La celda vacía de la cabecera del grupo, apilada, deja un hueco debajo. */
+  .tabla-duplicados tr.duplicados-cabecera td:last-child { display: none; }
+  .tabla-duplicados tr.duplicados-destino td:first-child { box-shadow: none; }
+  .tabla-duplicados tr.duplicados-destino { background: var(--surface-2); }
+  .duplicados-meta { margin-left: 0; }
+}

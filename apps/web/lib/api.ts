@@ -26,6 +26,8 @@ import {
   type BusquedaImpresorasRespuesta,
   coberturaTopRespuestaSchema,
   type CoberturaTop,
+  informeDuplicadosRespuestaSchema,
+  type InformeDuplicados,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -452,6 +454,22 @@ export async function getDuplicados(accessToken: string, partnerId: number): Pro
     accessToken,
   );
   return r.data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Qué fusiones de clientes duplicados faltan (#50).
+ *
+ * La fecha viene con el informe porque se sirve de una cache de una hora: la
+ * pantalla tiene que poder decir de cuándo es el número, no presentarlo como
+ * recién hecho.
+ */
+export async function getDuplicadosInforme(
+  accessToken: string,
+): Promise<InformeDuplicados & { generadoEn: string; desdeCache: boolean }> {
+  const r = await request('/api/v1/admin/duplicados', informeDuplicadosRespuestaSchema, accessToken);
+  return { ...r.data, generadoEn: r.meta.generadoEn, desdeCache: r.meta.desdeCache };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

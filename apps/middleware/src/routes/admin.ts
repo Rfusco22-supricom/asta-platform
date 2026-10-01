@@ -9,6 +9,7 @@ import { estadisticasAgentes } from '../services/agentes.service.js';
 import { reporte } from '../services/reportes.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
+import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -210,6 +211,30 @@ adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, n
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
     res.json(await reporte(rango));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Qué fusiones de clientes duplicados faltan (#50).
+ *
+ * ── Sin limitador propio, y por qué ──────────────────────────────────────────
+ *
+ * Cuesta dos consultas grandes —los ~8.800 clientes de primer nivel y una
+ * agrupación sobre las facturas contabilizadas—, más que la pantalla de agentes.
+ * El freno no es un `rateLimit` sino la cache de una hora del servicio: con un
+ * límite por ventana, el primero que entra gasta el turno y el siguiente ve un
+ * 429 en lugar de un informe que ya estaba calculado.
+ *
+ * `desdeCache` va en la respuesta porque la pantalla tiene que poder decir de
+ * cuándo es el número. Un informe de hace 50 minutos presentado como recién
+ * hecho es peor que uno fechado.
+ */
+adminRouter.get('/duplicados', autorizar('admin.duplicados.ver'), async (_req, res, next) => {
+  try {
+    const { generadoEn, duracionMs, desdeCache, ...informe } = await informeDeDuplicados();
+    res.json({ data: informe, meta: { generadoEn, duracionMs, desdeCache } });
   } catch (error) {
     next(error);
   }

@@ -55,6 +55,7 @@ export const accionSchema = z.enum([
   'admin.compatibilidades.revisar',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
+  'admin.duplicados.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -187,6 +188,22 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['VENDEDOR'],
     ambito: 'ninguno',
     descripcion: 'Proponer compatibilidades impresora ↔ cartucho y ver las propias',
+  },
+  'admin.duplicados.ver': {
+    /*
+     * Solo el SUPERADMIN, y no por costumbre.
+     *
+     * El informe de #50 es la instancia ENTERA: nombres de clientes, cuánto
+     * factura cada uno y de qué cartera es. Un vendedor viendo eso ve la cartera
+     * de sus compañeros, que es exactamente lo que #25 defiende.
+     *
+     * A cada vendedor su parte le llega por otro sitio: la ficha de SU cliente
+     * avisa cuando el número está incompleto (`cliente.ver`). Ahí el dato ajeno
+     * es el mismo cliente partido en dos, no el cliente de otro.
+     */
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver el informe de clientes duplicados y qué fusiones faltan',
   },
   'admin.reconciliacion.ver': {
     roles: ['SUPERADMIN'],
