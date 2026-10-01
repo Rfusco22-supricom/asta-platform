@@ -217,6 +217,32 @@ export async function aceptarInvitacion(
   return { email: fila.user.email };
 }
 
+/**
+ * La búsqueda de la pantalla de invitaciones: nombre, correo o número de cliente
+ * de Odoo.
+ *
+ * Existe porque los clientes se invitan cuando lo PIDEN, no en bloque: un
+ * cliente solo puede gestionar sus API keys, y la mayoría no va a integrar nada.
+ * Sin buscar, la pantalla enseñaba los 25 primeros por orden alfabético de más
+ * de 2.000, y a quien pedía acceso no había forma de encontrarlo.
+ *
+ * El correo se guarda normalizado en minúsculas y la columna distingue
+ * mayúsculas (`utf8mb4_bin`, #12): se busca en minúsculas. El nombre no
+ * distingue, porque su colación es `_ci`.
+ */
+function filtroDeBusqueda(busqueda?: string): Prisma.AppUserWhereInput {
+  const q = busqueda?.trim();
+  if (!q) return {};
+  const numero = /^\d+$/.test(q) ? Number(q) : null;
+  return {
+    OR: [
+      { fullName: { contains: q } },
+      { email: { contains: q.toLowerCase() } },
+      ...(numero !== null && numero <= 4_294_967_295 ? [{ odooPartnerId: numero }] : []),
+    ],
+  };
+}
+
 /** Candidatos a invitar: cuentas activas que todavía no pueden entrar. */
 export interface SinAcceso {
   id: string;
@@ -241,7 +267,8 @@ export interface SinAcceso {
  */
 export async function listarSinAcceso(
   limite = 50,
-): Promise<{ usuarios: SinAcceso[]; total: number }> {
+  busqueda?: string,
+): Promise<{ usuarios: SinAcceso[]; total: number; coincidencias: number }> {
   // El personal con usuario de Odoo ya puede entrar con esa contraseña (#85):
   // no es alguien sin acceso, y proponerlo para invitar solo haría ruido.
   const sinAcceso: Prisma.AppUserWhereInput = {
@@ -249,9 +276,10 @@ export async function listarSinAcceso(
     credentials: null,
     ...(authEnv().LOGIN_ODOO ? { NOT: { role: { in: ['VENDEDOR', 'SUPERADMIN'] }, odooUserId: { not: null } } } : {}),
   };
-  const [usuarios, total] = await Promise.all([
+  const buscados: Prisma.AppUserWhereInput = { ...sinAcceso, ...filtroDeBusqueda(busqueda) };
+  const [usuarios, total, coincidencias] = await Promise.all([
     prisma.appUser.findMany({
-      where: sinAcceso,
+      where: buscados,
       select: {
         id: true,
         email: true,
@@ -267,6 +295,8 @@ export async function listarSinAcceso(
       take: limite,
     }),
     prisma.appUser.count({ where: sinAcceso }),
+    // Sin búsqueda, coinciden todas: no hace falta contarlas dos veces.
+    busqueda?.trim() ? prisma.appUser.count({ where: buscados }) : Promise.resolve(-1),
   ]);
 
   return {
@@ -278,5 +308,6 @@ export async function listarSinAcceso(
       invitacionPendiente: u.authTokens.length > 0,
     })),
     total,
+    coincidencias: coincidencias === -1 ? total : coincidencias,
   };
 }

@@ -30,7 +30,17 @@ interface Generada {
   enviadoPorCorreo: boolean;
 }
 
-export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; total: number }) {
+export function Invitaciones({
+  candidatos,
+  total,
+  coincidencias,
+  busqueda,
+}: {
+  candidatos: Candidato[];
+  total: number;
+  coincidencias: number;
+  busqueda?: string;
+}) {
   const [generando, setGenerando] = useState<string | null>(null);
   const [generada, setGenerada] = useState<Generada | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -111,9 +121,45 @@ export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; t
         </div>
       )}
 
+      {/*
+        Los clientes se invitan cuando lo piden: hay que poder encontrar a ESE.
+        Sin esto se veían los 25 primeros por orden alfabético de más de 2.000.
+      */}
+      <form className="filtros" method="get" action="/admin/usuarios" style={{ marginBottom: 14 }}>
+        <div className="filtro-campo" style={{ flex: 1, minWidth: 220 }}>
+          <label htmlFor="q">Buscar</label>
+          <input
+            id="q"
+            name="q"
+            type="search"
+            className="input"
+            placeholder="Nombre, correo o número de cliente de Odoo"
+            defaultValue={busqueda ?? ''}
+            minLength={2}
+          />
+        </div>
+        <button type="submit" className="btn btn-inline">
+          Buscar
+        </button>
+        {busqueda && (
+          <a href="/admin/usuarios" className="btn-link">
+            Quitar búsqueda
+          </a>
+        )}
+      </form>
+
+      {busqueda && candidatos.length > 0 && (
+        <p style={{ marginTop: -4, marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
+          {coincidencias === 1 ? '1 coincide' : `${coincidencias.toLocaleString('es-VE')} coinciden`} con «{busqueda}»
+          {coincidencias > candidatos.length ? `: se muestran las ${candidatos.length} primeras, afina la búsqueda.` : '.'}
+        </p>
+      )}
+
       {candidatos.length === 0 ? (
         <div className="empty" style={{ padding: '28px 20px' }}>
-          Todas las cuentas activas tienen acceso.
+          {busqueda
+            ? `Ninguna cuenta sin acceso coincide con «${busqueda}». Si es un cliente que ya entra, no aparece aquí.`
+            : 'Todas las cuentas activas tienen acceso.'}
         </div>
       ) : (
         <div className="table-wrap" style={{ border: 0 }}>
@@ -142,11 +188,8 @@ export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; t
                       onClick={() => invitar(c)}
                       disabled={generando === c.id}
                     >
-                      {generando === c.id
-                        ? 'Generando…'
-                        : c.invitacionPendiente
-                          ? 'Regenerar'
-                          : 'Generar enlace'}
+                      {/* Con correo sale sola; sin él, el aviso dice que se copie. */}
+                      {generando === c.id ? 'Invitando…' : c.invitacionPendiente ? 'Reenviar' : 'Invitar'}
                     </button>
                   </td>
                 </tr>
