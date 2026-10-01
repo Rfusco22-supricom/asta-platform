@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { buscarImpresora } from './impresoraExistente.js';
 import { normalizarModelo } from './normalizar.js';
 import { formasDelCodigo } from './separarModelos.js';
 
@@ -97,7 +98,8 @@ async function importar(tx: Prisma.TransactionClient, listas: ListaFabricante[])
     }
 
     for (const [nameNormalized, nombre] of unicas) {
-      let modelo = await tx.printerModel.findUnique({ where: { brandId_nameNormalized: { brandId: marca.id, nameNormalized } } });
+      // Exacta, o la misma del catálogo de Odoo con otro nombre (ver `impresoraExistente`).
+      let modelo = await buscarImpresora(tx, marca.id, nameNormalized);
       if (!modelo) {
         modelo = await tx.printerModel.create({ data: { brandId: marca.id, name: nombre.slice(0, 120), nameNormalized } });
         r.modelosCreados++;
