@@ -1,0 +1,637 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ESQUEMA DE LA LÍNEA BASE. No es el modelo de la aplicación: es
+// `prisma/schema.prisma`. Este fichero no se edita.
+//
+// Describe la base de producción tal como se montó a mano —`001_schema.sql` más
+// `compatibilidad_productos`, creada desde phpMyAdmin—, que es exactamente lo
+// que dicen las tres migraciones de la línea base (`0_init`,
+// `20260914120000_api_logs_pk_compuesta`, `20260914130000_api_usage_monthly`).
+//
+// Sirve para el paso 1 de `docs/09-BASELINE-PRISMA.md`: comparar producción con
+// ESTO, y no con `schema.prisma`, que ya incluye todo lo que las migraciones
+// posteriores van a crear. Contra `schema.prisma` el paso 1 imprimiría esas
+// tablas como si fueran deriva.
+//
+// Sale de `schema.prisma` en 2d7502b^ (el commit anterior a las tablas de #101),
+// más el modelo `CompatibilidadProducto` de hoy.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ASTA — Esquema del Middleware · MySQL 8.0+
+//
+// Regla de oro: esta base NO duplica el negocio. Solo guarda lo que Odoo no debe
+// guardar (credenciales, tokens, sesiones, telemetría) y un espejo mínimo de
+// res.partner para que el login no dependa del uptime de Odoo.
+//
+// Precios, existencias, productos y facturas se leen de Odoo en vivo.
+//
+// El DDL equivalente, con más comentarios sobre cada decisión, está en
+// db/mysql/001_schema.sql.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTAS DE MYSQL — leer antes de tocar nada
+//
+// 1. UUID generado en el cliente, no en la base.
+//    El DDL declara DEFAULT (UUID()) como red de seguridad para inserciones
+//    manuales, pero aquí se usa @default(uuid()) a propósito: MySQL no tiene
+//    cláusula RETURNING, así que Prisma no puede recuperar un id generado por
+//    la base tras un INSERT. Generarlo en el cliente es la única vía que
+//    funciona.
+//
+// 2. Fechas en UTC, con DateTime(3) y no Timestamp.
+//    MySQL convierte TIMESTAMP según la zona horaria de la sesión: el mismo
+//    instante se leería distinto desde la tablet, el panel y la API pública.
+//    La aplicación escribe UTC y convierte al mostrar.
+//
+// 3. Prisma no gestiona colaciones, y el email depende de una.
+//    `app_users.email` usa utf8mb4_bin porque NINGUNA colación _ci respeta los
+//    acentos: con cualquiera de ellas, jose@ y josé@ serían el mismo usuario.
+//    La insensibilidad a mayúsculas la aporta `normalizarEmail()`, que SIEMPRE
+//    debe aplicarse antes de insertar o buscar por email.
+//
+// 4. MySQL no tiene arrays.
+//    Lo que en PostgreSQL era `scopes ApiScope[]` ahora son las tablas puente
+//    ApiKeyScope y ApiKeyAllowedIp.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Los 5 roles del sistema.
+/// BRONCE / PLATA / GOLD son *tiers* del mismo rol funcional (cliente): se
+/// distinguen para resolver la tarifa, no para dar permisos distintos. La lógica
+/// debe preguntar por `isClientRole(role)` y no enumerarlos a mano.
+enum AppRole {
+  SUPERADMIN
+  VENDEDOR
+  BRONCE
+  PLATA
+  GOLD
+}
+
+enum ClientTier {
+  BRONCE
+  PLATA
+  GOLD
+}
+
+/// Permisos granulares de una API Key. Ninguna key nace con todos.
+enum ApiScope {
+  INVENTORY_READ
+  PRICING_READ
+  INVOICES_READ
+  ORDERS_READ
+  ORDERS_WRITE
+  RECOMMENDER_READ
+}
+
+enum ApiKeyEnv {
+  LIVE
+  TEST
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  ORPHANED
+}
+
+enum AuthTokenPurpose {
+  INVITE
+  PASSWORD_RESET
+  EMAIL_VERIFY
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDENTIDAD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Espejo de res.partner (clientes) y res.users (vendedores) de Odoo.
+model AppUser {
+  id String @id @default(uuid()) @db.Char(36)
+
+  /// SIEMPRE normalizado con `normalizarEmail()` antes de escribir o buscar.
+  /// La columna es utf8mb4_bin: la base no perdona mayúsculas. Ver nota 3.
+  email    String  @unique(map: "uq_app_users_email") @db.VarChar(255)
+  fullName String  @map("full_name") @db.VarChar(255)
+  phone    String? @db.VarChar(50)
+
+  role AppRole
+
+  // ── Vínculo con Odoo ──────────────────────────────────────────────────────
+  /// res.partner.id — la llave que une los dos mundos. Inmutable.
+  odooPartnerId     Int     @unique(map: "uq_app_users_odoo_partner") @map("odoo_partner_id") @db.UnsignedInt
+  /// res.users.id — solo para SUPERADMIN y VENDEDOR.
+  odooUserId        Int?    @unique(map: "uq_app_users_odoo_user") @map("odoo_user_id") @db.UnsignedInt
+  /// product.pricelist.id. De aquí se deriva el tier (ver TierPricelistMap).
+  odooPricelistId   Int?    @map("odoo_pricelist_id") @db.UnsignedInt
+  /// Nombre de la tarifa tal como viene de Odoo, para depurar desalineaciones.
+  odooPricelistName String? @map("odoo_pricelist_name") @db.VarChar(255)
+  /// res.partner.commercial_partner_id — la matriz bajo la que se consolida la
+  /// facturación cuando el cliente tiene sucursales.
+  odooCommercialId  Int?    @map("odoo_commercial_id") @db.UnsignedInt
+
+  /// false = prospecto: asignado a un vendedor pero nunca se le ha facturado.
+  /// De los 791 partners del vendedor con más cartera, 532 están así. No se
+  /// ocultan: son su trabajo pendiente.
+  isCustomer Boolean @default(false) @map("is_customer")
+
+  // ── Vendedor asignado ─────────────────────────────────────────────────────
+  assignedSalespersonId String?   @map("assigned_salesperson_id") @db.Char(36)
+  assignedSalesperson   AppUser?  @relation("SalespersonClients", fields: [assignedSalespersonId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_app_users_salesperson")
+  clients               AppUser[] @relation("SalespersonClients")
+
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at") @db.DateTime(3)
+
+  syncStatus SyncStatus @default(PENDING) @map("sync_status")
+  syncedAt   DateTime?  @map("synced_at") @db.DateTime(3)
+  syncError  String?    @map("sync_error") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  credentials          UserCredential?
+  sessions             UserSession[]
+  authTokens           AuthToken[]
+  apiKeys              ApiKey[]              @relation("ApiKeyOwner")
+  revokedKeys          ApiKey[]              @relation("ApiKeyRevoker")
+  kioskSessions        KioskSession[]
+  auditLogs            AuditLog[]            @relation("AuditActor")
+  recommendationEvents RecommendationEvent[]
+  clientNotes          ClientNote[]
+  tierMapUpdates       TierPricelistMap[]
+
+  @@index([role, isActive], map: "ix_app_users_role_active")
+  @@index([assignedSalespersonId], map: "ix_app_users_salesperson")
+  @@index([odooCommercialId], map: "ix_app_users_commercial")
+  @@map("app_users")
+}
+
+/// Contraseñas.
+///
+/// No existía con Supabase, que se encargaba de la autenticación. Va en tabla
+/// aparte de AppUser a propósito: así una consulta de perfil —que es la mayoría—
+/// nunca trae el hash a memoria ni a un log por accidente.
+///
+/// El hash es **Argon2id**, en formato PHC completo (incluye sal y parámetros,
+/// por eso no hay columna de sal). Aquí SÍ hace falta un KDF lento: una
+/// contraseña humana tiene poca entropía y existen diccionarios. Es el caso
+/// opuesto al de las API keys, donde el secreto son 32 bytes aleatorios.
+model UserCredential {
+  userId String  @id @map("user_id") @db.Char(36)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_user_credentials_user")
+
+  passwordHash      String   @map("password_hash") @db.VarChar(255)
+  /// Obliga a cambiarla en el próximo login (alta inicial, reseteo por soporte).
+  mustChange        Boolean  @default(false) @map("must_change")
+  passwordChangedAt DateTime @default(now()) @map("password_changed_at") @db.DateTime(3)
+
+  /// Bloqueo por fuerza bruta. Se cuenta por usuario y no por IP: un atacante
+  /// rota IPs con facilidad, pero la cuenta objetivo sigue siendo la misma.
+  failedAttempts Int       @default(0) @map("failed_attempts") @db.UnsignedSmallInt
+  lockedUntil    DateTime? @map("locked_until") @db.DateTime(3)
+
+  @@map("user_credentials")
+}
+
+/// Refresh tokens.
+///
+/// Se guarda el HASH, no el token: quien lea esta tabla no puede suplantar a
+/// nadie. El access token (JWT de vida corta) no se guarda — se valida por firma
+/// y caduca solo.
+model UserSession {
+  id     String  @id @default(uuid()) @db.Char(36)
+  userId String  @map("user_id") @db.Char(36)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_user_sessions_user")
+
+  /// SHA-256 en hex del refresh token.
+  refreshTokenHash String @unique(map: "uq_user_sessions_token") @map("refresh_token_hash") @db.Char(64)
+
+  userAgent String? @map("user_agent") @db.VarChar(500)
+  /// VARCHAR(45) = longitud máxima de una IPv6 en texto. MySQL no tiene tipo
+  /// `inet`, así que el formato lo valida la aplicación.
+  ip        String? @db.VarChar(45)
+
+  issuedAt      DateTime  @default(now()) @map("issued_at") @db.DateTime(3)
+  lastUsedAt    DateTime? @map("last_used_at") @db.DateTime(3)
+  expiresAt     DateTime  @map("expires_at") @db.DateTime(3)
+  revokedAt     DateTime? @map("revoked_at") @db.DateTime(3)
+  /// logout | expired | rotated | password_changed | admin_revoked
+  revokedReason String?   @map("revoked_reason") @db.VarChar(40)
+
+  @@index([userId, revokedAt], map: "ix_user_sessions_user")
+  @@index([expiresAt], map: "ix_user_sessions_expiry")
+  @@map("user_sessions")
+}
+
+/// Invitación, reseteo de contraseña y verificación de email.
+///
+/// Una sola tabla para los tres: todos son "un secreto de un solo uso, con
+/// caducidad corta, que autoriza una acción concreta".
+model AuthToken {
+  id      String           @id @default(uuid()) @db.Char(36)
+  userId  String           @map("user_id") @db.Char(36)
+  user    AppUser          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_auth_tokens_user")
+  purpose AuthTokenPurpose
+
+  /// Igual que arriba: se guarda el hash, nunca el token que viaja por email.
+  tokenHash String @unique(map: "uq_auth_tokens_hash") @map("token_hash") @db.Char(64)
+
+  expiresAt DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt    DateTime? @map("used_at") @db.DateTime(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  createdIp String?   @map("created_ip") @db.VarChar(45)
+
+  @@index([userId, purpose, usedAt], map: "ix_auth_tokens_user")
+  @@index([expiresAt], map: "ix_auth_tokens_expiry")
+  @@map("auth_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NIVELES COMERCIALES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// De qué tarifa de Odoo se deriva cada nivel.
+///
+/// Nace de los hallazgos de Fase 0: `x_client_tier` no existe en Odoo, así que
+/// el nivel se deduce de `property_product_pricelist`.
+///
+/// Vive en base de datos y no en código a propósito: mover una tarifa de nivel
+/// es una decisión comercial que pasa varias veces al año, y en un archivo .ts
+/// cada cambio exigiría un despliegue.
+model TierPricelistMap {
+  odooPricelistId Int        @id @map("odoo_pricelist_id") @db.UnsignedInt
+  pricelistName   String     @map("pricelist_name") @db.VarChar(255)
+  tier            ClientTier
+  notes           String?    @db.VarChar(500)
+
+  updatedById String?  @map("updated_by") @db.Char(36)
+  updatedBy   AppUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_tier_map_updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@index([tier], map: "ix_tier_pricelist_tier")
+  @@index([updatedById], map: "ix_tier_pricelist_updated_by")
+  @@map("tier_pricelist_map")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API KEYS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Token que el cliente genera desde su panel.
+///
+/// Formato:  asta_live_<prefix:8>_<secret:43>
+///
+/// · `prefix` va en claro e indexado -> encontrar la fila es un índice único, no
+///   un recorrido de la tabla hasheando fila por fila.
+/// · `keyHash` = HMAC-SHA256(pepper_de_entorno, token). No es bcrypt: cuesta
+///   ~100 ms y aquí se verifica en CADA request. El secreto son 32 bytes de
+///   CSPRNG, no una contraseña: no hay diccionario que atacar.
+/// · El pepper vive en el entorno, NO en esta base: exfiltrar la tabla no
+///   alcanza para verificar un token.
+/// · El secreto en claro se muestra UNA vez. No se recupera.
+model ApiKey {
+  id     String  @id @default(uuid()) @db.Char(36)
+  userId String  @map("user_id") @db.Char(36)
+  user   AppUser @relation("ApiKeyOwner", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_keys_user")
+
+  name        String    @db.VarChar(60)
+  environment ApiKeyEnv @default(LIVE)
+
+  prefix   String @unique(map: "uq_api_keys_prefix") @db.VarChar(16)
+  keyHash  String @unique(map: "uq_api_keys_hash") @map("key_hash") @db.Char(64)
+  lastFour String @map("last_four") @db.Char(4)
+
+  rateLimitPerMinute Int @default(60) @map("rate_limit_per_minute") @db.UnsignedSmallInt
+
+  expiresAt    DateTime? @map("expires_at") @db.DateTime(3)
+  revokedAt    DateTime? @map("revoked_at") @db.DateTime(3)
+  revokedById  String?   @map("revoked_by") @db.Char(36)
+  revokedBy    AppUser?  @relation("ApiKeyRevoker", fields: [revokedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_api_keys_revoked_by")
+  revokeReason String?   @map("revoke_reason") @db.VarChar(200)
+
+  lastUsedAt DateTime? @map("last_used_at") @db.DateTime(3)
+  lastUsedIp String?   @map("last_used_ip") @db.VarChar(45)
+  usageCount BigInt    @default(0) @map("usage_count") @db.UnsignedBigInt
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  createdFrom String?  @map("created_from_ip") @db.VarChar(45)
+
+  scopes     ApiKeyScope[]
+  allowedIps ApiKeyAllowedIp[]
+
+  /// MySQL no tiene índices parciales (el `WHERE revoked_at IS NULL` de
+  /// PostgreSQL). Un compuesto cumple la misma función aquí.
+  @@index([userId, revokedAt], map: "ix_api_keys_user_revoked")
+  @@index([revokedById], map: "ix_api_keys_revoked_by")
+  @@map("api_keys")
+}
+
+/// Permisos de cada key.
+///
+/// En PostgreSQL era una columna `scopes ApiScope[]`. MySQL no tiene arrays.
+/// Se eligió tabla puente sobre columna JSON: con JSON no hay clave foránea ni
+/// índice útil, así que nada impediría guardar un scope con errata y descubrirlo
+/// en producción. Cuesta un JOIN por verificación de token.
+model ApiKeyScope {
+  apiKeyId String   @map("api_key_id") @db.Char(36)
+  apiKey   ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_key_scopes_key")
+  scope    ApiScope
+
+  @@id([apiKeyId, scope])
+  @@index([scope], map: "ix_api_key_scopes_scope")
+  @@map("api_key_scopes")
+}
+
+/// Lista blanca opcional de origen. Sin filas para una key = sin restricción.
+model ApiKeyAllowedIp {
+  apiKeyId String @map("api_key_id") @db.Char(36)
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_api_key_ips_key")
+  /// "200.44.1.10" o "200.44.1.0/24"
+  cidr     String @db.VarChar(45)
+
+  @@id([apiKeyId, cidr])
+  @@map("api_key_allowed_ips")
+}
+
+/// Bitácora de la API pública. Alto volumen: ver db/mysql/003_partitioning.sql.
+/// Consumo mensual por cliente, sobreviviente de la purga (issue #47).
+model ApiUsageMonthly {
+  /**
+   * Existe porque `api_request_logs` se purga con DROP PARTITION a los 90 días.
+   * Tirar la partición es la forma correcta de purgar —instantánea, devuelve el
+   * espacio al sistema, no infla el log de transacciones— pero se lleva por
+   * delante el detalle. Perder "qué petición hizo este cliente el 3 de marzo" es
+   * aceptable. Perder "cuánto consumió este cliente en marzo" no lo es: eso es
+   * lo que se factura y lo que se mira cuando alguien discute una cuota.
+   * Por eso el procedimiento de rotación calcula esto ANTES de tirar la
+   * partición, en la misma transacción lógica. Separarlo en dos trabajos
+   * distintos es garantizar que algún día se ejecute solo el segundo.
+   */
+  odooPartnerId Int    @map("odoo_partner_id") @db.UnsignedInt
+  /// 'YYYY-MM'. Texto y no fecha: es un periodo, no un instante.
+  periodo       String @db.Char(7)
+
+  peticiones      Int    @default(0) @db.UnsignedInt
+  errores         Int    @default(0) @db.UnsignedInt
+  /// Suma de duraciones. Con las peticiones da la media sin guardar la media.
+  duracionTotalMs BigInt @default(0) @map("duracion_total_ms") @db.UnsignedBigInt
+  /// RPC a Odoo que costaron. Delata a un cliente que está saliendo caro.
+  odooCalls       Int    @default(0) @map("odoo_calls") @db.UnsignedInt
+
+  calculadoEn DateTime @default(now()) @map("calculado_en") @db.DateTime(3)
+
+  @@id([odooPartnerId, periodo])
+  @@index([periodo], map: "ix_api_usage_periodo")
+  @@map("api_usage_monthly")
+}
+
+model ApiRequestLog {
+  /**
+   * `@id` va abajo, en `@@id([id, createdAt])`, y no aquí.
+   * MySQL exige que TODA clave única de una tabla particionada incluya la
+   * columna de partición. Como esta se particiona por `created_at`
+   * (003_partitioning.sql), la primaria tiene que ser compuesta.
+   * Se declara así SIEMPRE, esté la tabla particionada o no. Antes la primaria
+   * era `(id)` aquí y 003 la cambiaba a `(id, created_at)` con un ALTER: el
+   * resultado era que, en cuanto se aplicaba el particionado, `prisma migrate
+   * diff` veía deriva y quería DESHACERLO. La siguiente migración habría
+   * intentado devolver la primaria a `(id)` —imposible en una tabla
+   * particionada— o, peor, desparticionado la tabla en producción.
+   * En una tabla sin particionar la primaria compuesta no molesta: `id` sigue
+   * siendo autoincremental y único de hecho.
+   */
+  id       BigInt  @default(autoincrement()) @db.UnsignedBigInt
+  /**
+   * SIN clave foránea a `api_keys`, a propósito.
+   * MySQL y MariaDB NO permiten particionar una tabla que tenga claves foráneas
+   * —ni salientes ni entrantes— y esta tabla se particiona por mes para poder
+   * purgarla con DROP PARTITION (ver db/mysql/003_partitioning.sql).
+   * Se puede prescindir de ella porque el registro ya guarda `odooPartnerId`
+   * desnormalizado justo para sobrevivir al borrado de la key. La integridad la
+   * mantiene la aplicación, que es la única que escribe aquí.
+   */
+  apiKeyId String? @map("api_key_id") @db.Char(36)
+
+  /// Desnormalizado: si la key se borra, el registro sigue siendo auditable.
+  odooPartnerId Int? @map("odoo_partner_id") @db.UnsignedInt
+
+  method     String  @db.VarChar(8)
+  path       String  @db.VarChar(255)
+  statusCode Int     @map("status_code") @db.UnsignedSmallInt
+  durationMs Int     @map("duration_ms") @db.UnsignedInt
+  /// Cuántos RPC a Odoo costó este request. Delata un N+1 contra el ERP.
+  odooCalls  Int     @default(0) @map("odoo_calls") @db.UnsignedSmallInt
+  cacheHit   Boolean @default(false) @map("cache_hit")
+  errorCode  String? @map("error_code") @db.VarChar(64)
+  ip         String? @db.VarChar(45)
+  userAgent  String? @map("user_agent") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@id([id, createdAt])
+  @@index([apiKeyId, createdAt], map: "ix_api_logs_key_date")
+  @@index([createdAt], map: "ix_api_logs_date")
+  @@map("api_request_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KIOSCO
+// ─────────────────────────────────────────────────────────────────────────────
+
+model KioskDevice {
+  id            String  @id @default(uuid()) @db.Char(36)
+  label         String  @db.VarChar(100)
+  storeLocation String  @map("store_location") @db.VarChar(150)
+  /// HMAC del device token, igual que las API keys.
+  tokenHash     String  @unique(map: "uq_kiosk_devices_token") @map("token_hash") @db.Char(64)
+  isActive      Boolean @default(true) @map("is_active")
+
+  appVersion String?   @map("app_version") @db.VarChar(20)
+  lastSeenAt DateTime? @map("last_seen_at") @db.DateTime(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  sessions             KioskSession[]
+  recommendationEvents RecommendationEvent[]
+
+  @@map("kiosk_devices")
+}
+
+/// Sesión efímera de un cliente frente a la tablet.
+///
+/// TTL corto y cierre agresivo: es un dispositivo compartido en piso de venta.
+/// La sesión de un cliente no puede sobrevivir al siguiente, o el que llega ve
+/// los precios del que se fue.
+model KioskSession {
+  id       String      @id @default(uuid()) @db.Char(36)
+  deviceId String      @map("device_id") @db.Char(36)
+  device   KioskDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_kiosk_sessions_device")
+
+  /// null = visitante anónimo: ve precio público, no tarifa de nivel.
+  userId String?  @map("user_id") @db.Char(36)
+  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_kiosk_sessions_user")
+
+  startedAt      DateTime  @default(now()) @map("started_at") @db.DateTime(3)
+  lastActivityAt DateTime  @default(now()) @map("last_activity_at") @db.DateTime(3)
+  expiresAt      DateTime  @map("expires_at") @db.DateTime(3)
+  endedAt        DateTime? @map("ended_at") @db.DateTime(3)
+  endedReason    String?   @map("ended_reason") @db.VarChar(30)
+
+  @@index([deviceId, endedAt], map: "ix_kiosk_sessions_device")
+  @@index([expiresAt], map: "ix_kiosk_sessions_expiry")
+  @@index([userId], map: "ix_kiosk_sessions_user")
+  @@map("kiosk_sessions")
+}
+
+/// Telemetría del recomendador.
+///
+/// Es el activo de datos más valioso del kiosco: dice qué impresoras tiene el
+/// mercado y qué tóner deberíamos tener en stock. No se puede reconstruir
+/// después, así que se instrumenta desde el primer día.
+model RecommendationEvent {
+  id       BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  deviceId String?      @map("device_id") @db.Char(36)
+  device   KioskDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_reco_device")
+
+  userId String?  @map("user_id") @db.Char(36)
+  user   AppUser? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_reco_user")
+
+  /// El texto CRUDO que tecleó el cliente, sin normalizar. Los errores de tipeo
+  /// son el dato: enseñan qué alias le faltan a cada modelo de impresora.
+  searchQuery      String  @map("search_query") @db.VarChar(200)
+  matchedPrinterId Int?    @map("matched_printer_id") @db.UnsignedInt
+  resultsCount     Int     @default(0) @map("results_count") @db.UnsignedSmallInt
+  clickedProductId Int?    @map("clicked_product_id") @db.UnsignedInt
+  /// Había producto compatible pero sin existencias: quiebre de venta medible.
+  wasOutOfStock    Boolean @default(false) @map("was_out_of_stock")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([matchedPrinterId, createdAt], map: "ix_reco_printer_date")
+  @@index([createdAt], map: "ix_reco_date")
+  @@index([deviceId], map: "ix_reco_device")
+  @@index([userId], map: "ix_reco_user")
+  @@map("recommendation_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MÓDULO DE VENDEDORES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Notas del vendedor sobre un cliente (issue #24).
+///
+/// Viven aquí y no en Odoo a propósito: son datos operativos del panel, no del
+/// ERP. Meterlas en Odoo obligaría a dar licencia a cada vendedor y ensuciaría
+/// el chatter del cliente.
+model ClientNote {
+  id String @id @default(uuid()) @db.Char(36)
+
+  /// Se guarda el id de Odoo y no el de AppUser: un vendedor puede querer anotar
+  /// sobre un prospecto que todavía no tiene cuenta en el panel.
+  odooPartnerId Int @map("odoo_partner_id") @db.UnsignedInt
+
+  authorId   String?  @map("author_id") @db.Char(36)
+  author     AppUser? @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_client_notes_author")
+  /// Desnormalizado: la nota sigue siendo legible aunque el autor se borre.
+  authorName String   @map("author_name") @db.VarChar(255)
+  body       String   @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(3)
+
+  @@index([odooPartnerId, createdAt], map: "ix_client_notes_partner")
+  @@index([authorId], map: "ix_client_notes_author")
+  @@map("client_notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOPORTE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Cache de lectura del ERP.
+///
+/// Odoo responde en ~200 ms por RPC (medido en Fase 0). Sin cache, cada pantalla
+/// del panel y cada request de la API pública paga ese peaje.
+///
+/// La clave incluye `variant` porque la misma ficha de producto cambia según la
+/// tarifa: "pricelist:15866" y "pricelist:15836" son dos respuestas distintas.
+model OdooEntityCache {
+  odooModel String   @map("odoo_model") @db.VarChar(64)
+  odooId    Int      @map("odoo_id") @db.UnsignedInt
+  variant   String   @default("default") @db.VarChar(32)
+  payload   Json
+  syncedAt  DateTime @default(now()) @map("synced_at") @db.DateTime(3)
+  expiresAt DateTime @map("expires_at") @db.DateTime(3)
+
+  @@id([odooModel, odooId, variant])
+  @@index([expiresAt], map: "ix_odoo_cache_expiry")
+  @@map("odoo_entity_cache")
+}
+
+/// Marca de agua de cada sincronización con Odoo.
+///
+/// Guarda el `write_date` más alto ya procesado para que la siguiente pasada
+/// pida solo lo que cambió. Es el reloj de ODOO, no el nuestro: son dos
+/// máquinas y su desfase se traduciría en registros saltados para siempre.
+model SyncState {
+  entidad         String    @id @db.VarChar(64)
+  /// Formato de Odoo: 'YYYY-MM-DD HH:MM:SS' en UTC.
+  ultimoWriteDate String?   @map("ultimo_write_date") @db.VarChar(19)
+  ultimaEjecucion DateTime? @map("ultima_ejecucion") @db.DateTime(3)
+  resumen         Json?
+  /// Cerrojo: impide que dos pasadas se solapen.
+  ejecutando      Boolean   @default(false)
+  /// Para que una ejecución colgada no bloquee las siguientes para siempre.
+  ejecutandoDesde DateTime? @map("ejecutando_desde") @db.DateTime(3)
+
+  @@map("sync_state")
+}
+
+/// Rastro de acciones sensibles: emisión y revocación de keys, cambios de rol,
+/// accesos denegados.
+///
+/// Append-only. Nunca se actualiza ni se borra: un registro de auditoría que se
+/// puede editar no es un registro de auditoría.
+model AuditLog {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  actorId    String?  @map("actor_id") @db.Char(36)
+  actor      AppUser? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_audit_actor")
+  /// Desnormalizado: el rastro sigue siendo legible aunque el usuario se borre.
+  actorEmail String?  @map("actor_email") @db.VarChar(255)
+
+  action     String  @db.VarChar(64)
+  targetType String? @map("target_type") @db.VarChar(64)
+  targetId   String? @map("target_id") @db.VarChar(64)
+  metadata   Json?
+  ip         String? @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([actorId, createdAt], map: "ix_audit_actor_date")
+  @@index([action, createdAt], map: "ix_audit_action_date")
+  @@map("audit_logs")
+}
+
+/// Creada a mano en producción (phpMyAdmin). Ver el modelo en `schema.prisma`.
+model CompatibilidadProducto {
+  id             Int     @id @default(autoincrement())
+  code           String  @db.VarChar(50)
+  marca          String  @db.VarChar(50)
+  modelo         String  @db.Text
+  rendimientoPag Int?    @map("rendimiento_pag")
+
+  @@map("compatibilidad_productos")
+}
