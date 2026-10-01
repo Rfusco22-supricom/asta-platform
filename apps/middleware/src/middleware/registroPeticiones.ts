@@ -85,6 +85,7 @@ export function registroPeticiones(): RequestHandler {
             statusCode: res.statusCode,
             durationMs: Math.max(0, Math.round(performance.now() - inicio)),
             odooCalls: contexto.odooCalls,
+            cacheHit: contexto.cacheHit,
             errorCode: codigoDeError(),
             ip: req.ip?.slice(0, 45) ?? null,
             userAgent: req.get('user-agent')?.slice(0, MAX_USER_AGENT) ?? null,

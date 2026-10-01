@@ -21,6 +21,7 @@ import { logger } from './utils/logger.js';
 import { exigirEntornoValido } from './config/validarEntorno.js';
 import { env } from './config/env.js';
 import { version } from './config/version.js';
+import { VigilanteCambios } from './services/vigilanteCambios.js';
 
 /**
  * Servidor del middleware.
@@ -251,10 +252,16 @@ if (
     console.log(`  cliente   GET /api/v1/public/invoices · /invoices/:id   (API key)`);
   });
 
+  // Invalidación de caches por lo que cambia en Odoo (#34). Aquí y no en
+  // `createApp`: los tests levantan apps y no deben sondear el ERP.
+  const vigilante = new VigilanteCambios();
+  vigilante.arrancar();
+
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.on(signal, () => {
       console.log(`\n${signal} recibido, cerrando...`);
+      vigilante.detener();
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(1), 10_000).unref();
     });
