@@ -11,6 +11,8 @@ build/
 .env
 .env.*
 !.env.example
+# La plantilla de la batería de staging (#13). El `.env.staging` de verdad, no.
+!.env.staging.example
 
 .DS_Store
 Thumbs.db
