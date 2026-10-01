@@ -85,9 +85,20 @@ beforeAll(async () => {
     });
     usuariosCreados.push(usuario.id);
   }
-  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ', 'PRICING_READ'], rateLimitPerMinute: 1000 });
+  const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ', 'PRICING_READ', 'ORDERS_READ'], rateLimitPerMinute: 1000 });
   keysCreadas.push(k.id);
   key = k.plaintext;
+
+  // ── Pedidos (#33) ────────────────────────────────────────────────────────
+  // Uno del cliente del ejemplo en un estado que se ve: un borrador daría 404.
+  const [pedido] = await searchRead<{ id: number }>(
+    'sale.order',
+    [['partner_id', 'child_of', partnerId], ['state', 'in', ['sent', 'sale', 'cancel']]],
+    ['id'],
+    { limit: 1, order: 'id desc' },
+  );
+  if (!pedido) throw new Error(`El cliente ${partnerId} no tiene pedidos: los ejemplos de /orders no probarían nada.`);
+  valores.orderId = String(pedido.id);
 
   // ── Precios (#31) ────────────────────────────────────────────────────────
   // Una referencia con precio real en la tarifa de ESTE cliente: un ejemplo que

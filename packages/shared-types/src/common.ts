@@ -51,6 +51,8 @@ export const errorCodeSchema = z.enum([
   'INVALID_DATE_RANGE',
   /** `:id` de factura que no es un entero positivo. */
   'INVALID_INVOICE_ID',
+  /** `:orderId` de pedido que no es un entero positivo (#33). */
+  'INVALID_ORDER_ID',
 
   // Recursos
   'NOT_FOUND',
@@ -59,6 +61,11 @@ export const errorCodeSchema = z.enum([
   'PRINTER_NOT_FOUND',
   /** Factura inexistente O de otro cliente: la misma respuesta a propósito (#36). */
   'INVOICE_NOT_FOUND',
+  /**
+   * Pedido inexistente, de otro cliente o en borrador (#33): la misma respuesta
+   * para los tres. Un 403 permitiría enumerar los pedidos de la empresa.
+   */
+  'ORDER_NOT_FOUND',
   /**
    * La factura es del cliente pero no tiene un PDF que se pueda servir (#32).
    * Unas 4.500 de 17.180 no tienen ninguno guardado en Odoo.
@@ -138,12 +145,14 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   INVALID_PARTNER_ID: 400,
   INVALID_DATE_RANGE: 400,
   INVALID_INVOICE_ID: 400,
+  INVALID_ORDER_ID: 400,
 
   NOT_FOUND: 404,
   PARTNER_NOT_FOUND: 404,
   PRODUCT_NOT_FOUND: 404,
   PRINTER_NOT_FOUND: 404,
   INVOICE_NOT_FOUND: 404,
+  ORDER_NOT_FOUND: 404,
   INVOICE_PDF_NOT_AVAILABLE: 404,
   LINK_NOT_VALID: 404,
   LINK_EXPIRED: 410,

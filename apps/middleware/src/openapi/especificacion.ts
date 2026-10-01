@@ -6,6 +6,9 @@ import {
   HTTP_STATUS_BY_ERROR,
   inventoryQuerySchema,
   publicInventoryListResponseSchema,
+  publicOrderDetailResponseSchema,
+  publicOrderListQuerySchema,
+  publicOrderListResponseSchema,
   publicInvoiceDetailResponseSchema,
   publicInvoiceListQuerySchema,
   publicInvoiceListResponseSchema,
@@ -111,8 +114,10 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   PARTNER_ID_NOT_ALLOWED: 'La petición lleva un `partner_id` que no es el tuyo. No hace falta enviarlo: el cliente sale siempre de la API key.',
   PRICELIST_NOT_ALLOWED: 'La petición intenta elegir tarifa o compañía (`pricelist`, `tarifa`, `company_id`…). No se puede: la tarifa sale siempre de tu cuenta. Quita el parámetro.',
   INVALID_QUERY: 'Un parámetro no es válido. `message` explica cuál.',
+  INVALID_ORDER_ID: 'El `orderId` de la ruta no es un número entero positivo.',
   INVALID_INVOICE_ID: 'El identificador de factura no es un número entero positivo.',
   INVOICE_NOT_FOUND: 'La factura no existe o no es tuya. Es la misma respuesta en los dos casos, a propósito.',
+  ORDER_NOT_FOUND: 'El pedido no existe, no es tuyo o tu vendedor todavía no te lo ha enviado. Por seguridad no se distingue cuál.',
   INVOICE_PDF_NOT_AVAILABLE: 'La factura es tuya, pero no tiene un PDF disponible. Solicítalo a tu vendedor.',
   LINK_NOT_VALID: 'El enlace de descarga no es válido, o la key que lo emitió ya no tiene acceso. Pide un enlace nuevo.',
   LINK_EXPIRED: 'El enlace de descarga caducó. Pide uno nuevo.',
@@ -321,6 +326,85 @@ export const OPERACIONES: Operacion[] = [
   },
   {
     metodo: 'get',
+    ruta: '/api/v1/public/orders',
+    id: 'listarPedidos',
+    resumen: 'Listar pedidos',
+    descripcion:
+      'Tus pedidos y presupuestos, del más reciente al más antiguo: los enviados, los confirmados y los cancelados. Los presupuestos que tu vendedor todavía está preparando no aparecen hasta que te los envía. Las fechas van en UTC.',
+    scope: 'ORDERS_READ',
+    query: publicOrderListQuerySchema,
+    exito: {
+      schema: publicOrderListResponseSchema,
+      descripcion: 'Una página de pedidos.',
+      ejemploRespuesta: {
+        data: [
+          {
+            id: 5001,
+            folio: 'S00001',
+            fecha: '2026-09-14T15:30:00Z',
+            estado: 'sale',
+            referenciaCliente: 'OC-2026-118',
+            moneda: 'USD',
+            subtotal: 1078,
+            impuestos: 172.48,
+            total: 1250.48,
+            estadoFacturacion: 'invoiced',
+            estadoEntrega: 'full',
+          },
+        ],
+        meta: { pagina: 1, porPagina: 20, total: 1 },
+      },
+    },
+    errores: ['INVALID_QUERY', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/orders', query: { porPagina: '20' }, conKey: true },
+  },
+  {
+    metodo: 'get',
+    ruta: '/api/v1/public/orders/{orderId}',
+    id: 'verPedido',
+    resumen: 'Ver un pedido',
+    descripcion:
+      'Un pedido con sus líneas. Un pedido que no es tuyo, que no existe o que tu vendedor todavía no te ha enviado responde igual: `404 ORDER_NOT_FOUND`.',
+    scope: 'ORDERS_READ',
+    parametrosRuta: [{ nombre: 'orderId', descripcion: 'El `id` del pedido, de `/orders`.', esquema: { type: 'integer', minimum: 1 } }],
+    exito: {
+      schema: publicOrderDetailResponseSchema,
+      descripcion: 'El pedido.',
+      ejemploRespuesta: {
+        data: {
+          id: 5001,
+          folio: 'S00001',
+          fecha: '2026-09-14T15:30:00Z',
+          estado: 'sale',
+          referenciaCliente: 'OC-2026-118',
+          moneda: 'USD',
+          subtotal: 1078,
+          impuestos: 172.48,
+          total: 1250.48,
+          estadoFacturacion: 'invoiced',
+          estadoEntrega: 'full',
+          lineas: [
+            {
+              productId: 2001,
+              sku: 'TON-0001',
+              descripcion: '[TON-0001] TÓNER NEGRO DE EJEMPLO',
+              cantidad: 10,
+              precioUnitario: 107.8,
+              descuento: 0,
+              subtotal: 1078,
+              total: 1250.48,
+              cantidadEntregada: 10,
+              cantidadFacturada: 10,
+            },
+          ],
+        },
+      },
+    },
+    errores: ['INVALID_ORDER_ID', 'ORDER_NOT_FOUND', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/orders/{orderId}', valores: { orderId: '5001' }, conKey: true },
+  },
+  {
+    metodo: 'get',
     ruta: '/api/v1/public/inventory',
     id: 'listarInventario',
     resumen: 'Consultar existencias',
@@ -431,6 +515,7 @@ export const OPERACIONES: Operacion[] = [
 function etiquetaDe(ruta: string): string {
   if (ruta.includes('/recommender/')) return 'Recomendador';
   if (ruta.includes('/pricing')) return 'Precios';
+  if (ruta.includes('/orders')) return 'Pedidos';
   return ruta.includes('inventory') ? 'Inventario' : 'Facturas';
 }
 
@@ -526,6 +611,7 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
     servers: [{ url: base }],
     tags: [
       { name: 'Facturas', description: 'Tus facturas y sus PDF.' },
+      { name: 'Pedidos', description: 'Tus pedidos y presupuestos.' },
       { name: 'Inventario', description: 'Existencias del catálogo.' },
       { name: 'Precios', description: 'Los precios de tu tarifa.' },
       { name: 'Recomendador', description: 'Qué producto le sirve a una impresora.' },

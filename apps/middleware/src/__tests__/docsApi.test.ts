@@ -157,6 +157,7 @@ describe('#35 · Errores', () => {
       'services/invoicePdf.service.ts',
       'services/inventory.service.ts',
       'services/pricing.service.ts',
+      'services/orders.service.ts',
       'services/recomendador/recomendador.service.ts',
     ];
     const emitidos = new Set<string>();
