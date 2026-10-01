@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Asta Kiosco",
+    "slug": "asta-kiosco",
+    "version": "0.1.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#0f172a",
+    "assetBundlePatterns": ["**/*"],
+    "androidStatusBar": { "hidden": true, "translucent": true },
+    "androidNavigationBar": { "visible": "sticky-immersive" },
+    "android": {
+      "package": "com.supricom.asta.kiosco",
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "extra": {
+      "apiBase": "http://10.0.2.2:3001",
+      "apiKey": ""
+    }
+  }
+}

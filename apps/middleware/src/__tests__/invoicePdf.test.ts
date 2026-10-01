@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { apiErrorSchema } from '@asta/shared-types';
 import type { Server } from 'node:http';
 import { createApp } from '../server.js';
-import { executeKw, searchRead } from '../odoo/client.js';
+import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 import { issueApiKey, revokeApiKey } from '../services/apiKey.service.js';
@@ -137,15 +137,22 @@ interface FilaFactura {
 /**
  * Una factura de venta contabilizada de la compañía que cumpla `elegir`, cuyo
  * cliente raíz no esté ya usado ni pertenezca a un usuario de otro rol.
+ *
+ * `dominio` acota la búsqueda en ODOO, no en memoria. La primera versión traía
+ * las 3000 más recientes y filtraba aquí, y el caso "sin PDF" dejó de
+ * encontrarse: hoy todas las recientes de la compañía 10 tienen adjunto, aunque
+ * siga habiendo antiguas sin él. Filtrar en la consulta las encuentra donde
+ * estén, y además baja de 3000 filas a las que hagan falta.
  */
 async function descubrir(
   companyId: number,
   elegir: (f: FilaFactura, adjuntos: Map<number, string>) => number | null | undefined,
   usados: Set<number>,
+  dominio: OdooDomain = [],
 ): Promise<{ partnerId: number; facturaId: number; adjuntoId: number | null }> {
   const facturas = await searchRead<FilaFactura>(
     'account.move',
-    [['company_id', '=', companyId], ['move_type', '=', 'out_invoice'], ['state', '=', 'posted']],
+    [['company_id', '=', companyId], ['move_type', '=', 'out_invoice'], ['state', '=', 'posted'], ...dominio],
     ['commercial_partner_id', 'invoice_pdf_report_id', 'message_main_attachment_id'],
     { limit: 3000, order: 'id desc' },
   );
@@ -190,7 +197,9 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${dir.port}`;
 
   const usados = new Set<number>();
-  const ve = await descubrir(10, (f) => (f.invoice_pdf_report_id ? f.invoice_pdf_report_id[0] : undefined), usados);
+  const ve = await descubrir(10, (f) => (f.invoice_pdf_report_id ? f.invoice_pdf_report_id[0] : undefined), usados, [
+    ['message_main_attachment_id', '!=', false],
+  ]);
   const pa = await descubrir(
     7,
     (f, adj) =>
@@ -198,8 +207,13 @@ beforeAll(async () => {
         ? f.message_main_attachment_id[0]
         : undefined,
     usados,
+    [['message_main_attachment_id', '!=', false]],
   );
-  const sin = await descubrir(10, (f) => (!f.invoice_pdf_report_id && !f.message_main_attachment_id ? null : undefined), usados);
+  // Las que no tienen PDF son antiguas: hay que pedírselas a Odoo, no filtrarlas
+  // entre las recientes.
+  const sin = await descubrir(10, (f) => (!f.invoice_pdf_report_id && !f.message_main_attachment_id ? null : undefined), usados, [
+    ['message_main_attachment_id', '=', false],
+  ]);
 
   VE = { ...ve, ...(await prepararUsuario(ve.partnerId, 've')) };
   PA = { ...pa, ...(await prepararUsuario(pa.partnerId, 'pa')) };

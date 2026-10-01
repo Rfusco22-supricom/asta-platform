@@ -66,6 +66,26 @@ los demás casos. Un aviso no hace fallar el trabajo a propósito — un cron qu
 manda correo por cada aviso acaba en la papelera, y entonces el día de la crítica
 tampoco lo lee nadie.
 
+## El otro trabajo periódico: cerrar sesiones de kiosco (#41)
+
+Aparte de las alertas, hay un segundo cron, también cada pocos minutos:
+
+```bash
+pnpm kiosco:cerrar-sesiones                    # en desarrollo
+node dist/cli/cerrar-sesiones-kiosco.js        # en el contenedor
+```
+
+Cierra las sesiones de kiosco **vencidas y todavía abiertas**. La tablet ya las
+cierra a los cuatro minutos, pero eso ocurre en la tablet: si se apaga, se queda
+sin batería o pierde la red con una sesión abierta, la fila se queda así. Aquí
+manda `expires_at`, no el dispositivo.
+
+No borra nada y no toca las que cerró la tablet: su `ended_reason` dice por qué
+terminaron de verdad (`logout`, `timeout`, `device_reset`).
+
+**Código de salida 1** si después de cerrar SIGUE habiendo vencidas abiertas.
+Eso solo pasa si la escritura falló, así que conviene que el cron lo note.
+
 Y una advertencia que el propio comando ya da: si alguna regla **no se pudo
 evaluar**, no dice "sin alertas" en verde. Con MySQL inalcanzable fallan las siete
 reglas de base, y un verde ahí se leería como que todo va bien.
