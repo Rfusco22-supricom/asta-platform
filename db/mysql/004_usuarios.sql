@@ -164,6 +164,9 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
 -- Contador de intentos del personal que entra con Odoo (#85). Se lee y se
 -- actualiza en cada login; nunca se borra una fila.
 GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost';
+-- Memoria de las alertas (#46): el comprobador recuerda qué avisó para no repetirlo.
+-- UPDATE para marcar una alerta como resuelta; sin DELETE, como el resto.
+GRANT SELECT, INSERT, UPDATE ON asta.alert_states TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
@@ -176,6 +179,16 @@ GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost
 GRANT SELECT, INSERT ON asta.audit_logs           TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT ON asta.api_request_logs     TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT ON asta.recommendation_events TO 'asta_app'@'localhost';
+
+-- La telemetría del recomendador (#43) COMPLETA la fila de una búsqueda: anota
+-- la impresora que eligió el cliente, si estaba todo agotado, y el producto que
+-- pulsó. Sin esto, con `asta_app` el clic daba 500 y la impresora se perdía en
+-- silencio (visto el 2026-10-01: la batería corre como root y no lo notó).
+--
+-- Por COLUMNA, no por tabla: lo que identifica el evento —quién, qué buscó,
+-- cuándo, cuántos resultados— sigue sin poder reescribirse. `check:grants` y
+-- `scripts/grants-escrituras.test.ts` vigilan que no se amplíe.
+GRANT UPDATE (matched_printer_id, was_out_of_stock, clicked_product_id) ON asta.recommendation_events TO 'asta_app'@'localhost';
 
 -- Consumo mensual agregado (#47). La aplicación solo LEE: lo escribe el
 -- procedimiento de rotación, que corre como asta_migrador en el mantenimiento.
@@ -304,6 +317,7 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
 -- Solo contadores de intentos, no material de credencial: sirve para investigar bloqueos.
 GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_order_requests       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.alert_states             TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 

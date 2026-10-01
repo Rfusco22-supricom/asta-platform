@@ -172,6 +172,7 @@ Aplica lo que haya en la imagen después de la línea base. Al 1-oct-2026, en
 | `20260916143723_compatibilidad_creada_por` | Quién añadió cada compatibilidad |
 | `20260916150000_compatibilidad_productos_fuente` | `compatibilidad_productos` con `IF NOT EXISTS`: **en producción no hace nada**, la tabla ya está |
 | `20260916190000_staff_login_guards` | Bloqueo por intentos del personal (#85) |
+| `20261001140000_alert_states` | Memoria de las alertas de operación (#46) |
 
 Y las de los PR abiertos cuando se fusionen: `kiosk_devices` con almacén y
 rotación de token (#120) y las columnas `Json` como `JSON` (#101), que **en
@@ -227,6 +228,7 @@ GRANT SELECT, INSERT, UPDATE ON Asta.cartridge_printer_models TO 'asta_app'@'<ho
 GRANT SELECT, INSERT, UPDATE ON Asta.product_cartridges       TO 'asta_app'@'<host>';
 GRANT SELECT                 ON Asta.compatibilidad_productos TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.alert_states             TO 'asta_app'@'<host>';
 
 GRANT SELECT ON Asta.printer_brands           TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.printer_models           TO 'asta_lectura'@'<host>';
@@ -236,6 +238,7 @@ GRANT SELECT ON Asta.cartridge_printer_models TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.product_cartridges       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.compatibilidad_productos TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.alert_states             TO 'asta_lectura'@'<host>';
 ```
 
 Son las mismas líneas que `004_usuarios.sql` (líneas 148-162 y 292-301), sin

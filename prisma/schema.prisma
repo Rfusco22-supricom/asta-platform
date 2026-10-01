@@ -958,3 +958,26 @@ model CompatibilidadProducto {
 
   @@map("compatibilidad_productos")
 }
+
+/// Qué alertas de operación se avisaron y cuándo (#46).
+///
+/// El comprobador corre cada pocos minutos. Sin memoria, una alerta que dura
+/// —el sync lleva horas atrasado— se mandaría en cada pasada, y un canal que
+/// repite lo mismo cada cinco minutos se silencia. Con esto se avisa cuando una
+/// alerta empieza, cambia de gravedad o se resuelve, y se recuerda cada pocas
+/// horas si sigue.
+///
+/// Una fila por alerta (el `id` es el ancla de su runbook). Al resolverse no se
+/// borra: se marca inactiva, y si vuelve, es una alerta nueva otra vez.
+model AlertState {
+  id             String    @id @db.VarChar(64)
+  severity       String    @db.VarChar(10)
+  title          String    @db.VarChar(200)
+  active         Boolean   @default(true)
+  /// Cuándo empezó esta vez.
+  since          DateTime  @db.DateTime(3)
+  lastNotifiedAt DateTime  @map("last_notified_at") @db.DateTime(3)
+  resolvedAt     DateTime? @map("resolved_at") @db.DateTime(3)
+
+  @@map("alert_states")
+}
