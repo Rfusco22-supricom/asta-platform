@@ -513,6 +513,8 @@ describe('#46 · Regla de kioscos', () => {
       data: {
         label: `${MARCA} tienda 1`,
         storeLocation: 'Prueba',
+        odooCompanyId: 1,
+        odooWarehouseId: 1,
         tokenHash: 'f'.repeat(64),
         isActive: true,
         lastSeenAt: haceMin(minutosSinSenal),
