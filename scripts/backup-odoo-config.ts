@@ -3,6 +3,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { join, basename } from 'node:path';
 import { comparar, valor, type Copia } from './lib/odoo-config-diff.js';
 import { searchRead } from '../apps/middleware/src/odoo/client.js';
+import { leerTarifas } from '../apps/middleware/src/services/tarifas.service.js';
 
 /**
  * `pnpm backup:odoo` — copia de la configuración de Odoo que nos afecta (#48).
@@ -238,18 +239,19 @@ async function main(): Promise<void> {
    * No es configuración, es la consecuencia. Si mañana una tarifa aparece con
    * 0 clientes y en la copia de ayer tenía 2942, eso es el aviso — y sin este
    * recuento habría que reconstruirlo cliente a cliente.
+   *
+   * La tarifa se lee desde la compañía de cada cliente (`leerTarifas`). Leída
+   * junto al resto sale la de la compañía por defecto del usuario de servicio, y
+   * este recuento decía «2942 clientes en [15866]» cuando dos tercios estaban en
+   * otras.
    */
-  const clientes = await searchRead<{ id: number; property_product_pricelist: [number, string] | false }>(
-    'res.partner',
-    [['customer_rank', '>', 0]],
-    ['id', 'property_product_pricelist'],
-  );
+  const clientes = await searchRead<{ id: number }>('res.partner', [['customer_rank', '>', 0]], ['id']);
+  const tarifasCliente = await leerTarifas(clientes.map((c) => c.id));
 
   const porTarifa = new Map<number, number>();
-  for (const c of clientes) {
-    if (!c.property_product_pricelist) continue;
-    const id = c.property_product_pricelist[0];
-    porTarifa.set(id, (porTarifa.get(id) ?? 0) + 1);
+  for (const t of tarifasCliente.values()) {
+    if (!t) continue;
+    porTarifa.set(t[0], (porTarifa.get(t[0]) ?? 0) + 1);
   }
 
   console.log(`  clientes         ${clientes.length}\n`);

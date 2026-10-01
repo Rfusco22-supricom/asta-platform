@@ -14,8 +14,8 @@ import { stockStatusSchema } from './catalog.js';
  * cartucho y cartucho → producto. Una propuesta del importador que llega al
  * cliente es venderle, delante de él, un tóner que no le sirve.
  *
- * Sin precio, igual que `/inventory`: la tarifa del cliente es #31, bloqueado
- * por #3 y #5.
+ * Sin precio, igual que `/inventory`: los precios salen de `/pricing` (#31),
+ * con el `sku` de cada producto.
  */
 
 /** Una impresora del catálogo de compatibilidad. */

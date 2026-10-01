@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
 import { tierFromPricelist } from '../config/tiers.js';
+import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 
 /**
  * Reconciliación Odoo ↔ middleware (issue #19).
@@ -71,7 +72,8 @@ interface PartnerOdoo {
   id: number;
   name: string;
   email: string | false;
-  property_product_pricelist: [number, string] | false;
+  /** Leída desde la compañía del cliente, no junto al resto: ver `tarifas.service.ts`. */
+  tarifa: TarifaLeida;
 }
 
 const MUESTRA = 25;
@@ -179,13 +181,13 @@ export async function reconciliar(): Promise<Reconciliacion> {
       });
     }
 
-    const plOdoo = p.property_product_pricelist ? p.property_product_pricelist[0] : null;
+    const plOdoo = idTarifa(p.tarifa);
     if (plOdoo !== u.odooPricelistId) {
       desalineados.push({
         odooPartnerId: p.id,
         nombre: nombreOdoo,
         campo: 'tarifa',
-        enOdoo: p.property_product_pricelist ? p.property_product_pricelist[1] : null,
+        enOdoo: nombreTarifa(p.tarifa),
         enMiddleware: u.odooPricelistId === null ? null : String(u.odooPricelistId),
       });
     }
@@ -251,21 +253,22 @@ export async function reconciliar(): Promise<Reconciliacion> {
 }
 
 async function leerTodosLosClientes(): Promise<PartnerOdoo[]> {
-  const out: PartnerOdoo[] = [];
+  const out: Array<Omit<PartnerOdoo, 'tarifa'>> = [];
   for (let offset = 0; ; offset += 500) {
-    const lote = await searchRead<PartnerOdoo>(
+    const lote = await searchRead<Omit<PartnerOdoo, 'tarifa'>>(
       'res.partner',
       [
         ['customer_rank', '>', 0],
         ['active', '=', true],
       ],
-      ['id', 'name', 'email', 'property_product_pricelist'],
+      ['id', 'name', 'email'],
       { limit: 500, offset, order: 'id asc' },
     );
     out.push(...lote);
     if (lote.length < 500) break;
   }
-  return out;
+  const tarifas = await leerTarifas(out.map((p) => p.id));
+  return out.map((p) => ({ ...p, tarifa: tarifas.get(p.id) ?? false }));
 }
 
 /**
@@ -277,14 +280,15 @@ async function leerTodosLosClientes(): Promise<PartnerOdoo[]> {
 export async function resincronizarUno(
   odooPartnerId: number,
 ): Promise<{ ok: boolean; mensaje: string }> {
-  const rows = await searchRead<PartnerOdoo & { customer_rank: number; phone: string | false }>(
+  const rows = await searchRead<Omit<PartnerOdoo, 'tarifa'> & { customer_rank: number; phone: string | false }>(
     'res.partner',
     [['id', '=', odooPartnerId]],
-    ['id', 'name', 'email', 'phone', 'customer_rank', 'property_product_pricelist'],
+    ['id', 'name', 'email', 'phone', 'customer_rank'],
   );
 
   const p = rows[0];
   if (!p) return { ok: false, mensaje: `El partner ${odooPartnerId} no existe en Odoo.` };
+  const tarifa = (await leerTarifas([p.id])).get(p.id);
 
   const crudo = p.email ? String(p.email) : '';
   if (!crudo.trim()) return { ok: false, mensaje: 'El partner no tiene correo: no puede tener cuenta.' };
@@ -304,13 +308,13 @@ export async function resincronizarUno(
     };
   }
 
-  const pricelistId = p.property_product_pricelist ? p.property_product_pricelist[0] : null;
+  const pricelistId = idTarifa(tarifa);
   const datos = {
     email,
     fullName: p.name.trim(),
     phone: p.phone ? String(p.phone).trim() || null : null,
     odooPricelistId: pricelistId,
-    odooPricelistName: p.property_product_pricelist ? p.property_product_pricelist[1] : null,
+    odooPricelistName: nombreTarifa(tarifa),
     isCustomer: (p.customer_rank ?? 0) > 0,
     syncStatus: 'SYNCED' as const,
     syncedAt: new Date(),

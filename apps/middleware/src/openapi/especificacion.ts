@@ -10,8 +10,10 @@ import {
   publicInvoiceListQuerySchema,
   publicInvoiceListResponseSchema,
   publicInvoicePdfLinkResponseSchema,
+  pricingQuerySchema,
   printerSearchQuerySchema,
   publicCompatibleResponseSchema,
+  publicPricingResponseSchema,
   publicPrinterSearchResponseSchema,
   type ErrorCode,
 } from '@asta/shared-types';
@@ -107,6 +109,7 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   INVALID_API_KEY: 'La key no existe, está revocada o caducada, su usuario está desactivado, o se usa desde una IP no permitida. Por seguridad no se distingue cuál.',
   INSUFFICIENT_SCOPE: 'La key no tiene el permiso que exige este endpoint. `required` indica cuál. Crea una key con ese permiso.',
   PARTNER_ID_NOT_ALLOWED: 'La petición lleva un `partner_id` que no es el tuyo. No hace falta enviarlo: el cliente sale siempre de la API key.',
+  PRICELIST_NOT_ALLOWED: 'La petición intenta elegir tarifa o compañía (`pricelist`, `tarifa`, `company_id`…). No se puede: la tarifa sale siempre de tu cuenta. Quita el parámetro.',
   INVALID_QUERY: 'Un parámetro no es válido. `message` explica cuál.',
   INVALID_INVOICE_ID: 'El identificador de factura no es un número entero positivo.',
   INVOICE_NOT_FOUND: 'La factura no existe o no es tuya. Es la misma respuesta en los dos casos, a propósito.',
@@ -115,6 +118,7 @@ export const CODIGOS_PUBLICOS: Partial<Record<ErrorCode, string>> = {
   LINK_EXPIRED: 'El enlace de descarga caducó. Pide uno nuevo.',
   PRINTER_NOT_FOUND: 'La impresora no existe, se retiró del catálogo o todavía no tiene compatibilidades verificadas. Vuelve a buscarla con `/recommender/printers`.',
   INVENTORY_UNAVAILABLE: 'Tu cuenta no tiene un almacén de venta asignado. Contacta con tu vendedor.',
+  PRICELIST_UNAVAILABLE: 'Tu cuenta no tiene una tarifa de precios asignada. Contacta con tu vendedor.',
   SEARCH_NOT_FOUND: 'La búsqueda no existe, no es tuya o pasaron más de 30 minutos. Es la misma respuesta en los tres casos, a propósito.',
   RATE_LIMITED: 'Superaste el límite de peticiones. Espera los segundos que indica `Retry-After`.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos. `message` explica cuáles.',
@@ -169,8 +173,13 @@ export interface EjemploPeticion {
  * se pasa, se usan los del propio ejemplo. El test pasa los de sus fixtures.
  */
 export function urlDeEjemplo(base: string, e: EjemploPeticion, valores = e.valores ?? {}): string {
-  const ruta = e.ruta.replace(/\{(\w+)\}/g, (_, k: string) => encodeURIComponent(valores[k] ?? `{${k}}`));
-  const qs = e.query ? `?${new URLSearchParams(e.query).toString()}` : '';
+  const sustituir = (texto: string, codificar: (v: string) => string) =>
+    texto.replace(/\{(\w+)\}/g, (_, k: string) => (valores[k] === undefined ? `{${k}}` : codificar(valores[k])));
+  const ruta = sustituir(e.ruta, encodeURIComponent);
+  // También en la query (#31): el SKU del ejemplo de `/pricing` tiene que ser uno
+  // que exista en la tarifa del cliente del test, no uno fijado aquí.
+  const query = e.query ? Object.fromEntries(Object.entries(e.query).map(([k, v]) => [k, sustituir(v, (x) => x)])) : undefined;
+  const qs = query ? `?${new URLSearchParams(query).toString()}` : '';
   return `${base}${ruta}${qs}`;
 }
 
@@ -316,7 +325,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'listarInventario',
     resumen: 'Consultar existencias',
     descripcion:
-      'Productos a la venta con su existencia en el almacén que te vende, descontando lo ya reservado. Se publica como estado, no como cantidad. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
+      'Productos a la venta con su existencia en el almacén que te vende, descontando lo ya reservado. Se publica como estado, no como cantidad. Sin precios: pídelos a `/pricing` con el `sku`. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
     scope: 'INVENTORY_READ',
     query: inventoryQuerySchema,
     exito: {
@@ -329,6 +338,29 @@ export const OPERACIONES: Operacion[] = [
     },
     errores: ['INVALID_QUERY', 'INVENTORY_UNAVAILABLE', ...ERRORES_CON_KEY],
     ejemplo: { ruta: '/api/v1/public/inventory', query: { q: 'toner', soloDisponibles: 'true' }, conKey: true },
+  },
+  {
+    metodo: 'get',
+    ruta: '/api/v1/public/pricing',
+    id: 'consultarPrecios',
+    resumen: 'Consultar precios',
+    descripcion:
+      'El precio unitario de tu tarifa para hasta 100 referencias a la vez, sin impuestos. La tarifa sale de tu cuenta: no se puede elegir, y mandar un parámetro que lo intente responde `400 PRICELIST_NOT_ALLOWED`. Cuando una referencia no tiene precio, `precio` es `null` y `motivo` dice por qué: nunca se publica un precio 0. Las respuestas pueden venir de una cache de hasta 5 minutos (`meta.desdeCache`).',
+    scope: 'PRICING_READ',
+    query: pricingQuerySchema,
+    exito: {
+      schema: publicPricingResponseSchema,
+      descripcion: 'Una entrada por referencia pedida, en el mismo orden.',
+      ejemploRespuesta: {
+        data: [
+          { sku: 'TON-0001', productId: 2001, precio: 84.5, motivo: 'ok' },
+          { sku: 'TON-9999', productId: null, precio: null, motivo: 'sku_no_encontrado' },
+        ],
+        meta: { moneda: 'USD', desdeCache: false },
+      },
+    },
+    errores: ['INVALID_QUERY', 'PRICELIST_NOT_ALLOWED', 'PRICELIST_UNAVAILABLE', ...ERRORES_CON_KEY],
+    ejemplo: { ruta: '/api/v1/public/pricing', query: { skus: '{sku}' }, valores: { sku: 'TON-0001' }, conKey: true },
   },
   {
     metodo: 'get',
@@ -353,7 +385,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'productosCompatibles',
     resumen: 'Productos compatibles con una impresora',
     descripcion:
-      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: llegarán con el endpoint de precios. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.',
+      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: pídelos a `/pricing` con el `sku` de cada producto. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.',
     scope: 'RECOMMENDER_READ',
     parametrosRuta: [{ nombre: 'printerId', descripcion: 'El `id` de la impresora, de `/recommender/printers`.', esquema: { type: 'integer', minimum: 1 } }],
     query: compatibleQuerySchema,
@@ -398,6 +430,7 @@ export const OPERACIONES: Operacion[] = [
 
 function etiquetaDe(ruta: string): string {
   if (ruta.includes('/recommender/')) return 'Recomendador';
+  if (ruta.includes('/pricing')) return 'Precios';
   return ruta.includes('inventory') ? 'Inventario' : 'Facturas';
 }
 
@@ -494,6 +527,7 @@ export function construirOpenApi(base = 'https://{servidor}'): Json {
     tags: [
       { name: 'Facturas', description: 'Tus facturas y sus PDF.' },
       { name: 'Inventario', description: 'Existencias del catálogo.' },
+      { name: 'Precios', description: 'Los precios de tu tarifa.' },
       { name: 'Recomendador', description: 'Qué producto le sirve a una impresora.' },
     ],
     security: [{ ApiKey: [] }],

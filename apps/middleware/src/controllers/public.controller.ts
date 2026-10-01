@@ -6,6 +6,7 @@ import {
   compatibleQuerySchema,
   inventoryQuerySchema,
   printerIdParamSchema,
+  pricingQuerySchema,
   printerSearchQuerySchema,
   publicInvoiceListQuerySchema,
 } from '@asta/shared-types';
@@ -22,6 +23,7 @@ import {
   listarInventario,
 } from '../services/inventory.service.js';
 import { buscarPdfDeFactura, PdfNoDisponible } from '../services/invoicePdf.service.js';
+import { parametrosDeTarifa, preciosDe, TarifaForzada, tarifaDelCliente } from '../services/pricing.service.js';
 import { firmarEnlace } from '../services/enlacesFirmados.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
@@ -246,6 +248,55 @@ export async function listarInventarioHandler(
     const { pagina, porPagina } = query.data;
     const { items, total, desdeCache } = await listarInventario(almacen, query.data);
     res.json({ data: items, meta: { pagina, porPagina, total, desdeCache } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * `GET /api/v1/public/pricing` (#31)
+ *
+ * La tarifa sale del partner del token (ver `pricing.service.ts`). Un parámetro
+ * que intente elegirla —o elegir compañía— se rechaza ANTES de leer nada, y se
+ * audita: no se ignora en silencio, por lo mismo que `partner_id` en
+ * `scopeToOwnPartner`.
+ */
+export async function preciosHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const forzados = [...parametrosDeTarifa(req.query), ...parametrosDeTarifa(req.body)];
+    if (forzados.length > 0) {
+      recordAudit({
+        action: 'access.denied.pricelist',
+        ...auditContext(req),
+        targetType: 'product.pricelist',
+        // Lo que pidió, recortado: es texto del cliente y la columna es corta.
+        targetId: String(req.query[forzados[0]] ?? req.body?.[forzados[0]] ?? '').slice(0, 64),
+        metadata: {
+          via: 'api_key',
+          apiKeyId: req.identity?.apiKeyId ?? null,
+          partnerDelToken: partnerDelToken(req),
+          parametros: forzados,
+          path: req.path,
+        },
+      });
+      throw new TarifaForzada(forzados);
+    }
+
+    const query = pricingQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: z.prettifyError(query.error) },
+      });
+      return;
+    }
+
+    const tarifa = await tarifaDelCliente(partnerDelToken(req), req.identity?.odooPricelistId ?? null, req.log);
+    const { precios, desdeCache } = await preciosDe(tarifa, query.data.skus, req.log);
+    res.json({ data: precios, meta: { moneda: tarifa.moneda, desdeCache } });
   } catch (error) {
     next(error);
   }
