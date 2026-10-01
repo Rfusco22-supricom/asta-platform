@@ -15,6 +15,12 @@ import pino from 'pino';
  * un log es un fichero que se copia, se comparte en un ticket y se sube a un
  * servicio de terceros sin pensarlo.
  *
+ * Y las de la RESPUESTA también: `pino-http` registra `res.headers`, y el login
+ * y `/refresh` responden con `set-cookie: asta_rt=<token>`, el token de refresco
+ * de 30 días. Hasta el 2026-10-01 solo se tapaban las de la petición, y cada
+ * login dejaba en el log un token con el que entrar como esa persona durante un
+ * mes. Lo vigila `logSesion.test.ts`.
+ *
  * El cliente de Odoo, además, NO registra los argumentos de las llamadas: el
  * tercer parámetro de `execute_kw` es la API key del usuario de servicio, y los
  * dominios llevan datos de clientes reales.
@@ -28,6 +34,7 @@ export const logger = pino({
       'req.headers["x-api-key"]',
       'req.headers.cookie',
       'req.headers["x-dev-odoo-user-id"]',
+      'res.headers["set-cookie"]',
     ],
     remove: true,
   },
