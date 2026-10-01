@@ -36,6 +36,19 @@ import { verPedido } from './orders.service.js';
  * pedida (`INSUFFICIENT_STOCK`). Cualquier fallo rechaza el pedido ENTERO, sin
  * escribir nada en Odoo: decidido en #33, para que un cliente no reciba medio
  * pedido sin darse cuenta.
+ *
+ * La existencia se comprueba, pero un borrador no la reserva: dos pedidos
+ * simultáneos pueden pasar los dos. Es orientativa, y la confirmación interna
+ * es la que decide.
+ *
+ * ── Lo que no se sabe cómo acabó ────────────────────────────────────────────
+ *
+ * Si Odoo RECHAZA el `create`, no se creó nada y la misma clave se reintenta.
+ * Pero un tiempo agotado o una conexión cortada pueden haber creado el pedido
+ * igualmente: entonces la clave se queda EN_CURSO y, pasado un margen, el
+ * reintento busca en Odoo el pedido de ese cliente con ese `origin` antes de
+ * crear otro (`reservarClave`). Sin esto, la idempotencia fallaba justo en el
+ * caso para el que existe.
  */
 
 /** ¿Está encendida la escritura? Getter, no constante: un test lo enciende sin recargar módulos. */
@@ -62,6 +75,12 @@ export interface PedidoParaOdoo {
 /** Lo único de este fichero que escribe en Odoo. Se sustituye en las pruebas. */
 export interface EscritorPedidos {
   crear(p: PedidoParaOdoo): Promise<number>;
+  /**
+   * El pedido que ya existe en Odoo para ese cliente con ese `origin`, si lo
+   * hay. Para conciliar después de un fallo AMBIGUO (ver `reservarClave`):
+   * `origin` lleva la `Idempotency-Key`, y con el cliente identifica el pedido.
+   */
+  buscar(partnerId: number, origen: string): Promise<number | null>;
 }
 
 /**
@@ -88,7 +107,45 @@ export const escritorOdoo: EscritorPedidos = {
       { context: { allowed_company_ids: [p.companyId] } },
     );
   },
+  async buscar(partnerId, origen) {
+    // Como `verPedido`: sin contexto de compañía.
+    const [f] = await searchRead<{ id: number }>('sale.order', [['partner_id', '=', partnerId], ['origin', '=', origen]], ['id'], {
+      limit: 1,
+      order: 'id asc',
+    });
+    return f?.id ?? null;
+  },
 };
+
+/** El `origin` con que se marca en Odoo un pedido creado por la API. */
+export const origenDe = (clave: string) => `API Asta (${clave})`;
+
+/**
+ * Cuánto hay que esperar, tras un fallo ambiguo, antes de conciliar con Odoo.
+ *
+ * El tiempo de espera del cliente XML-RPC es LOCAL (`ODOO_TIMEOUT_MS`): el
+ * middleware deja de esperar, pero la petición sigue en Odoo y puede terminar
+ * creando el pedido. Buscar en Odoo justo después no prueba nada, porque el
+ * pedido puede aparecer un poco más tarde. El margen tiene que superar lo que
+ * Odoo deja vivir una petición (en Odoo.sh, del orden de dos minutos).
+ */
+export function margenConciliacionMs(): number {
+  const s = Number(process.env.API_PEDIDOS_MARGEN_CONCILIACION_S ?? 300);
+  return (Number.isFinite(s) && s >= 0 ? s : 300) * 1000;
+}
+
+/**
+ * ¿Es un NO de Odoo, o algo que no se sabe cómo acabó?
+ *
+ * Un fallo XML-RPC con `faultCode` es Odoo contestando que rechaza el `create`:
+ * no se creó nada y reintentar es seguro. Cualquier otra cosa —tiempo agotado,
+ * conexión cortada después de enviar— puede haber creado el pedido en Odoo.
+ */
+export function esRechazoDeOdoo(error: unknown): boolean {
+  const causa = error && typeof error === 'object' ? (error as { cause?: unknown }).cause : undefined;
+  const conFault = (e: unknown) => Boolean(e && typeof e === 'object' && 'faultCode' in e);
+  return conFault(error) || conFault(causa);
+}
 
 let escritor: EscritorPedidos = escritorOdoo;
 
@@ -123,7 +180,11 @@ const claveReutilizada = () =>
   new ErrorPedido(409, 'IDEMPOTENCY_KEY_REUSED', 'Esa Idempotency-Key ya se usó con otro pedido. Usa una nueva para cada pedido distinto.');
 
 const enCurso = () =>
-  new ErrorPedido(409, 'CONFLICT', 'Ya hay una petición en curso con esa Idempotency-Key. Espera unos segundos y reintenta con la misma.');
+  new ErrorPedido(
+    409,
+    'CONFLICT',
+    'Ya hay una petición en curso con esa Idempotency-Key, o la anterior no llegó a confirmarse. Reintenta con la MISMA clave en unos minutos: si el pedido se creó, recibirás ese; si no, se creará. No uses otra clave o podrías duplicarlo.',
+  );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Crear
@@ -163,8 +224,10 @@ export async function crearPedido(ctx: ContextoPedido, cuerpo: CrearPedidoBody, 
   if ('repetido' in peticion) return peticion.repetido;
 
   let orderId: number | null = null;
+  let enOdoo = false;
   try {
     const { lineas, tarifa, almacen } = await validar(ctx, cuerpo);
+    enOdoo = true;
     orderId = await escritor.crear({
       partnerId: ctx.partnerId,
       companyId: tarifa.companyId,
@@ -172,7 +235,7 @@ export async function crearPedido(ctx: ContextoPedido, cuerpo: CrearPedidoBody, 
       warehouseId: almacen.warehouseId,
       lineas,
       referenciaCliente: cuerpo.referenciaCliente ?? null,
-      origen: `API Asta (${clave})`,
+      origen: origenDe(clave),
     });
     // CREADO antes de leerlo: desde aquí el pedido existe en Odoo, y un reintento
     // con la misma clave tiene que devolver ESTE, nunca crear otro.
@@ -181,10 +244,15 @@ export async function crearPedido(ctx: ContextoPedido, cuerpo: CrearPedidoBody, 
     await prisma.apiOrderRequest.update({ where: { id: peticion.id }, data: { respuesta: respuesta as unknown as Prisma.InputJsonValue } });
     return { status: 201, cuerpo: respuesta };
   } catch (error) {
-    if (orderId === null) {
-      // No se llegó a crear nada: la misma clave puede reintentarse.
+    if (orderId === null && (!enOdoo || esRechazoDeOdoo(error))) {
+      // Seguro que no se creó nada: o no se llegó a llamar a Odoo, o Odoo dijo
+      // que no. La misma clave puede reintentarse.
       await prisma.apiOrderRequest.update({ where: { id: peticion.id }, data: { estado: 'FALLIDO' } }).catch(() => {});
     }
+    // Si no, NO se marca FALLIDO: un tiempo agotado o una conexión cortada pueden
+    // haber creado el pedido en Odoo. La fila se queda EN_CURSO y el reintento
+    // concilia con Odoo pasado el margen (ver `reservarClave`). Marcarla FALLIDO
+    // es lo que dejaba crear un segundo pedido con la misma clave.
     throw error;
   }
 }
@@ -232,6 +300,29 @@ async function reservarClave(
     // De dos reintentos simultáneos, solo uno gana la fila.
     const { count } = await prisma.apiOrderRequest.updateMany({ where: { id: previa.id, estado: 'FALLIDO' }, data: { estado: 'EN_CURSO' } });
     if (count === 1) return { id: previa.id };
+  }
+  if (previa.estado === 'EN_CURSO' && Date.now() - previa.updatedAt.getTime() >= margenConciliacionMs()) {
+    /*
+     * EN_CURSO desde hace más que el margen: el intento anterior acabó sin saber
+     * si Odoo creó el pedido —tiempo agotado, conexión cortada, el proceso se
+     * cayó entre crearlo y apuntarlo—. Sin esto la clave respondía «en curso»
+     * para siempre, y el cliente acababa usando otra y duplicando el pedido.
+     *
+     * Se concilia con Odoo. Primero se reclama la fila tocando `updatedAt`, para
+     * que de dos reintentos simultáneos concilie solo uno.
+     */
+    const { count } = await prisma.apiOrderRequest.updateMany({
+      where: { id: previa.id, estado: 'EN_CURSO', updatedAt: previa.updatedAt },
+      data: { updatedAt: new Date() },
+    });
+    if (count === 1) {
+      const existente = await escritor.buscar(ctx.partnerId, origenDe(clave));
+      if (existente === null) return { id: previa.id };
+      await prisma.apiOrderRequest.update({ where: { id: previa.id }, data: { estado: 'CREADO', odooOrderId: existente } });
+      const respuesta = await respuestaDe(ctx.partnerId, existente);
+      await prisma.apiOrderRequest.update({ where: { id: previa.id }, data: { respuesta: respuesta as unknown as Prisma.InputJsonValue } });
+      return { repetido: { status: 200, cuerpo: respuesta } };
+    }
   }
   throw enCurso();
 }

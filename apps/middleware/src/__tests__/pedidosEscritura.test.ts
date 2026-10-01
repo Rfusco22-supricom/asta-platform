@@ -9,7 +9,7 @@ import { issueApiKey } from '../services/apiKey.service.js';
 import { almacenDelCliente } from '../services/inventory.service.js';
 import { leerTarifasConCompania } from '../services/tarifas.service.js';
 import { vaciarCachesPrecios } from '../services/pricing.service.js';
-import { usarEscritorPedidos, type PedidoParaOdoo } from '../services/pedidosEscritura.service.js';
+import { huellaPedido, origenDe, usarEscritorPedidos, type PedidoParaOdoo } from '../services/pedidosEscritura.service.js';
 import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
@@ -38,7 +38,18 @@ let restaurarEscritor: () => void;
 
 /** Lo que recibió el escritor simulado, en orden. */
 const pedidosAOdoo: PedidoParaOdoo[] = [];
-let fallarEscritor = false;
+/**
+ * Cómo acaba el `create` simulado:
+ *   no                 se crea y responde
+ *   rechazo            Odoo dice que no (XML-RPC con faultCode): no se crea nada
+ *   ambiguo-creado     se crea en Odoo, pero el middleware deja de esperar
+ *                      (tiempo agotado local, conexión cortada)
+ *   ambiguo-sin-crear  lo mismo, pero Odoo no llegó a crearlo
+ */
+let finalDelCreate: 'no' | 'rechazo' | 'ambiguo-creado' | 'ambiguo-sin-crear' = 'no';
+/** Lo que «existe en Odoo»: `${partnerId}|${origin}` -> id. Lo lee `buscar`. */
+const creadosEnOdoo = new Map<string, number>();
+const tiempoAgotado = () => new Error('Odoo RPC timeout tras 30000 ms (execute_kw)');
 
 interface Cliente {
   partnerId: number;
@@ -137,8 +148,15 @@ beforeAll(async () => {
   restaurarEscritor = usarEscritorPedidos({
     async crear(p) {
       pedidosAOdoo.push(p);
-      if (fallarEscritor) throw new Error('Odoo rechazó el create (simulado)');
-      return p.partnerId === A.partnerId ? A.borrador : B.borrador;
+      if (finalDelCreate === 'rechazo') throw Object.assign(new Error('Odoo rechazó el create (simulado)'), { faultCode: 2 });
+      if (finalDelCreate === 'ambiguo-sin-crear') throw tiempoAgotado();
+      const id = p.partnerId === A.partnerId ? A.borrador : B.borrador;
+      creadosEnOdoo.set(`${p.partnerId}|${p.origen}`, id);
+      if (finalDelCreate === 'ambiguo-creado') throw tiempoAgotado();
+      return id;
+    },
+    async buscar(partnerId, origen) {
+      return creadosEnOdoo.get(`${partnerId}|${origen}`) ?? null;
     },
   });
 
@@ -181,7 +199,8 @@ beforeAll(async () => {
 }, 180_000);
 
 beforeEach(() => {
-  fallarEscritor = false;
+  finalDelCreate = 'no';
+  delete process.env.API_PEDIDOS_MARGEN_CONCILIACION_S;
   vaciarCachesPrecios();
 });
 
@@ -190,8 +209,11 @@ afterAll(async () => {
   quitarSink?.();
   restaurarEscritor?.();
   await esperarBitacora(INICIO);
-  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
-  await prisma.apiOrderRequest.deleteMany({ where: { createdAt: { gte: INICIO } } });
+  // Solo lo de SUS keys, no «todo desde que empecé»: los ficheros corren en
+  // paralelo, y borrar por tiempo le quitaba a otro test (precios.test.ts, que
+  // cuenta las filas de su key) las que estaba contando.
+  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO }, apiKeyId: { in: keysCreadas } } });
+  await prisma.apiOrderRequest.deleteMany({ where: { createdAt: { gte: INICIO }, apiKeyId: { in: keysCreadas } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   await new Promise<void>((resolve) => server?.close(() => resolve()));
@@ -363,14 +385,84 @@ describe('#33 · Idempotency-Key, acotada por cliente', () => {
     expect(pedidosAOdoo.length).toBe(antes + 1);
   });
 
-  it('si Odoo falla al crear, la misma clave se puede reintentar', async () => {
+  it('si Odoo RECHAZA el create, la misma clave se puede reintentar', async () => {
     const clave = claveNueva();
-    fallarEscritor = true;
+    finalDelCreate = 'rechazo';
     const fallida = await post(pedidoValido(), A.key, clave);
     expect(fallida.status).toBeGreaterThanOrEqual(500);
-    fallarEscritor = false;
+    finalDelCreate = 'no';
     const reintento = await post(pedidoValido(), A.key, clave);
     expect(reintento.status).toBe(201);
+  });
+
+  /*
+   * Los fallos AMBIGUOS. El tiempo de espera del cliente XML-RPC es local: el
+   * middleware deja de esperar, pero Odoo puede terminar creando el pedido. Antes
+   * se marcaba FALLIDO y el reintento con la misma clave creaba un SEGUNDO pedido.
+   */
+  it('tiempo agotado con el pedido ya creado en Odoo: el reintento devuelve ESE, nunca crea otro', async () => {
+    const clave = claveNueva();
+    finalDelCreate = 'ambiguo-creado';
+    expect((await post(pedidoValido(), A.key, clave)).status).toBeGreaterThanOrEqual(500);
+    const creates = pedidosAOdoo.length;
+    finalDelCreate = 'no';
+
+    // Dentro del margen, «en curso»: buscar en Odoo todavía no probaría nada.
+    process.env.API_PEDIDOS_MARGEN_CONCILIACION_S = '600';
+    const pronto = await post(pedidoValido(), A.key, clave);
+    expect(pronto.status).toBe(409);
+    expect(pronto.body?.error?.message).toMatch(/MISMA clave/);
+
+    // Pasado el margen, se concilia con Odoo y aparece el que se creó.
+    process.env.API_PEDIDOS_MARGEN_CONCILIACION_S = '0';
+    const tarde = await post(pedidoValido(), A.key, clave);
+    expect(tarde.status).toBe(200);
+    expect(tarde.body?.data?.id).toBe(A.borrador);
+    expect(pedidosAOdoo.length).toBe(creates);
+  });
+
+  it('tiempo agotado sin que Odoo lo creara: pasado el margen, el reintento lo crea', async () => {
+    const clave = claveNueva();
+    finalDelCreate = 'ambiguo-sin-crear';
+    expect((await post(pedidoValido(), A.key, clave)).status).toBeGreaterThanOrEqual(500);
+    const creates = pedidosAOdoo.length;
+    finalDelCreate = 'no';
+    process.env.API_PEDIDOS_MARGEN_CONCILIACION_S = '0';
+
+    const reintento = await post(pedidoValido(), A.key, clave);
+    expect(reintento.status).toBe(201);
+    expect(pedidosAOdoo.length).toBe(creates + 1);
+  });
+
+  it('el proceso se cayó con la fila EN_CURSO y el pedido creado: no se queda «en curso» para siempre', async () => {
+    const clave = claveNueva();
+    const cuerpo = pedidoValido();
+    await prisma.apiOrderRequest.create({
+      data: { odooPartnerId: A.partnerId, idempotencyKey: clave, requestHash: huellaPedido(cuerpo), apiKeyId: A.keyId },
+    });
+    creadosEnOdoo.set(`${A.partnerId}|${origenDe(clave)}`, A.borrador);
+    const creates = pedidosAOdoo.length;
+    process.env.API_PEDIDOS_MARGEN_CONCILIACION_S = '0';
+
+    const r = await post(cuerpo, A.key, clave);
+    expect(r.status).toBe(200);
+    expect(r.body?.data?.id).toBe(A.borrador);
+    expect(pedidosAOdoo.length).toBe(creates);
+    expect((await prisma.apiOrderRequest.findFirstOrThrow({ where: { odooPartnerId: A.partnerId, idempotencyKey: clave } })).estado).toBe('CREADO');
+  });
+
+  it('la conciliación busca SOLO el pedido de ese cliente con esa clave', async () => {
+    // Un pedido de B con la misma clave en Odoo no puede servirle a A.
+    const clave = claveNueva();
+    finalDelCreate = 'ambiguo-sin-crear';
+    expect((await post(pedidoValido(), A.key, clave)).status).toBeGreaterThanOrEqual(500);
+    creadosEnOdoo.set(`${B.partnerId}|${origenDe(clave)}`, B.borrador);
+    finalDelCreate = 'no';
+    process.env.API_PEDIDOS_MARGEN_CONCILIACION_S = '0';
+
+    const r = await post(pedidoValido(), A.key, clave);
+    expect(r.status).toBe(201);
+    expect(r.body?.data?.id).toBe(A.borrador);
   });
 });
 
