@@ -17,6 +17,8 @@ import {
   ContrasenaDebil,
   InvitacionInvalida,
 } from '../services/invitation.service.js';
+import { ReseteoInvalido, restablecerContrasena, solicitarReseteo, validarReseteo } from '../services/reseteo.service.js';
+import { env } from '../config/env.js';
 
 export const authRouter = Router();
 
@@ -112,6 +114,68 @@ authRouter.post('/invitation/:token', limiteInvitacion, async (req, res, next) =
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: error.message, required: error.motivos },
       });
+      return;
+    }
+    next(error);
+  }
+});
+
+/**
+ * «Olvidé mi contraseña» (#53). Públicas, como las invitaciones.
+ *
+ * `forgot-password` responde SIEMPRE lo mismo y ANTES de hacer nada: buscar la
+ * cuenta, crear el token y enviar el correo van después, sin esperar. Así ni el
+ * texto ni el tiempo de respuesta dicen si el correo tiene cuenta.
+ *
+ * Límite propio y estricto: cada petición puede acabar en un correo a una
+ * dirección que escribe quien llama, y sin freno el formulario sería un cañón
+ * de spam contra terceros. El servicio limita además por dirección.
+ */
+const limiteOlvido = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Demasiadas peticiones. Espera un rato.' } },
+});
+
+const MENSAJE_OLVIDO = 'Si esa dirección tiene cuenta, recibirás un correo con un enlace para elegir una contraseña nueva.';
+
+authRouter.post('/forgot-password', limiteOlvido, (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email : '';
+  if (email.trim()) {
+    void solicitarReseteo(email, env().WEB_APP_ORIGIN, req.ip).catch((error: unknown) => {
+      // Sin el correo ni el token: solo que falló.
+      req.log?.error({ err: error instanceof Error ? error.name : 'desconocido' }, 'fallo al solicitar el reseteo');
+    });
+  }
+  res.json({ data: { ok: true, mensaje: MENSAJE_OLVIDO } });
+});
+
+authRouter.get('/reset-password/:token', limiteInvitacion, async (req, res, next) => {
+  try {
+    res.json({ data: await validarReseteo(String(req.params.token)) });
+  } catch (error) {
+    if (error instanceof ReseteoInvalido) {
+      res.status(400).json({ error: { code: 'NOT_FOUND', message: error.message } });
+      return;
+    }
+    next(error);
+  }
+});
+
+authRouter.post('/reset-password/:token', limiteInvitacion, async (req, res, next) => {
+  try {
+    const contrasena = String(req.body?.password ?? '');
+    const r = await restablecerContrasena(String(req.params.token), contrasena, req.ip);
+    res.json({ data: { ok: true, email: r.email } });
+  } catch (error) {
+    if (error instanceof ReseteoInvalido) {
+      res.status(400).json({ error: { code: 'NOT_FOUND', message: error.message } });
+      return;
+    }
+    if (error instanceof ContrasenaDebil) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: error.message, required: error.motivos } });
       return;
     }
     next(error);

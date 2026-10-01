@@ -4,7 +4,8 @@ import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
-import { crearInvitacion, listarSinAcceso, InvitacionInvalida } from '../services/invitation.service.js';
+import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS } from '../services/invitation.service.js';
+import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { reporte } from '../services/reportes.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
@@ -254,19 +255,24 @@ adminRouter.get('/users/without-access', autorizar('admin.usuarios.gestionar'), 
 /**
  * Genera un enlace de invitación.
  *
- * Devuelve la URL para que el administrador la entregue como pueda mientras no
- * haya SMTP. El enlace es un secreto de un solo uso: se muestra una vez y no se
- * puede volver a consultar.
+ * Con SMTP configurado (#53) se envía por correo. La URL se devuelve SIEMPRE,
+ * para que el administrador pueda entregarla a mano si el correo no llega. Es
+ * un secreto de un solo uso: se muestra una vez y no se puede volver a consultar.
  */
 adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
   try {
     const base = process.env.WEB_APP_ORIGIN ?? 'http://localhost:3000';
     const inv = await crearInvitacion(String(req.params.userId), base, req.identity.appUserId, req.ip);
+    const { enviado } = await enviarCorreo(
+      plantillaInvitacion({ para: inv.usuario.email, nombre: inv.usuario.nombre, url: inv.url, dias: INVITACION_DIAS }),
+    );
     res.json({
-      data: inv,
+      data: { ...inv, enviadoPorCorreo: enviado },
       meta: {
-        entrega: 'manual',
-        nota: 'Sin SMTP configurado: copia el enlace y entrégalo tú. Caduca en 7 días y solo sirve una vez.',
+        entrega: enviado ? 'correo' : 'manual',
+        nota: enviado
+          ? 'Enviada por correo. El enlace también está aquí por si no llega. Caduca en 7 días y solo sirve una vez.'
+          : 'No se envió por correo: copia el enlace y entrégalo tú. Caduca en 7 días y solo sirve una vez.',
       },
     });
   } catch (error) {

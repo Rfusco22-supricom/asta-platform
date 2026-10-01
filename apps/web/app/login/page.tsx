@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { destinoPara } from '@/lib/rutas';
@@ -14,11 +15,11 @@ import { setSession } from '@/lib/session';
 const MIDDLEWARE_URL = process.env.MIDDLEWARE_URL ?? 'http://localhost:3001';
 
 interface Props {
-  searchParams: Promise<{ error?: string; from?: string }>;
+  searchParams: Promise<{ error?: string; from?: string; aviso?: string; bienvenida?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { error } = await searchParams;
+  const { error, aviso, bienvenida } = await searchParams;
 
   async function entrar(formData: FormData) {
     'use server';
@@ -119,6 +120,15 @@ export default async function LoginPage({ searchParams }: Props) {
         <h1>ASTA · Panel de vendedores</h1>
         <p>Cartera y facturación, en vivo desde Odoo.</p>
 
+        {/* Al volver de elegir contraseña, por invitación o por reseteo (#53). */}
+        {!error && (aviso === 'restablecida' || bienvenida) && (
+          <div className="notice" style={{ marginBottom: 18, padding: '12px 14px', borderColor: 'var(--positive)' }}>
+            <p style={{ margin: 0 }}>
+              {aviso === 'restablecida' ? 'Contraseña cambiada. Entra con la nueva.' : 'Contraseña guardada. Ya puedes entrar.'}
+            </p>
+          </div>
+        )}
+
         {error && (
           <div className="notice error" style={{ marginBottom: 18, padding: '12px 14px' }}>
             <p style={{ margin: 0 }}>{MENSAJES[error] ?? 'No se pudo iniciar sesión.'}</p>
@@ -154,6 +164,10 @@ export default async function LoginPage({ searchParams }: Props) {
           <button type="submit" className="btn">
             Entrar
           </button>
+
+          <p style={{ margin: '12px 0 0', fontSize: 13.5 }}>
+            <Link href="/olvide-contrasena">¿Olvidaste tu contraseña?</Link>
+          </p>
 
           {/*
             Sin esto, un vendedor con la contraseña del panel y otro con la de
