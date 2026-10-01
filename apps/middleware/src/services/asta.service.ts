@@ -17,16 +17,16 @@ import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
  * han comprado ASTA ni una vez**, con 1.805.265 yéndose a HP, Canon, Epson y
  * Brother. Esa es la lista, y va ordenada por lo que cada uno se lleva fuera.
  *
- * ── Por qué por listas de producto y no agrupando por marca ──────────────────
+ * ── Por qué una consulta por marca y no agrupando por marca ──────────────────
  *
  * Lo natural sería un `read_group` de `account.move.line` por
  * `product_id.product_tmpl_id.spiff_brand_id`. Odoo no lo permite: agrupar por
  * un campo a dos saltos revienta el ORM con un traceback.
  *
- * Así que se resuelve en dos pasos: se piden los ids de producto de las
- * categorías donde ASTA compite, se parten en los de ASTA y los del resto, y se
- * agrupan las líneas de factura con `product_id in [...]`. Dos consultas por
- * lado en vez de una, y funciona.
+ * FILTRAR por ese campo sí funciona. Así que se agrupa por cliente dos veces:
+ * una con la marca igual a ASTA y otra con la marca distinta, las dos dentro de
+ * las categorías donde ASTA compite. Ver `gastoPorCliente` para saber por qué
+ * el filtro va por la ruta y no con una lista de ids de producto.
  *
  * ── Lo que NO se mide ────────────────────────────────────────────────────────
  *
@@ -71,24 +71,30 @@ export interface ResumenAsta {
 }
 
 /**
- * Los ids de producto, cacheados 30 minutos.
+ * Los ids de producto, cacheados 30 minutos. Los usa `reportes`; esta pantalla
+ * ya solo necesita las categorías (ver `gastoPorCliente`).
  *
  * El catálogo no cambia de un minuto a otro y resolverlo cuesta dos consultas
  * sobre 1.149 productos. Sin cache, cada carga de la pantalla las repite.
  */
 const cacheProductos = new CacheTtl<{ asta: number[]; otros: number[] }>(30 * 60_000, 4);
+/** Las categorías, por lo mismo. */
+const cacheCategorias = new CacheTtl<number[]>(30 * 60_000, 4);
 
 /** Solo para tests. */
 export function vaciarCacheAsta(): void {
   cacheProductos.vaciar();
+  cacheCategorias.vaciar();
 }
 
-export async function productosEnCompetencia(): Promise<{ asta: number[]; otros: number[] }> {
-  const enCache = cacheProductos.get('todos');
+/**
+ * Las categorías donde ASTA tiene producto. Fuera de ellas no hay nada que
+ * comparar: el cliente no elige otra marca, es que ASTA no fabrica eso.
+ */
+async function categoriasEnCompetencia(): Promise<number[]> {
+  const enCache = cacheCategorias.get('todas');
   if (enCache !== undefined) return enCache;
 
-  // Las categorías donde ASTA tiene producto. Fuera de ellas no hay nada que
-  // comparar: el cliente no elige otra marca, es que ASTA no fabrica eso.
   const cats = await readGroup<{ categ_id: [number, string] | false }>(
     'product.template',
     [['spiff_brand_id', '=', MARCA_ASTA]],
@@ -97,6 +103,15 @@ export async function productosEnCompetencia(): Promise<{ asta: number[]; otros:
   );
   const idsCat = cats.filter((c) => c.categ_id).map((c) => (c.categ_id as [number, string])[0]);
 
+  cacheCategorias.set('todas', idsCat);
+  return idsCat;
+}
+
+export async function productosEnCompetencia(): Promise<{ asta: number[]; otros: number[] }> {
+  const enCache = cacheProductos.get('todos');
+  if (enCache !== undefined) return enCache;
+
+  const idsCat = await categoriasEnCompetencia();
   if (idsCat.length === 0) return { asta: [], otros: [] };
 
   const [variantes, plantillas] = await Promise.all([
@@ -127,53 +142,73 @@ export async function productosEnCompetencia(): Promise<{ asta: number[]; otros:
 }
 
 /**
- * Lo facturado de una lista de productos, por cliente.
+ * Lo facturado en las categorías en competencia, por cliente, de ASTA o del resto.
  *
  * Se agrupa por `partner_id` y no por `commercial_partner_id` porque el que
  * importa aquí es a quién se le factura. La consolidación bajo la matriz la hace
  * `estadisticasAgentes`, que responde otra pregunta.
+ *
+ * ── Por qué el producto se filtra por ruta y no con `product_id in [...]` ────
+ *
+ * Antes se pasaban los 1.155 ids de producto en lotes de 400, y el test de
+ * aislamiento caía de vez en cuando por el timeout de 30 s. El SQL no era el
+ * problema: un `search_count` del mismo lote tardaba 240 ms. El problema era la
+ * RESPUESTA. En Odoo 17, `read_group` devuelve en cada grupo un `__domain` que
+ * repite el dominio entero, con la lista de ids incluida: 806 grupos por 400 ids
+ * son ~2 MB de JSON por lote, el 95 % de ellos `__domain`, y bastante más en el
+ * XML-RPC. Un lote tardaba entre 1 y 15 s según la carga, y las dos vistas del
+ * test en paralelo, 14-24 s.
+ *
+ * Con el filtro por ruta el dominio ocupa seis condiciones y no 400 ids. Es una
+ * consulta por lado en vez de una para ASTA y tres para el resto, y la vista de
+ * toda la empresa recibe ~750 KB de JSON en vez de ~5,7 MB.
+ *
+ * `product_id.active` hace falta para dar las MISMAS cifras que la lista de ids.
+ * Esa lista salía de un `search_read`, que se salta los productos archivados, y
+ * el filtro por ruta no (comprobado: dos productos archivados con ventas, uno
+ * de ASTA y uno de HAVIT, movían cinco clientes). Que deban contar es otra
+ * discusión, y no se decide aquí de rebote.
+ *
+ * El `!=` de Odoo deja pasar también los productos sin marca, igual que antes.
  */
 async function gastoPorCliente(
-  productos: number[],
+  lado: 'asta' | 'otros',
+  categorias: number[],
   filtroPartner: number[] | null,
 ): Promise<Map<number, number>> {
   const mapa = new Map<number, number>();
-  if (productos.length === 0) return mapa;
+  if (categorias.length === 0) return mapa;
 
-  // 400 por lote. El límite no es el número de ids sino el tiempo de Odoo: con
-  // los 2.629 partners de #81 en un solo `in` se pasaba del timeout de 30 s.
-  const LOTE = 400;
+  const dominio: Array<[string, string, unknown]> = [
+    ['display_type', '=', 'product'],
+    ['parent_state', '=', 'posted'],
+    TIPO_FACTURADO_LINEA,
+    ['product_id.categ_id', 'in', categorias],
+    ['product_id.active', '=', true],
+    ['product_id.product_tmpl_id.spiff_brand_id', lado === 'asta' ? '=' : '!=', MARCA_ASTA],
+  ];
+  // Un vendedor solo ve lo suyo: el filtro va en el DOMINIO, no en un recorte
+  // posterior. Traerse toda la empresa y filtrar en Node deja los datos de los
+  // demás pasando por el proceso, que es donde acaban las fugas.
+  if (filtroPartner) dominio.push(['partner_id', 'in', filtroPartner]);
 
-  for (let i = 0; i < productos.length; i += LOTE) {
-    const dominio: Array<[string, string, unknown]> = [
-      ['display_type', '=', 'product'],
-      ['parent_state', '=', 'posted'],
-      TIPO_FACTURADO_LINEA,
-      ['product_id', 'in', productos.slice(i, i + LOTE)],
-    ];
-    // Un vendedor solo ve lo suyo: el filtro va en el DOMINIO, no en un recorte
-    // posterior. Traerse toda la empresa y filtrar en Node deja los datos de los
-    // demás pasando por el proceso, que es donde acaban las fugas.
-    if (filtroPartner) dominio.push(['partner_id', 'in', filtroPartner]);
+  // Con `move_type` en el groupby: `price_subtotal` viene en positivo también en
+  // las notas de crédito, y las devoluciones tienen que restar (#26).
+  const grupos = await readGroup<{
+    partner_id: [number, string] | false;
+    move_type: string | false;
+    price_subtotal: number;
+    __count: number;
+  }>('account.move.line', dominio, ['price_subtotal:sum'], ['partner_id', 'move_type']);
 
-    // Con `move_type` en el groupby: `price_subtotal` viene en positivo también en
-    // las notas de crédito, y las devoluciones tienen que restar (#26).
-    const grupos = await readGroup<{
-      partner_id: [number, string] | false;
-      move_type: string | false;
-      price_subtotal: number;
-      __count: number;
-    }>('account.move.line', dominio, ['price_subtotal:sum'], ['partner_id', 'move_type']);
-
-    const porCliente = plegarPorTipo(
-      grupos,
-      (g) => (g.partner_id ? g.partner_id[0] : null),
-      ['price_subtotal'],
-      { firmar: true },
-    );
-    for (const [id, { sumas }] of porCliente) {
-      mapa.set(id, (mapa.get(id) ?? 0) + sumas.price_subtotal);
-    }
+  const porCliente = plegarPorTipo(
+    grupos,
+    (g) => (g.partner_id ? g.partner_id[0] : null),
+    ['price_subtotal'],
+    { firmar: true },
+  );
+  for (const [id, { sumas }] of porCliente) {
+    mapa.set(id, (mapa.get(id) ?? 0) + sumas.price_subtotal);
   }
 
   return mapa;
@@ -190,7 +225,7 @@ export async function oportunidadesAsta(
   opciones: { soloDelVendedor?: number } = {},
 ): Promise<ResumenAsta> {
   const t0 = Date.now();
-  const { asta: idsAsta, otros: idsOtros } = await productosEnCompetencia();
+  const categorias = await categoriasEnCompetencia();
 
   // ── A quién se puede mirar ────────────────────────────────────────────────
   let filtroPartner: number[] | null = null;
@@ -239,8 +274,8 @@ export async function oportunidadesAsta(
   }
 
   const [gastoAsta, gastoOtros] = await Promise.all([
-    gastoPorCliente(idsAsta, filtroPartner),
-    gastoPorCliente(idsOtros, filtroPartner),
+    gastoPorCliente('asta', categorias, filtroPartner),
+    gastoPorCliente('otros', categorias, filtroPartner),
   ]);
 
   const todos = new Set([...gastoAsta.keys(), ...gastoOtros.keys()]);
