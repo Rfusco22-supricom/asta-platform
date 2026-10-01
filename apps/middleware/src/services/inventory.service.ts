@@ -1,6 +1,7 @@
 import type { ErrorCode, InventoryQuery, PublicInventoryItem, StockStatus } from '@asta/shared-types';
 import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
+import { anotarCacheHit } from '../utils/contextoPeticion.js';
 
 /**
  * Existencias del catálogo para la API pública (#30).
@@ -75,7 +76,8 @@ export function estadoDeStock(libre: number, umbral = umbralStockBajo()): StockS
 }
 
 /** La compañía de un cliente cambia rara vez; 10 min ahorra dos RPC por petición. */
-const cacheAlmacen = new CacheTtl<AlmacenCliente | null>(10 * 60_000, 5_000);
+/** Con el partner comercial, para invalidar si cambia él (#34). */
+const cacheAlmacen = new CacheTtl<{ raizId: number; almacen: AlmacenCliente | null }>(10 * 60_000, 5_000);
 /** 60 s, lo que pide #30. La clave lleva el almacén: ver `listarInventario`. */
 /** Exportada porque la guía pública la cita (#35). */
 export const TTL_CACHE_INVENTARIO_MS = 60_000;
@@ -85,6 +87,16 @@ const cachePaginas = new CacheTtl<{ items: PublicInventoryItem[]; total: number 
 export function vaciarCachesInventario(): void {
   cacheAlmacen.vaciar();
   cachePaginas.vaciar();
+}
+
+/**
+ * Cambió un cliente o su empresa en Odoo (#34): su compañía puede ser otra.
+ *
+ * Las páginas no se tocan: caducan a los 60 s, que es lo que tarda el sondeo en
+ * enterarse. Invalidarlas no adelantaría nada.
+ */
+export function invalidarAlmacenesDeClientes(partnerIds: ReadonlySet<number>): number {
+  return cacheAlmacen.borrarSi((clave, v) => partnerIds.has(Number(clave)) || partnerIds.has(v.raizId));
 }
 
 /**
@@ -101,7 +113,7 @@ export function vaciarCachesInventario(): void {
 export async function almacenDelCliente(partnerId: number): Promise<AlmacenCliente | null> {
   const clave = String(partnerId);
   const enCache = cacheAlmacen.get(clave);
-  if (enCache !== undefined) return enCache;
+  if (enCache !== undefined) return enCache.almacen;
 
   const [partner] = await searchRead<{ commercial_partner_id: [number, string] | false }>(
     'res.partner',
@@ -128,7 +140,7 @@ export async function almacenDelCliente(partnerId: number): Promise<AlmacenClien
     if (almacen) resultado = { companyId, warehouseId: almacen.id };
   }
 
-  cacheAlmacen.set(clave, resultado);
+  cacheAlmacen.set(clave, { raizId: raiz, almacen: resultado });
   return resultado;
 }
 
@@ -217,7 +229,10 @@ export async function listarInventario(
   const clave = JSON.stringify([almacen.companyId, almacen.warehouseId, umbralStockBajo(), sku, q, soloDisponibles, pagina, porPagina]);
 
   const enCache = cachePaginas.get(clave);
-  if (enCache) return { ...enCache, desdeCache: true };
+  if (enCache) {
+    anotarCacheHit();
+    return { ...enCache, desdeCache: true };
+  }
 
   const dominio = dominioInventario({ sku, q, soloDisponibles }, almacen.companyId);
   const context = { warehouse: almacen.warehouseId, allowed_company_ids: [almacen.companyId] };
