@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
 import { tierFromPricelist } from '../config/tiers.js';
+import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 
 /**
@@ -84,7 +85,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
   // ── Lectura en bloque de los dos lados ─────────────────────────────────────
   // Se leen enteros y se comparan en memoria: son ~3000 filas por lado. Hacer
   // una consulta por partner serían 3000 RPC contra el ERP.
-  const [partners, usuarios] = await Promise.all([
+  const [partners, usuarios, mapa] = await Promise.all([
     leerTodosLosClientes(),
     prisma.appUser.findMany({
       select: {
@@ -98,6 +99,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
         credentials: { select: { userId: true } },
       },
     }),
+    cargarMapaTiers(),
   ]);
 
   const porPartnerId = new Map(usuarios.map((u) => [u.odooPartnerId, u]));
@@ -195,7 +197,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
     // El rol de staff NO se compara: lo decide un humano, no Odoo. Marcarlo
     // como desalineado llenaría el informe de ruido que nadie debe "corregir".
     if (!['SUPERADMIN', 'VENDEDOR'].includes(u.role)) {
-      const rolEsperado = tierFromPricelist(plOdoo);
+      const rolEsperado = tierFromPricelist(plOdoo, mapa);
       if (rolEsperado !== u.role) {
         desalineados.push({
           odooPartnerId: p.id,
@@ -288,7 +290,8 @@ export async function resincronizarUno(
 
   const p = rows[0];
   if (!p) return { ok: false, mensaje: `El partner ${odooPartnerId} no existe en Odoo.` };
-  const tarifa = (await leerTarifas([p.id])).get(p.id);
+  const [tarifas, mapa] = await Promise.all([leerTarifas([p.id]), cargarMapaTiers()]);
+  const tarifa = tarifas.get(p.id);
 
   const crudo = p.email ? String(p.email) : '';
   if (!crudo.trim()) return { ok: false, mensaje: 'El partner no tiene correo: no puede tener cuenta.' };
@@ -328,7 +331,7 @@ export async function resincronizarUno(
 
   if (!existente) {
     await prisma.appUser.create({
-      data: { ...datos, odooPartnerId, role: tierFromPricelist(pricelistId), isActive: true },
+      data: { ...datos, odooPartnerId, role: tierFromPricelist(pricelistId, mapa), isActive: true },
     });
     return { ok: true, mensaje: 'Cuenta creada.' };
   }
@@ -337,7 +340,7 @@ export async function resincronizarUno(
   const esStaff = ['SUPERADMIN', 'VENDEDOR'].includes(existente.role);
   await prisma.appUser.update({
     where: { id: existente.id },
-    data: esStaff ? datos : { ...datos, role: tierFromPricelist(pricelistId) },
+    data: esStaff ? datos : { ...datos, role: tierFromPricelist(pricelistId, mapa) },
   });
   return { ok: true, mensaje: 'Cuenta actualizada.' };
 }
