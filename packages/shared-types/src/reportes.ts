@@ -47,11 +47,9 @@ export const reporteRespuestaSchema = z.object({
   /**
    * Con qué criterio se sumó.
    *
-   * Viaja en la respuesta para que la pantalla pueda decirlo. La decisión de
-   * fondo —si «facturado» lleva notas de crédito— sigue abierta (#26), y
-   * mientras no se cierre lo importante es que el número nunca aparezca sin
-   * decir cómo está calculado: un panel que discrepa del ERP sin explicar por
-   * qué deja de usarse.
+   * Viaja en la respuesta para que la pantalla pueda decirlo: un panel que
+   * discrepa del ERP sin explicar por qué deja de usarse. Desde #26 es siempre
+   * neto de devoluciones; el campo se mantiene para no romper el contrato.
    */
   criterio: z.object({
     incluyeNotasDeCredito: z.boolean(),

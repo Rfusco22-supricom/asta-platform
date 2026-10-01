@@ -1,5 +1,6 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { listarNotas, type Nota } from './notes.service.js';
+import { FACTURA, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Perfilado del cliente (issue #24).
@@ -80,6 +81,7 @@ export interface ClientProfile {
 
 interface LineGroup {
   product_id: [number, string] | false;
+  move_type: string | false;
   quantity: number;
   price_subtotal: number;
   __count: number;
@@ -126,7 +128,7 @@ export async function getClientProfile(
 
   const lineasBase: OdooDomain = [
     ['parent_state', '=', 'posted'],
-    ['move_type', '=', 'out_invoice'],
+    TIPO_FACTURADO_LINEA,
     ['partner_id', 'in', familia],
     ['display_type', '=', 'product'],
     ['product_id', '!=', false],
@@ -137,13 +139,16 @@ export async function getClientProfile(
       'account.move.line',
       lineasBase,
       ['quantity:sum', 'price_subtotal:sum'],
-      ['product_id'],
+      // `move_type` para restar las devoluciones: en las líneas, cantidad e
+      // importe vienen en positivo también en las notas de crédito (#26).
+      ['product_id', 'move_type'],
     ),
     searchRead<InvoiceRow>(
       'account.move',
       [
         ['partner_id', 'child_of', partnerId],
-        ['move_type', '=', 'out_invoice'],
+        // Última COMPRA: una devolución no lo es.
+        ['move_type', '=', FACTURA],
         ['state', '=', 'posted'],
       ],
       ['invoice_date'],
@@ -154,18 +159,24 @@ export async function getClientProfile(
     listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
   ]);
 
-  const conProducto = grupos.filter((g) => g.product_id);
-  conProducto.sort((a, b) => (b.price_subtotal ?? 0) - (a.price_subtotal ?? 0));
+  const nombreProducto = new Map<number, string>();
+  for (const g of grupos) if (g.product_id) nombreProducto.set(g.product_id[0], g.product_id[1]);
 
-  const topProductos: TopProducto[] = conProducto.slice(0, limiteTop).map((g) => {
-    const [id, display] = g.product_id as [number, string];
-    const { sku, nombre } = partirNombre(display);
+  const netos = [
+    ...plegarPorTipo(grupos, (g) => (g.product_id ? g.product_id[0] : null), ['quantity', 'price_subtotal'], {
+      firmar: true,
+    }),
+  ];
+  netos.sort((a, b) => b[1].sumas.price_subtotal - a[1].sumas.price_subtotal);
+
+  const topProductos: TopProducto[] = netos.slice(0, limiteTop).map(([id, { sumas }]) => {
+    const { sku, nombre } = partirNombre(nombreProducto.get(id) ?? '');
     return {
       productId: id,
       nombre,
       sku,
-      cantidad: Math.round((g.quantity ?? 0) * 100) / 100,
-      monto: Math.round((g.price_subtotal ?? 0) * 100) / 100,
+      cantidad: Math.round(sumas.quantity * 100) / 100,
+      monto: Math.round(sumas.price_subtotal * 100) / 100,
     };
   });
 
@@ -194,9 +205,8 @@ export async function getClientProfile(
     estadoRecencia: clasificarRecencia(diasSinComprar),
     umbrales: { atencion: UMBRAL_ATENCION_DIAS, inactivo: UMBRAL_INACTIVO_DIAS },
     topProductos,
-    productosDistintos: conProducto.length,
-    montoEnProductos:
-      Math.round(conProducto.reduce((s, g) => s + (g.price_subtotal ?? 0), 0) * 100) / 100,
+    productosDistintos: netos.length,
+    montoEnProductos: Math.round(netos.reduce((s, [, p]) => s + p.sumas.price_subtotal, 0) * 100) / 100,
     notas,
     notasDisponibles: true,
   };

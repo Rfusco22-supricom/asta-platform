@@ -97,7 +97,7 @@ describe('#50 · Qué se le pide a Odoo', () => {
     );
   });
 
-  it('la facturación son facturas de venta CONTABILIZADAS, en una sola agrupación', async () => {
+  it('la facturación es CONTABILIZADA y neta de devoluciones (#26), en una sola agrupación', async () => {
     await informeDeDuplicados();
 
     expect(readGroup).toHaveBeenCalledTimes(1);
@@ -105,12 +105,12 @@ describe('#50 · Qué se le pide a Odoo', () => {
     expect(modelo).toBe('account.move');
     expect(dominio).toEqual(
       expect.arrayContaining([
-        ['move_type', '=', 'out_invoice'],
+        ['move_type', 'in', ['out_invoice', 'out_refund']],
         ['state', '=', 'posted'],
       ]),
     );
     expect(campos).toEqual(['amount_total_signed:sum']);
-    expect(agrupar).toEqual(['commercial_partner_id']);
+    expect(agrupar).toEqual(['commercial_partner_id', 'move_type']);
   });
 });
 

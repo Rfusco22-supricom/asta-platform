@@ -2,6 +2,7 @@ import type { InformeDuplicados } from '@asta/shared-types';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { agrupar, gruposParaCubrir, resumir, type Registro } from './duplicados.js';
+import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * El informe de fusiones pendientes, leído de Odoo (#50).
@@ -69,26 +70,25 @@ export async function registrosDeOdoo(): Promise<Registro[]> {
     ),
     readGroup<{
       commercial_partner_id: [number, string] | false;
+      move_type: string | false;
       amount_total_signed: number;
       __count: number;
     }>(
       'account.move',
-      [
-        ['move_type', '=', 'out_invoice'],
-        ['state', '=', 'posted'],
-      ],
+      [TIPO_FACTURADO, ['state', '=', 'posted']],
       ['amount_total_signed:sum'],
-      ['commercial_partner_id'],
+      ['commercial_partner_id', 'move_type'],
     ),
   ]);
 
   const facturacion = new Map<number, { monto: number; facturas: number }>();
-  for (const g of grupos) {
-    if (!g.commercial_partner_id) continue;
-    facturacion.set(g.commercial_partner_id[0], {
-      monto: g.amount_total_signed ?? 0,
-      facturas: g.__count,
-    });
+  const porCliente = plegarPorTipo(
+    grupos,
+    (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
+    ['amount_total_signed'],
+  );
+  for (const [id, { sumas, facturas }] of porCliente) {
+    facturacion.set(id, { monto: sumas.amount_total_signed, facturas });
   }
 
   return partners.map((p) => {

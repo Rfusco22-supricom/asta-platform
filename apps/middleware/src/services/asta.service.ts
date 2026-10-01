@@ -1,5 +1,6 @@
 import { searchRead, readGroup } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
+import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Cuota de la marca ASTA frente a la competencia, cliente a cliente.
@@ -147,7 +148,7 @@ async function gastoPorCliente(
     const dominio: Array<[string, string, unknown]> = [
       ['display_type', '=', 'product'],
       ['parent_state', '=', 'posted'],
-      ['move_id.move_type', '=', 'out_invoice'],
+      TIPO_FACTURADO_LINEA,
       ['product_id', 'in', productos.slice(i, i + LOTE)],
     ];
     // Un vendedor solo ve lo suyo: el filtro va en el DOMINIO, no en un recorte
@@ -155,14 +156,23 @@ async function gastoPorCliente(
     // demás pasando por el proceso, que es donde acaban las fugas.
     if (filtroPartner) dominio.push(['partner_id', 'in', filtroPartner]);
 
+    // Con `move_type` en el groupby: `price_subtotal` viene en positivo también en
+    // las notas de crédito, y las devoluciones tienen que restar (#26).
     const grupos = await readGroup<{
       partner_id: [number, string] | false;
+      move_type: string | false;
       price_subtotal: number;
-    }>('account.move.line', dominio, ['price_subtotal:sum'], ['partner_id']);
+      __count: number;
+    }>('account.move.line', dominio, ['price_subtotal:sum'], ['partner_id', 'move_type']);
 
-    for (const g of grupos) {
-      if (!g.partner_id) continue;
-      mapa.set(g.partner_id[0], (mapa.get(g.partner_id[0]) ?? 0) + (g.price_subtotal ?? 0));
+    const porCliente = plegarPorTipo(
+      grupos,
+      (g) => (g.partner_id ? g.partner_id[0] : null),
+      ['price_subtotal'],
+      { firmar: true },
+    );
+    for (const [id, { sumas }] of porCliente) {
+      mapa.set(id, (mapa.get(id) ?? 0) + sumas.price_subtotal);
     }
   }
 

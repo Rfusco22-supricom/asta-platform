@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma.js';
 import { searchRead, readGroup } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
 import { recordAudit } from './audit.service.js';
+import { TIPO_FACTURADO } from './criterioFacturacion.js';
 
 /**
  * Alta de cuentas de VENDEDOR desde Odoo (issue #81).
@@ -236,11 +237,9 @@ export async function medirCandidatos(): Promise<CandidatoVendedor[]> {
       amount_total_signed: number;
     }>(
       'account.move',
-      [
-        ['move_type', '=', 'out_invoice'],
-        ['state', '=', 'posted'],
-        ['commercial_partner_id', 'in', todos.slice(i, i + LOTE)],
-      ],
+      // Sin agrupar por `move_type`: aquí solo se suma, y `amount_total_signed`
+      // ya resta las notas de crédito (#26).
+      [TIPO_FACTURADO, ['state', '=', 'posted'], ['commercial_partner_id', 'in', todos.slice(i, i + LOTE)]],
       ['amount_total_signed:sum'],
       ['commercial_partner_id'],
     );

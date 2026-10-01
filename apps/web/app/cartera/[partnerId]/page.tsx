@@ -41,13 +41,13 @@ const ESTADO_CLASE: Record<string, string> = {
 
 interface Props {
   params: Promise<{ partnerId: string }>;
-  searchParams: Promise<{ desde?: string; hasta?: string; nc?: string }>;
+  searchParams: Promise<{ desde?: string; hasta?: string }>;
 }
 
 export default async function FichaCliente({ params, searchParams }: Props) {
   const sesion = await requireSession();
   const { partnerId: raw } = await params;
-  const { desde, hasta, nc } = await searchParams;
+  const { desde, hasta } = await searchParams;
 
   const partnerId = Number(raw);
   if (!Number.isInteger(partnerId) || partnerId <= 0) notFound();
@@ -67,7 +67,6 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         serieMensual: true,
         desde,
         hasta,
-        incluirNotasDeCredito: nc === '1',
       }),
       getClientProfile(sesion.accessToken, partnerId).catch(() => null),
       // Se degrada solo, igual que el perfil: el aviso de duplicados es
@@ -111,7 +110,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   const { cliente, facturacion: f } = datos;
   const nombre = cliente.nombre ?? `Cliente ${partnerId}`;
   const pctCobrado = f.totalFacturado > 0 ? (f.cobrado / f.totalFacturado) * 100 : 0;
-  const hayFiltro = Boolean(desde || hasta || nc === '1');
+  const hayFiltro = Boolean(desde || hasta);
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre}>
@@ -204,10 +203,6 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <label htmlFor="hasta">Hasta</label>
           <input id="hasta" name="hasta" type="date" className="input" defaultValue={hasta ?? ''} />
         </div>
-        <label className="check">
-          <input type="checkbox" name="nc" value="1" defaultChecked={nc === '1'} />
-          Restar notas de crédito
-        </label>
         <button type="submit" className="btn btn-inline">
           Aplicar
         </button>
@@ -221,15 +216,15 @@ export default async function FichaCliente({ params, searchParams }: Props) {
       {hayFiltro && (
         <p className="filtro-aviso">
           Mostrando {desde ? `desde ${fecha(desde)}` : 'desde el inicio'}{' '}
-          {hasta ? `hasta ${fecha(hasta)}` : 'hasta hoy'}
-          {nc === '1' ? ', netas de notas de crédito' : ''}.
+          {hasta ? `hasta ${fecha(hasta)}` : 'hasta hoy'}.
         </p>
       )}
 
       {/* ── Resumen ───────────────────────────────────────────────────────── */}
       <section className="stats">
         <div className="stat">
-          <div className="stat-label">Total facturado</div>
+          {/* El criterio, escrito donde se lee el número (#26). */}
+          <div className="stat-label">Total facturado, neto de devoluciones</div>
           <div className="stat-value">{money(f.totalFacturado)}</div>
           <div className="stat-sub">
             {f.numeroFacturas} {f.numeroFacturas === 1 ? 'factura' : 'facturas'}

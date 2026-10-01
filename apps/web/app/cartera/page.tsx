@@ -65,7 +65,7 @@ export default async function CarteraPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Mi cartera"
-      descripcion={`${meta.clientes} clientes asignados · datos en vivo desde Odoo, en moneda de la compañía`}
+      descripcion={`${meta.clientes} clientes asignados · datos en vivo desde Odoo, en moneda de la compañía, netos de devoluciones`}
     >
       <section className="stats">
         <div className="stat">

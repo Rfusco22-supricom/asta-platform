@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead, readGroup } from '../odoo/client.js';
 import { authEnv } from '../config/authEnv.js';
+import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Estadísticas de los agentes de venta, para el panel de administración.
@@ -89,26 +90,27 @@ async function facturacionPorPartner(ids: number[]): Promise<
   for (let i = 0; i < ids.length; i += LOTE) {
     const grupos = await readGroup<{
       commercial_partner_id: [number, string] | false;
+      move_type: string | false;
       amount_total_signed: number;
       amount_residual_signed: number;
       __count: number;
     }>(
       'account.move',
-      [
-        ['move_type', '=', 'out_invoice'],
-        ['state', '=', 'posted'],
-        ['commercial_partner_id', 'in', ids.slice(i, i + LOTE)],
-      ],
+      [TIPO_FACTURADO, ['state', '=', 'posted'], ['commercial_partner_id', 'in', ids.slice(i, i + LOTE)]],
       ['amount_total_signed:sum', 'amount_residual_signed:sum'],
-      ['commercial_partner_id'],
+      ['commercial_partner_id', 'move_type'],
     );
 
-    for (const g of grupos) {
-      if (!g.commercial_partner_id) continue;
-      mapa.set(g.commercial_partner_id[0], {
-        total: g.amount_total_signed ?? 0,
-        porCobrar: g.amount_residual_signed ?? 0,
-        facturas: g.__count,
+    const porCliente = plegarPorTipo(
+      grupos,
+      (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
+      ['amount_total_signed', 'amount_residual_signed'],
+    );
+    for (const [id, { sumas, facturas }] of porCliente) {
+      mapa.set(id, {
+        total: sumas.amount_total_signed,
+        porCobrar: sumas.amount_residual_signed,
+        facturas,
       });
     }
   }
