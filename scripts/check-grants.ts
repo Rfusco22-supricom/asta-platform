@@ -254,6 +254,31 @@ async function main(): Promise<void> {
       mal: reescribibles,
     });
 
+    /*
+     * Los permisos POR COLUMNA no salen en TABLE_PRIVILEGES, así que la regla de
+     * arriba no los ve. La única excepción admitida es la de la telemetría (#43):
+     * completar la fila de una búsqueda. Cualquier otra columna de una bitácora
+     * —`search_query`, `created_at`, `user_id`…— sería poder reescribir el rastro.
+     */
+    const COLUMNAS_PERMITIDAS = new Set([
+      'recommendation_events.matched_printer_id',
+      'recommendation_events.was_out_of_stock',
+      'recommendation_events.clicked_product_id',
+    ]);
+    const columnas = await prisma.$queryRawUnsafe<Array<{ col: string; privilegio: string }>>(
+      `SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME) AS col, PRIVILEGE_TYPE AS privilegio
+         FROM information_schema.COLUMN_PRIVILEGES
+        WHERE TABLE_SCHEMA = ? AND SUBSTRING_INDEX(GRANTEE, '''', 2) = '''asta_app'`,
+      base,
+    );
+    invariantes.push({
+      usuario: 'asta_app',
+      regla: 'por columna, solo puede completar la telemetría del recomendador (#43)',
+      mal: columnas
+        .filter((c) => bitacoras.includes(c.col.split('.')[0]) && !(c.privilegio === 'UPDATE' && COLUMNAS_PERMITIDAS.has(c.col)))
+        .map((c) => `${c.privilegio} ${c.col}`),
+    });
+
     const ddl = ['CREATE', 'ALTER', 'DROP', 'INDEX'];
     const conDdl = [...app.entries()]
       .filter(([, p]) => ddl.some((d) => p.has(d)))
