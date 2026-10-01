@@ -1,4 +1,4 @@
-import type { AppRole, ClientTier } from '@asta/shared-types';
+import type { ClientTier } from '@asta/shared-types';
 
 /**
  * Nivel comercial del cliente: de qué tarifa se deriva.
@@ -10,22 +10,25 @@ import type { AppRole, ClientTier } from '@asta/shared-types';
  * de `property_product_pricelist`, que es el mecanismo nativo de Odoo para
  * "qué precios le corresponden a este cliente". Una sola fuente de verdad.
  *
- * ESTADO ACTUAL: los 2942 clientes apuntan a la misma tarifa ([15866] "Lista de
- * Precios"), así que hoy TODOS caen en el nivel por defecto. La diferenciación
- * por nivel es una decisión comercial pendiente (issue #5), no un problema de
- * código: cuando existan las tarifas Bronce/Plata/Gold y los clientes estén
- * repartidos, este mapeo empieza a devolver niveles distintos sin tocar nada más.
+ * DÓNDE VIVE EL MAPEO (#131): en la tabla `tier_pricelist_map`, que se lee con
+ * `cargarMapaTiers()` (`services/tiers.service.ts`). Antes era un objeto fijo en
+ * este fichero, y mover una tarifa de nivel exigía desplegar. Aquí quedan solo
+ * las reglas, que no dependen de qué haya en la tabla.
  *
- * DÓNDE DEBE VIVIR: esto es configuración, no código. Cuando se cierre el #3
- * debe moverse a una tabla en Postgres editable por el SuperAdmin, para que
- * mover una tarifa de nivel no requiera un despliegue. Se deja aquí mientras el
- * mapeo sea trivial.
+ * La clave es el ID de la tarifa, nunca su nombre: hay nombres repetidos entre
+ * compañías ("Lista de Precios P" son la 15861 y la 15862).
  */
 
-/** product.pricelist.id -> nivel. Verificado contra la instancia el 2026-09-11. */
-export const TIER_BY_PRICELIST: Readonly<Record<number, ClientTier>> = {
-  15866: 'BRONCE', // "Lista de Precios" (USD) — la que hoy usan los 2942 clientes
-};
+/** El mapeo tarifa → nivel, ya cargado. */
+export interface MapaTiers {
+  readonly porTarifa: ReadonlyMap<number, ClientTier>;
+  /**
+   * Resumen del contenido, que cambia si cambia cualquier fila. El sync lo
+   * guarda para saber que el mapeo se movió y releer a todos (ver
+   * `sincronizarPartners`).
+   */
+  readonly huella: string;
+}
 
 /**
  * Nivel que se asigna cuando el cliente no tiene tarifa, o tiene una que no está
@@ -37,17 +40,12 @@ export const TIER_BY_PRICELIST: Readonly<Record<number, ClientTier>> = {
  */
 export const DEFAULT_TIER: ClientTier = 'BRONCE';
 
-export function tierFromPricelist(pricelistId: number | null): ClientTier {
+export function tierFromPricelist(pricelistId: number | null, mapa: MapaTiers): ClientTier {
   if (pricelistId === null) return DEFAULT_TIER;
-  return TIER_BY_PRICELIST[pricelistId] ?? DEFAULT_TIER;
+  return mapa.porTarifa.get(pricelistId) ?? DEFAULT_TIER;
 }
 
 /** true si la tarifa del cliente no está en el mapeo: señal de configuración incompleta. */
-export function isUnmappedPricelist(pricelistId: number | null): boolean {
-  return pricelistId !== null && TIER_BY_PRICELIST[pricelistId] === undefined;
-}
-
-/** Rol de aplicación de un cliente. Los tiers son roles en el modelo de permisos. */
-export function roleFromPricelist(pricelistId: number | null): AppRole {
-  return tierFromPricelist(pricelistId);
+export function isUnmappedPricelist(pricelistId: number | null, mapa: MapaTiers): boolean {
+  return pricelistId !== null && !mapa.porTarifa.has(pricelistId);
 }

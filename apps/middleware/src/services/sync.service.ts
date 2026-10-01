@@ -2,7 +2,8 @@ import type { AppRole } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
-import { tierFromPricelist } from '../config/tiers.js';
+import { tierFromPricelist, type MapaTiers } from '../config/tiers.js';
+import { cargarMapaTiers } from './tiers.service.js';
 import { recordAudit } from './audit.service.js';
 import { idTarifa, leerTarifas, nombreTarifa } from './tarifas.service.js';
 
@@ -59,6 +60,10 @@ export interface ResumenSync {
   omitidosEmailEnUso: number;
   fallidos: number;
   duracionMs: number;
+  /** Huella del mapeo tarifa → nivel con el que se calcularon los roles (#131). */
+  huellaTiers?: string;
+  /** true si la pasada fue completa porque cambió el mapeo, no porque se pidiera. */
+  completoPorTiers?: boolean;
   /** Detalle de los que no entraron, para poder actuar sobre ellos. */
   incidencias: Array<{ odooPartnerId: number; nombre: string; motivo: ResultadoFila; detalle?: string }>;
 }
@@ -111,8 +116,25 @@ function restarSegundos(fechaOdoo: string, segundos: number): string {
 }
 
 /** El rol sale de la tarifa: `x_client_tier` no existe en esta instancia (#3). */
-function rolDe(pricelistId: number | null, esStaff: boolean): AppRole {
-  return esStaff ? 'VENDEDOR' : tierFromPricelist(pricelistId);
+function rolDe(pricelistId: number | null, esStaff: boolean, mapa: MapaTiers): AppRole {
+  return esStaff ? 'VENDEDOR' : tierFromPricelist(pricelistId, mapa);
+}
+
+/**
+ * ¿Hay que releer a todos porque cambió el mapeo tarifa → nivel? (#131)
+ *
+ * El sync incremental solo mira partners con `write_date` nuevo. Si alguien mueve
+ * la tarifa 15863 de BRONCE a GOLD en `tier_pricelist_map`, en Odoo no cambia
+ * nada, y sin esto sus 1.074 clientes seguirían en BRONCE hasta que cada uno se
+ * tocara por otra razón. La huella del mapeo se guarda en el resumen de cada
+ * pasada; si la de ahora es otra, esta pasada es completa.
+ *
+ * Sin huella guardada (la primera pasada con este código) también: no se sabe
+ * con qué mapeo se calcularon los roles que hay.
+ */
+export function cambioElMapeo(resumenAnterior: unknown, huella: string): boolean {
+  const anterior = (resumenAnterior as { huellaTiers?: unknown } | null)?.huellaTiers;
+  return anterior !== huella;
 }
 
 export async function sincronizarPartners(
@@ -156,7 +178,14 @@ export async function sincronizarPartners(
   };
 
   try {
-    const marca = opciones.completo ? null : estado?.ultimoWriteDate ?? null;
+    // Antes de leer nada de Odoo: si el mapeo no se puede leer, la pasada no
+    // debe empezar (ver `cargarMapaTiers`).
+    const mapa = await cargarMapaTiers();
+    resumen.huellaTiers = mapa.huella;
+    const porTiers = !opciones.completo && cambioElMapeo(estado?.resumen, mapa.huella);
+    if (porTiers) resumen.completoPorTiers = true;
+
+    const marca = opciones.completo || porTiers ? null : estado?.ultimoWriteDate ?? null;
     resumen.desde = marca;
 
     const domain: OdooDomain = [
@@ -272,7 +301,7 @@ export async function sincronizarPartners(
           email,
           fullName: nombre,
           phone: f.phone ? String(f.phone).trim() || null : null,
-          role: rolDe(pricelistId, false),
+          role: rolDe(pricelistId, false, mapa),
           odooPricelistId: pricelistId,
           odooPricelistName: nombreTarifa(tarifa),
           odooCommercialId: f.commercial_partner_id ? f.commercial_partner_id[0] : f.id,

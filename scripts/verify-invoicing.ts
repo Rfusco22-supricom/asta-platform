@@ -63,7 +63,7 @@ async function main(): Promise<void> {
     ok(`getPartner(${partnerTop}) -> ${p.nombre}`);
     ok(`  tarifa: ${p.tier ?? '(sin tarifa)'} [id ${p.pricelistId ?? '-'}] -> tier ${p.tierDerivado}`);
     ok(`  vendedor: ${p.vendedorNombre ?? '(sin asignar)'} [uid ${p.vendedorOdooUserId ?? '-'}]`);
-    if (p.tarifaSinMapear) warn(`  su tarifa ${p.pricelistId} no esta en TIER_BY_PRICELIST`);
+    if (p.tarifaSinMapear) warn(`  su tarifa ${p.pricelistId} no esta en tier_pricelist_map`);
   } catch (e) {
     bad(`getPartner lanzo: ${(e as Error).message.slice(0, 160)}`);
   }

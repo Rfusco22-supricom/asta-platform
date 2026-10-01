@@ -1,6 +1,7 @@
 import type { ClientTier, Partner } from '@asta/shared-types';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
-import { isUnmappedPricelist, tierFromPricelist } from '../config/tiers.js';
+import { isUnmappedPricelist, tierFromPricelist, type MapaTiers } from '../config/tiers.js';
+import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 
 /**
@@ -71,7 +72,7 @@ function limpiar(valor: string | false): string | null {
   return t.length > 0 ? t : null;
 }
 
-function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined): PartnerWithTier {
+function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, mapa: MapaTiers): PartnerWithTier {
   const pricelistId = idTarifa(tarifa);
 
   return {
@@ -85,16 +86,16 @@ function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined): PartnerWi
     pricelistId,
     /** Nombre de la tarifa, que es lo más parecido a un "tier" que hay hoy en Odoo. */
     tier: nombreTarifa(tarifa),
-    tierDerivado: tierFromPricelist(pricelistId),
-    tarifaSinMapear: isUnmappedPricelist(pricelistId),
+    tierDerivado: tierFromPricelist(pricelistId, mapa),
+    tarifaSinMapear: isUnmappedPricelist(pricelistId, mapa),
     esCliente: (row.customer_rank ?? 0) > 0,
   };
 }
 
 /** Las filas con su tarifa, leída desde la compañía de cada cliente. */
 async function conTarifas(rows: PartnerRow[]): Promise<PartnerWithTier[]> {
-  const tarifas = await leerTarifas(rows.map((r) => r.id));
-  return rows.map((r) => mapPartner(r, tarifas.get(r.id)));
+  const [tarifas, mapa] = await Promise.all([leerTarifas(rows.map((r) => r.id)), cargarMapaTiers()]);
+  return rows.map((r) => mapPartner(r, tarifas.get(r.id), mapa));
 }
 
 export async function getPartner(partnerId: number): Promise<PartnerWithTier | null> {
