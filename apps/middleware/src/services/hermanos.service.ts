@@ -7,18 +7,23 @@ import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
  *
  * ── Por qué el panel tiene que avisar ────────────────────────────────────────
  *
- * El 34,5 % de lo facturado —10,9 M— está repartido entre registros duplicados
- * del mismo cliente. «SUPER TECHNO LLC» tiene 2.519.837 en un registro y 5.632
- * en otro; «GALLERY COMPUTER, PZO» está partido entre dos vendedores distintos.
+ * Hay clientes con la facturación repartida entre dos fichas de la MISMA
+ * compañía: medido el 2026-10-01, 23 grupos con el 1,4 % de lo facturado.
  *
  * Los totales que calcula `invoicing.service.ts` son exactos —verificados al
  * centavo— y aun así el número que ve el vendedor **es falso como retrato del
  * cliente**, porque la entidad «cliente» en Odoo no es una sola fila.
  *
- * Arreglarlo es fusionar en Odoo, y eso lo decide una persona: 113 de los 139
- * grupos partidos cruzan carteras, así que fusionar mueve facturación y comisión
- * de un vendedor a otro. Mientras esa conversación no ocurra, lo único honesto
- * es que la ficha diga «esto no es todo».
+ * Arreglarlo es fusionar en Odoo, y eso lo decide una persona. Mientras no se
+ * haga, lo único honesto es que la ficha diga «esto no es todo».
+ *
+ * ── Solo dentro de la compañía ───────────────────────────────────────────────
+ *
+ * Cada compañía tiene sus propias fichas: el mismo cliente en SUPRICOM CCS 21 A
+ * y en la B son dos fichas a propósito, cada una con el vendedor de su compañía.
+ * No es el mismo cliente partido, y enseñarle al vendedor la cifra y el nombre
+ * del vendedor de otra compañía era un aviso falso y además una fuga. La
+ * primera versión lo hacía: de 147 grupos partidos, 129 mezclaban compañías.
  *
  * ── Lo que enseña, y la decisión que hay detrás ──────────────────────────────
  *
@@ -55,6 +60,7 @@ interface FilaPartner {
   name: string;
   vat: string | false;
   user_id: [number, string] | false;
+  company_id: [number, string] | false;
 }
 
 /**
@@ -68,11 +74,13 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
   const [yo] = await searchRead<FilaPartner>(
     'res.partner',
     [['id', '=', partnerId]],
-    ['id', 'name', 'vat', 'user_id'],
+    ['id', 'name', 'vat', 'user_id', 'company_id'],
   );
   if (!yo) return { esteRegistro: 0, total: 0, hermanos: [] };
 
   const rif = normalizarRif(yo.vat || null);
+  // La misma compañía, o las fichas compartidas si esta lo es.
+  const mismaCompania: [string, string, unknown] = ['company_id', '=', yo.company_id ? yo.company_id[0] : false];
 
   let candidatos: FilaPartner[] = [];
 
@@ -84,8 +92,9 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
         ['id', '!=', partnerId],
         ['active', '=', true],
         ['parent_id', '=', false],
+        mismaCompania,
       ],
-      ['id', 'name', 'vat', 'user_id'],
+      ['id', 'name', 'vat', 'user_id', 'company_id'],
     );
     candidatos = candidatos.filter((c) => normalizarRif(c.vat || null) === rif);
   } else {
@@ -106,8 +115,9 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
         ['id', '!=', partnerId],
         ['active', '=', true],
         ['parent_id', '=', false],
+        mismaCompania,
       ],
-      ['id', 'name', 'vat', 'user_id'],
+      ['id', 'name', 'vat', 'user_id', 'company_id'],
     );
     candidatos = candidatos.filter((c) => normalizarNombre(c.name) === nombre);
   }

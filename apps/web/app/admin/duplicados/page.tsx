@@ -85,7 +85,7 @@ export default async function DuplicadosPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Clientes duplicados"
-      descripcion={`${resumen.registros.toLocaleString('es-VE')} clientes examinados · leído de Odoo el ${fechaHora(generadoEn)}`}
+      descripcion={`${resumen.registros.toLocaleString('es-VE')} clientes examinados, comparados dentro de cada compañía · leído de Odoo el ${fechaHora(generadoEn)}`}
     >
       <section className="stats">
         <div className="stat">
@@ -191,7 +191,7 @@ export default async function DuplicadosPage({
                 que ver antes de fusionar.
               */}
               {visibles.map((g, i) => (
-                <tbody key={`${g.motivo}|${g.clave}`} className="duplicados-grupo">
+                <tbody key={`${g.compania ?? ""}|${g.motivo}|${g.clave}`} className="duplicados-grupo">
                   <tr className="duplicados-cabecera">
                     <td>
                       <span className="duplicados-orden">{i + 1}</span>
@@ -200,6 +200,8 @@ export default async function DuplicadosPage({
                         <span className={`tag ${g.motivo === 'rif' ? 'estado-validada' : 'prospecto'}`}>
                           {g.motivo === 'rif' ? `mismo RIF · ${g.clave}` : 'mismo nombre'}
                         </span>
+                        {/* Se agrupa dentro de cada compañía: decir cuál evita fusionar en la que no es. */}
+                        <span className="tag">{g.compania ?? 'Ficha compartida'}</span>
                         {g.vendedores.length > 1 && (
                           <span className="duplicados-aviso">
                             ⚠ {g.vendedores.length} vendedores: fusionar mueve comisión
