@@ -58,7 +58,12 @@ export type AuditAction =
   /// tiene que constar quién lo puso.
   | 'alias.anadido'
   | 'user.invitado'
-  | 'user.invitacion_aceptada';
+  | 'user.invitacion_aceptada'
+  /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin
+  /// cuenta, límite por hora…— va en los metadatos: la respuesta al usuario es
+  /// siempre la misma, y esto es lo único que dice qué pasó de verdad.
+  | 'auth.reseteo_solicitado'
+  | 'auth.contrasena_restablecida';
 
 export interface AuditEvent {
   action: AuditAction;

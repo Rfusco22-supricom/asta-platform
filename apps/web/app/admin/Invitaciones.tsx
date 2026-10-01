@@ -9,9 +9,10 @@ import { fechaCorta } from '@/lib/formato';
  * Client Component porque el enlace hay que poder COPIARLO, y eso es
  * interacción de navegador. El resto del panel de administración es servidor.
  *
- * Mientras no haya SMTP, el administrador copia el enlace y lo entrega por
- * donde pueda. El texto lo dice sin adornos: nadie debe creer que se envió un
- * correo que no se envió.
+ * Con correo configurado (#53) la invitación sale sola; sin él, el
+ * administrador copia el enlace y lo entrega por donde pueda. El aviso dice lo
+ * que pasó DE VERDAD, según lo que contesta el middleware: nadie debe creer que
+ * se envió un correo que no se envió.
  */
 
 interface Candidato {
@@ -26,6 +27,7 @@ interface Generada {
   url: string;
   expiraEl: string;
   email: string;
+  enviadoPorCorreo: boolean;
 }
 
 export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; total: number }) {
@@ -45,7 +47,7 @@ export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; t
         setFallo(body?.error?.message ?? 'No se pudo generar el enlace.');
         return;
       }
-      setGenerada({ url: body.data.url, expiraEl: body.data.expiraEl, email: c.email });
+      setGenerada({ url: body.data.url, expiraEl: body.data.expiraEl, email: c.email, enviadoPorCorreo: body.data.enviadoPorCorreo === true });
     } catch {
       setFallo('No se pudo contactar con el servidor.');
     } finally {
@@ -71,16 +73,28 @@ export function Invitaciones({ candidatos, total }: { candidatos: Candidato[]; t
 
       <p style={{ marginTop: -6, marginBottom: 14, fontSize: 13.5, color: 'var(--text-2)' }}>
         <strong>{total.toLocaleString('es-VE')}</strong> cuentas activas todavía no pueden
-        entrar. Sin correo configurado, aquí se genera el enlace y{' '}
-        <strong>lo entregas tú</strong> — no se envía nada automáticamente.
+        entrar. Si el correo está configurado, la invitación les llega sola; si no, aquí se
+        genera el enlace y <strong>lo entregas tú</strong>. Al invitar, el aviso dice cuál de las
+        dos pasó.
       </p>
 
       {generada && (
         <div className="notice" style={{ marginBottom: 16, borderColor: 'var(--positive)' }}>
-          <h2 style={{ color: 'var(--positive)' }}>Enlace para {generada.email}</h2>
+          <h2 style={{ color: 'var(--positive)' }}>
+            {generada.enviadoPorCorreo ? `Invitación enviada por correo a ${generada.email}` : `Enlace para ${generada.email}`}
+          </h2>
           <p style={{ marginBottom: 10 }}>
-            Caduca el {fechaCorta(generada.expiraEl)} y{' '}
-            <strong>solo sirve una vez</strong>. No vuelve a mostrarse: cópialo ahora.
+            {generada.enviadoPorCorreo ? (
+              <>
+                El enlace también está aquí por si el correo no llega. Caduca el {fechaCorta(generada.expiraEl)} y{' '}
+                <strong>solo sirve una vez</strong>.
+              </>
+            ) : (
+              <>
+                <strong>No se ha enviado ningún correo.</strong> Cópialo y entrégalo tú. Caduca el{' '}
+                {fechaCorta(generada.expiraEl)}, <strong>solo sirve una vez</strong> y no vuelve a mostrarse.
+              </>
+            )}
           </p>
           <div className="enlace-copiable">
             <code>{generada.url}</code>
