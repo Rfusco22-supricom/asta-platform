@@ -160,6 +160,9 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
 -- Contador de intentos del personal que entra con Odoo (#85). Se lee y se
 -- actualiza en cada login; nunca se borra una fila.
 GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost';
+-- Memoria de las alertas (#46): el comprobador recuerda qué avisó para no repetirlo.
+-- UPDATE para marcar una alerta como resuelta; sin DELETE, como el resto.
+GRANT SELECT, INSERT, UPDATE ON asta.alert_states TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
@@ -299,6 +302,7 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
 
 -- Solo contadores de intentos, no material de credencial: sirve para investigar bloqueos.
 GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.alert_states             TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 
