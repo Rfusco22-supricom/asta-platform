@@ -26,7 +26,21 @@ volcado mal hecho pierde **en silencio**:
 | colaciones | `app_users.email` es `utf8mb4_bin`. Con una `_ci`, dos personas distintas no pueden tener cuenta |
 | particiones | el particionado de `api_request_logs` |
 | primarias | la compuesta `(id, created_at)` que exige el particionado |
-| filas por tabla | lo obvio, con `COUNT(*)` y no con la estimación de `information_schema` |
+| filas por tabla | lo obvio, con `COUNT(*)` y no con la estimación de `information_schema`. Incluye `_prisma_migrations`: sin su historial, el siguiente `migrate deploy` sobre lo restaurado intentaría `0_init` |
+| columnas | tipo, nulos, valor por defecto y `AUTO_INCREMENT` |
+| índices | todos, no solo la primaria, y si son únicos: un token que deja de ser único deja de proteger |
+| foráneas | con su `ON DELETE`: un `CASCADE` que se pierde deja filas huérfanas |
+| checks | el `json_valid` con que MariaDB implementa `JSON`, y los que vengan |
+
+Las cuatro últimas se añadieron el 2026-10-01, cuando el esquema ya tenía 26
+tablas con claves foráneas, tokens únicos y restricciones. Comprobado que
+detectan: saboteando lo restaurado antes de comparar (quitar
+`fk_auth_tokens_user`, volver no único `uq_auth_tokens_hash`, quitar el `CHECK`
+de `sync_state.resumen`) el simulacro saca las tres.
+
+Si el origen no tiene rutinas o particiones —desarrollo no tiene `003`
+aplicado—, el simulacro lo dice: esas comparaciones pasan sin comprobar nada, y
+un verde así no vale para producción.
 
 Está comprobado que **detecta**, no solo que aprueba. Quitando `--routines` del
 volcado, el simulacro saca:
@@ -47,14 +61,15 @@ y cambiando a mano la colación del email en lo restaurado:
 
 ## RTO — cuánto se tarda en volver
 
-Medido el 2026-09-14 sobre la base de desarrollo (18 tablas, 3.142 filas,
-0,8 MB de volcado):
+Medido sobre la base de desarrollo:
 
-| | |
-|---|---|
-| volcado | 0,2 s |
-| restauración | 0,6 s |
-| **RTO de base de datos** | **~1 s** |
+| | 2026-09-14 | 2026-10-01 |
+|---|---|---|
+| tablas | 18 | 26 |
+| filas | 3.142 | 7.652 |
+| volcado | 0,8 MB · 0,2 s | 1,5 MB · 0,4 s |
+| restauración | 0,6 s | 0,9 s |
+| **RTO de base de datos** | **~1 s** | **1,3 s** |
 
 **Ese número es sincero pero incompleto**, y conviene no citarlo suelto. Es solo
 la parte de base de datos. El día malo hay que además:
@@ -73,23 +88,22 @@ datos, y un número de hace un año no sirve para planificar.
 
 ## RPO — cuántos datos se acepta perder
 
-**Sin decidir. Es una decisión de negocio, no técnica.**
+**Decidido el 2026-10-01: hasta 1 hora.** Un respaldo cada hora.
 
-Lo que hay hoy implica un RPO igual a la frecuencia del cron: con un respaldo
-diario a las 3:00, un desastre a las 2:00 pierde casi un día de trabajo.
+Lo que se perdería en el peor caso, la hora anterior al desastre:
 
-Qué se perdería, en concreto:
-
-- Las **notas de los vendedores** escritas desde el último respaldo. Se pierden
-  de verdad: solo existen aquí.
+- Las **notas de los vendedores** escritas en esa hora. Se pierden de verdad:
+  solo existen aquí.
+- Las **revisiones de compatibilidades** de esa hora: validar o rechazar
+  propuestas (#56). Hay que repetirlas.
 - Las **sesiones** abiertas. Molesto, no grave: la gente vuelve a entrar.
 - La **facturación no se pierde**: vive en Odoo, no aquí. El panel la lee en
   vivo. Esto es lo que hace que el RPO de ASTA sea mucho menos crítico de lo que
-  parece — lo que guardamos es lo operativo del panel, no la contabilidad.
+  parece: lo que guardamos es lo operativo del panel, no la contabilidad.
 
-Si un día de notas perdidas es aceptable, un respaldo diario basta. Si no, hay
-que hablar de binlogs y recuperación a un punto en el tiempo, que es bastante
-más caro de operar.
+Por debajo de una hora habría que hablar de binlogs y recuperación a un punto en
+el tiempo, que es bastante más caro de operar. No compensa con lo que hay en
+juego.
 
 ---
 
@@ -133,8 +147,8 @@ justo el punto de #44.
 ### 2. Cron
 
 ```cron
-# Respaldo diario a las 3:00
-0 3 * * *  /ruta/asta/db/backup/respaldar.sh >> /var/log/asta-backup.log 2>&1
+# Respaldo cada hora: el RPO decidido es 1 hora
+0 * * * *  ASTA_BACKUP_RETENCION=14 /ruta/asta/db/backup/respaldar.sh >> /var/log/asta-backup.log 2>&1
 
 # Mantenimiento de la base (issue #47)
 0 4 * * *  mysql --defaults-extra-file=$HOME/.asta-backup.cnf asta -e "CALL sp_cleanup_expired()"
@@ -146,6 +160,25 @@ justo el punto de #44.
 
 Variables que reconoce `respaldar.sh`: `ASTA_DB`, `ASTA_BACKUP_DIR`,
 `ASTA_BACKUP_RETENCION` (días, 14 por defecto), `MYSQL_DEFAULTS_FILE`.
+
+Con una copia por hora y 14 días son 336 ficheros. A los tamaños de hoy, unos
+70 MB comprimidos: asumible, pero hay que vigilarlo cuando crezcan los logs. El
+nombre lleva fecha y hora al segundo, así que dos copias no se pisan.
+
+### En producción: pendiente de decidir
+
+MySQL corre como **servicio gestionado de EasyPanel**: no hay una máquina donde
+poner el cron de arriba, y el contenedor del middleware no trae `mysqldump`. Las
+dos opciones, sin decidir todavía (#48):
+
+| | Respaldos de EasyPanel | Contenedor con `respaldar.sh` |
+|---|---|---|
+| Qué es | los respaldos programados del servicio MySQL, hacia un almacenamiento S3 | un servicio pequeño con el cliente de MySQL que ejecute estos scripts con cron |
+| A favor | no hay nada más que mantener | sabemos exactamente qué banderas lleva el volcado (`--routines`, `--events`…) |
+| En contra | no sabemos con qué banderas vuelca: hay que comprobar que una copia suya se restaura completa | un servicio más en EasyPanel |
+
+Sea cual sea, **no hay respaldo en el que confiar hasta que el simulacro haya
+pasado contra MySQL 9**: nunca ha corrido contra ese motor.
 
 ### 3. El simulacro, de verdad y cada cierto tiempo
 

@@ -33,7 +33,18 @@ const ejecutar = promisify(execFile);
  *                   personas distintas no pueden tener cuenta (#12).
  *   · particiones   se pierden si el volcado no conserva la definición.
  *   · primarias     `api_request_logs` la tiene compuesta por el particionado.
- *   · filas         lo obvio, y aun así hay que mirarlo.
+ *   · filas         lo obvio, y aun así hay que mirarlo. Incluye
+ *                   `_prisma_migrations`: sin su historial, el siguiente
+ *                   `migrate deploy` sobre lo restaurado intentaría `0_init`.
+ *
+ * Y desde el 2026-10-01, porque el esquema creció en lo que no se ve:
+ *
+ *   · columnas      tipo, nulos, valor por defecto y AUTO_INCREMENT.
+ *   · índices       todos, no solo la primaria, y si son únicos: un token que
+ *                   deja de ser único deja de proteger.
+ *   · foráneas      con su ON DELETE: un CASCADE que se pierde deja huérfanos.
+ *   · checks        el `json_valid` de las columnas JSON en MariaDB, y los que
+ *                   vengan.
  *
  * No se ejecuta en la batería de tests: tarda, necesita `mysqldump` en el PATH y
  * crea bases. Es un simulacro, y un simulacro se hace a propósito.
@@ -95,6 +106,20 @@ interface Retrato {
   colaciones: Map<string, string>;
   particiones: string[];
   primarias: Map<string, string>;
+  columnas: Map<string, string>;
+  indices: Map<string, string>;
+  foraneas: Map<string, string>;
+  checks: Map<string, string>;
+}
+
+/** Filas `clave<TAB>valor` a un mapa. */
+function aMapa(salida: string): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const f of salida.split('\n').filter(Boolean)) {
+    const i = f.indexOf('\t');
+    m.set(f.slice(0, i), f.slice(i + 1));
+  }
+  return m;
 }
 
 async function retratar(c: Conexion, base: string): Promise<Retrato> {
@@ -145,7 +170,39 @@ async function retratar(c: Conexion, base: string): Promise<Retrato> {
     primarias.set(k, v);
   }
 
-  return { tablas, rutinas, colaciones, particiones, primarias };
+  // COLUMN_DEFAULT puede ser NULL: IFNULL para que no desaparezca de la fila.
+  // Literales SIN acentos en todo el SQL: el cliente de MySQL en Windows los
+  // devuelve en otra codificación, y «único» llegaba como «�nico».
+  const columnas = aMapa(await sql(c, base, `SELECT CONCAT(TABLE_NAME,'.',COLUMN_NAME),
+        CONCAT_WS('|', COLUMN_TYPE, IS_NULLABLE, IFNULL(COLUMN_DEFAULT,'(sin defecto)'), EXTRA)
+      FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${base}' ORDER BY TABLE_NAME, ORDINAL_POSITION`));
+
+  const indices = aMapa(await sql(c, base, `SELECT CONCAT(TABLE_NAME,'.',INDEX_NAME),
+        CONCAT(IF(NON_UNIQUE=0,'unico','no unico'),':',GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX))
+      FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='${base}'
+      GROUP BY TABLE_NAME, INDEX_NAME, NON_UNIQUE ORDER BY TABLE_NAME, INDEX_NAME`));
+
+  const foraneas = aMapa(await sql(c, base, `SELECT CONCAT(k.TABLE_NAME,'.',k.CONSTRAINT_NAME),
+        CONCAT(GROUP_CONCAT(k.COLUMN_NAME ORDER BY k.ORDINAL_POSITION), ' -> ', k.REFERENCED_TABLE_NAME, '(',
+               GROUP_CONCAT(k.REFERENCED_COLUMN_NAME ORDER BY k.ORDINAL_POSITION), ') ON DELETE ', r.DELETE_RULE,
+               ' ON UPDATE ', r.UPDATE_RULE)
+      FROM information_schema.KEY_COLUMN_USAGE k
+      JOIN information_schema.REFERENTIAL_CONSTRAINTS r
+        ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND r.TABLE_NAME = k.TABLE_NAME
+      WHERE k.TABLE_SCHEMA='${base}' AND k.REFERENCED_TABLE_NAME IS NOT NULL
+      GROUP BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.REFERENCED_TABLE_NAME, r.DELETE_RULE, r.UPDATE_RULE
+      ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME`));
+
+  // Por TABLE_CONSTRAINTS y no solo CHECK_CONSTRAINTS: en MySQL esta última no
+  // tiene TABLE_NAME; en MariaDB sí. El JOIN vale para los dos.
+  const checks = aMapa(await sql(c, base, `SELECT CONCAT(t.TABLE_NAME,'.',t.CONSTRAINT_NAME), cc.CHECK_CLAUSE
+      FROM information_schema.TABLE_CONSTRAINTS t
+      JOIN information_schema.CHECK_CONSTRAINTS cc
+        ON cc.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME = t.CONSTRAINT_NAME
+      WHERE t.TABLE_SCHEMA='${base}' AND t.CONSTRAINT_TYPE='CHECK'
+      ORDER BY t.TABLE_NAME, t.CONSTRAINT_NAME`));
+
+  return { tablas, rutinas, colaciones, particiones, primarias, columnas, indices, foraneas, checks };
 }
 
 function compararMapas(
@@ -254,6 +311,10 @@ async function main(): Promise<void> {
       ...compararMapas('colaciones', a.colaciones, b.colaciones),
       ...compararListas('particiones', a.particiones, b.particiones),
       ...compararMapas('primarias', a.primarias, b.primarias),
+      ...compararMapas('columnas', a.columnas, b.columnas),
+      ...compararMapas('índices', a.indices, b.indices),
+      ...compararMapas('foráneas', a.foraneas, b.foraneas),
+      ...compararMapas('checks', a.checks, b.checks),
     ];
 
     const filas = [...a.tablas.values()].reduce((s, n) => s + n, 0);
@@ -261,8 +322,13 @@ async function main(): Promise<void> {
     console.log('');
     console.log(`  tablas      ${a.tablas.size}`);
     console.log(`  filas       ${filas.toLocaleString('es-VE')}`);
-    console.log(`  rutinas     ${a.rutinas.length}`);
-    console.log(`  particiones ${a.particiones.length}`);
+    console.log(`  columnas    ${a.columnas.size}`);
+    console.log(`  índices     ${a.indices.size}`);
+    console.log(`  foráneas    ${a.foraneas.size}`);
+    console.log(`  checks      ${a.checks.size}`);
+    console.log(`  rutinas     ${a.rutinas.length}${a.rutinas.length === 0 ? '   (ninguna en el origen: no se comprueba)' : ''}`);
+    console.log(`  particiones ${a.particiones.length}${a.particiones.length === 0 ? '   (ninguna en el origen: no se comprueba)' : ''}`);
+    console.log(`  historial   ${a.tablas.get('_prisma_migrations') ?? 'SIN _prisma_migrations'}${a.tablas.has('_prisma_migrations') ? ' migraciones' : ''}`);
     console.log('');
 
     if (problemas.length === 0) {
