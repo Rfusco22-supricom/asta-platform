@@ -37,6 +37,7 @@
     "verify:endpoints": "tsx scripts/verify-endpoints.ts",
     "dev:middleware": "tsx watch apps/middleware/src/server.ts",
     "dev:web": "pnpm --filter @asta/web dev",
+    "test:staging": "pnpm --filter @asta/middleware exec vitest run --config vitest.staging.config.ts",
     "test:isolation": "pnpm --filter @asta/middleware exec vitest run src/__tests__/isolation.test.ts",
     "test": "pnpm run test:middleware && pnpm run test:scripts",
     "test:middleware": "pnpm --filter @asta/middleware exec vitest run",
