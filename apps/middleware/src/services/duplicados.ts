@@ -28,12 +28,27 @@
  * son lo mismo, pero dos empresas distintas pueden llamarse igual. Por eso los
  * grupos por RIF y por nombre se marcan de forma distinta — los primeros se
  * pueden fusionar con confianza, los segundos hay que mirarlos.
+ *
+ * ── Dentro de cada compañía, nunca entre compañías ───────────────────────────
+ *
+ * En esta instancia cada compañía tiene sus propias fichas de cliente: el mismo
+ * cliente que compra a SUPRICOM CCS 21 A y a la B tiene una ficha en cada una,
+ * con el vendedor de esa compañía. Eso no es un duplicado, es como está montado
+ * Odoo, y fusionarlas sería un error.
+ *
+ * La primera versión agrupaba sin mirar la compañía y el informe decía que el
+ * 35,8 % de lo facturado estaba repartido. Medido el 2026-10-01: de 147 grupos
+ * partidos, 129 mezclaban compañías. Dentro de cada compañía quedan 23, con el
+ * 1,4 % del dinero y un solo grupo que cruza vendedores.
  */
 
 export interface Registro {
   id: number;
   nombre: string;
   rif: string | null;
+  /** `res.partner.company_id`. `null` en las fichas compartidas por todas las compañías. */
+  companiaId: number | null;
+  compania: string | null;
   vendedorId: number | null;
   vendedor: string | null;
   facturas: number;
@@ -54,6 +69,8 @@ export type Clase =
 export interface Grupo {
   clave: string;
   motivo: Motivo;
+  /** La compañía de todos los registros del grupo: nunca se mezclan. */
+  compania: string | null;
   clase: Clase;
   registros: Registro[];
   /** Cuántos registros del grupo tienen al menos una factura. */
@@ -141,6 +158,7 @@ function construirGrupo(clave: string, motivo: Motivo, registros: Registro[]): G
   return {
     clave,
     motivo,
+    compania: registros[0].compania,
     clase,
     registros: [...registros].sort((a, b) => b.monto - a.monto || a.id - b.id),
     conFacturas: conFacturas.length,
@@ -159,6 +177,9 @@ function construirGrupo(clave: string, motivo: Motivo, registros: Registro[]): G
  * así, el mismo cliente aparecería dos veces en el informe y quien lo lea tendría
  * que deduplicar el informe de duplicados.
  */
+/** La clave de agrupación, dentro de la compañía del registro. */
+const enCompania = (r: Registro, clave: string) => `${r.companiaId ?? 'compartida'}|${clave}`;
+
 export function agrupar(registros: Registro[]): Grupo[] {
   const grupos: Grupo[] = [];
   const yaAgrupado = new Set<number>();
@@ -168,13 +189,14 @@ export function agrupar(registros: Registro[]): Grupo[] {
   for (const r of registros) {
     const rif = normalizarRif(r.rif);
     if (!rifUtilizable(rif)) continue;
-    if (!porRif.has(rif!)) porRif.set(rif!, []);
-    porRif.get(rif!)!.push(r);
+    const k = enCompania(r, rif!);
+    if (!porRif.has(k)) porRif.set(k, []);
+    porRif.get(k)!.push(r);
   }
 
-  for (const [rif, rs] of porRif) {
+  for (const rs of porRif.values()) {
     if (rs.length < 2) continue;
-    grupos.push(construirGrupo(rif, 'rif', rs));
+    grupos.push(construirGrupo(normalizarRif(rs[0].rif)!, 'rif', rs));
     for (const r of rs) yaAgrupado.add(r.id);
   }
 
@@ -184,13 +206,14 @@ export function agrupar(registros: Registro[]): Grupo[] {
     if (yaAgrupado.has(r.id)) continue;
     const n = normalizarNombre(r.nombre);
     if (n.length === 0) continue;
-    if (!porNombre.has(n)) porNombre.set(n, []);
-    porNombre.get(n)!.push(r);
+    const k = enCompania(r, n);
+    if (!porNombre.has(k)) porNombre.set(k, []);
+    porNombre.get(k)!.push(r);
   }
 
-  for (const [nombre, rs] of porNombre) {
+  for (const rs of porNombre.values()) {
     if (rs.length < 2) continue;
-    grupos.push(construirGrupo(nombre, 'nombre', rs));
+    grupos.push(construirGrupo(normalizarNombre(rs[0].nombre), 'nombre', rs));
   }
 
   // Lo que más dinero tiene repartido, primero: es por donde hay que empezar.

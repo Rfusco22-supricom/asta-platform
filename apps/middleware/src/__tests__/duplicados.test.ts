@@ -31,6 +31,8 @@ function reg(p: Partial<Registro> = {}): Registro {
     id: p.id ?? siguienteId++,
     nombre: p.nombre ?? 'CLIENTE EJEMPLO, C.A.',
     rif: p.rif ?? null,
+    companiaId: p.companiaId ?? 1,
+    compania: p.compania ?? 'SUPRICOM CCS 21, C.A. - A',
     vendedorId: p.vendedorId ?? null,
     vendedor: p.vendedor ?? null,
     facturas: p.facturas ?? 0,
@@ -189,6 +191,54 @@ describe('#50 · Un registro cae en un solo grupo', () => {
 
   it('un registro solo no forma grupo', () => {
     expect(agrupar([reg({ rif: 'J408726742' })])).toEqual([]);
+  });
+});
+
+describe('#50 · Dentro de cada compañía, nunca entre compañías', () => {
+  /*
+   * Cada compañía tiene sus propias fichas: el mismo cliente en SUPRICOM CCS 21
+   * A y en la B son dos fichas a propósito, cada una con su vendedor. Fusionarlas
+   * sería un error, y era el 88 % de lo que la primera versión llamaba duplicado.
+   */
+  const A = { companiaId: 1, compania: 'SUPRICOM CCS 21, C.A. - A' };
+  const B = { companiaId: 10, compania: 'SUPRICOM CCS 21, C.A. - B' };
+
+  it('el mismo RIF en dos compañías NO es un duplicado', () => {
+    const grupos = agrupar([
+      reg({ ...A, rif: 'J-40872674-2', facturas: 5, monto: 1000 }),
+      reg({ ...B, rif: 'J408726742', facturas: 7, monto: 2000 }),
+    ]);
+    expect(grupos).toHaveLength(0);
+  });
+
+  it('el mismo nombre en dos compañías tampoco', () => {
+    const grupos = agrupar([
+      reg({ ...A, nombre: 'GALLERY COMPUTER, C.A', facturas: 1, monto: 10 }),
+      reg({ ...B, nombre: 'GALLERY COMPUTER CA', facturas: 1, monto: 10 }),
+    ]);
+    expect(grupos).toHaveLength(0);
+  });
+
+  it('dentro de la misma compañía sí, y el grupo dice de cuál es', () => {
+    const grupos = agrupar([
+      reg({ ...B, rif: 'J-40872674-2', facturas: 5, monto: 1000 }),
+      reg({ ...B, rif: 'J408726742', facturas: 7, monto: 2000 }),
+      // La ficha de la otra compañía no entra en el grupo.
+      reg({ ...A, rif: 'J-40872674-2', facturas: 9, monto: 9000 }),
+    ]);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0]).toMatchObject({ compania: B.compania, clase: 'partido', montoTotal: 3000 });
+    expect(grupos[0].registros).toHaveLength(2);
+  });
+
+  it('el mismo RIF duplicado en dos compañías da un grupo en cada una', () => {
+    const grupos = agrupar([
+      reg({ ...A, rif: 'J-1234567-8', facturas: 1, monto: 10 }),
+      reg({ ...A, rif: 'J-1234567-8', facturas: 1, monto: 10 }),
+      reg({ ...B, rif: 'J-1234567-8', facturas: 1, monto: 10 }),
+      reg({ ...B, rif: 'J-1234567-8', facturas: 1, monto: 10 }),
+    ]);
+    expect(grupos.map((g) => g.compania).sort()).toEqual([A.compania, B.compania]);
   });
 });
 

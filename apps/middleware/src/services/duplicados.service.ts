@@ -44,6 +44,7 @@ interface FilaPartner {
   name: string;
   vat: string | false;
   user_id: [number, string] | false;
+  company_id?: [number, string] | false;
 }
 
 /**
@@ -66,7 +67,7 @@ export async function registrosDeOdoo(): Promise<Registro[]> {
         ['parent_id', '=', false],
         ['active', '=', true],
       ],
-      ['id', 'name', 'vat', 'user_id'],
+      ['id', 'name', 'vat', 'user_id', 'company_id'],
     ),
     readGroup<{
       commercial_partner_id: [number, string] | false;
@@ -97,6 +98,8 @@ export async function registrosDeOdoo(): Promise<Registro[]> {
       id: p.id,
       nombre: p.name,
       rif: p.vat || null,
+      companiaId: p.company_id ? p.company_id[0] : null,
+      compania: p.company_id ? p.company_id[1] : null,
       vendedorId: p.user_id ? p.user_id[0] : null,
       vendedor: p.user_id ? p.user_id[1] : null,
       facturas: f?.facturas ?? 0,
@@ -124,6 +127,7 @@ export async function informeDeDuplicados(): Promise<
       .map((g) => ({
         clave: g.clave,
         motivo: g.motivo,
+        compania: g.compania,
         montoTotal: redondear(g.montoTotal),
         montoFuera: redondear(g.montoFuera),
         conFacturas: g.conFacturas,

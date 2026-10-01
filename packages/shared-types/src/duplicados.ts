@@ -48,9 +48,17 @@ export const registroDuplicadoSchema = z.object({
 export type RegistroDuplicado = z.infer<typeof registroDuplicadoSchema>;
 
 export const grupoDuplicadoSchema = z.object({
-  /** RIF normalizado o nombre normalizado, según `motivo`. Identifica al grupo. */
+  /**
+   * RIF normalizado o nombre normalizado, según `motivo`. Junto con `compania`
+   * identifica al grupo: el mismo RIF puede tener un grupo en cada compañía.
+   */
   clave: z.string(),
   motivo: motivoDuplicadoSchema,
+  /**
+   * La compañía del grupo. Se agrupa dentro de cada una: el mismo cliente en dos
+   * compañías tiene dos fichas a propósito, y eso no es un duplicado.
+   */
+  compania: z.string().nullable(),
   /** Facturación sumada del grupo: lo que el vendedor debería ver. */
   montoTotal: montoSchema,
   /**
