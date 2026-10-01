@@ -100,6 +100,16 @@ enum AuthTokenPurpose {
 /// sirve SOLO `VALIDADA`, así que un `'VALIDADO'` mal escrito haría desaparecer
 /// una compatibilidad buena —o, según cómo se escriba la consulta, enseñar una
 /// sin revisar—. Con un enum eso no compila ni entra en la base.
+/// Estado de una petición de pedido por la API (#33).
+enum ApiOrderRequestState {
+  /// Reservada la clave; el pedido se está creando.
+  EN_CURSO
+  /// El pedido existe en Odoo y `respuesta` es lo que se contestó.
+  CREADO
+  /// Falló antes de crear el pedido: la misma clave puede reintentarse.
+  FALLIDO
+}
+
 enum CompatibilityStatus {
   PROPUESTA
   VALIDADA
@@ -411,6 +421,39 @@ model ApiKeyAllowedIp {
 
   @@id([apiKeyId, cidr])
   @@map("api_key_allowed_ips")
+}
+
+/// Estado de una petición `POST /api/v1/public/orders` (#33).
+///
+/// Es a la vez la **idempotencia** y la **lista de pedidos que el cliente creó
+/// por la API**:
+///
+/// · Idempotencia. Un reintento de red con la misma `Idempotency-Key` devuelve
+///   el MISMO pedido en vez de crear otro. La clave es única por CLIENTE
+///   (`odoo_partner_id`, `idempotency_key`), no global: indexada sola, el
+///   cliente A podría mandar la clave que usó B y recibir como respuesta el
+///   pedido de B. `request_hash` detecta la misma clave con otro cuerpo.
+///
+/// · Borradores visibles. `GET /orders` no enseña los presupuestos en borrador,
+///   que son trabajo interno del vendedor. Los que el cliente creó él mismo sí
+///   tiene que verlos, y son exactamente los `odoo_order_id` de esta tabla.
+model ApiOrderRequest {
+  id             BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  odooPartnerId  Int                  @map("odoo_partner_id") @db.UnsignedInt
+  idempotencyKey String               @map("idempotency_key") @db.VarChar(128)
+  /// sha256 del cuerpo, normalizado.
+  requestHash    String               @map("request_hash") @db.Char(64)
+  estado         ApiOrderRequestState @default(EN_CURSO)
+  odooOrderId    Int?                 @map("odoo_order_id") @db.UnsignedInt
+  /// La respuesta que se dio, para repetirla tal cual en un reintento.
+  respuesta      Json?
+  apiKeyId       String?              @map("api_key_id") @db.Char(36)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@unique([odooPartnerId, idempotencyKey], map: "uq_api_order_requests_clave")
+  @@index([odooPartnerId, odooOrderId], map: "ix_api_order_requests_pedido")
+  @@map("api_order_requests")
 }
 
 /// Bitácora de la API pública. Alto volumen: ver db/mysql/003_partitioning.sql.

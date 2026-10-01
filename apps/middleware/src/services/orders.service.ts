@@ -1,5 +1,7 @@
 import type { EstadoPedido, PublicOrder, PublicOrderDetail, PublicOrderLine } from '@asta/shared-types';
+import { prisma } from '../config/prisma.js';
 import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Pedidos de un cliente para la API pública (#33), leídos en vivo de `sale.order`.
@@ -13,7 +15,10 @@ import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
  * del que lo pide.
  *
  * Sin borradores (`draft`): un presupuesto en borrador es trabajo interno del
- * vendedor, con precios a medio negociar. Ver `estadoPedidoSchema`.
+ * vendedor, con precios a medio negociar. Ver `estadoPedidoSchema`. La única
+ * excepción son los que el cliente creó él mismo por la API (`POST /orders`),
+ * que nacen en borrador: son los `odoo_order_id` de `api_order_requests`, y se
+ * pasan como `propios`.
  *
  * Esa definición vive en `dominioPedidosDe` y en ningún otro sitio. El listado y
  * el detalle la usan los dos: dos copias de un filtro de seguridad son dos
@@ -28,12 +33,38 @@ import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
 
 export const ESTADOS_VISIBLES: readonly EstadoPedido[] = ['sent', 'sale', 'cancel'];
 
-export function dominioPedidosDe(partnerId: number): OdooDomain {
+/**
+ * @param propios pedidos que el cliente creó por la API: se ven aunque estén en
+ *   borrador. Siguen pasando por el `child_of`: estar en la lista no basta.
+ */
+export function dominioPedidosDe(partnerId: number, propios: readonly number[] = []): OdooDomain {
   if (!Number.isInteger(partnerId) || partnerId <= 0) throw new TypeError(`partnerId inválido: ${partnerId}`);
+  const visibles: OdooDomain = [['state', 'in', [...ESTADOS_VISIBLES]]];
   return [
     ['partner_id', 'child_of', partnerId],
-    ['state', 'in', [...ESTADOS_VISIBLES]],
+    ...(propios.length === 0 ? visibles : ['|', ...visibles, '&', ['state', '=', 'draft'], ['id', 'in', [...propios]]] satisfies OdooDomain),
   ];
+}
+
+/**
+ * Los pedidos que este cliente creó por la API (#33).
+ *
+ * Si la tabla no se puede leer —desplegado sin migrar, o sin el GRANT de
+ * `asta_app`—, ninguno, y se avisa: `GET /orders` sigue funcionando como antes
+ * del POST, sin borradores propios. Tumbar la lectura de pedidos de todos los
+ * clientes por una tabla que hoy solo usa un endpoint apagado sería peor.
+ */
+export async function pedidosPropios(partnerId: number): Promise<number[]> {
+  try {
+    const filas = await prisma.apiOrderRequest.findMany({
+      where: { odooPartnerId: partnerId, estado: 'CREADO', odooOrderId: { not: null } },
+      select: { odooOrderId: true },
+    });
+    return filas.map((f) => f.odooOrderId!);
+  } catch (error) {
+    logger.warn({ err: error instanceof Error ? error.message : String(error) }, 'pedidos: no se pudo leer api_order_requests; sin borradores propios');
+    return [];
+  }
 }
 
 const CAMPOS_PEDIDO = [
@@ -123,7 +154,7 @@ export interface ConsultaPedidos {
 
 /** Pedidos de un cliente, paginados. Cuesta 2 RPC. */
 export async function listarPedidos(partnerId: number, q: ConsultaPedidos): Promise<{ pedidos: PublicOrder[]; total: number }> {
-  const dominio = dominioPedidosDe(partnerId);
+  const dominio = dominioPedidosDe(partnerId, await pedidosPropios(partnerId));
   // `date_order` es fecha y hora en UTC: el día entero, de 00:00:00 a 23:59:59.
   if (q.desde) dominio.push(['date_order', '>=', `${q.desde} 00:00:00`]);
   if (q.hasta) dominio.push(['date_order', '<=', `${q.hasta} 23:59:59`]);
@@ -149,7 +180,7 @@ export async function listarPedidos(partnerId: number, q: ConsultaPedidos): Prom
  * vacía, `null`.
  */
 export async function verPedido(partnerId: number, orderId: number): Promise<PublicOrderDetail | null> {
-  const [f] = await searchRead<FilaPedido>('sale.order', [...dominioPedidosDe(partnerId), ['id', '=', orderId]], [...CAMPOS_PEDIDO], {
+  const [f] = await searchRead<FilaPedido>('sale.order', [...dominioPedidosDe(partnerId, await pedidosPropios(partnerId)), ['id', '=', orderId]], [...CAMPOS_PEDIDO], {
     limit: 1,
   });
   if (!f) return null;

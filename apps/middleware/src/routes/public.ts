@@ -2,14 +2,17 @@ import { Router } from 'express';
 import { authApiKey, requireScope, scopeToOwnPartner } from '../middleware/apiKeyAuth.js';
 import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
+import { escrituraPedidosActiva } from '../services/pedidosEscritura.service.js';
 import {
   buscarImpresorasHandler,
+  crearPedidoHandler,
   clicRecomendadorHandler,
   compatiblesHandler,
   enlacePdfFacturaHandler,
   listarFacturasHandler,
   listarInventarioHandler,
   listarPedidosHandler,
+  noImplementadoHandler,
   preciosHandler,
   verFacturaHandler,
   verPedidoHandler,
@@ -61,6 +64,8 @@ export function crearPublicRouter(): Router {
   router.get('/invoices/:id/pdf', requireScope('INVOICES_READ'), enlacePdfFacturaHandler);
 
   router.get('/orders', requireScope('ORDERS_READ'), listarPedidosHandler);
+  // Apagado hasta que se pruebe contra staging (#13): ver `pedidosEscritura.service.ts`.
+  router.post('/orders', requireScope('ORDERS_WRITE'), escrituraPedidosActiva() ? crearPedidoHandler : noImplementadoHandler);
   router.get('/orders/:orderId', requireScope('ORDERS_READ'), verPedidoHandler);
 
   router.get('/inventory', requireScope('INVENTORY_READ'), listarInventarioHandler);

@@ -132,6 +132,10 @@ GRANT SELECT, INSERT, UPDATE ON asta.api_keys             TO 'asta_app'@'localho
 GRANT SELECT, INSERT         ON asta.api_key_scopes       TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT         ON asta.api_key_allowed_ips  TO 'asta_app'@'localhost';
 
+-- Peticiones de pedido por la API (#33): idempotencia y pedidos creados por el
+-- cliente. UPDATE para pasar de EN_CURSO a CREADO o FALLIDO; nunca se borran.
+GRANT SELECT, INSERT, UPDATE ON asta.api_order_requests   TO 'asta_app'@'localhost';
+
 -- -----------------------------------------------------------------------------
 -- Compatibilidad impresora <-> tóner (#101). Tampoco lleva DELETE.
 --
@@ -299,6 +303,7 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
 
 -- Solo contadores de intentos, no material de credencial: sirve para investigar bloqueos.
 GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.api_order_requests       TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 

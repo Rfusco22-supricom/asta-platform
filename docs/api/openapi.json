@@ -906,6 +906,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "draft",
                 "sent",
                 "sale",
                 "cancel"
@@ -986,11 +987,12 @@
                           "estado": {
                             "type": "string",
                             "enum": [
+                              "draft",
                               "sent",
                               "sale",
                               "cancel"
                             ],
-                            "description": "Estado: `sent` presupuesto enviado, `sale` pedido confirmado, `cancel` cancelado. Puede recibir valores nuevos: trata cualquier otro como `sent`."
+                            "description": "Estado: `draft` pedido que creaste por la API, pendiente de que lo confirmemos; `sent` presupuesto enviado; `sale` pedido confirmado; `cancel` cancelado. Puede recibir valores nuevos: trata cualquier otro como `sent`."
                           },
                           "referenciaCliente": {
                             "description": "Tu referencia para este pedido (orden de compra). `null` si no la tiene.",
@@ -1270,11 +1272,12 @@
                         "estado": {
                           "type": "string",
                           "enum": [
+                            "draft",
                             "sent",
                             "sale",
                             "cancel"
                           ],
-                          "description": "Estado: `sent` presupuesto enviado, `sale` pedido confirmado, `cancel` cancelado. Puede recibir valores nuevos: trata cualquier otro como `sent`."
+                          "description": "Estado: `draft` pedido que creaste por la API, pendiente de que lo confirmemos; `sent` presupuesto enviado; `sale` pedido confirmado; `cancel` cancelado. Puede recibir valores nuevos: trata cualquier otro como `sent`."
                         },
                         "referenciaCliente": {
                           "description": "Tu referencia para este pedido (orden de compra). `null` si no la tiene.",
@@ -2921,6 +2924,24 @@
               "docs": {
                 "type": "string",
                 "format": "uri"
+              },
+              "detalles": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sku": {
+                      "type": "string"
+                    },
+                    "motivo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sku",
+                    "motivo"
+                  ]
+                }
               }
             },
             "required": [

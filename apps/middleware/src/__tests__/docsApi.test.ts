@@ -63,11 +63,19 @@ describe('#35 · Qué se documenta', () => {
     //
     // Antes comprobaba solo `/pricing`, el único 501 que había; con #31 dejó de
     // serlo y la comprobación se quedaba sin objeto. Ahora mira todos los que haya.
-    const capas = (crearPublicRouter() as unknown as { stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }> }).stack;
+    //
+    // Por MÉTODO y ruta: desde #33, `/orders` tiene un GET implementado y un POST
+    // que responde 501 mientras su interruptor esté apagado.
+    const capas = (crearPublicRouter() as unknown as {
+      stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown }> } }>;
+    }).stack;
     const sinImplementar = capas
       .filter((c) => c.route?.stack.some((s) => s.handle === noImplementadoHandler))
-      .map((c) => `/api/v1/public${c.route!.path.replace(/:(\w+)/g, '{$1}')}`);
-    const documentadas = Object.keys(construirOpenApi().paths as Json);
+      .flatMap((c) => Object.keys(c.route!.methods).map((m) => `${m.toUpperCase()} /api/v1/public${c.route!.path.replace(/:(\w+)/g, '{$1}')}`));
+    expect(sinImplementar.length).toBeGreaterThan(0);
+    const documentadas = Object.entries(construirOpenApi().paths as Record<string, Json>).flatMap(([ruta, metodos]) =>
+      Object.keys(metodos).map((m) => `${m.toUpperCase()} ${ruta}`),
+    );
     expect(documentadas.filter((r) => sinImplementar.includes(r))).toEqual([]);
   });
 
