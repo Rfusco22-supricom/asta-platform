@@ -8,6 +8,7 @@ import type {
   RevisionQuery,
 } from '@asta/shared-types';
 import { prisma } from '../../config/prisma.js';
+import { buscarImpresora } from './impresoraExistente.js';
 import { normalizarModelo } from './normalizar.js';
 import { formasDelCodigo } from './separarModelos.js';
 import { RevisionDesactualizada, RevisionInvalida, ventasSiOdooResponde } from './revision.service.js';
@@ -193,7 +194,9 @@ export async function anadirCompatibilidad(
     const nombreModelo = datos.modeloImpresora.replace(new RegExp(`^${marcaImpresora.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+`, 'i'), '').trim();
     const nameNormalized = normalizarModelo(nombreModelo).slice(0, 120);
     let impresoraNueva = false;
-    let impresora = await tx.printerModel.findUnique({ where: { brandId_nameNormalized: { brandId: marcaImpresora.id, nameNormalized } } });
+    // El vendedor escribe «L3250» y la que vendemos es «EcoTank L3250»: es la
+    // misma, no otra (ver `impresoraExistente`).
+    let impresora = await buscarImpresora(tx, marcaImpresora.id, nameNormalized);
     if (!impresora) {
       impresora = await tx.printerModel.create({ data: { brandId: marcaImpresora.id, name: nombreModelo, nameNormalized } });
       impresoraNueva = true;

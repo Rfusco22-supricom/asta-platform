@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { buscarImpresora } from './impresoraExistente.js';
 import { extraerImpresoras } from './extraerImpresoras.js';
 
 /**
@@ -120,7 +121,8 @@ async function importar(tx: Prisma.TransactionClient, productos: ProductoConNomb
       }
 
       // ── La impresora ───────────────────────────────────────────────────────
-      let modelo = await tx.printerModel.findFirst({ where: { brandId: marca.id, nameNormalized: candidato.nombreNormalizado } });
+      // Exacta, o la misma del catálogo de Odoo con otro nombre (ver `impresoraExistente`).
+      let modelo = await buscarImpresora(tx, marca.id, candidato.nombreNormalizado);
       if (modelo) {
         r.modelosRepetidos++;
       } else {
