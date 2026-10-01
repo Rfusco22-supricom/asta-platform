@@ -469,7 +469,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'productosCompatibles',
     resumen: 'Productos compatibles con una impresora',
     descripcion:
-      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: pídelos a `/pricing` con el `sku` de cada producto. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.',
+      'Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si todavía no hay ningún producto verificado para la impresora —se sabe qué cartuchos usa pero no qué productos los venden, o es una impresora que vendemos y aún no se ha cargado su tóner—, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: pídelos a `/pricing` con el `sku` de cada producto. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.',
     scope: 'RECOMMENDER_READ',
     parametrosRuta: [{ nombre: 'printerId', descripcion: 'El `id` de la impresora, de `/recommender/printers`.', esquema: { type: 'integer', minimum: 1 } }],
     query: compatibleQuerySchema,

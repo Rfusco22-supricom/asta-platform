@@ -157,3 +157,33 @@ describe('Revisión #111/#112 · Una propuesta de vendedor no es pública hasta 
     expect((await publica<unknown>(`/recommender/printers/${printerModelId}/compatible`)).status).toBe(200);
   });
 });
+
+describe('#40 · Una impresora del catálogo de Odoo es pública aunque no tenga tóner validado', () => {
+  it('sale en el buscador y por id, con la lista vacía: el kiosco manda al mostrador', async () => {
+    const marca = await prisma.printerBrand.findFirstOrThrow({ where: { name: MARCA } });
+    const vendida = await prisma.printerModel.create({
+      data: { brandId: marca.id, name: 'ZZCAT 7781', nameNormalized: 'zzcat7781', inOdooCatalog: true },
+    });
+    // La misma, sin la marca del catálogo: la regla de #111/#112 sigue en pie.
+    const sinMarca = await prisma.printerModel.create({ data: { brandId: marca.id, name: 'ZZCAT 7782', nameNormalized: 'zzcat7782' } });
+
+    const busqueda = await publica<PublicPrinterSearchResponse>('/recommender/printers?q=zzcat77');
+    expect(busqueda.body.data.map((x) => x.id)).toContain(vendida.id);
+    expect([...busqueda.body.data, ...busqueda.body.sugerencias].map((x) => x.id)).not.toContain(sinMarca.id);
+
+    const porId = await publica<{ data: unknown[]; meta: { sinCompatibilidadesCargadas: boolean } }>(
+      `/recommender/printers/${vendida.id}/compatible`,
+    );
+    expect(porId.status).toBe(200);
+    expect([porId.body.data, porId.body.meta.sinCompatibilidadesCargadas]).toEqual([[], true]);
+    expect((await publica<unknown>(`/recommender/printers/${sinMarca.id}/compatible`)).status).toBe(404);
+  });
+
+  it('desactivada, deja de ser pública aunque sea del catálogo', async () => {
+    const m = await prisma.printerModel.findFirstOrThrow({ where: { nameNormalized: 'zzcat7781' } });
+    await prisma.printerModel.update({ where: { id: m.id }, data: { isActive: false } });
+    const busqueda = await publica<PublicPrinterSearchResponse>('/recommender/printers?q=zzcat7781');
+    expect([...busqueda.body.data, ...busqueda.body.sugerencias].map((x) => x.id)).not.toContain(m.id);
+    expect((await publica<unknown>(`/recommender/printers/${m.id}/compatible`)).status).toBe(404);
+  });
+});

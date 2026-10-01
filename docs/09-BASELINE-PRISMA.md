@@ -277,6 +277,8 @@ node dist/cli/importar-impresoras.js                 # SIMULACRO: impresoras del
 node dist/cli/importar-impresoras.js --aplicar
 node dist/cli/importar-listas-fabricante.js          # SIMULACRO: listas del fabricante (#56)
 node dist/cli/importar-listas-fabricante.js --aplicar
+node dist/cli/importar-impresoras-catalogo.js        # SIMULACRO: impresoras que vendemos (#40)
+node dist/cli/importar-impresoras-catalogo.js --aplicar
 ```
 
 En ese orden, y el orden importa:
@@ -292,6 +294,13 @@ En ese orden, y el orden importa:
 4. **`importar-listas-fabricante`** carga las impresoras de los cartuchos del top
    20, copiadas de la web de cada fabricante. Solo enlaza cartuchos que ya
    existen. *(Cuando se fusione su PR.)*
+
+5. **`importar-impresoras-catalogo`** carga las impresoras que Supricom vende,
+   de la categoría IMPRESORA de Odoo, y las marca como del catálogo. No crea
+   compatibilidades ni depende de los otros cuatro: va al final solo para que
+   reconozca las impresoras que ellos ya crearon y las marque en vez de
+   duplicarlas. Con la marca, el kiosco las encuentra aunque todavía no tengan
+   tóner validado, y manda al cliente al mostrador.
 
 Todos se pueden repetir sin pisar lo revisado, y todos tienen simulacro. Todo
 entra como pendiente y se revisa en el panel, Compatibilidades.

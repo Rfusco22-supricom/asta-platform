@@ -89,10 +89,10 @@ export class ImpresoraNoEncontrada extends Error {
 }
 
 /**
- * Qué impresoras existen PARA EL CLIENTE: activas y con al menos un cartucho
- * VALIDADO.
+ * Qué impresoras existen PARA EL CLIENTE: activas, y o bien con al menos un
+ * cartucho VALIDADO, o bien del catálogo de Odoo.
  *
- * Sin la segunda condición, el catálogo público era toda la tabla
+ * Sin exigir el cartucho validado, el catálogo público era toda la tabla
  * `printer_models`, y a esa tabla se llega sin revisión (revisión de #111/#112):
  *
  *   · el importador de `compatibilidad_productos` crea sus 309 modelos desde
@@ -105,8 +105,25 @@ export class ImpresoraNoEncontrada extends Error {
  * La compatibilidad nace PROPUESTA, pero la impresora ya era pública. Se aplica
  * en los DOS caminos —búsqueda y `/compatible` por id— porque los ids son
  * consecutivos: sin filtrar el segundo, recorrer ids leía los mismos nombres.
+ *
+ * ── La excepción: las impresoras que vende Supricom (#40) ────────────────────
+ *
+ * Las de la categoría IMPRESORA de Odoo (`inOdooCatalog`) son públicas aunque
+ * todavía nadie haya validado su tóner. Su nombre no lo escribió un vendedor ni
+ * salió de un parseo: lo dio de alta quien gestiona el catálogo en el ERP, y
+ * pasa por el mismo control que todo lo que se vende. Sin la excepción, el
+ * cliente que tiene la impresora que le vendimos teclea su modelo y el kiosco
+ * le dice «no la encontramos», que es falso; con ella la encuentra, `/compatible`
+ * responde con la lista vacía (`sinCompatibilidadesCargadas`) y el kiosco le
+ * manda al mostrador.
+ *
+ * Lo que NO cambia: un tóner solo se recomienda si su compatibilidad está
+ * validada. La excepción abre la impresora, no sus compatibilidades.
  */
-const IMPRESORA_PUBLICABLE = { isActive: true, cartridges: { some: { status: 'VALIDADA' as const } } };
+const IMPRESORA_PUBLICABLE = {
+  isActive: true,
+  OR: [{ cartridges: { some: { status: 'VALIDADA' as const } } }, { inOdooCatalog: true }],
+};
 
 /**
  * @param soloPublicables true para el catálogo del kiosco. El PANEL necesita el
