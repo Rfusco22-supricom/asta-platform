@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import { build } from 'esbuild';
 
 /**
@@ -40,19 +41,19 @@ await build({
    *
    * Se descubrió preparando el primer despliegue real, con el contenedor ya
    * construido.
+   *
+   * Y por eso TODOS los de `src/cli/`, no una lista: la lista se quedó atrás
+   * dos veces —`importar-listas-fabricante` e `importar-impresoras-catalogo`
+   * no entraban en la imagen, y la guía de despliegue mandaba ejecutarlos desde
+   * `dist/`—. Se descubrió con «Cannot find module» en la consola de
+   * producción. Un fichero en `src/cli/` es, por definición, algo que hay que
+   * poder ejecutar allí.
    */
   entryPoints: [
     'src/server.ts',
-    'src/cli/set-password.ts',
-    'src/cli/sync-partners.ts',
-    'src/cli/sync-vendedores.ts',
-    'src/cli/alertas.ts',
-    'src/cli/cerrar-sesiones-kiosco.ts',
-    // Los importadores de compatibilidades (#56): el script de `scripts/` no
-    // entra en la imagen, y en producción hay que poder ejecutarlos.
-    'src/cli/importar-propuestas.ts',
-    'src/cli/importar-compatibilidades.ts',
-    'src/cli/importar-impresoras.ts',
+    ...readdirSync('src/cli')
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => `src/cli/${f}`),
   ],
   outdir: 'dist',
   // Para que `src/cli/set-password.ts` salga en `dist/cli/`, y no en `dist/`.
