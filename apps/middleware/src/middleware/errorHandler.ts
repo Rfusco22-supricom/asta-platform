@@ -55,7 +55,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         metadata: { path: req.path, motivo: err.message },
       });
     }
-    send(res, err.code, err.message);
+    // `detalles`: qué líneas de un pedido fallan (#33). Solo si el error los trae.
+    const detalles = (err as { detalles?: unknown }).detalles;
+    send(res, err.code, err.message, Array.isArray(detalles) ? { detalles } : undefined);
     return;
   }
 

@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { montoSchema, odooDateSchema, odooIdSchema } from './common.js';
 
 /**
- * Pedidos de venta en la API pública (#33). Solo LECTURA por ahora: crear
- * pedidos (`POST /orders`) espera a la copia de staging de Odoo (#13), porque
- * sus tests crearían `sale.order` reales en producción.
+ * Pedidos de venta en la API pública (#33).
+ *
+ * `POST /orders` está escrito pero APAGADO (`API_PEDIDOS_ESCRITURA`): sus
+ * pruebas contra un Odoo de verdad esperan a la copia de staging (#13), porque
+ * crearían `sale.order` reales en producción.
  *
  * Como en las facturas, ningún esquema lleva `partner_id`: el cliente sale
  * siempre de la API key.
@@ -15,16 +17,19 @@ import { montoSchema, odooDateSchema, odooIdSchema } from './common.js';
  */
 
 /**
- * Estados que ve el cliente. `draft` NO está: un presupuesto en borrador es
- * trabajo interno del vendedor y puede llevar precios a medio negociar (hay
- * 3.794). Decidido en #33.
+ * Estados que ve el cliente.
+ *
+ * `draft` solo para los pedidos que el cliente creó él mismo por la API, que
+ * nacen en borrador hasta que alguien de la empresa los confirma. Los demás
+ * borradores (hay 3.794) NO se ven: son trabajo interno del vendedor y pueden
+ * llevar precios a medio negociar. Decidido en #33.
  */
-export const estadoPedidoSchema = z.enum(['sent', 'sale', 'cancel']);
+export const estadoPedidoSchema = z.enum(['draft', 'sent', 'sale', 'cancel']);
 export type EstadoPedido = z.infer<typeof estadoPedidoSchema>;
 
 const DESCRIPCION_ESTADO =
-  'Estado: `sent` presupuesto enviado, `sale` pedido confirmado, `cancel` cancelado. ' +
-  'Puede recibir valores nuevos: trata cualquier otro como `sent`.';
+  'Estado: `draft` pedido que creaste por la API, pendiente de que lo confirmemos; `sent` presupuesto enviado; ' +
+  '`sale` pedido confirmado; `cancel` cancelado. Puede recibir valores nuevos: trata cualquier otro como `sent`.';
 
 export const publicOrderSchema = z.object({
   id: odooIdSchema.describe('Identificador del pedido. Es el que se usa en `/orders/{orderId}`.'),
@@ -95,6 +100,45 @@ export const publicOrderDetailResponseSchema = z.object({
 });
 
 export type PublicOrderDetailResponse = z.infer<typeof publicOrderDetailResponseSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crear un pedido
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Máximos de un pedido por la API. Un pedido más grande se hace con el vendedor. */
+export const MAX_LINEAS_PEDIDO = 100;
+export const MAX_CANTIDAD_LINEA = 10_000;
+
+/**
+ * Una línea: qué y cuánto. NADA de precio ni descuento.
+ *
+ * Estricto a propósito: un `price_unit`, `precio` o `discount` en la línea es un
+ * 400, no un campo que se ignora. Si el cliente pudiera mandar el precio podría
+ * fijarse el suyo, y si se ignorara en silencio creería que lo pactó. El precio
+ * sale de su tarifa (#31). Decidido en #33.
+ */
+export const lineaPedidoNuevoSchema = z.strictObject({
+  sku: z.string().min(1).describe('Referencia del producto, la misma de `/inventory` y `/pricing`.'),
+  cantidad: z.number().int().positive().max(MAX_CANTIDAD_LINEA).describe(`Unidades. Entero, de 1 a ${MAX_CANTIDAD_LINEA}.`),
+});
+
+/**
+ * Cuerpo de `POST /orders`.
+ *
+ * Sin `partner_id`: el cliente sale de la API key. Si se manda el de otro
+ * cliente lo rechaza `scopeToOwnPartner` (400); si se manda el propio, se acepta
+ * y se descarta antes de validar esto.
+ */
+export const crearPedidoBodySchema = z.strictObject({
+  lineas: z
+    .array(lineaPedidoNuevoSchema)
+    .min(1)
+    .max(MAX_LINEAS_PEDIDO)
+    .describe(`Las líneas del pedido, hasta ${MAX_LINEAS_PEDIDO}. Una referencia no puede repetirse.`),
+  referenciaCliente: z.string().trim().min(1).max(100).optional().describe('Tu referencia para este pedido (orden de compra). Sale en `referenciaCliente` al consultarlo.'),
+});
+
+export type CrearPedidoBody = z.infer<typeof crearPedidoBodySchema>;
 
 /** `:orderId` de la ruta. */
 export const orderIdParamSchema = z.object({ orderId: z.coerce.number().int().positive() });

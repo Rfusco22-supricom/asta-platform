@@ -53,6 +53,14 @@ export const errorCodeSchema = z.enum([
   'INVALID_INVOICE_ID',
   /** `:orderId` de pedido que no es un entero positivo (#33). */
   'INVALID_ORDER_ID',
+  /** `POST /orders` sin la cabecera `Idempotency-Key` (#33). */
+  'IDEMPOTENCY_KEY_REQUIRED',
+  /**
+   * Alguna línea del pedido no se puede vender: la referencia no existe, la
+   * comparten varios productos o no tiene precio en la tarifa del cliente.
+   * `detalles` dice cuál y por qué (#33).
+   */
+  'ORDER_LINES_INVALID',
 
   // Recursos
   'NOT_FOUND',
@@ -101,6 +109,12 @@ export const errorCodeSchema = z.enum([
    * `INVENTORY_UNAVAILABLE`: mejor ningún precio que el de otra lista.
    */
   'PRICELIST_UNAVAILABLE',
+  /**
+   * Alguna línea pide más de lo que hay libre en el almacén del cliente (#33).
+   * Se rechaza el pedido entero; `detalles` dice qué líneas, sin cantidades:
+   * la existencia se publica como estado, no como número (#30).
+   */
+  'INSUFFICIENT_STOCK',
 
   // Límites
   'RATE_LIMITED',
@@ -122,6 +136,8 @@ export const apiErrorSchema = z.object({
     required: z.array(z.string()).optional(),
     /** Documentación del error, cuando existe. */
     docs: z.string().url().optional(),
+    /** Qué elementos de la petición fallaron, cuando son varios (#33). */
+    detalles: z.array(z.object({ sku: z.string(), motivo: z.string() })).optional(),
   }),
 });
 
@@ -146,6 +162,8 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   INVALID_DATE_RANGE: 400,
   INVALID_INVOICE_ID: 400,
   INVALID_ORDER_ID: 400,
+  IDEMPOTENCY_KEY_REQUIRED: 400,
+  ORDER_LINES_INVALID: 400,
 
   NOT_FOUND: 404,
   PARTNER_NOT_FOUND: 404,
@@ -162,6 +180,7 @@ export const HTTP_STATUS_BY_ERROR: Record<ErrorCode, number> = {
   IDEMPOTENCY_KEY_REUSED: 409,
   INVENTORY_UNAVAILABLE: 409,
   PRICELIST_UNAVAILABLE: 409,
+  INSUFFICIENT_STOCK: 409,
 
   RATE_LIMITED: 429,
 

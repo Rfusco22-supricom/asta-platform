@@ -347,9 +347,12 @@ describe('#33 · Autenticación y entrada', () => {
     expect(r.body?.error?.code).toBe('INVALID_ORDER_ID');
   });
 
-  it('?estado=draft → 400: los borradores no se pueden pedir', async () => {
-    const r = await get('/orders?estado=draft', A.key);
-    expect(r.status).toBe(400);
-    expect(r.body?.error?.code).toBe('INVALID_QUERY');
+  it('?estado=draft no saca los borradores internos del vendedor, aunque A los tenga', async () => {
+    // Desde el POST de #33, `draft` es un filtro válido, pero solo devuelve los
+    // pedidos que el cliente creó él mismo por la API (`api_order_requests`).
+    // A tiene borradores del vendedor y ninguno creado por la API.
+    const r = await get('/orders?estado=draft&porPagina=100', A.key);
+    expect(r.status).toBe(200);
+    expect((r.body?.data as Array<{ id: number }>).map((p) => p.id)).not.toContain(A.borrador);
   });
 });

@@ -5,6 +5,7 @@ import {
   clicRecomendadorSchema,
   compatibleQuerySchema,
   inventoryQuerySchema,
+  crearPedidoBodySchema,
   orderIdParamSchema,
   printerIdParamSchema,
   pricingQuerySchema,
@@ -28,6 +29,7 @@ import { buscarPdfDeFactura, PdfNoDisponible } from '../services/invoicePdf.serv
 import { parametrosDeTarifa, preciosDe, TarifaForzada, tarifaDelCliente } from '../services/pricing.service.js';
 import { firmarEnlace } from '../services/enlacesFirmados.js';
 import { esPedidoAjeno, listarPedidos, verPedido } from '../services/orders.service.js';
+import { claveValida, crearPedido, sinClave } from '../services/pedidosEscritura.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -375,6 +377,85 @@ export async function verPedidoHandler(
       return;
     }
     res.json({ data: pedido });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** Campos que intentan fijar el precio. Ver `lineaPedidoNuevoSchema`. */
+const CAMPO_DE_PRECIO = /price|precio|discount|descuento/i;
+
+function camposDePrecio(cuerpo: Record<string, unknown>): string[] {
+  const lineas = Array.isArray(cuerpo.lineas) ? (cuerpo.lineas as unknown[]) : [];
+  const claves = [
+    ...Object.keys(cuerpo),
+    ...lineas.flatMap((l) => (l && typeof l === 'object' ? Object.keys(l) : [])),
+  ];
+  return [...new Set(claves.filter((k) => CAMPO_DE_PRECIO.test(k)))];
+}
+
+/**
+ * `POST /api/v1/public/orders` (#33). Ver `pedidosEscritura.service.ts`.
+ *
+ * Solo se monta si `API_PEDIDOS_ESCRITURA` está encendido; si no, la ruta
+ * responde 501 (`crearPublicRouter`).
+ */
+export async function crearPedidoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    // `scopeToOwnPartner` ya rechazó un partner_id ajeno, y escribe el propio en
+    // el cuerpo: se quita antes de validar, que el esquema es estricto.
+    const { partner_id: _propio, ...cuerpo } = (req.body ?? {}) as Record<string, unknown>;
+    void _propio;
+
+    const forzados = parametrosDeTarifa(cuerpo);
+    if (forzados.length > 0) {
+      recordAudit({
+        action: 'access.denied.pricelist',
+        ...auditContext(req),
+        targetType: 'product.pricelist',
+        targetId: String(cuerpo[forzados[0]] ?? '').slice(0, 64),
+        metadata: { via: 'api_key', apiKeyId: req.identity?.apiKeyId ?? null, partnerDelToken: partnerDelToken(req), parametros: forzados, path: req.path },
+      });
+      throw new TarifaForzada(forzados);
+    }
+
+    const precio = camposDePrecio(cuerpo);
+    if (precio.length > 0) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `El precio no se puede enviar (${precio.join(', ')}): sale siempre de tu tarifa. Consulta /pricing antes de pedir.`,
+        },
+      });
+      return;
+    }
+
+    const datos = crearPedidoBodySchema.safeParse(cuerpo);
+    if (!datos.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(datos.error) } });
+      return;
+    }
+
+    const clave = req.get('idempotency-key');
+    if (!claveValida(clave)) throw sinClave();
+
+    const r = await crearPedido(
+      {
+        partnerId: partnerDelToken(req),
+        apiKeyId: req.identity?.apiKeyId ?? null,
+        pricelistIdentidad: req.identity?.odooPricelistId ?? null,
+        log: req.log,
+      },
+      datos.data,
+      clave,
+    );
+    res.set('Location', `/api/v1/public/orders/${r.cuerpo.data.id}`);
+    if (r.status === 200) res.set('Idempotent-Replayed', 'true');
+    res.status(r.status).json(r.cuerpo);
   } catch (error) {
     next(error);
   }
