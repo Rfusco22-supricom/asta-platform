@@ -106,6 +106,38 @@ export async function plantillas(ids: number[]): Promise<Map<number, { nombre: s
   return resultado;
 }
 
+/**
+ * Lo que la revisión le pide a Odoo, sin dejar que Odoo la tumbe (#127).
+ *
+ * Revisar propuestas es trabajo de MySQL: productos, cartuchos, impresoras y
+ * estados están en nuestra base. De Odoo solo llegan el importe vendido, que
+ * ORDENA la lista, y el nombre del producto. Con Odoo caído no se factura, pero
+ * validar compatibilidades —lo que hoy bloquea el kiosco (#56)— se puede seguir
+ * haciendo, y es justo cuando hay tiempo para hacerlo.
+ *
+ * `null` quiere decir «Odoo no respondió»: quien llama sigue sin ese dato y lo
+ * dice en la respuesta. Mismo criterio que las estadísticas del recomendador
+ * (#43).
+ */
+export async function ventasSiOdooResponde(): Promise<Map<number, number> | null> {
+  try {
+    return await ventasPorPlantilla();
+  } catch {
+    return null;
+  }
+}
+
+/** Ver `ventasSiOdooResponde`. */
+export async function plantillasSiOdooResponde(
+  ids: number[],
+): Promise<Map<number, { nombre: string; sku: string | null; activo: boolean }> | null> {
+  try {
+    return await plantillas(ids);
+  } catch {
+    return null;
+  }
+}
+
 export async function listarParaRevision(consulta: RevisionQuery): Promise<RevisionRespuesta> {
   const { estado, marca, q, pagina, porPagina } = consulta;
 
@@ -117,17 +149,25 @@ export async function listarParaRevision(consulta: RevisionQuery): Promise<Revis
   });
   let ids = conEstado.map((f) => f.odooProductTmplId);
 
-  const [ventas, porEstadoFilas, marcas] = await Promise.all([
-    ventasPorPlantilla(),
+  const [ventasOdoo, porEstadoFilas, marcas] = await Promise.all([
+    ventasSiOdooResponde(),
     prisma.productCartridge.groupBy({ by: ['status'], _count: true }),
     prisma.printerBrand.findMany({ where: { cartridges: { some: {} } }, select: { name: true }, orderBy: { name: 'asc' } }),
   ]);
 
+  // Sin ventas, todas valen 0 y el orden cae en el desempate por id: estable,
+  // aunque no sea el de «lo más vendido primero».
+  const ventas = ventasOdoo ?? new Map<number, number>();
+  let odooDisponible = ventasOdoo !== null;
+
   // La búsqueda mira el nombre y la referencia de Odoo, y el código del cartucho.
+  // Sin Odoo, solo el código: es lo único que sigue en nuestra base.
   let datosOdoo: Map<number, { nombre: string; sku: string | null; activo: boolean }> | undefined;
   if (q) {
     const texto = q.toLowerCase();
-    datosOdoo = await plantillas(ids);
+    const leidos = await plantillasSiOdooResponde(ids);
+    if (!leidos) odooDisponible = false;
+    datosOdoo = leidos ?? new Map();
     const porCodigo = new Set(
       (
         await prisma.productCartridge.findMany({
@@ -145,7 +185,7 @@ export async function listarParaRevision(consulta: RevisionQuery): Promise<Revis
   ids.sort((a, b) => (ventas.get(b) ?? 0) - (ventas.get(a) ?? 0) || a - b);
   const deLaPagina = ids.slice((pagina - 1) * porPagina, pagina * porPagina);
 
-  const [filas, odoo] = await Promise.all([
+  const [filas, odooLeido] = await Promise.all([
     prisma.productCartridge.findMany({
       where: { odooProductTmplId: { in: deLaPagina } },
       select: {
@@ -161,8 +201,10 @@ export async function listarParaRevision(consulta: RevisionQuery): Promise<Revis
       },
       orderBy: [{ cartridge: { code: 'asc' } }],
     }),
-    plantillas(deLaPagina),
+    plantillasSiOdooResponde(deLaPagina),
   ]);
+  if (!odooLeido) odooDisponible = false;
+  const odoo = odooLeido ?? new Map<number, { nombre: string; sku: string | null; activo: boolean }>();
 
   const candidatos = new Map<number, CandidatoRevision[]>();
   for (const f of filas) {
@@ -201,6 +243,7 @@ export async function listarParaRevision(consulta: RevisionQuery): Promise<Revis
       pagina,
       porPagina,
       totalProductos: ids.length,
+      odooDisponible,
       porEstado: { PROPUESTA: cuenta('PROPUESTA'), VALIDADA: cuenta('VALIDADA'), RECHAZADA: cuenta('RECHAZADA') },
       marcas: marcas.map((m) => m.name),
     },

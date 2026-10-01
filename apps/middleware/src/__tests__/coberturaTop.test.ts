@@ -21,8 +21,10 @@ vi.mock('../services/recomendador/revision.service.js', async (original) => {
   return {
     ...real,
     ventasPorPlantilla: vi.fn(async () => odoo.ventas),
+    ventasSiOdooResponde: vi.fn(async () => odoo.ventas),
     // Sin nombres de Odoo: el informe tiene que salir igual.
     plantillas: vi.fn(async () => new Map()),
+    plantillasSiOdooResponde: vi.fn(async () => new Map()),
   };
 });
 

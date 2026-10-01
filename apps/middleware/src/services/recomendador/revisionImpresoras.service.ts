@@ -10,7 +10,7 @@ import type {
 import { prisma } from '../../config/prisma.js';
 import { normalizarModelo } from './normalizar.js';
 import { formasDelCodigo } from './separarModelos.js';
-import { RevisionDesactualizada, RevisionInvalida, ventasPorPlantilla } from './revision.service.js';
+import { RevisionDesactualizada, RevisionInvalida, ventasSiOdooResponde } from './revision.service.js';
 import { ImpresoraNoEncontrada, invalidarCatalogoImpresoras } from './recomendador.service.js';
 
 /**
@@ -47,14 +47,16 @@ export async function listarImpresorasParaRevision(consulta: RevisionQuery): Pro
   });
   const ids = conEstado.map((f) => f.cartridgeId);
 
-  const [ventas, productos, porEstadoFilas, marcas, codigos] = await Promise.all([
-    ventasPorPlantilla(),
+  const [ventasOdoo, productos, porEstadoFilas, marcas, codigos] = await Promise.all([
+    // Sin Odoo, la lista sale igual, ordenada por código de cartucho (#127).
+    ventasSiOdooResponde(),
     prisma.productCartridge.findMany({ where: { cartridgeId: { in: ids } }, select: { cartridgeId: true, odooProductTmplId: true, status: true } }),
     prisma.cartridgePrinterModel.groupBy({ by: ['status'], _count: true }),
     prisma.printerBrand.findMany({ where: { cartridges: { some: { printerModels: { some: {} } } } }, select: { name: true }, orderBy: { name: 'asc' } }),
     prisma.cartridge.findMany({ where: { id: { in: ids } }, select: { id: true, code: true } }),
   ]);
 
+  const ventas = ventasOdoo ?? new Map<number, number>();
   const ventasDe = new Map<number, number>();
   const validados = new Map<number, number>();
   const pendientes = new Map<number, number>();
@@ -128,6 +130,7 @@ export async function listarImpresorasParaRevision(consulta: RevisionQuery): Pro
       pagina,
       porPagina,
       totalCartuchos: ids.length,
+      odooDisponible: ventasOdoo !== null,
       porEstado: { PROPUESTA: cuenta('PROPUESTA'), VALIDADA: cuenta('VALIDADA'), RECHAZADA: cuenta('RECHAZADA') },
       marcas: marcas.map((m) => m.name),
     },

@@ -48,7 +48,15 @@ interface Fila {
   estadoEsperado: EstadoRevision;
 }
 
-export function RevisionLista({ productos, estado }: { productos: ProductoEnRevision[]; estado: EstadoRevision }) {
+export function RevisionLista({
+  productos,
+  estado,
+  odooDisponible,
+}: {
+  productos: ProductoEnRevision[];
+  estado: EstadoRevision;
+  odooDisponible: boolean;
+}) {
   const router = useRouter();
   const [seleccion, setSeleccion] = useState<Set<Clave>>(new Set());
   const [ocupado, setOcupado] = useState(false);
@@ -156,7 +164,7 @@ export function RevisionLista({ productos, estado }: { productos: ProductoEnRevi
           <article key={p.templateId} className="revision-producto">
             <header>
               <div>
-                <div className="cliente-nombre">{p.nombre ?? <em>Ya no existe en Odoo</em>}</div>
+                <div className="cliente-nombre">{p.nombre ?? <em>{odooDisponible ? 'Ya no existe en Odoo' : 'Sin nombre: Odoo no responde'}</em>}</div>
                 <div className="sku">
                   {p.sku ?? 'sin referencia'} · plantilla {p.templateId}
                   {p.nombre && !p.activoEnOdoo && <span className="tag prospecto" style={{ marginLeft: 8 }}>archivado o no a la venta</span>}
