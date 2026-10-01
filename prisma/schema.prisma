@@ -811,6 +811,17 @@ model PrinterModel {
   nameNormalized String @map("name_normalized") @db.VarChar(120)
 
   isActive  Boolean  @default(true) @map("is_active")
+
+  /// Supricom la vende: está en la categoría IMPRESORA de Odoo (#40). La pone
+  /// `importar-impresoras-catalogo` y nada más.
+  ///
+  /// Es lo que la deja salir en el kiosco aunque nadie haya validado todavía qué
+  /// tóner le sirve: el cliente la encuentra y se le dice que pregunte en el
+  /// mostrador, en vez de «no encontramos tu impresora», que es falso. Las que
+  /// llegan por otros caminos —parseo, propuestas de vendedores— siguen
+  /// necesitando un cartucho validado (ver `IMPRESORA_PUBLICABLE`).
+  inOdooCatalog Boolean @default(false) @map("in_odoo_catalog")
+
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 

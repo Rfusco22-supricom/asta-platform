@@ -2346,7 +2346,7 @@
       "get": {
         "operationId": "productosCompatibles",
         "summary": "Productos compatibles con una impresora",
-        "description": "Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: pídelos a `/pricing` con el `sku` de cada producto. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.\n\nPermiso necesario: `RECOMMENDER_READ`.",
+        "description": "Los productos que sirven para esa impresora, originales y compatibles, con su existencia en el almacén que te vende; primero los que hay. Solo compatibilidades verificadas: si todavía no hay ningún producto verificado para la impresora —se sabe qué cartuchos usa pero no qué productos los venden, o es una impresora que vendemos y aún no se ha cargado su tóner—, `data` viene vacío y `meta.sinCompatibilidadesCargadas` es `true`. Sin precios: pídelos a `/pricing` con el `sku` de cada producto. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`). Si vienes de una búsqueda, manda su `busquedaId`.\n\nPermiso necesario: `RECOMMENDER_READ`.",
         "tags": [
           "Recomendador"
         ],
@@ -2552,7 +2552,7 @@
                         },
                         "sinCompatibilidadesCargadas": {
                           "type": "boolean",
-                          "description": "`true` si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos. No significa que no exista tóner para ella."
+                          "description": "`true` si todavía no hay ningún producto verificado para esta impresora: se sabe qué cartuchos usa pero no qué productos los venden, o es una impresora que vendemos y su tóner aún no se ha cargado. No significa que no exista tóner para ella."
                         },
                         "desdeCache": {
                           "type": "boolean",

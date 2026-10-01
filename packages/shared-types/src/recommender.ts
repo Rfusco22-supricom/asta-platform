@@ -112,7 +112,7 @@ export const publicCompatibleResponseSchema = z.object({
      * validada. Son dos mensajes distintos para el cliente: "no encontramos tu
      * impresora" y "aún no sabemos qué le sirve".
      */
-    sinCompatibilidadesCargadas: z.boolean().describe('`true` si se sabe qué cartuchos usa la impresora pero todavía no hay ningún producto verificado para ellos. No significa que no exista tóner para ella.'),
+    sinCompatibilidadesCargadas: z.boolean().describe('`true` si todavía no hay ningún producto verificado para esta impresora: se sabe qué cartuchos usa pero no qué productos los venden, o es una impresora que vendemos y su tóner aún no se ha cargado. No significa que no exista tóner para ella.'),
     desdeCache: z.boolean().describe('`true` si la respuesta sale de la cache: puede tener hasta 60 segundos de antigüedad.'),
   }),
 });
