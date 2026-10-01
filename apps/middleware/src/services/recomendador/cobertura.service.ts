@@ -1,6 +1,6 @@
 import type { CoberturaTop, EstadoCobertura } from '@asta/shared-types';
 import { prisma } from '../../config/prisma.js';
-import { plantillas, ventasPorPlantilla } from './revision.service.js';
+import { plantillasSiOdooResponde, ventasSiOdooResponde } from './revision.service.js';
 
 /**
  * Cuánto del top de ventas puede recomendar ya el kiosco (#56, Fase 4).
@@ -27,15 +27,21 @@ import { plantillas, ventasPorPlantilla } from './revision.service.js';
 /** Los 20 más vendidos, como fija #56. */
 const TAMANO_TOP = 20;
 
+const VACIA: CoberturaTop['totales'] = { top: 0, completos: 0, porcentaje: 0, tramo: 'pospuesta', importeTop: 0, importeCubierto: 0 };
+
 export async function coberturaDelTop(): Promise<CoberturaTop> {
-  const ventas = await ventasPorPlantilla();
+  // Sin ventas no hay top: con Odoo caído la cobertura sale vacía y lo dice, en
+  // vez de tumbar la pestaña entera (#127).
+  const ventas = await ventasSiOdooResponde();
+  if (!ventas) return { productos: [], totales: VACIA, odooDisponible: false };
+
   const top = [...ventas.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, TAMANO_TOP)
     .map(([templateId, importe]) => ({ templateId, importe }));
 
   if (top.length === 0) {
-    return { productos: [], totales: { top: 0, completos: 0, porcentaje: 0, tramo: 'pospuesta', importeTop: 0, importeCubierto: 0 } };
+    return { productos: [], totales: VACIA, odooDisponible: true };
   }
 
   const ids = top.map((t) => t.templateId);
@@ -62,7 +68,9 @@ export async function coberturaDelTop(): Promise<CoberturaTop> {
     ).map((f) => f.cartridgeId),
   );
 
-  const odoo = await plantillas(ids);
+  // Los nombres son lo de menos: sin ellos la tabla enseña el id de la plantilla.
+  const odooLeido = await plantillasSiOdooResponde(ids);
+  const odoo = odooLeido ?? new Map<number, { nombre: string; sku: string | null; activo: boolean }>();
 
   const productos = top.map(({ templateId, importe }) => {
     const cartuchos = cartuchosDe.get(templateId) ?? [];
@@ -94,5 +102,6 @@ export async function coberturaDelTop(): Promise<CoberturaTop> {
       importeTop: Math.round(importeTop * 100) / 100,
       importeCubierto: Math.round(importeCubierto * 100) / 100,
     },
+    odooDisponible: odooLeido !== null,
   };
 }

@@ -4,6 +4,7 @@ import { Marco } from '@/components/Marco';
 import { getRevisionCompatibilidades, getCoberturaTop, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { RevisionLista } from './RevisionLista';
 import { Pestanas } from './Pestanas';
+import { AvisoOdoo } from './AvisoOdoo';
 import { Cobertura } from './Cobertura';
 
 /**
@@ -84,6 +85,8 @@ export default async function CompatibilidadesPage({
     >
       <Pestanas actual="productos" />
 
+      {(!datos.meta.odooDisponible || !cobertura.odooDisponible) && <AvisoOdoo cobertura={!cobertura.odooDisponible} />}
+
       <Cobertura datos={cobertura} />
 
       <section className="stats">
@@ -160,7 +163,7 @@ export default async function CompatibilidadesPage({
         </div>
       ) : (
         // La key fuerza a vaciar la selección al cambiar de página o de filtro.
-        <RevisionLista key={`${estado}|${marca}|${q}|${pagina}`} productos={datos.data} estado={estado} />
+        <RevisionLista key={`${estado}|${marca}|${q}|${pagina}`} productos={datos.data} estado={estado} odooDisponible={datos.meta.odooDisponible} />
       )}
 
       {paginas > 1 && (

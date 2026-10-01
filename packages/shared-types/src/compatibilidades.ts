@@ -68,6 +68,11 @@ export const revisionRespuestaSchema = z.object({
     porPagina: z.number().int().positive(),
     /** Productos con al menos un candidato en el estado filtrado. */
     totalProductos: z.number().int().nonnegative(),
+    /**
+     * `false` si Odoo no respondió (#127): la lista sale igual, porque revisar es
+     * trabajo de MySQL, pero sin ordenar por ventas y sin nombres de producto.
+     */
+    odooDisponible: z.boolean(),
     /** Filas de toda la tabla por estado, sin filtros: el avance de la revisión. */
     porEstado: z.object({ PROPUESTA: z.number().int(), VALIDADA: z.number().int(), RECHAZADA: z.number().int() }),
     marcas: z.array(z.string()),
@@ -151,6 +156,11 @@ export const revisionImpresorasRespuestaSchema = z.object({
     pagina: z.number().int().positive(),
     porPagina: z.number().int().positive(),
     totalCartuchos: z.number().int().nonnegative(),
+    /**
+     * `false` si Odoo no respondió (#127): la lista sale igual, porque revisar es
+     * trabajo de MySQL, pero sin ordenar por ventas y sin nombres de producto.
+     */
+    odooDisponible: z.boolean(),
     porEstado: z.object({ PROPUESTA: z.number().int(), VALIDADA: z.number().int(), RECHAZADA: z.number().int() }),
     marcas: z.array(z.string()),
   }),
@@ -318,6 +328,11 @@ export const coberturaTopSchema = z.object({
     importeTop: z.number().nonnegative(),
     importeCubierto: z.number().nonnegative(),
   }),
+  /**
+   * `false` si Odoo no respondió (#127). Sin ventas no hay top: la cobertura sale
+   * vacía y la pantalla lo explica en vez de decir que no hay nada vendido.
+   */
+  odooDisponible: z.boolean(),
 });
 
 export type CoberturaTop = z.infer<typeof coberturaTopSchema>;

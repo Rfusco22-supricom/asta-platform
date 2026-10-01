@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { FormularioCompatibilidad } from '@/components/FormularioCompatibilidad';
 import { getRevisionImpresoras, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { AvisoOdoo } from '../AvisoOdoo';
 import { Pestanas } from '../Pestanas';
 import { RevisionImpresoras } from './RevisionImpresoras';
 
@@ -70,6 +71,8 @@ export default async function ImpresorasPage({
   return (
     <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Qué cartucho le sirve a cada impresora. El kiosco solo recomienda lo validado.">
       <Pestanas actual="impresoras" />
+
+      {!datos.meta.odooDisponible && <AvisoOdoo />}
 
       <section className="stats">
         <div className="stat">
