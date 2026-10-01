@@ -2,48 +2,22 @@
 
 > **Pendiente de ejecutar.** Comprobado el 15-sep-2026 contra la base de
 > EasyPanel: `_prisma_migrations` **no existe**. Hasta que esto se haga, no se
-> puede aplicar ninguna migración nueva.
+> puede aplicar ninguna migración nueva, y el middleware nuevo no se puede
+> desplegar bien: sus pantallas usan tablas que solo crean las migraciones.
 
-> **Tabla creada a mano en producción: `compatibilidad_productos`.** Existe allí
-> (se mantiene desde phpMyAdmin) y desde el PR de compatibilidades impresora ↔
-> cartucho está en `schema.prisma`. **Antes de ese PR, el diff del paso 1 proponía
-> `DROP TABLE compatibilidad_productos`**: si ves esa línea, estás con un esquema
-> viejo — no apliques el script. Los tipos de columna del modelo se dedujeron del
-> contenido; si el diff propone un `ALTER TABLE compatibilidad_productos MODIFY`,
-> no borra datos, pero conviene ajustar el modelo a lo que hay y repetir.
-
-## Después de la línea base: cargar las compatibilidades
-
-Con las migraciones aplicadas, desde la consola del contenedor del middleware:
-
-```bash
-node dist/cli/importar-propuestas.js                 # producto → cartucho, desde Odoo
-node dist/cli/importar-compatibilidades.js           # SIMULACRO: impresora → cartucho
-node dist/cli/importar-compatibilidades.js --aplicar
-node dist/cli/importar-impresoras.js                 # SIMULACRO: impresoras del nombre
-node dist/cli/importar-impresoras.js --aplicar
-```
-
-En ese orden, y el orden importa:
-
-1. **`importar-propuestas`** saca los cartuchos de los nombres de Odoo. Sin él no
-   hay con qué cruzar.
-2. **`importar-compatibilidades`** lee `compatibilidad_productos`, la tabla que
-   se mantiene a mano, así que sus códigos cruzan con los cartuchos del paso 1 en
-   vez de duplicarlos.
-3. **`importar-impresoras`** (#129) lee las impresoras que los propios nombres de
-   Odoo mencionan —"LaserJet P3010/3015d", "ML-1916/1915"— y las ata a los
-   cartuchos del paso 1. Es el único que no necesita datos de fuera, y es el que
-   llena `printer_models` cuando la tabla de mano no está disponible.
-
-Los tres se pueden repetir sin pisar lo revisado, y los tres tienen simulacro.
-Todo entra como pendiente y se revisa en el panel, Compatibilidades.
+> **Corregido el 1-oct-2026.** La versión anterior comparaba producción con
+> `schema.prisma` en el paso 1 y esperaba que saliera vacío. Era cierto cuando se
+> escribió; desde que entraron las tablas de #101, ese diff imprime 18 sentencias
+> (`CREATE TABLE printer_brands`, `staff_login_guards`…) aunque la base esté
+> perfecta, y la guía decía «si sale cualquier otra cosa, PARAR». Ahora el paso 1
+> compara con `prisma/linea-base.prisma`, y el procedimiento entero está
+> ensayado de nuevo (ver al final).
 
 ---
 
 ## El problema, en una frase
 
-Producción se montó aplicando `db/mysql/001_schema.sql` a mano. Las 17 tablas
+Producción se montó aplicando `db/mysql/001_schema.sql` a mano. Las tablas
 están —verificado—, pero **Prisma no sabe que están**, porque la tabla donde
 lleva la cuenta de lo aplicado nunca se creó.
 
@@ -80,19 +54,57 @@ vacío**.
 
 ---
 
-## Paso 1 · Comprobar que no hay deriva
+## Cuándo se hace, dentro del despliegue
 
-Desde la consola del contenedor del **middleware** (el directorio de trabajo es
-`/app/apps/middleware`):
+`prisma/linea-base.prisma` y las migraciones nuevas viajan **dentro de la imagen
+del middleware**, así que todo esto se hace desde la consola del contenedor
+**nuevo**:
+
+```
+1. Redesplegar asta-middleware desde main (con VERSION_SHA)
+2. En su consola: pasos 1 a 4 de abajo           ← minutos, no horas
+3. Permisos de las tablas nuevas (como root)
+4. Redesplegar asta-web
+5. Comprobar /health y entrar al panel
+```
+
+Entre el 1 y el 3, las pantallas que usan tablas nuevas (compatibilidades, la
+alerta de kioscos, el bloqueo de intentos del personal) darán error: el código
+ya las pide y la base todavía no las tiene. Por eso los pasos van seguidos.
+
+El directorio de trabajo del contenedor es `/app/apps/middleware`.
+
+**Con qué credenciales.** El paso 2 crea la tabla `_prisma_migrations` y el
+paso 3 crea tablas: los dos necesitan DDL. Van con `asta_migrador` o con el
+usuario que aplicó el esquema. **`asta_app` no puede** —no tiene CREATE, y eso
+está bien (#44)—. Si el `DATABASE_URL` del contenedor es el de `asta_app`, hay
+que pasar el del migrador delante de cada orden:
+
+```bash
+export MIGRADOR="mysql://asta_migrador:CLAVE@HOST:3306/Asta"
+```
+
+Ojo con la mayúscula: la base se llama **`Asta`**, y en Linux eso no es lo mismo
+que `asta`.
+
+---
+
+## Paso 1 · Comprobar que no hay deriva
 
 ```bash
 ./node_modules/.bin/prisma migrate diff \
-  --from-url "$DATABASE_URL" \
-  --to-schema-datamodel ../../prisma/schema.prisma \
+  --from-url "$MIGRADOR" \
+  --to-schema-datamodel ../../prisma/linea-base.prisma \
   --script
 ```
 
 Es de **solo lectura**: compara y escribe en pantalla, no toca la base.
+
+**Contra `linea-base.prisma`, no contra `schema.prisma`.** `linea-base.prisma`
+describe la base tal como se montó a mano: lo que dicen las tres migraciones de
+la línea base más `compatibilidad_productos`, la tabla creada desde phpMyAdmin.
+`schema.prisma` ya incluye todo lo que las migraciones posteriores van a crear, y
+compararlo con producción lo enseñaría como si fuera deriva.
 
 **Lo que tiene que salir:**
 
@@ -100,86 +112,206 @@ Es de **solo lectura**: compara y escribe en pantalla, no toca la base.
 -- This is an empty migration.
 ```
 
-Eso significa que el esquema real y el que describe Prisma son el mismo, y que
-marcar las migraciones como aplicadas dice la verdad.
+Eso significa que producción es exactamente la base que describen las tres
+migraciones, y que marcarlas como aplicadas dice la verdad.
 
-**Si sale cualquier otra cosa, PARAR.** Lo que imprima son las diferencias
-reales entre producción y el repositorio. No se sigue al paso 2: hay que mirar
+**Si sale cualquier otra cosa, PARAR.** Lo que imprima son diferencias reales
+entre producción y lo que se aplicó a mano. No se sigue al paso 2: hay que mirar
 qué son antes, porque marcar el historial encima de una deriva la convierte en
 permanente e invisible.
 
-## Paso 2 · Marcar las tres migraciones
+Lo más probable, si sale algo:
+
+- **`ALTER TABLE compatibilidad_productos MODIFY ...`**: los tipos del modelo se
+  dedujeron del contenido, no del `SHOW CREATE TABLE` (salió cortado). No borra
+  datos, pero hay que ajustar el modelo en `schema.prisma` y en
+  `linea-base.prisma` a lo que hay, y repetir.
+- **`DROP TABLE compatibilidad_productos`**: se está comparando con un
+  `linea-base.prisma` que no tiene el modelo. **No aplicar nada.**
+- **Algo de tipos (`JSON`, `DATETIME`…)**: producción es MySQL 9 y el ensayo fue
+  sobre MariaDB. Si los dos motores describen un tipo de forma distinta, sale
+  aquí. Hay que entenderlo antes de seguir.
+
+## Paso 2 · Marcar las tres migraciones de la línea base
 
 Solo si el paso 1 salió vacío. **En este orden**, que es el del historial:
 
 > **Exactamente estas tres, aunque `prisma/migrations/` tenga más.** Son las que
-> el esquema aplicado a mano ya contiene. Las posteriores —la primera es
-> `20260915195135_compatibilidad_impresora_toner`, las tablas de #101— **no
-> están en la base**, así que marcarlas sería mentir y dejaría a Prisma creyendo
-> que existen unas tablas que nadie creó. Esas se aplican solas con
-> `migrate deploy` en el paso 3.
+> el esquema aplicado a mano ya contiene. Las posteriores **no están en la
+> base**, así que marcarlas sería mentir y dejaría a Prisma creyendo que existen
+> unas tablas que nadie creó. Esas se aplican solas en el paso 3.
 
 ```bash
-./node_modules/.bin/prisma migrate resolve --applied 0_init                              --schema ../../prisma/schema.prisma
-./node_modules/.bin/prisma migrate resolve --applied 20260914120000_api_logs_pk_compuesta --schema ../../prisma/schema.prisma
-./node_modules/.bin/prisma migrate resolve --applied 20260914130000_api_usage_monthly     --schema ../../prisma/schema.prisma
+DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate resolve --applied 0_init                              --schema ../../prisma/schema.prisma
+DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate resolve --applied 20260914120000_api_logs_pk_compuesta --schema ../../prisma/schema.prisma
+DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate resolve --applied 20260914130000_api_usage_monthly     --schema ../../prisma/schema.prisma
 ```
 
 Ninguno de los tres ejecuta SQL del esquema: solo escriben la fila
 correspondiente en `_prisma_migrations`.
 
-**Con qué credenciales.** El primero CREA la tabla `_prisma_migrations`, así que
-hace falta DDL: va con `asta_migrador` o con el usuario que aplicó el esquema.
-**`asta_app` no puede** —no tiene CREATE, y eso está bien (#44)—. Si el
-`DATABASE_URL` del contenedor es el de `asta_app`, hay que pasarlo delante:
+## Paso 3 · Aplicar lo posterior
 
 ```bash
-DATABASE_URL="mysql://asta_migrador:CLAVE@HOST:3306/Asta" ./node_modules/.bin/prisma migrate resolve --applied 0_init --schema ../../prisma/schema.prisma
+DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate status --schema ../../prisma/schema.prisma
 ```
 
-Ojo con la mayúscula: la base se llama **`Asta`**, y en Linux eso no es lo mismo
-que `asta`.
-
-## Paso 3 · Confirmar
+Tiene que listar como pendientes **solo migraciones posteriores a las tres**. Si
+aparece `0_init` como pendiente, el paso 2 no quedó completo: **no seguir**.
 
 ```bash
-./node_modules/.bin/prisma migrate status --schema ../../prisma/schema.prisma
+DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
 ```
 
-```
-3 migrations found in prisma/migrations
+Aplica lo que haya en la imagen después de la línea base. Al 1-oct-2026, en
+`main`:
 
-Database schema is up to date!
-```
+| Migración | Qué hace |
+|---|---|
+| `20260915195135_compatibilidad_impresora_toner` | Las seis tablas de #101 y la FK de `recommendation_events` |
+| `20260916143723_compatibilidad_creada_por` | Quién añadió cada compatibilidad |
+| `20260916150000_compatibilidad_productos_fuente` | `compatibilidad_productos` con `IF NOT EXISTS`: **en producción no hace nada**, la tabla ya está |
+| `20260916190000_staff_login_guards` | Bloqueo por intentos del personal (#85) |
 
-Y después, `migrate deploy` aplica lo que venga DESPUÉS de la línea base:
+Y las de los PR abiertos cuando se fusionen: `kiosk_devices` con almacén y
+rotación de token (#120) y las columnas `Json` como `JSON` (#101), que **en
+producción no ejecuta ningún ALTER** porque allí ya lo son.
+
+## Paso 4 · Confirmar que no queda deriva
 
 ```bash
-./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
+./node_modules/.bin/prisma migrate diff \
+  --from-url "$MIGRADOR" \
+  --to-schema-datamodel ../../prisma/schema.prisma \
+  --script
 ```
 
-Si en el repositorio no hay nada posterior a las tres, dirá `No pending
-migrations to apply.` Si hay migraciones nuevas —hoy las tablas de #101—, las
-aplicará, y eso es lo correcto. Lo que **no** debe pasar es que intente aplicar
-`0_init`: si lo hace, el paso 2 no quedó completo.
+Ahora **sí** contra `schema.prisma`: la base tiene que ser ya el modelo de la
+aplicación.
+
+```
+-- This is an empty migration.
+```
+
+Y `migrate deploy` repetido tiene que decir `No pending migrations to apply.`
+
+---
+
+## Permisos de las tablas nuevas
+
+`asta_app` y `asta_lectura` tienen permisos **tabla a tabla** (#44), y MySQL no
+deja dar permisos sobre una tabla que no existe. Así que las tablas que acaba de
+crear el paso 3 nacen **sin permisos para la aplicación**: el panel daría
+«acceso denegado» aunque las tablas estén.
+
+**No reaplicar `004_usuarios.sql` entero**: cambia las contraseñas de los tres
+usuarios. Basta con los GRANT de las tablas nuevas.
+
+Antes, mirar cómo están creados los usuarios en producción, porque el fichero
+usa `asta.` y `@'localhost'`, y en producción la base es `Asta` y en Docker las
+conexiones no llegan desde `localhost`:
+
+```sql
+SELECT user, host FROM mysql.user WHERE user LIKE 'asta\_%';
+SHOW GRANTS FOR 'asta_app'@'<host>';
+```
+
+Con el host y el nombre de base que salgan ahí, como root:
+
+```sql
+GRANT SELECT, INSERT, UPDATE ON Asta.printer_brands           TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.printer_models           TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.printer_model_aliases    TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.cartridges               TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.cartridge_printer_models TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.product_cartridges       TO 'asta_app'@'<host>';
+GRANT SELECT                 ON Asta.compatibilidad_productos TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<host>';
+
+GRANT SELECT ON Asta.printer_brands           TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.printer_models           TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.printer_model_aliases    TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.cartridges               TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.cartridge_printer_models TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.product_cartridges       TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.compatibilidad_productos TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
+```
+
+Son las mismas líneas que `004_usuarios.sql` (líneas 148-162 y 292-301), sin
+DELETE en ninguna (#105). `kiosk_devices` no necesita nada: sus columnas nuevas
+heredan el permiso de la tabla.
+
+Para comprobar que no ha quedado ninguna tabla sin permisos para la aplicación
+(`pnpm check:grants` no sirve aquí: vive en `scripts/`, que no viaja en la
+imagen), como root:
+
+```sql
+SELECT t.TABLE_NAME
+  FROM information_schema.TABLES t
+ WHERE t.TABLE_SCHEMA = 'Asta'
+   AND t.TABLE_NAME <> '_prisma_migrations'
+   AND NOT EXISTS (
+         SELECT 1 FROM information_schema.TABLE_PRIVILEGES p
+          WHERE p.TABLE_SCHEMA = t.TABLE_SCHEMA
+            AND p.TABLE_NAME   = t.TABLE_NAME
+            AND p.GRANTEE LIKE '''asta\_app''@%');
+```
+
+Tiene que salir vacía. Si sale alguna, mirar qué le concede `004_usuarios.sql`.
+
+---
+
+## Después: cargar las compatibilidades
+
+Desde la consola del contenedor del middleware:
+
+```bash
+node dist/cli/importar-propuestas.js                 # producto → cartucho, desde Odoo
+node dist/cli/importar-compatibilidades.js           # SIMULACRO: impresora → cartucho
+node dist/cli/importar-compatibilidades.js --aplicar
+node dist/cli/importar-impresoras.js                 # SIMULACRO: impresoras del nombre
+node dist/cli/importar-impresoras.js --aplicar
+node dist/cli/importar-listas-fabricante.js          # SIMULACRO: listas del fabricante (#56)
+node dist/cli/importar-listas-fabricante.js --aplicar
+```
+
+En ese orden, y el orden importa:
+
+1. **`importar-propuestas`** saca los cartuchos de los nombres de Odoo. Sin él no
+   hay con qué cruzar.
+2. **`importar-compatibilidades`** lee `compatibilidad_productos`, la tabla que
+   se mantiene a mano, así que sus códigos cruzan con los cartuchos del paso 1 en
+   vez de duplicarlos.
+3. **`importar-impresoras`** (#129) lee las impresoras que los propios nombres de
+   Odoo mencionan —"LaserJet P3010/3015d", "ML-1916/1915"— y las ata a los
+   cartuchos del paso 1.
+4. **`importar-listas-fabricante`** carga las impresoras de los cartuchos del top
+   20, copiadas de la web de cada fabricante. Solo enlaza cartuchos que ya
+   existen. *(Cuando se fusione su PR.)*
+
+Todos se pueden repetir sin pisar lo revisado, y todos tienen simulacro. Todo
+entra como pendiente y se revisa en el panel, Compatibilidades.
 
 ---
 
 ## Cómo se comprobó este procedimiento
 
-No está escrito de memoria. Se ensayó entero sobre una base creada igual que
-producción —`001_schema.sql` aplicado a mano, sin historial—:
+No está escrito de memoria. Se ensayó entero el **1-oct-2026** sobre una base
+creada igual que producción —`001_schema.sql` aplicado a mano,
+`compatibilidad_productos` creada aparte, sin `_prisma_migrations`—, con el
+`main` de ese día:
 
-| paso | resultado |
+| Paso | Resultado |
 |---|---|
-| deriva entre el SQL crudo y `schema.prisma` | vacía |
-| marcar las tres migraciones | las tres |
-| `migrate status` | up to date |
-| `migrate deploy` | `No pending migrations to apply.` |
-| una migración NUEVA encima | se aplica limpia |
-
-El último es el que importa: es lo que va a pasar cuando entren las tablas de
-#101.
+| paso 1 tal como estaba antes (contra `schema.prisma`) | **18 sentencias**: la guía habría dicho «PARAR» |
+| paso 1 corregido (contra `linea-base.prisma`) | vacío |
+| paso 2 · marcar las tres | las tres |
+| paso 3 · `migrate status` | pendientes solo las posteriores |
+| paso 3 · `migrate deploy` | aplica las cuatro; `compatibilidad_productos` no choca |
+| paso 4 · deriva contra `schema.prisma` | vacía |
+| `migrate deploy` repetido | `No pending migrations to apply.` |
+| las migraciones de los PR de #120 y #101 encima | se aplican limpias, deriva vacía |
 
 **Con una diferencia que hay que tener presente.** El ensayo fue sobre
 **MariaDB 10.4**, que es lo que hay en desarrollo. Producción es **MySQL 9.7.2**.
