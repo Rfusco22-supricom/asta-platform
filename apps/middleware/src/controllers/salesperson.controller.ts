@@ -27,7 +27,6 @@ const paramsSchema = z.object({
 const querySchema = z.object({
   desde: z.iso.date().optional(),
   hasta: z.iso.date().optional(),
-  incluirNotasDeCredito: z.coerce.boolean().default(false),
   incluirSerieMensual: z.coerce.boolean().default(false),
 });
 
@@ -72,9 +71,7 @@ export async function getClientInvoicing(
       },
       meta: {
         fuente: 'odoo:account.move',
-        criterio: query.data.incluirNotasDeCredito
-          ? 'facturas contabilizadas netas de notas de crédito'
-          : 'facturas contabilizadas, sin notas de crédito',
+        criterio: 'facturas contabilizadas, netas de notas de crédito',
         consultadoEn: new Date().toISOString(),
       },
     });

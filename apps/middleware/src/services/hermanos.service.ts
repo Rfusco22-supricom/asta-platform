@@ -1,5 +1,6 @@
 import { searchRead, readGroup } from '../odoo/client.js';
 import { normalizarNombre, normalizarRif, rifUtilizable } from './duplicados.js';
+import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Otros registros de Odoo que son el MISMO cliente (issue #50).
@@ -116,26 +117,24 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
 
   const grupos = await readGroup<{
     commercial_partner_id: [number, string] | false;
+    move_type: string | false;
     amount_total_signed: number;
     __count: number;
   }>(
     'account.move',
-    [
-      ['move_type', '=', 'out_invoice'],
-      ['state', '=', 'posted'],
-      ['commercial_partner_id', 'in', ids],
-    ],
+    [TIPO_FACTURADO, ['state', '=', 'posted'], ['commercial_partner_id', 'in', ids]],
     ['amount_total_signed:sum'],
-    ['commercial_partner_id'],
+    ['commercial_partner_id', 'move_type'],
   );
 
   const facturacion = new Map<number, { monto: number; facturas: number }>();
-  for (const g of grupos) {
-    if (!g.commercial_partner_id) continue;
-    facturacion.set(g.commercial_partner_id[0], {
-      monto: g.amount_total_signed ?? 0,
-      facturas: g.__count,
-    });
+  const porCliente = plegarPorTipo(
+    grupos,
+    (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
+    ['amount_total_signed'],
+  );
+  for (const [id, { sumas, facturas }] of porCliente) {
+    facturacion.set(id, { monto: sumas.amount_total_signed, facturas });
   }
 
   const esteRegistro = Math.round((facturacion.get(partnerId)?.monto ?? 0) * 100) / 100;

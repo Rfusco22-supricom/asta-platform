@@ -226,10 +226,8 @@ export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) 
       )}
 
       {/*
-        El criterio, escrito donde se lee el número.
-        La decisión de si «facturado» lleva notas de crédito sigue abierta (#26).
-        Mientras no se cierre, lo que no puede pasar es que el panel dé una cifra
-        distinta del ERP y nadie sepa por qué.
+        El criterio, escrito donde se lee el número (#26): lo que no puede pasar
+        es que el panel dé una cifra distinta del ERP y nadie sepa por qué.
       */}
       <p className="pie-criterio">
         Solo facturas contabilizadas

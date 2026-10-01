@@ -1,5 +1,6 @@
 import { searchRead, readGroup, type OdooDomain } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
+import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Reportes de facturación por periodo.
@@ -14,11 +15,9 @@ import { productosEnCompetencia } from './asta.service.js';
  *
  * ── Un solo criterio, y escrito donde se lee ─────────────────────────────────
  *
- * `incluirNotasDeCredito` está en `false`, que es la definición literal de
- * «total facturado» de la especificación y la misma que usa
- * `invoicing.service.ts`. La decisión de fondo sigue abierta (#26) y NO se toma
- * aquí: lo que se hace es devolverla en la respuesta, para que la pantalla diga
- * con qué criterio está sumando.
+ * Neto de devoluciones, el mismo que el resto del panel (#26, ver
+ * `criterioFacturacion.ts`). Se devuelve en la respuesta para que la pantalla
+ * diga con qué criterio está sumando.
  *
  * Esto importa más de lo que parece. Si el panel y el ERP dan números distintos
  * y nadie sabe por qué, el vendedor deja de mirar el panel — y a partir de ahí
@@ -91,7 +90,6 @@ export interface Reporte {
 export interface OpcionesReporte extends RangoFechas {
   /** `res.users.id` del comercial. Sin esto, el reporte es de toda la empresa. */
   soloDelVendedor?: number;
-  incluirNotasDeCredito?: boolean;
 }
 
 function redondear(n: number): number {
@@ -182,7 +180,7 @@ function vacio(opciones: OpcionesReporte, t0: number): Reporte {
   return {
     periodo: { desde: opciones.desde, hasta: opciones.hasta },
     criterio: {
-      incluyeNotasDeCredito: opciones.incluirNotasDeCredito ?? false,
+      incluyeNotasDeCredito: true,
       soloContabilizadas: true,
     },
     totales: { facturado: 0, porCobrar: 0, facturas: 0, ticketPromedio: 0, clientes: 0 },
@@ -212,23 +210,24 @@ async function totalDeProductos(
     const dominio: OdooDomain = [
       ['display_type', '=', 'product'],
       ['parent_state', '=', 'posted'],
-      ['move_id.move_type', '=', 'out_invoice'],
+      TIPO_FACTURADO_LINEA,
       ['move_id.invoice_date', '>=', rango.desde],
       ['move_id.invoice_date', '<=', rango.hasta],
       ['product_id', 'in', productos.slice(i, i + LOTE)],
     ];
     if (cartera) dominio.push(['partner_id', 'in', cartera]);
 
-    // Sin `groupby`: se pide el agregado del lote entero, que es lo único que
-    // necesita el reporte. Agrupar por cliente aquí costaría lo mismo y se
-    // tiraría después.
-    const grupos = await readGroup<{ price_subtotal: number }>(
+    // Agrupado solo por `move_type`: el agregado del lote entero, que es lo único
+    // que necesita el reporte, separado en facturas y notas de crédito porque
+    // `price_subtotal` viene en positivo en las dos y las devoluciones restan.
+    const grupos = await readGroup<{ move_type: string | false; price_subtotal: number; __count: number }>(
       'account.move.line',
       dominio,
       ['price_subtotal:sum'],
-      [],
+      ['move_type'],
     );
-    for (const g of grupos) total += g.price_subtotal ?? 0;
+    const plegado = plegarPorTipo(grupos, () => 'lote', ['price_subtotal'], { firmar: true });
+    total += plegado.get('lote')?.sumas.price_subtotal ?? 0;
   }
 
   return total;
@@ -243,7 +242,6 @@ async function totalDeProductos(
 export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
   const t0 = Date.now();
   const deLaEmpresa = opciones.soloDelVendedor === undefined;
-  const incluirNotas = opciones.incluirNotasDeCredito ?? false;
 
   let cartera: number[] | null = null;
   if (!deLaEmpresa) {
@@ -259,9 +257,8 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
     if (cartera.length === 0) return vacio(opciones, t0);
   }
 
-  const tipos = incluirNotas ? ['out_invoice', 'out_refund'] : ['out_invoice'];
   const base: OdooDomain = [
-    ['move_type', 'in', tipos],
+    TIPO_FACTURADO,
     ['state', '=', 'posted'],
     ['invoice_date', '>=', opciones.desde],
     ['invoice_date', '<=', opciones.hasta],
@@ -271,34 +268,37 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
   const campos = ['amount_total_signed:sum', 'amount_residual_signed:sum'];
 
   const [porMes, porCliente, porVendedor, idsProducto] = await Promise.all([
+    // Todo agrupado además por `move_type`, para contar solo facturas: una nota
+    // de crédito resta dinero, no suma un documento vendido.
     readGroup<{
+      move_type: string | false;
       amount_total_signed: number;
       amount_residual_signed: number;
       __count: number;
       __domain?: unknown;
-    }>('account.move', base, campos, ['invoice_date:month']),
+    }>('account.move', base, campos, ['invoice_date:month', 'move_type']),
     readGroup<{
       commercial_partner_id: [number, string] | false;
+      move_type: string | false;
       amount_total_signed: number;
       __count: number;
-    }>('account.move', base, campos, ['commercial_partner_id']),
+    }>('account.move', base, campos, ['commercial_partner_id', 'move_type']),
     deLaEmpresa
       ? readGroup<{
           invoice_user_id: [number, string] | false;
+          move_type: string | false;
           amount_total_signed: number;
           amount_residual_signed: number;
           __count: number;
-        }>('account.move', base, campos, ['invoice_user_id'])
+        }>('account.move', base, campos, ['invoice_user_id', 'move_type'])
       : Promise.resolve([]),
     productosEnCompetencia(),
   ]);
 
   // ── Serie mensual, rellenando los meses sin factura ───────────────────────
   const conDatos = new Map<string, { monto: number; facturas: number }>();
-  for (const g of porMes) {
-    const mes = mesDelGrupo(g);
-    if (!mes) continue;
-    conDatos.set(mes, { monto: g.amount_total_signed ?? 0, facturas: g.__count });
+  for (const [mes, { sumas, facturas }] of plegarPorTipo(porMes, mesDelGrupo, ['amount_total_signed'])) {
+    conDatos.set(mes, { monto: sumas.amount_total_signed, facturas });
   }
   const serieMensual = mesesDe(opciones).map((periodo) => ({
     periodo,
@@ -311,27 +311,35 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
   let porCobrar = 0;
   let facturas = 0;
 
-  const clientes = porCliente
-    .filter((g) => g.commercial_partner_id)
-    .map((g) => {
-      const id = (g.commercial_partner_id as [number, string])[0];
-      const nombre = (g.commercial_partner_id as [number, string])[1];
-      return {
-        partnerId: id,
-        nombre: nombre.trim(),
-        facturado: redondear(g.amount_total_signed ?? 0),
-        facturas: g.__count,
-      };
-    });
-
+  const nombreCliente = new Map<number, string>();
   for (const g of porCliente) {
-    facturado += g.amount_total_signed ?? 0;
-    facturas += g.__count;
+    if (g.commercial_partner_id) nombreCliente.set(g.commercial_partner_id[0], g.commercial_partner_id[1]);
+  }
+  const plegadoClientes = plegarPorTipo(
+    porCliente,
+    (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
+    ['amount_total_signed'],
+  );
+  const clientes = [...plegadoClientes].map(([id, { sumas, facturas: n }]) => ({
+    partnerId: id,
+    nombre: (nombreCliente.get(id) ?? '').trim(),
+    facturado: redondear(sumas.amount_total_signed),
+    facturas: n,
+  }));
+
+  for (const { sumas, facturas: n } of plegadoClientes.values()) {
+    facturado += sumas.amount_total_signed;
+    facturas += n;
   }
   // El saldo sale de la serie mensual y no del corte por cliente: son los mismos
   // documentos agrupados de otra forma, así que el total es el mismo y no cuesta
   // una consulta más.
   for (const g of porMes) porCobrar += g.amount_residual_signed ?? 0;
+
+  const nombreVendedor = new Map<number, string>();
+  for (const g of porVendedor) {
+    if (g.invoice_user_id) nombreVendedor.set(g.invoice_user_id[0], g.invoice_user_id[1]);
+  }
 
   const [asta, competencia] = await Promise.all([
     totalDeProductos(idsProducto.asta, opciones, cartera),
@@ -341,7 +349,7 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
 
   return {
     periodo: { desde: opciones.desde, hasta: opciones.hasta },
-    criterio: { incluyeNotasDeCredito: incluirNotas, soloContabilizadas: true },
+    criterio: { incluyeNotasDeCredito: true, soloContabilizadas: true },
     totales: {
       facturado: redondear(facturado),
       porCobrar: redondear(porCobrar),
@@ -352,13 +360,20 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
     serieMensual,
     topClientes: clientes.sort((a, b) => b.facturado - a.facturado).slice(0, 15),
     porVendedor: deLaEmpresa
-      ? porVendedor
-          .map((g) => ({
-            odooUserId: g.invoice_user_id ? g.invoice_user_id[0] : null,
-            nombre: g.invoice_user_id ? g.invoice_user_id[1].trim() : 'Sin comercial asignado',
-            facturado: redondear(g.amount_total_signed ?? 0),
-            porCobrar: redondear(g.amount_residual_signed ?? 0),
-            facturas: g.__count,
+      ? [
+          ...plegarPorTipo(
+            porVendedor,
+            // 0 agrupa las facturas sin comercial; ningún res.users tiene id 0.
+            (g) => (g.invoice_user_id ? g.invoice_user_id[0] : 0),
+            ['amount_total_signed', 'amount_residual_signed'],
+          ),
+        ]
+          .map(([uid, { sumas, facturas: n }]) => ({
+            odooUserId: uid === 0 ? null : uid,
+            nombre: uid === 0 ? 'Sin comercial asignado' : (nombreVendedor.get(uid) ?? '').trim(),
+            facturado: redondear(sumas.amount_total_signed),
+            porCobrar: redondear(sumas.amount_residual_signed),
+            facturas: n,
           }))
           .sort((a, b) => b.facturado - a.facturado)
       : null,

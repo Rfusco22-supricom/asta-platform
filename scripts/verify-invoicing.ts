@@ -76,20 +76,27 @@ async function main(): Promise<void> {
   for (const partnerId of muestra) {
     const resumen = await getPartnerInvoicingSummary(partnerId);
 
-    // Ruta de control: mismas facturas, suma a mano.
+    // Ruta de control: mismos documentos, suma a mano. Neto de devoluciones
+    // (#26): las notas de crédito entran en el total —vienen en negativo— pero
+    // no en el conteo de facturas.
     const hijos = await executeKw<number[]>('res.partner', 'search', [[['id', 'child_of', partnerId]]]);
-    const facturas = await searchRead<{ amount_total_signed: number; amount_residual_signed: number }>(
+    const documentos = await searchRead<{
+      move_type: string;
+      amount_total_signed: number;
+      amount_residual_signed: number;
+    }>(
       'account.move',
       [
         ['partner_id', 'in', hijos],
-        ['move_type', '=', 'out_invoice'],
+        ['move_type', 'in', ['out_invoice', 'out_refund']],
         ['state', '=', 'posted'],
       ],
-      ['amount_total_signed', 'amount_residual_signed'],
+      ['move_type', 'amount_total_signed', 'amount_residual_signed'],
     );
+    const facturas = documentos.filter((d) => d.move_type === 'out_invoice');
 
-    const totalManual = facturas.reduce((s, f) => s + (f.amount_total_signed ?? 0), 0);
-    const saldoManual = facturas.reduce((s, f) => s + (f.amount_residual_signed ?? 0), 0);
+    const totalManual = documentos.reduce((s, f) => s + (f.amount_total_signed ?? 0), 0);
+    const saldoManual = documentos.reduce((s, f) => s + (f.amount_residual_signed ?? 0), 0);
 
     const p = await getPartner(partnerId);
     console.log(`   ${p?.nombre?.slice(0, 46) ?? partnerId}`);
@@ -257,19 +264,33 @@ async function main(): Promise<void> {
   // ───────────────────────────────────────────────────────────────────────────
   console.log('\n> 6. Notas de credito: el criterio del issue #26\n');
 
-  const sinNC = await getPartnerInvoicingSummary(partnerTop, { incluirNotasDeCredito: false });
-  const conNC = await getPartnerInvoicingSummary(partnerTop, { incluirNotasDeCredito: true });
-  const delta = sinNC.totalFacturado - conNC.totalFacturado;
+  // Decidido: neto de devoluciones. Se recalcula aqui por separado, por tipo de
+  // documento, y el servicio tiene que dar lo mismo: total = facturas + notas
+  // (que vienen en negativo), y el conteo solo de facturas.
+  const porTipo = await readGroup<{ move_type: string; amount_total_signed: number; __count: number }>(
+    'account.move',
+    [
+      ['partner_id', 'child_of', partnerTop],
+      ['move_type', 'in', ['out_invoice', 'out_refund']],
+      ['state', '=', 'posted'],
+    ],
+    ['amount_total_signed:sum'],
+    ['move_type'],
+  );
+  const facturasNC = porTipo.find((g) => g.move_type === 'out_invoice');
+  const notasNC = porTipo.find((g) => g.move_type === 'out_refund');
+  const neto = (facturasNC?.amount_total_signed ?? 0) + (notasNC?.amount_total_signed ?? 0);
+  const resumenNC = await getPartnerInvoicingSummary(partnerTop);
 
-  console.log(`   sin notas de credito: ${money(sinNC.totalFacturado)} (${sinNC.numeroFacturas} docs)`);
-  console.log(`   con notas de credito: ${money(conNC.totalFacturado)} (${conNC.numeroFacturas} docs)`);
+  console.log(`   facturas:          ${money(facturasNC?.amount_total_signed ?? 0)} (${facturasNC?.__count ?? 0})`);
+  console.log(`   notas de credito:  ${money(notasNC?.amount_total_signed ?? 0)} (${notasNC?.__count ?? 0})`);
+  console.log(`   panel:             ${money(resumenNC.totalFacturado)} (${resumenNC.numeroFacturas} facturas)`);
 
-  if (Math.abs(delta) < 0.01) {
-    ok('este cliente no tiene devoluciones: el criterio no cambia su cifra');
-  } else {
-    const pct = ((Math.abs(delta) / sinNC.totalFacturado) * 100).toFixed(1);
-    warn(`la diferencia es ${money(Math.abs(delta))} (${pct}%). El issue #26 no es teorico.`);
-  }
+  if (Math.abs(resumenNC.totalFacturado - neto) < 0.01) ok('el total del panel es el neto de devoluciones');
+  else bad(`el panel da ${money(resumenNC.totalFacturado)} y el neto es ${money(neto)}`);
+
+  if (resumenNC.numeroFacturas === (facturasNC?.__count ?? 0)) ok('el conteo es de facturas, sin notas de credito');
+  else bad(`el panel cuenta ${resumenNC.numeroFacturas} y hay ${facturasNC?.__count ?? 0} facturas`);
 
   // ───────────────────────────────────────────────────────────────────────────
   console.log('\n> 7. Serie mensual\n');

@@ -1,4 +1,5 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
+import { FACTURA, TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Facturación de un cliente, leída en vivo de `account.move`.
@@ -24,6 +25,7 @@ type PaymentState = 'not_paid' | 'in_payment' | 'paid' | 'partial' | 'reversed' 
 
 interface PaymentStateGroup {
   payment_state: PaymentState | false;
+  move_type: string | false;
   amount_total_signed: number;
   amount_residual_signed: number;
   __count: number;
@@ -31,6 +33,7 @@ interface PaymentStateGroup {
 
 interface MonthlyGroup {
   'invoice_date:month': string | false; // "enero 2026"
+  move_type: string | false;
   __range?: Record<string, { from: string; to: string }>;
   amount_total_signed: number;
   __count: number;
@@ -76,25 +79,25 @@ export interface InvoicingQuery {
   desde?: string;
   /** Fecha de factura hasta (YYYY-MM-DD), inclusiva. */
   hasta?: string;
-  /**
-   * Incluir notas de crédito (`out_refund`), que restan del total.
-   *
-   * Por defecto `false`, que es la definición literal de "total facturado" pedida
-   * en la especificación. Ojo: con clientes que devuelven mercancía, el número
-   * *neto* real es el de `true`. Conviene decidirlo con el área comercial y dejar
-   * un solo criterio en todo el panel.
-   */
-  incluirNotasDeCredito?: boolean;
   /** Devuelve además la serie mensual, para graficar la evolución. */
   incluirSerieMensual?: boolean;
 }
 
-function buildDomain(partnerId: number, query: InvoicingQuery): OdooDomain {
-  const moveTypes = query.incluirNotasDeCredito ? ['out_invoice', 'out_refund'] : ['out_invoice'];
-
+/**
+ * Las facturas de un cliente: `child_of`, solo `posted`, en el rango de fechas.
+ *
+ * `tipos` es la única diferencia entre los dos usos. Los TOTALES van netos de
+ * devoluciones (#26, ver `criterioFacturacion.ts`); la LISTA de documentos de la
+ * API pública y «la última factura» son solo facturas de venta.
+ */
+function buildDomain(
+  partnerId: number,
+  query: Pick<InvoicingQuery, 'desde' | 'hasta'>,
+  tipo: OdooDomain[number] = ['move_type', '=', FACTURA],
+): OdooDomain {
   const domain: OdooDomain = [
     ['partner_id', 'child_of', partnerId],
-    ['move_type', 'in', moveTypes],
+    tipo,
     ['state', '=', 'posted'],
   ];
 
@@ -122,18 +125,19 @@ export async function getPartnerInvoicingSummary(
     throw new TypeError(`partnerId inválido: ${partnerId}`);
   }
 
-  const domain = buildDomain(partnerId, query);
+  const domain = buildDomain(partnerId, query, TIPO_FACTURADO);
 
   const [groups, lastInvoices] = await Promise.all([
     readGroup<PaymentStateGroup>(
       'account.move',
       domain,
       ['amount_total_signed:sum', 'amount_residual_signed:sum'],
-      ['payment_state'],
+      ['payment_state', 'move_type'],
     ),
+    // La última FACTURA: una nota de crédito no es la última venta.
     searchRead<LastInvoiceRow>(
       'account.move',
-      domain,
+      buildDomain(partnerId, query),
       ['id', 'name', 'invoice_date', 'amount_total_signed', 'payment_state'],
       { limit: 1, order: 'invoice_date desc, id desc' },
     ),
@@ -143,19 +147,24 @@ export async function getPartnerInvoicingSummary(
   let porCobrar = 0;
   let numeroFacturas = 0;
 
-  const desglosePorEstadoDePago = groups.map((group) => {
-    const monto = group.amount_total_signed ?? 0;
-    const saldo = group.amount_residual_signed ?? 0;
+  const porEstado = plegarPorTipo(groups, (g) => g.payment_state || 'desconocido', [
+    'amount_total_signed',
+    'amount_residual_signed',
+  ]);
+
+  const desglosePorEstadoDePago = [...porEstado].map(([estado, { sumas, facturas }]) => {
+    const monto = sumas.amount_total_signed;
+    const saldo = sumas.amount_residual_signed;
 
     totalFacturado += monto;
     porCobrar += saldo;
-    numeroFacturas += group.__count;
+    numeroFacturas += facturas;
 
     return {
-      estado: (group.payment_state || 'desconocido') as PaymentState | 'desconocido',
+      estado: estado as PaymentState | 'desconocido',
       monto: round2(monto),
       saldo: round2(saldo),
-      facturas: group.__count,
+      facturas,
     };
   });
 
@@ -184,16 +193,17 @@ export async function getPartnerInvoicingSummary(
       'account.move',
       domain,
       ['amount_total_signed:sum'],
-      ['invoice_date:month'],
+      ['invoice_date:month', 'move_type'],
     );
 
-    summary.serieMensual = monthly
-      .filter((row) => row['invoice_date:month'])
-      .map((row) => ({
-        periodo: String(row['invoice_date:month']),
-        monto: round2(row.amount_total_signed ?? 0),
-        facturas: row.__count,
-      }));
+    const porMes = plegarPorTipo(monthly, (row) => row['invoice_date:month'] || null, [
+      'amount_total_signed',
+    ]);
+    summary.serieMensual = [...porMes].map(([periodo, { sumas, facturas }]) => ({
+      periodo: String(periodo),
+      monto: round2(sumas.amount_total_signed),
+      facturas,
+    }));
   }
 
   return summary;
@@ -213,8 +223,6 @@ export async function getInvoicingTotalsByPartner(
   const result = new Map<number, { total: number; porCobrar: number; facturas: number }>();
   if (partnerIds.length === 0) return result;
 
-  const moveTypes = query.incluirNotasDeCredito ? ['out_invoice', 'out_refund'] : ['out_invoice'];
-
   /**
    * `commercial_partner_id in [...]` en vez de `partner_id child_of [...]`.
    *
@@ -229,7 +237,7 @@ export async function getInvoicingTotalsByPartner(
    */
   const domain: OdooDomain = [
     ['commercial_partner_id', 'in', partnerIds],
-    ['move_type', 'in', moveTypes],
+    TIPO_FACTURADO,
     ['state', '=', 'posted'],
   ];
   if (query.desde) domain.push(['invoice_date', '>=', query.desde]);
@@ -239,6 +247,7 @@ export async function getInvoicingTotalsByPartner(
   // que es la entidad que el vendedor ve en su cartera.
   const groups = await readGroup<{
     commercial_partner_id: [number, string] | false;
+    move_type: string | false;
     amount_total_signed: number;
     amount_residual_signed: number;
     __count: number;
@@ -246,16 +255,19 @@ export async function getInvoicingTotalsByPartner(
     'account.move',
     domain,
     ['amount_total_signed:sum', 'amount_residual_signed:sum'],
-    ['commercial_partner_id'],
+    ['commercial_partner_id', 'move_type'],
   );
 
-  for (const group of groups) {
-    if (!group.commercial_partner_id) continue;
-    const [id] = group.commercial_partner_id;
+  const porCliente = plegarPorTipo(
+    groups,
+    (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
+    ['amount_total_signed', 'amount_residual_signed'],
+  );
+  for (const [id, { sumas, facturas }] of porCliente) {
     result.set(id, {
-      total: round2(group.amount_total_signed ?? 0),
-      porCobrar: round2(group.amount_residual_signed ?? 0),
-      facturas: group.__count,
+      total: round2(sumas.amount_total_signed),
+      porCobrar: round2(sumas.amount_residual_signed),
+      facturas,
     });
   }
 
@@ -394,7 +406,7 @@ export async function invoiceExists(invoiceId: number): Promise<boolean> {
   const n = await executeKw<number>('account.move', 'search_count', [
     [
       ['id', '=', invoiceId],
-      ['move_type', '=', 'out_invoice'],
+      ['move_type', '=', FACTURA],
     ],
   ]);
   return n > 0;

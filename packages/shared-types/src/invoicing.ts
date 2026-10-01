@@ -40,15 +40,6 @@ export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
 export const invoicingQuerySchema = z.object({
   desde: odooDateSchema.optional(),
   hasta: odooDateSchema.optional(),
-  /**
-   * Incluir notas de crédito (`out_refund`), que restan del total.
-   *
-   * Por defecto `false`: es la definición literal de "total facturado" de la
-   * especificación. El criterio definitivo lo decide el issue #26 — y una vez
-   * decidido, debe ser el MISMO en todo el panel, o el vendedor verá un número
-   * distinto al de Odoo y dejará de confiar en la herramienta.
-   */
-  incluirNotasDeCredito: z.coerce.boolean().default(false),
   incluirSerieMensual: z.coerce.boolean().default(false),
 });
 

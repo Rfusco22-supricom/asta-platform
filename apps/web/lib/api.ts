@@ -206,7 +206,6 @@ export interface InvoicingOptions {
   serieMensual?: boolean;
   desde?: string;
   hasta?: string;
-  incluirNotasDeCredito?: boolean;
 }
 
 export async function getClientInvoicing(
@@ -218,7 +217,6 @@ export async function getClientInvoicing(
   if (opciones.serieMensual) qs.set('incluirSerieMensual', 'true');
   if (opciones.desde) qs.set('desde', opciones.desde);
   if (opciones.hasta) qs.set('hasta', opciones.hasta);
-  if (opciones.incluirNotasDeCredito) qs.set('incluirNotasDeCredito', 'true');
 
   const sufijo = qs.size > 0 ? `?${qs}` : '';
   const r = await request(
