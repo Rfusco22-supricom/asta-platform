@@ -1,0 +1,14 @@
+// Configuración de UNA tablet. Copiar a `Kiosco.xcconfig` (que no se versiona)
+// y rellenar antes de compilar:
+//
+//   cp Config/Kiosco.example.xcconfig Config/Kiosco.xcconfig
+//
+// En un xcconfig `//` empieza un comentario, también dentro de un valor: por
+// eso la URL lleva `$()` entre las dos barras.
+
+// El middleware. En el simulador, `localhost` es este Mac.
+ASTA_API_BASE = http:/$()/localhost:3001
+
+// La API key de la tienda, con el permiso RECOMMENDER_READ y NINGUNO más.
+// Se crea en el panel, en «Mis API keys». No se commitea.
+ASTA_API_KEY =

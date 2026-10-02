@@ -1,0 +1,6 @@
+# Se genera con `xcodegen` desde project.yml.
+*.xcodeproj/
+# La key y la URL de cada tablet.
+Config/Kiosco.xcconfig
+build/
+DerivedData/
