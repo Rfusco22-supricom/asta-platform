@@ -104,3 +104,40 @@ fun ordenarParaRecomendar(productos: List<ProductoCompatible>): List<ProductoCom
  */
 fun recomendado(ordenados: List<ProductoCompatible>): ProductoCompatible? =
     ordenados.firstOrNull()?.takeIf { it.esAsta && !it.esPolvo && it.stock != EstadoStock.AGOTADO }
+
+/**
+ * Qué se le pone delante al cliente. La misma regla que `queEnsenar` en iOS
+ * (`Dominio/Producto.swift`).
+ *
+ * **El kiosco solo ofrece Asta**, la marca propia. Lo pidió la dirección y tiene
+ * una consecuencia que conviene tener escrita: un original en pantalla, al lado
+ * del Asta, se lleva una venta que ya teníamos en el almacén; y cuando el
+ * original es lo único que sirve, ofrecerlo no es trabajo del kiosco, sino del
+ * mostrador, que puede explicar la diferencia de precio y de garantía.
+ *
+ * De ahí que haya TRES respuestas y no dos. La diferencia entre las dos últimas
+ * le importa al cliente que está de pie:
+ *
+ *   · `Asta`     hay consumibles Asta verificados para esa impresora;
+ *   · `SinAsta`  la impresora sí está y tiene consumibles verificados, pero
+ *                ninguno es nuestro. Se dice así y se manda al mostrador;
+ *                callarlo haría creer que la impresora no está en el sistema.
+ *   · `SinNada`  todavía no hay ninguna compatibilidad verificada (#56). Es un
+ *                paso que falta por dar, no un «no existe».
+ */
+sealed interface ParaEnsenar {
+    data class Asta(val productos: List<ProductoCompatible>) : ParaEnsenar
+    data object SinAsta : ParaEnsenar
+    data object SinNada : ParaEnsenar
+}
+
+/**
+ * Filtra a Asta y ordena. Lo que llega a `ordenarParaRecomendar` es ya solo Asta,
+ * así que de sus cuatro reglas la tercera queda sin efecto; se conserva porque es
+ * la que volvería a ordenar si algún día se mezclan otra vez.
+ */
+fun queEnsenar(productos: List<ProductoCompatible>): ParaEnsenar {
+    val asta = productos.filter { it.esAsta }
+    if (asta.isNotEmpty()) return ParaEnsenar.Asta(ordenarParaRecomendar(asta))
+    return if (productos.isEmpty()) ParaEnsenar.SinNada else ParaEnsenar.SinAsta
+}

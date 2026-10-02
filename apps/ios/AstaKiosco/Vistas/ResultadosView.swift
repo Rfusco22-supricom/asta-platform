@@ -16,7 +16,7 @@ struct ResultadosView: View {
 
     private enum Estado {
         case cargando
-        case listo([ProductoCompatible], guardadoEn: Date?)
+        case listo(ParaEnsenar, guardadoEn: Date?)
         case fallo(String)
     }
 
@@ -31,10 +31,13 @@ struct ResultadosView: View {
                 ProgressView().controlSize(.large).tint(Tema.azul).frame(maxWidth: .infinity).padding(.top, 64)
             case let .fallo(texto):
                 Text(texto).font(Tema.fuerte(24)).foregroundStyle(Tema.bajo).padding(.top, 40)
-            case let .listo(productos, guardadoEn) where productos.isEmpty:
+            case let .listo(.sinNada, guardadoEn):
                 if let guardadoEn { AvisoDatosGuardados(guardadoEn: guardadoEn) }
                 sinTonerCargado
-            case let .listo(productos, guardadoEn):
+            case let .listo(.sinAsta, guardadoEn):
+                if let guardadoEn { AvisoDatosGuardados(guardadoEn: guardadoEn) }
+                sinAstaParaEsta
+            case let .listo(.asta(productos), guardadoEn):
                 let sugerido = recomendado(productos)
                 HStack(alignment: .top, spacing: 40) {
                     respuesta(productos, sugerido: sugerido)
@@ -70,7 +73,7 @@ struct ResultadosView: View {
     private func cargar() async {
         switch await kiosco.datos.compatibles(impresora.id, busquedaId: busquedaId, informar: kiosco.informar) {
         case let .ok(productos, guardadoEn):
-            estado = .listo(ordenarParaRecomendar(productos), guardadoEn: guardadoEn)
+            estado = .listo(queEnsenar(productos), guardadoEn: guardadoEn)
         case let .fallo(motivo):
             estado = .fallo(motivo == .red || motivo == .erp
                 ? "Ahora mismo no podemos consultar esta impresora, y no la habíamos consultado antes. Pregunta en el mostrador."
@@ -142,6 +145,27 @@ struct ResultadosView: View {
         .overlay(alignment: .top) {
             Line().stroke(elegido == nil ? Tema.linea : Tema.azul, style: StrokeStyle(lineWidth: 2, dash: [6, 4])).frame(height: 2)
         }
+    }
+
+    /// La impresora está y tiene consumibles verificados, pero ninguno es Asta y el
+    /// kiosco solo ofrece Asta (`queEnsenar`). Se dice tal cual: decir «no hay
+    /// nada» sería mentira, y enseñar el original sería hacer lo contrario de lo
+    /// que se pidió. Quien puede ofrecer la alternativa es el mostrador.
+    private var sinAstaParaEsta: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("★ ASTA PARA TU IMPRESORA").font(Tema.fuerte(16)).kerning(2.5).foregroundStyle(Tema.azulHondo)
+            Text("Todavía no tenemos Asta para esta impresora.")
+                .font(Tema.titulo(28)).foregroundStyle(Tema.tinta)
+            (Text("Pregunta en el mostrador y te decimos qué opciones hay para tu ")
+                + Text("\(impresora.marca) \(impresora.nombre)").font(Tema.codigoFuerte(24)).foregroundColor(Tema.tinta))
+                .font(Tema.cuerpo(24)).foregroundStyle(Tema.tintaSuave)
+        }
+        .padding(40)
+        .frame(maxWidth: 820, alignment: .leading)
+        .background(Tema.superficie)
+        .overlay(alignment: .leading) { Tema.azul.frame(width: 10) }
+        .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+        .padding(.top, 24)
     }
 
     /// Pasa con las impresoras que vendemos y cuyo tóner aún no se ha validado: el

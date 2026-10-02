@@ -51,7 +51,8 @@ import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
-import com.supricom.asta.kiosco.dominio.ordenarParaRecomendar
+import com.supricom.asta.kiosco.dominio.ParaEnsenar
+import com.supricom.asta.kiosco.dominio.queEnsenar
 import com.supricom.asta.kiosco.dominio.recomendado
 import com.supricom.asta.kiosco.dominio.texto
 import com.supricom.asta.kiosco.dominio.titulo
@@ -69,7 +70,7 @@ import com.supricom.asta.kiosco.dominio.titulo
  */
 private sealed interface EstadoResultados {
     data object Cargando : EstadoResultados
-    data class Listo(val productos: List<ProductoCompatible>, val guardadoEn: Long?) : EstadoResultados
+    data class Listo(val que: ParaEnsenar, val guardadoEn: Long?) : EstadoResultados
     data class Fallo(val texto: String) : EstadoResultados
 }
 
@@ -82,7 +83,7 @@ fun Resultados(kiosco: Kiosco, impresora: Impresora, busquedaId: String?) {
     // `recargas` cambia cuando vuelve la red: se vuelve a pedir lo mismo, en vivo (#42).
     LaunchedEffect(impresora.id, recargas) {
         estado = when (val r = kiosco.datos.compatibles(impresora.id, busquedaId, kiosco::informar)) {
-            is ConCache.Ok -> EstadoResultados.Listo(ordenarParaRecomendar(r.datos), r.guardadoEn)
+            is ConCache.Ok -> EstadoResultados.Listo(queEnsenar(r.datos), r.guardadoEn)
             is ConCache.Fallo -> EstadoResultados.Fallo(
                 if (r.motivo == MotivoFallo.RED || r.motivo == MotivoFallo.ERP) {
                     "Ahora mismo no podemos consultar esta impresora, y no la habíamos consultado antes. Pregunta en el mostrador."
@@ -98,17 +99,23 @@ fun Resultados(kiosco: Kiosco, impresora: Impresora, busquedaId: String?) {
         when (val e = estado) {
             EstadoResultados.Cargando -> Box(Modifier.fillMaxWidth().padding(top = 64.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Tema.azul) }
             is EstadoResultados.Fallo -> Text(e.texto, style = Tema.fuerte(24, Tema.bajo), modifier = Modifier.padding(top = 40.dp))
-            is EstadoResultados.Listo -> if (e.productos.isEmpty()) {
-                e.guardadoEn?.let { AvisoDatosGuardados(it) }
-                SinTonerCargado(impresora)
-            } else {
-                val sugerido = recomendado(e.productos)
+            is EstadoResultados.Listo -> when (val que = e.que) {
+                ParaEnsenar.SinNada -> {
+                    e.guardadoEn?.let { AvisoDatosGuardados(it) }
+                    SinTonerCargado(impresora)
+                }
+                ParaEnsenar.SinAsta -> {
+                    e.guardadoEn?.let { AvisoDatosGuardados(it) }
+                    SinAstaParaEsta(impresora)
+                }
+                is ParaEnsenar.Asta -> {
+                val sugerido = recomendado(que.productos)
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-                    Respuesta(e.productos, sugerido, impresora)
+                    Respuesta(que.productos, sugerido, impresora)
                     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             e.guardadoEn?.let { g -> item { AvisoDatosGuardados(g) } }
-                            items(e.productos, key = { it.id }) { p ->
+                            items(que.productos, key = { it.id }) { p ->
                                 Etiqueta(p, impresora, p.id == elegido, recomendado = p.id == sugerido?.id) {
                                     // Sin conexión no se registra: el clic se perdería y no merece
                                     // una cola que sobreviva a la sesión (#41).
@@ -117,8 +124,9 @@ fun Resultados(kiosco: Kiosco, impresora: Impresora, busquedaId: String?) {
                                 }
                             }
                         }
-                        Pie(e.productos.firstOrNull { it.id == elegido }, impresora)
+                        Pie(que.productos.firstOrNull { it.id == elegido }, impresora)
                     }
+                }
                 }
             }
         }
@@ -200,6 +208,30 @@ private fun Pie(elegido: ProductoCompatible?, impresora: Impresora) {
             )
         } else {
             Text("Toca el que quieras llevarte y enséñale la pantalla al mostrador.", style = Tema.medio(20, Tema.tintaSuave), modifier = Modifier.padding(top = 16.dp))
+        }
+    }
+}
+
+/**
+ * La impresora está y tiene consumibles verificados, pero ninguno es Asta y el
+ * kiosco solo ofrece Asta (`queEnsenar`). Se dice tal cual: decir «no hay nada»
+ * sería mentira, y enseñar el original sería hacer lo contrario de lo que se
+ * pidió. Quien puede ofrecer la alternativa es el mostrador.
+ */
+@Composable
+private fun SinAstaParaEsta(impresora: Impresora) {
+    Row(Modifier.padding(top = 24.dp).widthIn(max = 820.dp).height(IntrinsicSize.Min).background(Tema.superficie, RoundedCornerShape(Tema.radio))) {
+        Box(Modifier.width(10.dp).fillMaxHeight().background(Tema.azul))
+        Column(Modifier.padding(40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("\u2605 ASTA PARA TU IMPRESORA", style = Tema.fuerte(16, Tema.azulHondo).copy(letterSpacing = 2.5.sp))
+            Text("Todavía no tenemos Asta para esta impresora.", style = Tema.titulo(28))
+            Text(
+                buildAnnotatedString {
+                    append("Pregunta en el mostrador y te decimos qué opciones hay para tu ")
+                    withStyle(Tema.codigoFuerte(24).toSpanStyle()) { append("${impresora.marca} ${impresora.nombre}") }
+                },
+                style = Tema.cuerpo(24, Tema.tintaSuave),
+            )
         }
     }
 }

@@ -113,3 +113,35 @@ func recomendado(_ ordenados: [ProductoCompatible]) -> ProductoCompatible? {
     guard let primero = ordenados.first, primero.esAsta, !primero.esPolvo, primero.stock != .agotado else { return nil }
     return primero
 }
+
+/// Qué se le pone delante al cliente. La misma regla que `queEnsenar` en Android.
+///
+/// **El kiosco solo ofrece Asta**, la marca propia. Lo pidió la dirección y tiene
+/// una consecuencia que conviene tener escrita: un original en pantalla, al lado
+/// del Asta, se lleva una venta que ya teníamos en el almacén; y cuando el
+/// original es lo único que sirve, ofrecerlo no es trabajo del kiosco, sino del
+/// mostrador, que puede explicar la diferencia de precio y de garantía.
+///
+/// De ahí que haya **tres** respuestas y no dos. La diferencia entre las dos
+/// últimas le importa al cliente que está de pie:
+///
+///   · `asta`     hay consumibles Asta verificados para esa impresora;
+///   · `sinAsta`  la impresora sí está y tiene consumibles verificados, pero
+///                ninguno es nuestro. Se dice así y se manda al mostrador;
+///                callarlo haría creer que la impresora no está en el sistema.
+///   · `sinNada`  todavía no hay ninguna compatibilidad verificada (#56). Es un
+///                paso que falta por dar, no un «no existe».
+enum ParaEnsenar: Equatable {
+    case asta([ProductoCompatible])
+    case sinAsta
+    case sinNada
+}
+
+/// Filtra a Asta y ordena. Lo que llega a `ordenarParaRecomendar` es ya solo
+/// Asta, así que de sus cuatro reglas la tercera queda sin efecto; se conserva
+/// porque es la que volvería a ordenar si algún día se mezclan otra vez.
+func queEnsenar(_ productos: [ProductoCompatible]) -> ParaEnsenar {
+    let asta = productos.filter { $0.esAsta }
+    if !asta.isEmpty { return .asta(ordenarParaRecomendar(asta)) }
+    return productos.isEmpty ? .sinNada : .sinAsta
+}
