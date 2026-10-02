@@ -89,6 +89,7 @@ describe('agregación del reporte', () => {
         nombre: 'ANA C.A.',
         monto: 700,
         montoAsta: 200,
+        montoEnCompetencia: 700,
         productosDistintos: 2,
         categorias: [{ categoriaId: 7, nombre: 'CONSUMIBLES', monto: 700 }],
       },
@@ -97,6 +98,8 @@ describe('agregación del reporte', () => {
         nombre: 'BETO S.R.L.',
         monto: 290,
         montoAsta: 0,
+        // El ratón (periféricos) no cuenta: ahí ASTA no fabrica.
+        montoEnCompetencia: 250,
         productosDistintos: 2,
         categorias: [
           { categoriaId: 7, nombre: 'CONSUMIBLES', monto: 250 },
@@ -163,6 +166,44 @@ describe('reporte por producto · cada vendedor ve solo su cartera', () => {
     );
     const conLista = Math.round(-grupos.reduce((s, g) => s + g.balance, 0) * 100) / 100;
     expect(r.totales.monto).toBeCloseTo(conLista, 1);
+  });
+
+  /*
+   * El que se escapó en la revisión de #178: al recorrer `partner_id.user_id`,
+   * Odoo 17 NO aplica `active_test`, y los clientes archivados del vendedor
+   * entraban en el reporte aunque no estén en su cartera. Se busca uno de
+   * verdad —archivado, con vendedor y con ventas— y se comprueba que no sale.
+   */
+  it('un cliente archivado no sale, aunque siga asignado al vendedor y tenga ventas', async (ctx) => {
+    const archivados = await readGroup<{ partner_id: [number, string] | false; 'partner_id.user_id'?: unknown }>(
+      'account.move.line',
+      [
+        ['display_type', '=', 'product'],
+        ['parent_state', '=', 'posted'],
+        TIPO_FACTURADO_LINEA,
+        ['invoice_date', '>=', '2025-01-01'],
+        ['partner_id.parent_id', '=', false],
+        ['partner_id.user_id', '!=', false],
+        ['partner_id.active', '=', false],
+      ],
+      ['balance:sum'],
+      ['partner_id'],
+    );
+    const [grupo] = archivados.filter((g) => g.partner_id);
+    if (!grupo || !grupo.partner_id) return ctx.skip();
+    const partnerId = grupo.partner_id[0];
+
+    const [ficha] = await searchRead<{ user_id: [number, string] | false }>(
+      'res.partner',
+      [['id', '=', partnerId], ['active', '=', false]],
+      ['user_id'],
+    );
+    expect(ficha?.user_id, 'el archivado tiene vendedor').toBeTruthy();
+    const vendedor = (ficha!.user_id as [number, string])[0];
+
+    const r = await reporteProductos(vendedor, { desde: '2025-01-01', hasta: '2026-12-31' });
+    expect(r.clientes.map((c) => c.partnerId)).not.toContain(partnerId);
+    expect(r.categorias.flatMap((c) => c.productos.flatMap((p) => p.clientes.map((x) => x.partnerId)))).not.toContain(partnerId);
   });
 
   it('A y B no comparten ningún cliente', async () => {

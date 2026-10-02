@@ -63,6 +63,8 @@ export const clienteDelReporteProductosSchema = z.object({
   nombre: z.string(),
   monto: montoSchema,
   montoAsta: montoSchema,
+  /** Lo que compra donde ASTA compite: la base de SU cuota, como en `totales`. */
+  montoEnCompetencia: montoSchema,
   productosDistintos: z.number().int().nonnegative(),
   /** En qué compra, de más a menos. */
   categorias: z.array(z.object({ categoriaId: categoriaIdSchema, nombre: z.string(), monto: montoSchema })),
