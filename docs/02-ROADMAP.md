@@ -100,8 +100,8 @@ rápido.
 - [ ] Recomendador: `asta.printer.model` con búsqueda difusa (alias, sin espacios,
       sin guiones — la gente escribe "hl2350", no "HL-L2350DW").
 - [ ] `GET /recommender/printers?q=` y `/recommender/compatible?printerId=`.
-- [ ] React Native: modo kiosco (pantalla completa, sin barra de navegación,
-      `expo-screen-orientation` bloqueado, wake lock).
+- [ ] Kiosco nativo (SwiftUI en `apps/ios`, Kotlin en `apps/android`; empezó en
+      Expo y se reescribió, #40): pantalla completa, sin barras, horizontal, wake lock.
 - [ ] Autologout a los 4 min de inactividad + botón "Terminar" visible siempre.
 - [ ] Estado offline: si Odoo no responde, el catálogo cacheado se muestra igual,
       con un aviso de "precios pueden variar". Una tablet en blanco en piso de

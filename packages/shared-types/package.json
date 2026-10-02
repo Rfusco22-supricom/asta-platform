@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "//": "Se publica el fuente TypeScript, no un build. Next.js lo transpila via transpilePackages y Metro (React Native) lo resuelve directo; asi no hay un paso de build que recordar antes de cada cambio.",
+  "//": "Se publica el fuente TypeScript, no un build. Next.js lo transpila via transpilePackages y el middleware lo empaqueta con esbuild; asi no hay un paso de build que recordar antes de cada cambio. Las apps nativas del kiosco (apps/ios, apps/android) no lo importan: replican el contrato del recomendador en Swift y Kotlin.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

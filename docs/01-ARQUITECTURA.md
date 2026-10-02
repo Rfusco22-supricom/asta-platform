@@ -4,7 +4,7 @@
 
 **Odoo es el sistema de registro (source of truth). El Middleware es el único que habla con Odoo.**
 
-Ni Next.js ni React Native tocan Odoo directamente. Esto da:
+Ni el panel ni las apps del kiosco tocan Odoo directamente. Esto da:
 
 - Un solo lugar donde vive la credencial maestra de Odoo.
 - Un solo lugar donde se aplica el *scoping* por cliente (el filtro que impide que el cliente A vea datos del cliente B).
@@ -20,7 +20,7 @@ Ni Next.js ni React Native tocan Odoo directamente. Esto da:
 │                              CONSUMIDORES                                   │
 ├──────────────────┬──────────────────┬───────────────────────────────────────┤
 │  Panel Web       │  App Móvil       │  Cliente Externo (API pública)        │
-│  Next.js 15      │  React Native    │  curl / Python / n8n / ERP del cliente│
+│  Next.js 15      │  SwiftUI/Kotlin  │  curl / Python / n8n / ERP del cliente│
 │  SuperAdmin,     │  Modo Kiosco     │                                       │
 │  Vendedor,       │  en tienda       │                                       │
 │  Cliente         │                  │                                       │
