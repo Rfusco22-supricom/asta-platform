@@ -74,13 +74,21 @@ export function PantallaBuscar({ config, cache, alElegir, alTocar, alConectar }:
   const [estado, setEstado] = useState<Estado>({ fase: 'vacio' });
   const escribiendo = estado.fase === 'vacio';
   const puedeBuscar = texto.trim().length >= 2;
+  /**
+   * Cuál es la búsqueda que vale. «Corregir» se puede pulsar con una en curso:
+   * sin esto, su respuesta llegaba después y quitaba el teclado de debajo del
+   * dedo con los resultados de lo que ya no está escrito.
+   */
+  const vigente = useRef(0);
 
   const buscar = async () => {
     const consulta = texto.trim();
     if (consulta.length < 2) return;
     alTocar();
+    const esta = ++vigente.current;
     setEstado({ fase: 'buscando' });
     const r = await buscarConCache(config, cache, consulta, alConectar);
+    if (esta !== vigente.current) return;
     if (!r.ok) {
       setEstado({ fase: 'error', motivo: r.motivo });
       return;
@@ -90,6 +98,7 @@ export function PantallaBuscar({ config, cache, alElegir, alTocar, alConectar }:
 
   const corregir = () => {
     alTocar();
+    vigente.current++; // la que estuviera en curso ya no se enseña
     setEstado({ fase: 'vacio' });
   };
 

@@ -14,21 +14,41 @@ export function esAsta(p: ProductoCompatible): boolean {
   return /^ASTA\b/i.test(p.nombre.trim());
 }
 
+export type Clase = 'toner' | 'polvo' | 'tinta' | 'tambor' | 'otro';
+
 /**
- * Tóner listo para poner, o polvo para rellenar un cartucho. El ERP no tiene un
- * campo para esto —los dos son «tóner» en el catálogo de cartuchos—, solo el
- * nombre, y confundirlos es que el cliente se lleve un bote de polvo creyendo
- * que es un cartucho.
+ * Qué es el producto: tóner, polvo de recarga, tinta, tambor u otra cosa.
+ *
+ * El polvo sale del NOMBRE: el ERP no tiene un campo para esto —polvo y tóner
+ * son «tóner» en el catálogo de cartuchos—, y confundirlos es que el cliente se
+ * lleve un bote de polvo creyendo que es un cartucho.
+ *
+ * Lo demás sale del tipo de los cartuchos que manda el servidor. Una botella de
+ * tinta o un tambor no son tóner, y llamarlos así es la misma confusión: el
+ * cliente pide en el mostrador el tambor creyendo que es el tóner. Si el tipo
+ * no es uno solo, o no se sabe, no se afirma nada: «otro».
  */
-export function clase(p: ProductoCompatible): 'toner' | 'polvo' {
-  return /\b(POLVO|POWDER)\b/i.test(p.nombre) ? 'polvo' : 'toner';
+export function clase(p: ProductoCompatible): Clase {
+  if (/\b(POLVO|POWDER)\b/i.test(p.nombre)) return 'polvo';
+  const tipos = new Set(p.cartuchos.map((c) => c.tipo));
+  const [tipo] = tipos;
+  if (tipos.size === 1 && (tipo === 'toner' || tipo === 'tinta' || tipo === 'tambor')) return tipo;
+  return 'otro';
 }
 
-/** «Tóner compatible Asta», «Tóner original HP», «Polvo de recarga Asta». */
+const NOMBRE_DE_CLASE: Record<Exclude<Clase, 'polvo'>, string> = {
+  toner: 'Tóner',
+  tinta: 'Tinta',
+  tambor: 'Tambor',
+  otro: 'Consumible',
+};
+
+/** «Tóner compatible Asta», «Tambor original Brother», «Polvo de recarga Asta». */
 export function titulo(p: ProductoCompatible, impresora: Impresora): string {
   const marca = esAsta(p) ? 'Asta' : (p.cartuchos[0]?.marca ?? impresora.marca);
-  if (clase(p) === 'polvo') return `Polvo de recarga ${marca}`;
-  return p.tipo === 'original' ? `Tóner original ${marca}` : `Tóner compatible ${marca}`;
+  const c = clase(p);
+  if (c === 'polvo') return `Polvo de recarga ${marca}`;
+  return `${NOMBRE_DE_CLASE[c]} ${p.tipo === 'original' ? 'original' : 'compatible'} ${marca}`;
 }
 
 /** Los códigos de cartucho distintos, en el orden en que aparecen. */

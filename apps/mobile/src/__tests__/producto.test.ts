@@ -41,6 +41,27 @@ describe('presentación del producto', () => {
     expect(titulo(producto(3, 'ASTA POLVO TONER POWDER'), impresora)).toBe('Polvo de recarga Asta');
   });
 
+  it('no llama tóner a una tinta ni a un tambor', () => {
+    const cartucho = (codigo: string, tipo: string) => ({ marca: 'Brother', codigo, tipo, color: null, rendimientoPaginas: null });
+    const brother = { id: 9, marca: 'Brother', nombre: 'HL-L2350DW' };
+
+    const tambor = producto(1, 'BROTHER DRUM DR2370 ORIGINAL', { tipo: 'original', cartuchos: [cartucho('DR-2370', 'tambor')] });
+    expect(clase(tambor)).toBe('tambor');
+    expect(titulo(tambor, brother)).toBe('Tambor original Brother');
+
+    const tinta = producto(2, 'EPSON TINTA T544 NEGRO', { tipo: 'original', cartuchos: [{ ...cartucho('T544', 'tinta'), marca: 'Epson' }] });
+    expect(titulo(tinta, brother)).toBe('Tinta original Epson');
+
+    // Tóner y tambor en el mismo producto, o un tipo que no conocemos: no se afirma ninguno.
+    const kit = producto(3, 'ASTA KIT TN2370 + DR2370', { cartuchos: [cartucho('TN-2370', 'toner'), cartucho('DR-2370', 'tambor')] });
+    expect(titulo(kit, brother)).toBe('Consumible compatible Asta');
+    expect(clase(producto(4, 'X', { cartuchos: [cartucho('X1', 'otro')] }))).toBe('otro');
+    expect(clase(producto(5, 'X', { cartuchos: [] }))).toBe('otro');
+
+    // El polvo manda sobre el tipo del cartucho: en el catálogo es «tóner».
+    expect(clase(producto(6, 'ASTA POLVO TN2370', { cartuchos: [cartucho('TN-2370', 'toner')] }))).toBe('polvo');
+  });
+
   it('junta los códigos de cartucho sin repetir', () => {
     const otro = producto(2, 'X', { cartuchos: [{ marca: 'HP', codigo: 'CE285A', tipo: 'toner', color: null, rendimientoPaginas: null }] });
     expect(codigosDeCartucho([producto(1, 'A'), producto(3, 'B'), otro])).toEqual(['CE278A', 'CE285A']);
