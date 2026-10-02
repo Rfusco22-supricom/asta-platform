@@ -163,7 +163,7 @@ aparece `0_init` como pendiente, el paso 2 no quedó completo: **no seguir**.
 DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
 ```
 
-Aplica lo que haya en la imagen después de la línea base. Al 1-oct-2026, en
+Aplica lo que haya en la imagen después de la línea base. Al 2-oct-2026, en
 `main`:
 
 | Migración | Qué hace |
@@ -172,11 +172,11 @@ Aplica lo que haya en la imagen después de la línea base. Al 1-oct-2026, en
 | `20260916143723_compatibilidad_creada_por` | Quién añadió cada compatibilidad |
 | `20260916150000_compatibilidad_productos_fuente` | `compatibilidad_productos` con `IF NOT EXISTS`: **en producción no hace nada**, la tabla ya está |
 | `20260916190000_staff_login_guards` | Bloqueo por intentos del personal (#85) |
+| `20261001120000_kiosk_devices_almacen_y_rotacion` | La tablet sabe de qué almacén es y puede rotar su token (#120) |
+| `20261001130000_columnas_json` | Las columnas `Json` como `JSON`: **en producción no ejecuta ningún ALTER**, allí ya lo son (#101) |
 | `20261001140000_alert_states` | Memoria de las alertas de operación (#46) |
-
-Y las de los PR abiertos cuando se fusionen: `kiosk_devices` con almacén y
-rotación de token (#120) y las columnas `Json` como `JSON` (#101), que **en
-producción no ejecuta ningún ALTER** porque allí ya lo son.
+| `20261001200000_api_order_requests` | Claves de idempotencia de `POST /orders` (#33) |
+| `20261001210000_impresoras_catalogo_odoo` | Marca las impresoras que Supricom vende (#40) |
 
 ## Paso 4 · Confirmar que no queda deriva
 
@@ -229,6 +229,12 @@ GRANT SELECT, INSERT, UPDATE ON Asta.product_cartridges       TO 'asta_app'@'<ho
 GRANT SELECT                 ON Asta.compatibilidad_productos TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.alert_states             TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.api_order_requests       TO 'asta_app'@'<host>';
+
+-- Esta tabla ya existía, pero la telemetría del recomendador (#43) completa sus
+-- filas: UPDATE solo en estas tres columnas (#150). Sin él, el clic del kiosco
+-- da 500 en cuanto el middleware entra como asta_app.
+GRANT UPDATE (matched_printer_id, was_out_of_stock, clicked_product_id) ON Asta.recommendation_events TO 'asta_app'@'<host>';
 
 GRANT SELECT ON Asta.printer_brands           TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.printer_models           TO 'asta_lectura'@'<host>';
@@ -239,10 +245,12 @@ GRANT SELECT ON Asta.product_cartridges       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.compatibilidad_productos TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.alert_states             TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.api_order_requests       TO 'asta_lectura'@'<host>';
 ```
 
-Son las mismas líneas que `004_usuarios.sql` (líneas 148-162 y 292-301), sin
-DELETE en ninguna (#105). `kiosk_devices` no necesita nada: sus columnas nuevas
+Son las mismas que `004_usuarios.sql` concede para esas tablas, sin DELETE en
+ninguna (#105). `scripts/grants-escrituras.test.ts` comprueba que cubren todo
+lo que el código escribe. `kiosk_devices` no necesita nada: sus columnas nuevas
 heredan el permiso de la tabla.
 
 Para comprobar que no ha quedado ninguna tabla sin permisos para la aplicación
