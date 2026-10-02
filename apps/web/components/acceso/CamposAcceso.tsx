@@ -22,6 +22,16 @@ export function IconoCorreo() {
   );
 }
 
+/** Un globo de conversación con un teléfono: se lee como «escríbenos» sin copiar el logotipo de WhatsApp. */
+export function IconoWhatsapp() {
+  return (
+    <svg {...icono} aria-hidden="true">
+      <path d="M20.5 12a8.5 8.5 0 0 1-12.4 7.55L3.5 20.5l1-4.4A8.5 8.5 0 1 1 20.5 12Z" />
+      <path d="M9.2 8.6c.2-.4.6-.4.9-.2l.9 1.4c.2.3.1.6-.1.8l-.4.4c.4 1 1.3 1.9 2.4 2.4l.4-.4c.2-.2.5-.3.8-.1l1.4.9c.3.2.3.6 0 .9-.6.7-1.5.9-2.4.5a7.7 7.7 0 0 1-4.1-4.1c-.3-.9-.2-1.8.2-2.5Z" />
+    </svg>
+  );
+}
+
 function IconoCandado() {
   return (
     <svg {...icono} aria-hidden="true">

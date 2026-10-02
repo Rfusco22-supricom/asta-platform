@@ -134,6 +134,8 @@ que no ha quedado ninguna tabla sin permisos…»):
 ## 5 · Redesplegar `asta-web` desde `main`
 
 - [ ] Desplegar. `MIDDLEWARE_URL=http://asta-middleware:3001`, como siempre.
+- [ ] Añadir `SOPORTE_WHATSAPP` con el número de soporte (docs/06): es el
+      enlace «¿Problemas para entrar?» del login.
 - [ ] Entrar al panel como SuperAdmin y abrir **cada sección del menú**:
       Resumen, Vendedores, Reportes, Marca ASTA, Compatibilidades,
       Recomendador, Usuarios y Duplicados.
