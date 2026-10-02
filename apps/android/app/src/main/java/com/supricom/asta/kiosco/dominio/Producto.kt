@@ -71,8 +71,36 @@ val EstadoStock.texto: String
 fun codigosDeCartucho(productos: List<ProductoCompatible>): List<String> = productos.flatMap { p -> p.cartuchos.map { it.codigo } }.distinct()
 
 /**
- * Lo que hay en tienda, primero. Lo agotado se enseña igual —saber que existe
- * sirve para encargarlo—, pero debajo. `sortedBy` es estable: dentro de cada
- * estado se respeta el orden del servidor.
+ * En qué orden se le ofrece al cliente lo que le sirve (#40). La misma regla que
+ * `ordenarParaRecomendar` en iOS (`Dominio/Producto.swift`).
+ *
+ * Lo que pide la dirección: que se recomiende **Asta, la marca propia, y lo que
+ * hay en tienda**. Por eso, de más a menos importante:
+ *
+ *   1. **Lo que hay en tienda, antes que lo agotado.** El cliente vino a
+ *      llevárselo hoy: poner delante un Asta agotado y detrás un original que sí
+ *      hay es perder la venta. Lo agotado se enseña igual —saber que existe
+ *      sirve para encargarlo—, pero debajo.
+ *   2. **Cartuchos antes que polvo de recarga.** Quien busca un cartucho no
+ *      quiere un bote de polvo, aunque sea Asta.
+ *   3. **Asta antes que las demás marcas.**
+ *   4. Disponible antes que «últimas unidades».
+ *
+ * `sortedWith` es estable: si todo eso empata, se respeta el orden del servidor.
  */
-fun ordenarPorStock(productos: List<ProductoCompatible>): List<ProductoCompatible> = productos.sortedBy { it.stock.ordinal }
+fun ordenarParaRecomendar(productos: List<ProductoCompatible>): List<ProductoCompatible> = productos.sortedWith(
+    compareBy<ProductoCompatible>(
+        { it.stock == EstadoStock.AGOTADO },
+        { it.esPolvo },
+        { !it.esAsta },
+        { it.stock.ordinal },
+    ),
+)
+
+/**
+ * El que lleva el sello «Recomendado»: el primero de la lista si es un cartucho
+ * Asta que hay en tienda. Si no hay ninguno así, no se recomienda nada: sellar un
+ * original o un agotado como «recomendado» no es lo que se pide.
+ */
+fun recomendado(ordenados: List<ProductoCompatible>): ProductoCompatible? =
+    ordenados.firstOrNull()?.takeIf { it.esAsta && !it.esPolvo && it.stock != EstadoStock.AGOTADO }

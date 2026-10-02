@@ -80,11 +80,36 @@ func codigosDeCartucho(_ productos: [ProductoCompatible]) -> [String] {
     return productos.flatMap { $0.cartuchos.map(\.codigo) }.filter { vistos.insert($0).inserted }
 }
 
-/// Lo que hay en tienda, primero. Lo agotado se enseña igual —saber que existe
-/// sirve para encargarlo—, pero debajo. Orden estable: dentro de cada estado se
-/// respeta el del servidor.
-func ordenarPorStock(_ productos: [ProductoCompatible]) -> [ProductoCompatible] {
-    productos.enumerated()
-        .sorted { ($0.element.stock.orden, $0.offset) < ($1.element.stock.orden, $1.offset) }
+/// En qué orden se le ofrece al cliente lo que le sirve (#40). La misma regla que
+/// `ordenarParaRecomendar` en Android.
+///
+/// Lo que pide la dirección: que se recomiende **Asta, la marca propia, y lo que
+/// hay en tienda**. Por eso, de más a menos importante:
+///
+///   1. **Lo que hay en tienda, antes que lo agotado.** El cliente vino a
+///      llevárselo hoy: poner delante un Asta agotado y detrás un original que
+///      sí hay es perder la venta. Lo agotado se enseña igual —saber que existe
+///      sirve para encargarlo—, pero debajo.
+///   2. **Cartuchos antes que polvo de recarga.** Quien busca un cartucho no
+///      quiere un bote de polvo, aunque sea Asta.
+///   3. **Asta antes que las demás marcas.**
+///   4. Disponible antes que «últimas unidades».
+///
+/// Orden estable: si todo eso empata, se respeta el del servidor.
+func ordenarParaRecomendar(_ productos: [ProductoCompatible]) -> [ProductoCompatible] {
+    func clave(_ e: (offset: Int, element: ProductoCompatible)) -> (Int, Int, Int, Int, Int) {
+        let p = e.element
+        return (p.stock == .agotado ? 1 : 0, p.esPolvo ? 1 : 0, p.esAsta ? 0 : 1, p.stock.orden, e.offset)
+    }
+    return productos.enumerated()
+        .sorted { clave($0) < clave($1) }
         .map(\.element)
+}
+
+/// El que lleva el sello «Recomendado»: el primero de la lista si es un cartucho
+/// Asta que hay en tienda. Si no hay ninguno así, no se recomienda nada: sellar un
+/// original o un agotado como «recomendado» no es lo que se pide.
+func recomendado(_ ordenados: [ProductoCompatible]) -> ProductoCompatible? {
+    guard let primero = ordenados.first, primero.esAsta, !primero.esPolvo, primero.stock != .agotado else { return nil }
+    return primero
 }
