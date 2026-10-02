@@ -26,6 +26,12 @@ export interface Seccion {
   icono: string;
   /** Marca activa también las rutas hijas: /cartera/123 resalta «Cartera». */
   prefijo?: boolean;
+  /**
+   * El nombre en la barra de pestañas de abajo, en pantallas estrechas
+   * (`NavInferior`): allí caben unos diez caracteres por pestaña. Sin él, el
+   * título.
+   */
+  corto?: string;
 }
 
 export interface GrupoNav {
@@ -36,7 +42,7 @@ export interface GrupoNav {
 
 const MI_CUENTA: GrupoNav = {
   titulo: 'Mi cuenta',
-  secciones: [{ href: '/cuenta/sesiones', titulo: 'Sesiones activas', icono: 'sesiones' }],
+  secciones: [{ href: '/cuenta/sesiones', titulo: 'Sesiones activas', icono: 'sesiones', corto: 'Sesiones' }],
 };
 
 const POR_ROL: Record<Rol, GrupoNav[]> = {
@@ -47,7 +53,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin', titulo: 'Resumen', icono: 'resumen' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
-        { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca' },
+        { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
         { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
         { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
@@ -66,10 +72,11 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           titulo: 'Mi cartera',
           icono: 'cartera',
           prefijo: true,
+          corto: 'Cartera',
         },
-        { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca' },
+        { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca', corto: 'ASTA' },
         { href: '/reportes', titulo: 'Reportes', icono: 'reportes' },
-        { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades' },
+        { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],
     },
     MI_CUENTA,
@@ -78,7 +85,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
   BRONCE: [
     {
       titulo: null,
-      secciones: [{ href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave' }],
+      secciones: [{ href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' }],
     },
     MI_CUENTA,
   ],
