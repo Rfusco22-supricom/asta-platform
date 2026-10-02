@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sin barra de acción: toda la pantalla es la app. El azul de Asta mientras arranca. -->
+    <style name="Tema.Kiosco" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/azul_asta</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <color name="azul_asta">#0E8FDA</color>
+</resources>
