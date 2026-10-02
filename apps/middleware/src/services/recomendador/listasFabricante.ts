@@ -192,6 +192,50 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
     fuentes: ['https://www.hp.com/mx-es/shop/cartucho-de-tinta-hp-954xl-negra-original-l0s71al.html'],
     consultado: '2026-10-01',
   },
+  {
+    // El CF258A es el que más factura de los tres que faltaban (35.054 en 12
+    // meses) y el único del top 20 que ya tenía impresoras por el nombre de un
+    // producto: las del ASTA TONER CF258, que es OTRO cartucho. Este las ata al
+    // código que el top 20 usa de verdad.
+    //
+    // La página de HP Venezuela nombra solo familias —«LaserJet Enterprise M406,
+    // M430; LaserJet Pro M404, M428»—, así que los modelos salen de la lista de
+    // impresoras compatibles de la tienda de HP, que es la que se abre al
+    // validar. Las «Certified Refurbished» que esa lista repite son el mismo
+    // modelo y no entran. La M428dw tampoco: la familia la incluye, pero la
+    // lista de modelos no la nombra, y aquí no se completa lo que la página
+    // calla.
+    marca: 'HP',
+    cartuchos: ['CF258A'],
+    impresoras: [
+      'LaserJet Enterprise M406dn',
+      'LaserJet Enterprise MFP M430f',
+      'LaserJet Pro M404dn',
+      'LaserJet Pro M404dw',
+      'LaserJet Pro M404n',
+      'LaserJet Pro MFP M428fdn',
+      'LaserJet Pro MFP M428fdw',
+    ],
+    fuentes: [
+      'https://www.hp.com/us-en/shop/pdp/hp-58a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ve-es/products/ink-toner/product-details/21869329',
+    ],
+    consultado: '2026-10-02',
+  },
+  {
+    // El 150A es el cartucho del «ASTA TONER HP W1500A», que es como lo llama
+    // nuestro catálogo; por eso van los dos códigos.
+    //
+    // HP nombra cuatro modelos concretos y, además, dos RANGOS: «M109-M112» y
+    // «M139e-M142e». Los rangos no se enumeran: escribir aquí una M110 o una
+    // M140e sería meter impresoras que la página no dice. Si aparece un cliente
+    // con una de ellas, se añade a mano al validar.
+    marca: 'HP',
+    cartuchos: ['W1500A', '150A'],
+    impresoras: ['LaserJet M111cw', 'LaserJet MFP M141a', 'LaserJet MFP M141ca', 'LaserJet MFP M141cw'],
+    fuentes: ['https://www.hp.com/emea_middle_east-en/products/ink-toner/product-details/35832657'],
+    consultado: '2026-10-02',
+  },
 
   // ── Canon ──────────────────────────────────────────────────────────────────
   //
@@ -259,6 +303,22 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
       consultado: '2026-10-01',
     }),
   ),
+  {
+    // El 125 rompe la regla de arriba —una entrada por ficha de impresora—
+    // porque aquí Canon sí publica la página del cartucho, y las fichas de estas
+    // impresoras en Canon Latinoamérica **no nombran su consumible**: se
+    // comprobó la de la LBP6030w y no dice 125 por ninguna parte. La fuente es
+    // la tienda de Canon, que lo dice en una línea: «For use with MF3010,
+    // MF3010 VP, LBP6000, LBP6030w».
+    //
+    // La «MF3010 VP» queda fuera: es el paquete con tóner incluido, la misma
+    // impresora. Meterla duplicaría un equipo en el kiosco.
+    marca: 'Canon',
+    cartuchos: ['125'],
+    impresoras: ['imageCLASS LBP6000', 'imageCLASS LBP6030w', 'imageCLASS MF3010'],
+    fuentes: ['https://www.usa.canon.com/shop/p/125-black-toner-cartridge'],
+    consultado: '2026-10-02',
+  },
 ];
 
 /**
