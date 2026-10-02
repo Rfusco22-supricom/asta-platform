@@ -1,7 +1,7 @@
 import Foundation
 
 /// La capa que decide qué se enseña cuando no hay datos en vivo (#42). La misma
-/// regla que `apps/mobile/src/datos.ts`: **lo vivo manda; lo guardado rescata.**
+/// regla que `dominio/Datos.kt` en Android: **lo vivo manda; lo guardado rescata.**
 ///
 /// Rescata en los dos cortes que dejan a la tablet sin datos pero no la
 /// estropean: `red` (no hay wifi, o el middleware no contesta) y `erp` (el

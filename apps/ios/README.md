@@ -1,8 +1,8 @@
 # Kiosco de Asta para iPad (SwiftUI)
 
-App nativa del kiosco de piso de venta. Issue #40. Sustituye a la app Expo de
-`apps/mobile`, que se queda en el repo como referencia hasta que la versión de
-Android en Kotlin haga lo mismo.
+App nativa del kiosco de piso de venta. Issue #40. Su pareja para tablets
+Android, en Kotlin, está en `apps/android`. Las dos sustituyen a la primera
+versión, en Expo, que se retiró (#164).
 
 El cliente escribe su modelo de impresora y ve **qué tóner le sirve y si lo hay
 en la tienda**. Tres pantallas: atracción → buscar → resultados.
@@ -45,17 +45,18 @@ xcodebuild test -project AstaKiosco.xcodeproj -scheme AstaKiosco \
 
 ## Cómo está hecha
 
-Misma lógica que la app Expo, con los mismos nombres, para poder compararlas:
+Misma lógica que la app de Android, con los mismos nombres, para poder
+compararlas y cambiarlas a la vez:
 
-| Expo (`apps/mobile/src`) | iOS (`AstaKiosco`) |
+| iOS (`AstaKiosco`) | Android (`app/src/main/java/…/kiosco`) |
 |---|---|
-| `api.ts` | `Dominio/Api.swift` |
-| `cache.ts`, `datos.ts` | `Dominio/Cache.swift`, `Dominio/Datos.swift` |
-| `conexion.ts` | `Dominio/Vigilante.swift` |
-| `sesion.ts` | `Dominio/Sesion.swift` |
-| `producto.ts` | `Dominio/Producto.swift` |
-| `tema.ts` | `Vistas/Tema.swift` |
-| `App.tsx` y pantallas | `Vistas/` |
+| `Dominio/Api.swift` | `dominio/Api.kt` |
+| `Dominio/Cache.swift`, `Dominio/Datos.swift` | `dominio/Cache.kt`, `dominio/Datos.kt` |
+| `Dominio/Vigilante.swift` | `dominio/Vigilante.kt` |
+| `Dominio/Sesion.swift` | `dominio/Sesion.kt` |
+| `Dominio/Producto.swift` | `dominio/Producto.kt` |
+| `Vistas/Tema.swift` | `ui/Tema.kt` |
+| `Vistas/` | `ui/` |
 
 - **La sesión (#41)**: se cierra sola a los 4 minutos sin tocar, avisando 30 s
   antes con cuenta atrás; «Terminar» la cierra a mano. Al cerrarse se rehacen

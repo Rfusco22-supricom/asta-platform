@@ -1,6 +1,6 @@
 import Foundation
 
-/// Caché local del kiosco (#42). La misma regla que `apps/mobile/src/cache.ts`.
+/// Caché local del kiosco (#42). La misma regla que `dominio/Cache.kt` en Android.
 ///
 /// «Una tablet en blanco en piso de venta es peor que una con datos de hace diez
 /// minutos», dice el issue. Sin red, la tablet enseña lo último que supo, con la

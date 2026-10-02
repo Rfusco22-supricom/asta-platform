@@ -3,7 +3,7 @@ import Testing
 @testable import AstaKiosco
 
 /// #42 · Lo guardado rescata sin red o sin ERP, y nada más. Los mismos casos que
-/// `apps/mobile/src/__tests__/offline.test.ts`.
+/// `ApiYCacheTest.kt` en Android.
 
 final class AlmacenMemoria: Almacen, @unchecked Sendable {
     var datos: [String: Data] = [:]

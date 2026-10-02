@@ -1,7 +1,7 @@
 import Foundation
 
 /// Cliente de la API pública para el kiosco (#40). El mismo contrato que
-/// `apps/mobile/src/api.ts`.
+/// `dominio/Api.kt` en la app de Android (`apps/android`).
 ///
 /// ── Por qué una API key y no un token de dispositivo ─────────────────────────
 ///

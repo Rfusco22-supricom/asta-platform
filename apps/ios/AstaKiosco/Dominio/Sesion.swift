@@ -1,7 +1,7 @@
 import Foundation
 
 /// La sesión de un cliente frente a la tablet (#41). La misma regla que
-/// `apps/mobile/src/sesion.ts`.
+/// `dominio/Sesion.kt` en Android.
 ///
 /// La tablet es un dispositivo COMPARTIDO: lo que quedó en pantalla es de la
 /// persona anterior. Por eso la sesión se cierra sola, y al cerrarse no queda

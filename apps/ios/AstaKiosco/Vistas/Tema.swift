@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Identidad visual del kiosco (#40). La misma que `apps/mobile/src/tema.ts`.
+/// Identidad visual del kiosco (#40). La misma que `ui/Tema.kt` en Android.
 ///
 /// Del logo de Asta: el azul (#0E8FDA) y sus letras de trazo grueso, cortes
 /// rectos y esquinas apenas redondeadas. Archivo en los títulos y JetBrains Mono

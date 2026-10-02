@@ -1,7 +1,7 @@
 import Foundation
 
 /// Cómo se le presenta al cliente cada producto compatible (#40). La misma regla
-/// que `apps/mobile/src/producto.ts`.
+/// que `dominio/Producto.kt` en Android.
 ///
 /// El nombre que llega es el del ERP: «ASTA TONER CB435A/CB436A/CE278A/285». Es
 /// el que entiende el mostrador, así que se enseña, pero en pequeño: a quien está

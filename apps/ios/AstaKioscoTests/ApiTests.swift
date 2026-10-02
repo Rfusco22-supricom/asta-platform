@@ -5,7 +5,7 @@ import Testing
 /// #40 · El cliente de la API. Lo que importa: que una tablet sin conexión o con
 /// una key mal puesta no reviente delante del cliente, y que cada fallo se
 /// distinga para poder decir algo útil en pantalla. Los mismos casos que
-/// `apps/mobile/src/__tests__/api.test.ts`.
+/// `ApiYCacheTest.kt` en Android.
 
 struct TransporteFalso: Transporte {
     var estado = 200

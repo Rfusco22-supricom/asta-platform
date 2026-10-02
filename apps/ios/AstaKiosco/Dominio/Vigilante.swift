@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Estado de la conexión y reintento en segundo plano (#42). La misma regla que
-/// `apps/mobile/src/conexion.ts`:
+/// `dominio/Vigilante.kt` en Android:
 ///
 ///   · el personal ve siempre si la tablet está conectada;
 ///   · al volver la red, la pantalla se pone al día sola.
