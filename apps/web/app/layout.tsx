@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ASTA · Panel de vendedores',
-  description: 'Cartera y facturación, en vivo desde Odoo',
+  title: 'Asta',
+  description: 'Tu cuenta Asta',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

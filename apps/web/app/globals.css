@@ -1579,3 +1579,258 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   .tabla-duplicados tr.duplicados-destino { background: var(--surface-2); }
   .duplicados-meta { margin-left: 0; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Acceso: entrar, olvidé la contraseña, elegir una nueva, invitación
+   ══════════════════════════════════════════════════════════════════════════
+ *
+ * Un solo login para administración, equipo de ventas y clientes
+ * (`components/acceso/PantallaAcceso.tsx`): la marca a un lado y el formulario
+ * al otro, sin decir de quién es el panel.
+ *
+ * Es la excepción a «nada se mueve solo» de arriba: aquí no se trabaja, se
+ * llega. El fondo de la marca se mueve despacio y el formulario entra con un
+ * fundido; con «reducir movimiento» se queda todo quieto.
+ */
+
+.acceso {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(380px, 46%) 1fr;
+  background: var(--bg);
+}
+
+/* ── La marca ─────────────────────────────────────────────────────────────── */
+
+.acceso-marca {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 56px;
+  color: #fff;
+  background: linear-gradient(150deg, var(--primario-claro) 0%, var(--primario) 42%, #0a5f9c 100%);
+}
+
+/* Una trama de puntos que se apaga hacia abajo: textura sin ruido. */
+.acceso-marca::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.17) 1px, transparent 1.3px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
+}
+
+.acceso-aurora { position: absolute; inset: -10%; z-index: -2; filter: blur(70px); }
+.acceso-aurora span {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.55;
+  animation: acceso-flotar 18s ease-in-out infinite alternate;
+}
+.acceso-aurora span:nth-child(1) { width: 440px; height: 440px; background: #8fd6ff; top: -12%; left: -8%; }
+.acceso-aurora span:nth-child(2) { width: 380px; height: 380px; background: #0b4b80; bottom: -10%; right: -6%; animation-duration: 22s; animation-delay: -6s; }
+.acceso-aurora span:nth-child(3) { width: 280px; height: 280px; background: #5fe1d9; top: 42%; left: 40%; opacity: 0.32; animation-duration: 27s; animation-delay: -12s; }
+
+.acceso-marca-contenido { margin: auto 0; }
+.acceso-logo {
+  display: block;
+  width: min(260px, 70%);
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(4, 40, 70, 0.22));
+  animation: acceso-entrar 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.acceso-lema {
+  margin: 30px 0 0;
+  font-size: clamp(26px, 2.6vw, 38px);
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  animation: acceso-entrar 0.8s 0.12s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.acceso-pie { margin: 0; font-size: 12.5px; color: rgba(255, 255, 255, 0.72); }
+
+/* ── El formulario ────────────────────────────────────────────────────────── */
+
+.acceso-panel { display: grid; place-items: center; padding: 40px 24px; }
+
+.acceso .acceso-tarjeta {
+  max-width: 400px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  animation: acceso-entrar 0.6s 0.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.acceso .login-card h1 { margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.03em; }
+.acceso .login-card > p { margin: 0 0 28px; font-size: 15px; }
+
+.acceso .field { margin-bottom: 18px; }
+.acceso .field label { margin-bottom: 7px; font-size: 13px; color: var(--text); }
+.acceso-etiqueta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.acceso-etiqueta a { margin-bottom: 7px; font-size: 13px; font-weight: 550; }
+
+.acceso .input {
+  height: 48px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.acceso .input::placeholder { color: var(--text-3); }
+.acceso .input:hover { border-color: var(--text-3); }
+.acceso .input:focus {
+  outline: none;
+  border-color: var(--primario);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primario) 18%, transparent);
+}
+/* El autocompletado de Chrome pinta el campo de azul claro: se le devuelve su fondo. */
+.acceso .input:-webkit-autofill { -webkit-text-fill-color: var(--text); box-shadow: 0 0 0 1000px var(--surface) inset; }
+.acceso .input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 4px color-mix(in srgb, var(--primario) 18%, transparent);
+}
+
+/* Campo con icono delante y, en la contraseña, el botón de verla detrás. */
+.acceso-entrada { position: relative; }
+.acceso-entrada > svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
+  transition: color 0.15s;
+}
+.acceso-entrada:focus-within > svg { color: var(--primario); }
+.acceso-entrada .input { padding-left: 44px; padding-right: 48px; }
+
+.acceso-ver {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.acceso-ver:hover { color: var(--text); background: var(--surface-2); }
+.acceso-ver:focus-visible { outline: 2px solid var(--primario); outline-offset: 1px; }
+.acceso-mayus { margin: 7px 0 0; font-size: 12.5px; color: var(--warning); }
+
+.acceso-boton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 50px;
+  margin-top: 8px;
+  font-size: 15.5px;
+}
+.acceso-flecha { transition: transform 0.2s; }
+.acceso-boton:hover .acceso-flecha { transform: translateX(4px); }
+.acceso .acceso-boton:disabled { opacity: 0.85; cursor: progress; }
+.acceso-giro {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: acceso-girar 0.7s linear infinite;
+}
+
+/* ── Avisos y ayuda ───────────────────────────────────────────────────────── */
+
+.acceso-aviso {
+  position: relative;
+  margin: 0 0 22px;
+  padding: 12px 14px 12px 36px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.acceso-aviso::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 18px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.acceso-aviso.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  animation: acceso-sacudir 0.4s ease-in-out;
+}
+.acceso-aviso.ok {
+  color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--positive) 25%, transparent);
+}
+
+/* Las otras pantallas de acceso siguen usando `.notice`: mismas esquinas. */
+.acceso .notice { border-radius: 12px; box-shadow: none; }
+
+.acceso-ayuda { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
+.acceso-ayuda summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  font-weight: 550;
+  cursor: pointer;
+}
+.acceso-ayuda summary::-webkit-details-marker { display: none; }
+.acceso-ayuda summary::after { content: '›'; font-size: 17px; line-height: 1; transition: transform 0.2s; }
+.acceso-ayuda[open] summary::after { transform: rotate(90deg); }
+.acceso-ayuda summary:hover { color: var(--text); }
+.acceso-ayuda p { margin: 10px 0 0; line-height: 1.5; }
+
+@keyframes acceso-entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes acceso-flotar {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.12); }
+  100% { transform: translate(-40px, 70px) scale(0.92); }
+}
+@keyframes acceso-girar { to { transform: rotate(360deg); } }
+@keyframes acceso-sacudir {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+/* Estrecho: la marca se queda en una franja con el logo, y el formulario arriba. */
+@media (max-width: 900px) {
+  .acceso { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .acceso-marca { padding: 22px 24px; }
+  .acceso-marca-contenido { margin: 0; }
+  .acceso-logo { width: 108px; }
+  .acceso-lema, .acceso-pie { display: none; }
+  .acceso-panel { place-items: start center; padding: 32px 20px 40px; }
+  .acceso .login-card h1 { font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acceso *:not(.acceso-giro),
+  .acceso *::before,
+  .acceso *::after { animation: none !important; transition: none !important; }
+}
