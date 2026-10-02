@@ -24,9 +24,9 @@ comandos, tres de ellos con simulacro.
 | | Producción hoy | Después |
 |---|---|---|
 | Marcas | 5 | **6** |
-| Impresoras | 120 | **298** |
+| Impresoras | 120 | **287** |
 | Cartuchos | 0 | **466** |
-| Cartucho ↔ impresora | 0 | **256** (163 del fabricante, 93 del nombre) |
+| Cartucho ↔ impresora | 0 | **252** (163 del fabricante, 89 del nombre) |
 | Producto ↔ cartucho | 0 | **1.124** |
 
 Y lo que de verdad decide, el **techo de cobertura del top 20**: si se validara
@@ -165,7 +165,7 @@ Epson para los cartuchos del top 20 de ventas (#138). Es la fuente más fiable
 que tenemos, y la que cubre justo lo que más factura: `T544`, `667`, `105A`,
 `151A`, `954XL`, `PG-145XL`, `CL-146XL`, `T03`, `GI-16`, `GI-190`, `GI-11`.
 
-En el ensayo: **43 listas, 51 cartuchos encontrados, 96 impresoras, 163
+En el ensayo: **43 listas, 51 cartuchos encontrados, 93 impresoras, 163
 compatibilidades**. Las impresoras que ya están en el catálogo se reconocen y no
 se duplican, así que ese 85 ya lleva descontadas las repetidas.
 
@@ -185,8 +185,8 @@ Muchos nombres del ERP ya enumeran las impresoras: «ASTA TONER HP CE255A
 LaserJet P3010/3015d/3015dn…». Esto las lee y las ata a los cartuchos de ese
 mismo producto (#129).
 
-En el ensayo, **después** de los dos pasos anteriores: **82 impresoras nuevas,
-93 compatibilidades**, y 31 modelos que ya estaban —del catálogo o del paso 2— y
+En el ensayo, **después** de los dos pasos anteriores: **74 impresoras nuevas,
+89 compatibilidades**, y 39 modelos que ya estaban —del catálogo o del paso 2— y
 no se duplicaron. Cinco productos tienen impresoras en el nombre pero ningún
 cartucho todavía: son los que el paso 1 dejó sin candidato.
 

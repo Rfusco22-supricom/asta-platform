@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma.js';
-import { buscarImpresora, claveDelCatalogo, esLaDelCatalogo } from '../services/recomendador/impresoraExistente.js';
+import { buscarImpresora, claveDelCatalogo, esLaDelCatalogo, esLaMisma } from '../services/recomendador/impresoraExistente.js';
 
 /**
  * #40 · Una impresora del catálogo de Odoo no se duplica cuando otro la nombra distinto.
@@ -33,6 +33,42 @@ describe('esLaDelCatalogo', () => {
   });
 });
 
+/**
+ * #173 · Y cuando NINGUNA de las dos es del catálogo: la L3110 no la vendemos,
+ * así que la lista del fabricante crea «EcoTank L3110» y el nombre de un tóner,
+ * «L3110». Eran 12 pares duplicados de 298 impresoras.
+ */
+describe('esLaMisma', () => {
+  it.each([
+    ['ecotankl3110', 'l3110'],
+    ['l3110', 'ecotankl3110'],
+    ['laserjetprom404dn', 'm404dn'],
+    ['laserjetpromfpm428fdn', 'mfpm428fdn'],
+    ['laser107w', '107w'],
+    ['deskjetinkadvantage2874', '2874'],
+    ['ir1643iii', '1643iii'],
+  ])('«%s» y «%s» son la misma', (a, b) => {
+    expect(esLaMisma(a, b)).toBe(true);
+  });
+
+  it.each([
+    // Acabar en, no contener: la M404 es otro modelo que la M404dn.
+    ['laserjetprom404dn', 'm404'],
+    // Sin cifras no se arriesga, aunque uno acabe en el otro: «Color LaserJet»
+    // es una familia entera, no la misma impresora que «LaserJet».
+    ['colorlaserjet', 'laserjet'],
+    ['laserjet', 'laser'],
+    // Menos de cuatro: «107» seria el final de demasiados modelos.
+    ['laser107', '107'],
+    // El mismo nombre no es un duplicado: eso lo resuelve la busqueda exacta.
+    ['l3110', 'l3110'],
+    // Otro sufijo es otra impresora.
+    ['ecotankl3110', 'l3150'],
+  ])('«%s» y «%s» NO', (a, b) => {
+    expect(esLaMisma(a, b)).toBe(false);
+  });
+});
+
 describe('buscarImpresora, contra MySQL', () => {
   const DEL_TEST = { nameNormalized: { contains: 'zz994' } };
   let comprobado = false;
@@ -55,8 +91,11 @@ describe('buscarImpresora, contra MySQL', () => {
     // Dos del catálogo que acaban igual: no se elige ninguna.
     await crear('LaserJet ZZ9942DW', true);
     await crear('Color LaserJet ZZ9942DW', true);
-    // No es del catálogo: solo se encuentra con el nombre exacto, como antes.
+    // No es del catálogo: desde #173 también se reconoce por el nombre.
     await crear('LaserJet ZZ9943W', false);
+    // Dos que no son del catálogo y acaban igual: no se elige ninguna.
+    await crear('LaserJet ZZ9944DW', false);
+    await crear('Color LaserJet ZZ9944DW', false);
   });
 
   afterAll(async () => {
@@ -78,9 +117,19 @@ describe('buscarImpresora, contra MySQL', () => {
     expect((await buscar('zz9940fdw'))?.id).toBe(delCatalogo);
   });
 
-  it('nada si es otro modelo, si hay dos candidatas o si la que se parece no es del catálogo', async () => {
+  it('nada si es otro modelo o si hay dos candidatas', async () => {
     expect(await buscar('mfpzz9940fdn')).toBeNull();
     expect(await buscar('zz9942dw')).toBeNull();
-    expect(await buscar('zz9943w')).toBeNull();
+    expect(await buscar('zz9944dw')).toBeNull();
+  });
+
+  it('#173 · la que ya existe con otro nombre, aunque no sea del catálogo', async () => {
+    // Es el caso de «EcoTank L3110» y «L3110»: ninguna de las dos se vende.
+    // El nombre nuevo es el corto, como cuando el parseo escribe «L3110».
+    expect((await buscar('zz9943w'))?.name).toBe('LaserJet ZZ9943W');
+    // Y al revés: el nuevo es el largo, como «EcoTank L3110» sobre «L3110».
+    expect((await buscar('prolaserjetzz9943w'))?.name).toBe('LaserJet ZZ9943W');
+    // Pero dos prefijos distintos NO son la misma: ninguno acaba en el otro.
+    expect(await buscar('ecotankzz9943w')).toBeNull();
   });
 });
