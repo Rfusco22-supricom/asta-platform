@@ -1,8 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getPortfolio, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getActividadCartera, getPortfolio, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { moneyCompact, money } from '@/lib/formato';
-import { TablaCartera } from './TablaCartera';
+import { TablaCartera, type ResultadoActividad } from './TablaCartera';
 
 /**
  * Cartera del vendedor.
@@ -15,6 +15,20 @@ export const dynamic = 'force-dynamic';
 
 export default async function CarteraPage() {
   const sesion = await requireSession();
+
+  /*
+   * La actividad se pide YA y no se espera: viaja a la tabla como promesa y
+   * llega cuando llegue (ver `TablaCartera`). Nunca rechaza —un fallo se
+   * convierte en un mensaje—, porque una promesa rechazada a medio streaming
+   * tumbaría la página entera por una columna.
+   */
+  const actividad: Promise<ResultadoActividad> = getActividadCartera(sesion.accessToken).then(
+    (a) => ({ ok: true as const, actividad: a }),
+    (error: unknown) => ({
+      ok: false as const,
+      mensaje: error instanceof ApiError || error instanceof ContractError ? error.message : 'el servidor no respondió.',
+    }),
+  );
 
   let portfolio;
   try {
@@ -57,7 +71,10 @@ export default async function CarteraPage() {
   }
 
   const { filas, meta } = portfolio;
-  const conHistorial = filas.filter((f) => f.esCliente).length;
+  // Con al menos una factura, la misma regla que separa a los prospectos en la
+  // clasificación de abajo. `esCliente` (el `customer_rank` de Odoo) se enciende
+  // también con un pedido confirmado sin facturar, y las dos cifras no casaban.
+  const conHistorial = filas.filter((f) => f.numeroFacturas > 0).length;
   const conDeuda = filas.filter((f) => f.porCobrar > 0).length;
   const mayor = filas.reduce<number>((m, f) => Math.max(m, f.totalFacturado), 0);
 
@@ -88,7 +105,7 @@ export default async function CarteraPage() {
         <div className="stat">
           <div className="stat-label">Con historial</div>
           <div className="stat-value">{conHistorial}</div>
-          <div className="stat-sub">{filas.length - conHistorial} prospectos sin comprar</div>
+          <div className="stat-sub">{filas.length - conHistorial} prospectos sin facturas</div>
         </div>
         <div className="stat">
           <div className="stat-label">Mayor cliente</div>
@@ -101,7 +118,7 @@ export default async function CarteraPage() {
         </div>
       </section>
 
-      <TablaCartera filas={filas} />
+      <TablaCartera filas={filas} actividad={actividad} />
     </Marco>
   );
 }
