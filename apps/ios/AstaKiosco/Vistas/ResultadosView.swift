@@ -35,14 +35,15 @@ struct ResultadosView: View {
                 if let guardadoEn { AvisoDatosGuardados(guardadoEn: guardadoEn) }
                 sinTonerCargado
             case let .listo(productos, guardadoEn):
+                let sugerido = recomendado(productos)
                 HStack(alignment: .top, spacing: 40) {
-                    respuesta(productos)
+                    respuesta(productos, sugerido: sugerido)
                     VStack(spacing: 16) {
                         ScrollView {
                             VStack(spacing: 16) {
                                 if let guardadoEn { AvisoDatosGuardados(guardadoEn: guardadoEn) }
                                 ForEach(productos) { p in
-                                    EtiquetaView(producto: p, impresora: impresora, elegido: p.id == elegido) {
+                                    EtiquetaView(producto: p, impresora: impresora, elegido: p.id == elegido, recomendado: p.id == sugerido?.id) {
                                         // Sin conexión no se registra: el clic se perdería y no
                                         // merece una cola que sobreviva a la sesión (#41).
                                         if guardadoEn == nil && p.id != elegido {
@@ -69,7 +70,7 @@ struct ResultadosView: View {
     private func cargar() async {
         switch await kiosco.datos.compatibles(impresora.id, busquedaId: busquedaId, informar: kiosco.informar) {
         case let .ok(productos, guardadoEn):
-            estado = .listo(ordenarPorStock(productos), guardadoEn: guardadoEn)
+            estado = .listo(ordenarParaRecomendar(productos), guardadoEn: guardadoEn)
         case let .fallo(motivo):
             estado = .fallo(motivo == .red || motivo == .erp
                 ? "Ahora mismo no podemos consultar esta impresora, y no la habíamos consultado antes. Pregunta en el mostrador."
@@ -95,7 +96,7 @@ struct ResultadosView: View {
     }
 
     /// La respuesta corta, a la izquierda: no se mueve al desplazar la lista.
-    private func respuesta(_ productos: [ProductoCompatible]) -> some View {
+    private func respuesta(_ productos: [ProductoCompatible], sugerido: ProductoCompatible?) -> some View {
         let codigos = codigosDeCartucho(productos)
         let enTienda = productos.filter { $0.stock != .agotado }.count
         return VStack(alignment: .leading, spacing: 8) {
@@ -107,6 +108,18 @@ struct ResultadosView: View {
             (Text("\(productos.count) \(productos.count == 1 ? "opción" : "opciones")").font(Tema.titulo(20)).foregroundColor(Tema.superficie)
                 + Text(enTienda > 0 ? " · \(enTienda) en tienda" : " · ninguna en tienda ahora: se puede encargar"))
                 .font(Tema.cuerpo(20)).foregroundStyle(Tema.sobreAzul)
+            // Lo que la tienda quiere vender, dicho donde el cliente mira primero.
+            if let sugerido {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("TE RECOMENDAMOS").font(Tema.fuerte(14)).kerning(2).foregroundStyle(Tema.azulHondo)
+                    Text(sugerido.titulo(para: impresora)).font(Tema.titulo(22)).foregroundStyle(Tema.tinta)
+                    Text(sugerido.stock.texto).font(Tema.fuerte(18)).foregroundStyle(Tema.disponible)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.superficie))
+                .padding(.top, 16)
+            }
         }
         .padding(24)
         .frame(width: 340, alignment: .leading)
@@ -166,6 +179,8 @@ private struct EtiquetaView: View {
     let producto: ProductoCompatible
     let impresora: Impresora
     let elegido: Bool
+    /// El que la tienda recomienda (`recomendado`): sello y fondo propios.
+    let recomendado: Bool
     let accion: () -> Void
 
     var body: some View {
@@ -175,6 +190,7 @@ private struct EtiquetaView: View {
                 colores.texto.frame(width: 10)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
+                        if recomendado { sello("★ RECOMENDADO", color: Tema.superficie, fondo: Tema.azulHondo) }
                         if producto.esAsta {
                             sello("ASTA", color: Tema.superficie, fondo: Tema.azul)
                         } else {
@@ -198,7 +214,7 @@ private struct EtiquetaView: View {
                 .background(colores.fondo)
             }
             .frame(minHeight: 112)
-            .background(pulsado && !elegido ? Tema.azulSuave : Tema.superficie)
+            .background((pulsado && !elegido) || recomendado ? Tema.azulSuave : Tema.superficie)
             .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
             .overlay(RoundedRectangle(cornerRadius: Tema.radio).stroke(elegido ? Tema.azul : .clear, lineWidth: 3))
         }

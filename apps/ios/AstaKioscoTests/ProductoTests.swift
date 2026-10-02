@@ -58,6 +58,30 @@ import Testing
 
     @Test func poneLoQueHayPrimeroSinDesordenarElResto() {
         let lista = [producto(1, "a", stock: .agotado), producto(2, "b"), producto(3, "c", stock: .bajo), producto(4, "d", stock: .agotado), producto(5, "e")]
-        #expect(ordenarPorStock(lista).map(\.id) == [2, 5, 3, 1, 4])
+        #expect(ordenarParaRecomendar(lista).map(\.id) == [2, 5, 3, 1, 4])
+    }
+
+    /// Lo que pide la dirección: Asta y lo que hay en tienda, primero. Los nombres
+    /// son los de la HP P1606 y la Canon MF 4100 en el ERP.
+    @Test func recomiendaAstaEnTiendaPeroNoPorDelanteDeLoQueSiHay() {
+        let original = producto(1, "HP TONER P1566 / P1606 BLACK ORIGINAL", tipo: .original)
+        let astaAgotado = producto(2, "ASTA TONER CB435A/CB436A/CE278A/CB285A", stock: .agotado)
+        let polvoAsta = producto(3, "ASTA POLVO POWDER A CB435A/CB436A/CE278A/285 NEGRO")
+        let asta = producto(4, "ASTA TONER CB435A/CB436A/CE278A/285", stock: .bajo)
+        let otroCompatible = producto(5, "TONER GENERICO CE278A")
+
+        let ordenados = ordenarParaRecomendar([original, astaAgotado, polvoAsta, asta, otroCompatible])
+        // Asta en tienda, aunque sea «últimas unidades», antes que otra marca disponible;
+        // el polvo detrás de los cartuchos; lo agotado al final, aunque sea Asta.
+        #expect(ordenados.map(\.id) == [4, 1, 5, 3, 2])
+        #expect(recomendado(ordenados)?.id == 4)
+    }
+
+    @Test func sinUnCartuchoAstaEnTiendaNoSeRecomiendaNada() {
+        let original = producto(1, "HP TONER P1606 BLACK ORIGINAL", tipo: .original)
+        let astaAgotado = producto(2, "ASTA TONER CB435A", stock: .agotado)
+        let polvoAsta = producto(3, "ASTA POLVO TONER POWDER")
+        #expect(recomendado(ordenarParaRecomendar([original, astaAgotado, polvoAsta])) == nil)
+        #expect(recomendado([]) == nil)
     }
 }

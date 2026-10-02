@@ -51,7 +51,8 @@ import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
-import com.supricom.asta.kiosco.dominio.ordenarPorStock
+import com.supricom.asta.kiosco.dominio.ordenarParaRecomendar
+import com.supricom.asta.kiosco.dominio.recomendado
 import com.supricom.asta.kiosco.dominio.texto
 import com.supricom.asta.kiosco.dominio.titulo
 
@@ -81,7 +82,7 @@ fun Resultados(kiosco: Kiosco, impresora: Impresora, busquedaId: String?) {
     // `recargas` cambia cuando vuelve la red: se vuelve a pedir lo mismo, en vivo (#42).
     LaunchedEffect(impresora.id, recargas) {
         estado = when (val r = kiosco.datos.compatibles(impresora.id, busquedaId, kiosco::informar)) {
-            is ConCache.Ok -> EstadoResultados.Listo(ordenarPorStock(r.datos), r.guardadoEn)
+            is ConCache.Ok -> EstadoResultados.Listo(ordenarParaRecomendar(r.datos), r.guardadoEn)
             is ConCache.Fallo -> EstadoResultados.Fallo(
                 if (r.motivo == MotivoFallo.RED || r.motivo == MotivoFallo.ERP) {
                     "Ahora mismo no podemos consultar esta impresora, y no la habíamos consultado antes. Pregunta en el mostrador."
@@ -101,13 +102,14 @@ fun Resultados(kiosco: Kiosco, impresora: Impresora, busquedaId: String?) {
                 e.guardadoEn?.let { AvisoDatosGuardados(it) }
                 SinTonerCargado(impresora)
             } else {
+                val sugerido = recomendado(e.productos)
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-                    Respuesta(e.productos)
+                    Respuesta(e.productos, sugerido, impresora)
                     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             e.guardadoEn?.let { g -> item { AvisoDatosGuardados(g) } }
                             items(e.productos, key = { it.id }) { p ->
-                                Etiqueta(p, impresora, p.id == elegido) {
+                                Etiqueta(p, impresora, p.id == elegido, recomendado = p.id == sugerido?.id) {
                                     // Sin conexión no se registra: el clic se perdería y no merece
                                     // una cola que sobreviva a la sesión (#41).
                                     if (e.guardadoEn == null && p.id != elegido) kiosco.datos.api.registrarClic(kiosco.alcance, busquedaId, p.id)
@@ -150,7 +152,7 @@ private fun Cabecera(impresora: Impresora, alVolver: () -> Unit) {
 
 /** La respuesta corta, a la izquierda: no se mueve al desplazar la lista. */
 @Composable
-private fun Respuesta(productos: List<ProductoCompatible>) {
+private fun Respuesta(productos: List<ProductoCompatible>, sugerido: ProductoCompatible?, impresora: Impresora) {
     val codigos = codigosDeCartucho(productos)
     val enTienda = productos.count { it.stock != EstadoStock.AGOTADO }
     Column(Modifier.width(340.dp).background(Tema.azul, RoundedCornerShape(Tema.radio)).padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -164,6 +166,17 @@ private fun Respuesta(productos: List<ProductoCompatible>) {
             },
             style = Tema.cuerpo(20, Tema.sobreAzul),
         )
+        // Lo que la tienda quiere vender, dicho donde el cliente mira primero.
+        if (sugerido != null) {
+            Column(
+                Modifier.padding(top = 16.dp).fillMaxWidth().background(Tema.superficie, RoundedCornerShape(Tema.radio)).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text("TE RECOMENDAMOS", style = Tema.fuerte(14, Tema.azulHondo).copy(letterSpacing = 2.sp))
+                Text(sugerido.titulo(impresora), style = Tema.titulo(22))
+                Text(sugerido.stock.texto, style = Tema.fuerte(18, Tema.disponible))
+            }
+        }
     }
 }
 
@@ -216,12 +229,12 @@ private fun SinTonerCargado(impresora: Impresora) {
 
 /** Un producto, con la forma de la etiqueta de una caja de tóner. */
 @Composable
-private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boolean, alPulsar: () -> Unit) {
+private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boolean, recomendado: Boolean, alPulsar: () -> Unit) {
     val (color, fondo) = Tema.colores(p.stock)
     Pulsable(alPulsar, Modifier.fillMaxWidth().semantics { contentDescription = "${p.titulo(impresora)}, ${p.stock.texto}" }) { pulsado ->
         Row(
             Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 112.dp)
-                .background(if (pulsado && !elegido) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio))
+                .background(if ((pulsado && !elegido) || recomendado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio))
                 .border(3.dp, if (elegido) Tema.azul else Color.Transparent, RoundedCornerShape(Tema.radio)),
         ) {
             Box(Modifier.width(10.dp).fillMaxHeight().background(color))
@@ -230,6 +243,8 @@ private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boole
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // El que la tienda recomienda (`recomendado`): sello y fondo propios.
+                    if (recomendado) Sello("★ RECOMENDADO", Tema.superficie, fondo = Tema.azulHondo)
                     if (p.esAsta) {
                         Sello("ASTA", Tema.superficie, fondo = Tema.azul)
                     } else {

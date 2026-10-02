@@ -9,7 +9,8 @@ import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
-import com.supricom.asta.kiosco.dominio.ordenarPorStock
+import com.supricom.asta.kiosco.dominio.ordenarParaRecomendar
+import com.supricom.asta.kiosco.dominio.recomendado
 import com.supricom.asta.kiosco.dominio.titulo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -72,6 +73,29 @@ class ProductoTest {
             producto(1, "a", EstadoStock.AGOTADO), producto(2, "b"), producto(3, "c", EstadoStock.BAJO),
             producto(4, "d", EstadoStock.AGOTADO), producto(5, "e"),
         )
-        assertEquals(listOf(2, 5, 3, 1, 4), ordenarPorStock(lista).map { it.id })
+        assertEquals(listOf(2, 5, 3, 1, 4), ordenarParaRecomendar(lista).map { it.id })
+    }
+
+    /** Lo que pide la dirección: Asta y lo que hay en tienda, primero. Nombres del ERP. */
+    @Test fun recomiendaAstaEnTiendaPeroNoPorDelanteDeLoQueSiHay() {
+        val original = producto(1, "HP TONER P1566 / P1606 BLACK ORIGINAL", tipo = ProductoCompatible.Tipo.ORIGINAL)
+        val astaAgotado = producto(2, "ASTA TONER CB435A/CB436A/CE278A/CB285A", EstadoStock.AGOTADO)
+        val polvoAsta = producto(3, "ASTA POLVO POWDER A CB435A/CB436A/CE278A/285 NEGRO")
+        val asta = producto(4, "ASTA TONER CB435A/CB436A/CE278A/285", EstadoStock.BAJO)
+        val otroCompatible = producto(5, "TONER GENERICO CE278A")
+
+        val ordenados = ordenarParaRecomendar(listOf(original, astaAgotado, polvoAsta, asta, otroCompatible))
+        // Asta en tienda, aunque sea «últimas unidades», antes que otra marca disponible;
+        // el polvo detrás de los cartuchos; lo agotado al final, aunque sea Asta.
+        assertEquals(listOf(4, 1, 5, 3, 2), ordenados.map { it.id })
+        assertEquals(4, recomendado(ordenados)?.id)
+    }
+
+    @Test fun sinUnCartuchoAstaEnTiendaNoSeRecomiendaNada() {
+        val original = producto(1, "HP TONER P1606 BLACK ORIGINAL", tipo = ProductoCompatible.Tipo.ORIGINAL)
+        val astaAgotado = producto(2, "ASTA TONER CB435A", EstadoStock.AGOTADO)
+        val polvoAsta = producto(3, "ASTA POLVO TONER POWDER")
+        assertEquals(null, recomendado(ordenarParaRecomendar(listOf(original, astaAgotado, polvoAsta))))
+        assertEquals(null, recomendado(emptyList()))
     }
 }
