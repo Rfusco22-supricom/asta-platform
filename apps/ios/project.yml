@@ -1,0 +1,85 @@
+# Proyecto del kiosco para iPad (#40). Se genera con XcodeGen:
+#
+#   brew install xcodegen
+#   cd apps/ios && xcodegen
+#
+# El .xcodeproj NO se versiona: sale de aquí, y así un cambio de proyecto se
+# revisa en estas líneas y no en un pbxproj de miles.
+name: AstaKiosco
+options:
+  bundleIdPrefix: com.supricom.asta
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Kiosco.xcconfig
+  Release: Config/Kiosco.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  AstaKiosco:
+    type: application
+    platform: iOS
+    sources:
+      - path: AstaKiosco
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.supricom.asta.kiosco
+        # Solo iPad: es una tablet en un soporte.
+        TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: AstaKiosco/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+    info:
+      path: AstaKiosco/Info.plist
+      properties:
+        CFBundleDisplayName: Asta Kiosco
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: ""
+        # Horizontal y a pantalla completa. Sin `UIRequiresFullScreen`, el iPad
+        # no respeta la orientación: la app podría abrirse en Split View.
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIStatusBarHidden: true
+        UIViewControllerBasedStatusBarAppearance: false
+        UIAppFonts:
+          - Archivo_500Medium.ttf
+          - Archivo_600SemiBold.ttf
+          - Archivo_700Bold.ttf
+          - Archivo_800ExtraBold.ttf
+          - JetBrainsMono_500Medium.ttf
+          - JetBrainsMono_700Bold.ttf
+          - JetBrainsMono_800ExtraBold.ttf
+        # Del xcconfig de cada tablet: ver Config/Kiosco.example.xcconfig.
+        AstaApiBase: $(ASTA_API_BASE)
+        AstaApiKey: $(ASTA_API_KEY)
+        # El middleware de desarrollo es http://localhost; producción va por https.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+  AstaKioscoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AstaKioscoTests
+    dependencies:
+      - target: AstaKiosco
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "2"
+schemes:
+  AstaKiosco:
+    build:
+      targets:
+        AstaKiosco: all
+        AstaKioscoTests: [test]
+    test:
+      targets:
+        - AstaKioscoTests
