@@ -253,7 +253,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
   quitarSink?.();
-  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
+  // Solo las de este fichero: por su key, o sin key (las de un 401, que también
+  // caerían en la ventana de las alertas). Antes borraba TODO lo escrito desde
+  // `INICIO`, y los ficheros corren en paralelo: esta limpieza se llevaba por
+  // delante las filas que otro test estaba contando.
+  await prisma.apiRequestLog.deleteMany({
+    where: { createdAt: { gte: INICIO }, OR: [{ apiKeyId: { in: keysCreadas } }, { apiKeyId: null }] },
+  });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   for (const [id, t] of tarifaOriginal) {
     await prisma.appUser.update({ where: { id }, data: { odooPricelistId: t.id, odooPricelistName: t.nombre } });
@@ -375,21 +381,30 @@ describe('#34 · Invalidación y métrica de acierto', () => {
   it('la bitácora marca cache_hit solo cuando la respuesta sale ENTERA de cache', async () => {
     vaciarCachesPrecios();
     const sku = skusDistintos[5];
-    const desde = new Date();
+    // Las filas de este test se separan por ID y NO por fecha. Con `createdAt >=
+    // new Date()` fallaba de forma intermitente en la suite completa, y solo
+    // ahí: entre la fila del test anterior y esta frontera hay un par de
+    // milisegundos, `created_at` es DATETIME(3) y con la máquina cargada los dos
+    // instantes caen en el MISMO milisegundo, así que la fila de antes entraba
+    // por el `>=` y se contaban 4 en vez de 3. Los ids son autoincrementales y
+    // estrictamente crecientes: no dependen del reloj. Mismo motivo y misma
+    // solución que en `registroPeticiones.test.ts`.
+    const previo = (await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }))?.id ?? 0n;
     await precios([sku], A.key); // de Odoo
     await precios([sku], A.key); // de cache
     await precios([sku, skusDistintos[6]], A.key); // mitad y mitad: no es un acierto
 
     // Las filas se escriben al terminar cada respuesta, en diferido.
+    const suyas = { apiKeyId: A.keyId, id: { gt: previo } };
     await vi.waitFor(
       async () => {
-        expect(await prisma.apiRequestLog.count({ where: { apiKeyId: A.keyId, createdAt: { gte: desde } } })).toBe(3);
+        expect(await prisma.apiRequestLog.count({ where: suyas })).toBe(3);
       },
       { timeout: 10_000, interval: 200 },
     );
     const filas = await prisma.apiRequestLog.findMany({
-      where: { apiKeyId: A.keyId, createdAt: { gte: desde } },
-      orderBy: { createdAt: 'asc' },
+      where: suyas,
+      orderBy: { id: 'asc' },
       select: { cacheHit: true, odooCalls: true },
     });
     expect(filas.map((f) => f.cacheHit)).toEqual([false, true, false]);
