@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { destinoPara } from '@/lib/rutas';
 import { setSession } from '@/lib/session';
+import { BotonEnviar, CampoContrasena, IconoCorreo } from '@/components/acceso/CamposAcceso';
+import { PantallaAcceso } from '@/components/acceso/PantallaAcceso';
 
 /**
  * Login.
@@ -109,78 +111,70 @@ export default async function LoginPage({ searchParams }: Props) {
     credenciales: 'Correo o contraseña incorrectos.',
     bloqueada: 'Cuenta bloqueada temporalmente por intentos fallidos. Inténtalo en unos minutos.',
     faltan: 'Escribe tu correo y tu contraseña.',
-    red: 'No se pudo contactar con el servidor. Comprueba que el middleware esté arriba.',
+    // Lo lee también un cliente: nada de «middleware» aquí.
+    red: 'No pudimos conectar con el servidor. Inténtalo de nuevo en unos minutos.',
     cerrada: 'Tu sesión se cerró. Vuelve a entrar.',
     odoo: 'No se pudo comprobar tu contraseña con Odoo. Inténtalo en unos minutos, o entra con la contraseña del panel si tienes una.',
   };
 
+  /*
+   * Un solo login para todos —administración, equipo de ventas y clientes—:
+   * por eso no dice de quién es. El rol decide a dónde se va al entrar.
+   */
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <h1>ASTA · Panel de vendedores</h1>
-        <p>Cartera y facturación, en vivo desde Odoo.</p>
+    <PantallaAcceso>
+      <h1>Inicia sesión</h1>
+      <p>Entra con el correo y la contraseña de tu cuenta.</p>
 
-        {/* Al volver de elegir contraseña, por invitación o por reseteo (#53). */}
-        {!error && (aviso === 'restablecida' || bienvenida) && (
-          <div className="notice" style={{ marginBottom: 18, padding: '12px 14px', borderColor: 'var(--positive)' }}>
-            <p style={{ margin: 0 }}>
-              {aviso === 'restablecida' ? 'Contraseña cambiada. Entra con la nueva.' : 'Contraseña guardada. Ya puedes entrar.'}
-            </p>
+      {/* Al volver de elegir contraseña, por invitación o por reseteo (#53). */}
+      {!error && (aviso === 'restablecida' || bienvenida) && (
+        <div className="acceso-aviso ok" role="status">
+          {aviso === 'restablecida' ? 'Contraseña cambiada. Entra con la nueva.' : 'Contraseña guardada. Ya puedes entrar.'}
+        </div>
+      )}
+
+      {error && (
+        <div className="acceso-aviso error" role="alert">
+          {MENSAJES[error] ?? 'No se pudo iniciar sesión.'}
+        </div>
+      )}
+
+      <form action={entrar}>
+        <div className="field">
+          <label htmlFor="email">Correo</label>
+          <div className="acceso-entrada">
+            <IconoCorreo />
+            <input id="email" name="email" type="email" className="input" autoComplete="username" placeholder="tu@correo.com" autoFocus required />
           </div>
-        )}
+        </div>
 
-        {error && (
-          <div className="notice error" style={{ marginBottom: 18, padding: '12px 14px' }}>
-            <p style={{ margin: 0 }}>{MENSAJES[error] ?? 'No se pudo iniciar sesión.'}</p>
-          </div>
-        )}
-
-        <form action={entrar}>
-          <div className="field">
-            <label htmlFor="email">Correo</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              className="input"
-              autoComplete="username"
-              autoFocus
-              required
-            />
-          </div>
-
-          <div className="field">
+        <div className="field">
+          <div className="acceso-etiqueta">
             <label htmlFor="password">Contraseña</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className="input"
-              autoComplete="current-password"
-              required
-            />
+            <Link href="/olvide-contrasena">¿La olvidaste?</Link>
           </div>
+          <CampoContrasena id="password" name="password" autoComplete="current-password" />
+        </div>
 
-          <button type="submit" className="btn">
-            Entrar
-          </button>
+        <BotonEnviar enviando="Entrando…">Entrar</BotonEnviar>
+      </form>
 
-          <p style={{ margin: '12px 0 0', fontSize: 13.5 }}>
-            <Link href="/olvide-contrasena">¿Olvidaste tu contraseña?</Link>
-          </p>
-
-          {/*
-            Sin esto, un vendedor con la contraseña del panel y otro con la de
-            Odoo no saben cuál escribir. Lo de la verificación en dos pasos va
-            aquí, para todos, y no en el error: en el error le diría a
-            cualquiera qué cuentas la tienen activada.
-          */}
-          <p className="login-ayuda">
-            <strong>Equipo de ventas:</strong> entra con tu usuario y contraseña de Odoo, o con la contraseña del panel si
-            te la dieron. Si en Odoo tienes la verificación en dos pasos, usa la del panel.
-          </p>
-        </form>
-      </div>
-    </div>
+      {/*
+        Sin esto, quien tiene la contraseña del panel y quien entra con la de
+        Odoo no saben cuál escribir. Va aquí, para todos, y no en el error: en
+        el error le diría a cualquiera qué cuentas tienen la verificación en
+        dos pasos.
+      */}
+      <details className="acceso-ayuda">
+        <summary>¿Problemas para entrar?</summary>
+        <p>
+          Si entras con tu usuario de Odoo y tienes activada la verificación en dos pasos, usa la contraseña del panel.
+        </p>
+        <p>
+          Si todavía no tienes acceso, pide que te envíen una invitación. Llega por correo, con un enlace para elegir tu
+          contraseña.
+        </p>
+      </details>
+    </PantallaAcceso>
   );
 }

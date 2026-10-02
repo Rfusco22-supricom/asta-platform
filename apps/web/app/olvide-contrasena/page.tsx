@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { esRedireccion } from '@/lib/api';
+import { BotonEnviar, IconoCorreo } from '@/components/acceso/CamposAcceso';
+import { PantallaAcceso } from '@/components/acceso/PantallaAcceso';
 
 /**
  * «Olvidé mi contraseña» (#53). Página PÚBLICA.
@@ -55,55 +57,52 @@ export default async function OlvideContrasenaPage({ searchParams }: Props) {
   };
 
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <h1>¿Olvidaste tu contraseña?</h1>
+    <PantallaAcceso>
+      <h1>¿Olvidaste tu contraseña?</h1>
 
-        {enviado ? (
-          <>
-            <div className="notice" style={{ marginBottom: 16 }}>
-              <p style={{ margin: 0 }}>
-                Si esa dirección tiene cuenta, recibirás un correo con un enlace para elegir una contraseña nueva.
-                Caduca en una hora y solo sirve una vez.
-              </p>
+      {enviado ? (
+        <>
+          <div className="notice" style={{ marginBottom: 16 }}>
+            <p style={{ margin: 0 }}>
+              Si esa dirección tiene cuenta, recibirás un correo con un enlace para elegir una contraseña nueva.
+              Caduca en una hora y solo sirve una vez.
+            </p>
+          </div>
+          <p style={{ fontSize: 13.5, color: 'var(--text-2)' }}>
+            Si no llega en unos minutos, mira en la carpeta de spam. ¿Sigue sin llegar? Pide acceso a tu contacto en
+            ASTA.
+          </p>
+        </>
+      ) : (
+        <>
+          <p>Escribe el correo de tu cuenta y te mandamos un enlace para elegir una contraseña nueva.</p>
+
+          {error && (
+            <div className="notice error" style={{ marginBottom: 16 }}>
+              <p style={{ margin: 0 }}>{ERRORES[error] ?? 'No se pudo enviar.'}</p>
             </div>
-            <p style={{ fontSize: 13.5, color: 'var(--text-2)' }}>
-              Si no llega en unos minutos, mira en la carpeta de spam. ¿Sigue sin llegar? Pide acceso a tu contacto en
-              ASTA.
-            </p>
-          </>
-        ) : (
-          <>
-            <p>Escribe el correo de tu cuenta y te mandamos un enlace para elegir una contraseña nueva.</p>
+          )}
 
-            {error && (
-              <div className="notice error" style={{ marginBottom: 16 }}>
-                <p style={{ margin: 0 }}>{ERRORES[error] ?? 'No se pudo enviar.'}</p>
+          <form action={pedir}>
+            <div className="field">
+              <label htmlFor="email">Correo</label>
+              <div className="acceso-entrada">
+                <IconoCorreo />
+                <input id="email" name="email" type="email" className="input" autoComplete="username" placeholder="tu@correo.com" autoFocus required />
               </div>
-            )}
+            </div>
+            <BotonEnviar enviando="Enviando…">Enviar enlace</BotonEnviar>
+          </form>
 
-            <form action={pedir}>
-              <div className="field">
-                <label htmlFor="email">Correo</label>
-                <input id="email" name="email" type="email" className="input" autoComplete="username" autoFocus required />
-              </div>
-              <button type="submit" className="btn">
-                Enviar enlace
-              </button>
-            </form>
+          {/* Quien entra con su usuario de Odoo tiene otro camino, y es el más corto. Sin
+              decir quién es: el login es el mismo para todos. */}
+          <p className="login-ayuda">Si entras con tu usuario de Odoo, la contraseña se recupera en Odoo.</p>
+        </>
+      )}
 
-            {/* El personal tiene otro camino, y es el más corto. */}
-            <p className="login-ayuda">
-              <strong>Equipo de ventas:</strong> puedes entrar con tu usuario y contraseña de Odoo. Si la olvidaste,
-              recupérala en Odoo.
-            </p>
-          </>
-        )}
-
-        <p style={{ marginTop: 18, marginBottom: 0 }}>
-          <Link href="/login">Volver al inicio de sesión</Link>
-        </p>
-      </div>
-    </div>
+      <p style={{ marginTop: 18, marginBottom: 0 }}>
+        <Link href="/login">Volver al inicio de sesión</Link>
+      </p>
+    </PantallaAcceso>
   );
 }

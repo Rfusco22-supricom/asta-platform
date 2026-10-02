@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { LONGITUD_MINIMA_CONTRASENA } from '@asta/shared-types';
+import { PantallaAcceso } from '@/components/acceso/PantallaAcceso';
 
 /**
  * Aceptación de invitación (issue #16).
@@ -79,80 +80,76 @@ export default async function InvitacionPage({ params, searchParams }: Props) {
 
   if (!datos) {
     return (
-      <div className="login-wrap">
-        <div className="login-card">
-          <h1>Invitación no válida</h1>
-          <p>{motivo}</p>
-          <div className="notice" style={{ marginTop: 16 }}>
-            <p style={{ margin: 0 }}>
-              Los enlaces de invitación caducan a los 7 días y solo se pueden usar una vez.
-              Pídele uno nuevo a tu contacto en ASTA.
-            </p>
-          </div>
-          <p style={{ marginTop: 18, marginBottom: 0 }}>
-            <Link href="/login">Ir al inicio de sesión</Link>
+      <PantallaAcceso>
+        <h1>Invitación no válida</h1>
+        <p>{motivo}</p>
+        <div className="notice" style={{ marginTop: 16 }}>
+          <p style={{ margin: 0 }}>
+            Los enlaces de invitación caducan a los 7 días y solo se pueden usar una vez.
+            Pídele uno nuevo a tu contacto en ASTA.
           </p>
         </div>
-      </div>
+        <p style={{ marginTop: 18, marginBottom: 0 }}>
+          <Link href="/login">Ir al inicio de sesión</Link>
+        </p>
+      </PantallaAcceso>
     );
   }
 
   return (
-    <div className="login-wrap">
-      <div className="login-card">
-        <h1>{datos.yaTieneContrasena ? 'Cambia tu contraseña' : 'Bienvenido a ASTA'}</h1>
-        <p>
-          Estás configurando el acceso de <strong>{datos.nombre}</strong> ({datos.email}).
-        </p>
+    <PantallaAcceso>
+      <h1>{datos.yaTieneContrasena ? 'Cambia tu contraseña' : 'Bienvenido a ASTA'}</h1>
+      <p>
+        Estás configurando el acceso de <strong>{datos.nombre}</strong> ({datos.email}).
+      </p>
 
-        {error && (
-          <div className="notice error" style={{ marginBottom: 16 }}>
-            <p style={{ margin: 0 }}>{error}</p>
+      {error && (
+        <div className="notice error" style={{ marginBottom: 16 }}>
+          <p style={{ margin: 0 }}>{error}</p>
+        </div>
+      )}
+
+      <form action={aceptar}>
+        <div className="field">
+          <label htmlFor="password">Contraseña nueva</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            className="input"
+            required
+            minLength={LONGITUD_MINIMA_CONTRASENA}
+            autoComplete="new-password"
+          />
+          {/* Se dice la regla ANTES de escribir, no después de rechazarla. */}
+          <div className="hint">
+            Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres. Una frase que recuerdes es
+            mejor que algo corto y retorcido.
           </div>
-        )}
+        </div>
 
-        <form action={aceptar}>
-          <div className="field">
-            <label htmlFor="password">Contraseña nueva</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className="input"
-              required
-              minLength={LONGITUD_MINIMA_CONTRASENA}
-              autoComplete="new-password"
-            />
-            {/* Se dice la regla ANTES de escribir, no después de rechazarla. */}
-            <div className="hint">
-              Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres. Una frase que recuerdes es
-              mejor que algo corto y retorcido.
-            </div>
-          </div>
+        <div className="field">
+          <label htmlFor="repetir">Repítela</label>
+          <input
+            id="repetir"
+            name="repetir"
+            type="password"
+            className="input"
+            required
+            minLength={LONGITUD_MINIMA_CONTRASENA}
+            autoComplete="new-password"
+          />
+        </div>
 
-          <div className="field">
-            <label htmlFor="repetir">Repítela</label>
-            <input
-              id="repetir"
-              name="repetir"
-              type="password"
-              className="input"
-              required
-              minLength={LONGITUD_MINIMA_CONTRASENA}
-              autoComplete="new-password"
-            />
-          </div>
+        <button type="submit" className="btn">
+          Establecer contraseña
+        </button>
+      </form>
 
-          <button type="submit" className="btn">
-            Establecer contraseña
-          </button>
-        </form>
-
-        <p style={{ marginTop: 20, marginBottom: 0, fontSize: 12.5, color: 'var(--text-3)' }}>
-          Este enlace solo funciona una vez. Si ya tenías sesión abierta en algún
-          dispositivo, se cerrará.
-        </p>
-      </div>
-    </div>
+      <p style={{ marginTop: 20, marginBottom: 0, fontSize: 12.5, color: 'var(--text-3)' }}>
+        Este enlace solo funciona una vez. Si ya tenías sesión abierta en algún
+        dispositivo, se cerrará.
+      </p>
+    </PantallaAcceso>
   );
 }
