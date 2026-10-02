@@ -26,6 +26,9 @@ function sinAcentos(t: string): string {
   return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+const TITULO_SIN_COMPETENCIA = 'No compra en categorías donde ASTA tiene producto';
+const TITULO_DEVOLUCIONES = 'En este periodo devolvió más de lo que compró en esas categorías: no hay cuota que calcular';
+
 function pct(parte: number, total: number): number {
   return total > 0 ? Math.max(0, Math.min(100, Math.round((parte / total) * 100))) : 0;
 }
@@ -297,8 +300,14 @@ function ClienteFila({
           {c.montoEnCompetencia > 0 ? (
             <BarraAsta monto={c.montoEnCompetencia} montoAsta={c.montoAsta} />
           ) : (
-            <span className="rp-sin-asta" title="No compra en categorías donde ASTA tiene producto">
-              —
+            // Cero y negativo NO son lo mismo, y el negativo existe: el periodo
+            // incluye notas de crédito, así que un cliente que devolvió más de
+            // lo que compró en esas categorías cierra por debajo de cero. Medido
+            // en la cartera 423: cuatro clientes, uno con −1.087,86. Decirle a
+            // ese vendedor «no compra aquí» es falso —compra, y bastante—, así
+            // que cada caso lleva su explicación.
+            <span className="rp-sin-asta" title={c.montoEnCompetencia < 0 ? TITULO_DEVOLUCIONES : TITULO_SIN_COMPETENCIA}>
+              {c.montoEnCompetencia < 0 ? 'devoluciones' : '—'}
             </span>
           )}
         </td>
