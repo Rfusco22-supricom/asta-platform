@@ -5,6 +5,8 @@ import {
   type SesionActiva,
   portfolioRowSchema,
   portfolioMetaSchema,
+  actividadCarteraRespuestaSchema,
+  type ActividadCartera,
   invoicingSummarySchema,
   clientProfileSchema,
   apiErrorSchema,
@@ -183,6 +185,11 @@ export interface Portfolio {
 export async function getPortfolio(accessToken: string): Promise<Portfolio> {
   const r = await request('/api/v1/salesperson/portfolio', portfolioSchema, accessToken);
   return { filas: r.data, meta: r.meta };
+}
+
+/** Estado, clase ABC y tendencia de cada cliente de la cartera (ver `cartera.ts`). */
+export async function getActividadCartera(accessToken: string): Promise<ActividadCartera> {
+  return request('/api/v1/salesperson/portfolio/actividad', actividadCarteraRespuestaSchema, accessToken);
 }
 
 const invoicingSchema = z.object({

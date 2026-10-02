@@ -119,20 +119,34 @@ export async function getPartners(partnerIds: number[]): Promise<PartnerWithTier
   return conTarifas(rows);
 }
 
-/** Cartera de un vendedor: los partners cuyo `user_id` es él. */
-export async function getPartnersBySalesperson(odooUserId: number): Promise<PartnerWithTier[]> {
-  const domain: OdooDomain = [
+/**
+ * Qué es la cartera de un vendedor: los partners cuyo `user_id` es él.
+ *
+ * En un solo sitio para que la tabla de «Mi cartera» y su actividad
+ * (`actividadCartera.service.ts`) hablen siempre de los mismos clientes.
+ */
+export function dominioCartera(odooUserId: number): OdooDomain {
+  return [
     ['user_id', '=', odooUserId],
     ['active', '=', true],
     // Solo la entidad comercial: evita duplicar cada contacto de una misma empresa.
     ['parent_id', '=', false],
   ];
+}
 
-  const rows = await searchRead<PartnerRow>('res.partner', domain, [...PARTNER_FIELDS], {
+/** Cartera de un vendedor, con la tarifa de cada cliente. */
+export async function getPartnersBySalesperson(odooUserId: number): Promise<PartnerWithTier[]> {
+  const rows = await searchRead<PartnerRow>('res.partner', dominioCartera(odooUserId), [...PARTNER_FIELDS], {
     order: 'name asc',
   });
 
   return conTarifas(rows);
+}
+
+/** Solo los ids de la cartera: sin tarifas, que cuestan una lectura más por compañía. */
+export async function idsDeCartera(odooUserId: number): Promise<number[]> {
+  const rows = await searchRead<{ id: number }>('res.partner', dominioCartera(odooUserId), ['id']);
+  return rows.map((r) => r.id);
 }
 
 export class ForbiddenPartnerAccess extends Error {

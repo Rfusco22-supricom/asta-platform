@@ -1866,3 +1866,158 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   .acceso *::before,
   .acceso *::after { animation: none !important; transition: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Mi cartera: estado de compra, clase ABC y tendencia
+   ══════════════════════════════════════════════════════════════════════════
+ *
+ * `app/cartera/TablaCartera.tsx`. Los colores del estado van de lo sano a lo
+ * urgente con los mismos tokens que el resto del panel: verde, azul, ámbar,
+ * rojo y gris. Lo que se mueve —barras que crecen, huecos que brillan— se
+ * queda quieto con «reducir movimiento».
+ */
+
+.clasificacion {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.clasificacion-bloque { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.clasificacion-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.clasificacion-titulo h2 { margin: 0; font-size: 14.5px; font-weight: 640; }
+.clasificacion-titulo span { font-size: 12px; color: var(--text-3); }
+.clasificacion-error { margin-bottom: 18px; }
+.clasificacion-error p { margin: 0; }
+
+/* La barra del reparto: un tramo por estado, del ancho de su número de clientes. */
+.reparto { display: flex; gap: 3px; height: 12px; border-radius: var(--radius-pill); overflow: hidden; }
+.reparto > span { min-width: 4px; animation: cartera-crecer 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; transform-origin: left; }
+
+.fichas { display: flex; flex-wrap: wrap; gap: 8px; }
+.ficha {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.ficha strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.ficha:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.ficha[aria-pressed='true'] { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, var(--surface)); color: var(--text); }
+.ficha-punto { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+
+.reparto-activo, .ficha-activo, .estado-activo { --c: var(--positive); }
+.reparto-nuevo, .ficha-nuevo, .estado-nuevo { --c: var(--primario); }
+.reparto-en_riesgo, .ficha-en_riesgo, .estado-en_riesgo { --c: var(--warning); }
+.reparto-dormido, .ficha-dormido, .estado-dormido { --c: var(--danger); }
+.reparto-prospecto, .ficha-prospecto, .estado-prospecto { --c: var(--text-3); }
+.reparto > span { background: var(--c); }
+
+/* ── Clase ABC ─────────────────────────────────────────────────────────── */
+
+.clases { display: grid; gap: 8px; }
+.clase-boton {
+  display: grid;
+  grid-template-columns: auto 1fr minmax(70px, 30%);
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.clase-boton:hover { border-color: var(--border-strong); }
+.clase-boton[aria-pressed='true'] { border-color: var(--primario); background: color-mix(in srgb, var(--primario) 7%, var(--surface)); }
+.clase-texto { display: flex; flex-direction: column; min-width: 0; }
+.clase-texto strong { font-size: 13.5px; font-weight: 620; }
+.clase-texto small { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clase-barra { height: 6px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.clase-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--primario); animation: cartera-crecer 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; transform-origin: left; }
+
+.clase {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 750;
+}
+.clase-A { background: var(--primario); color: #fff; }
+.clase-B { background: color-mix(in srgb, var(--primario) 16%, var(--surface)); color: var(--primario-oscuro); }
+.clase-C { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .clase-B { color: var(--accent); }
+}
+
+/* ── Celdas de la tabla ────────────────────────────────────────────────── */
+
+.tabla-cartera td { vertical-align: middle; }
+.col-clase { width: 64px; text-align: center; }
+
+.estado-celda { display: inline-flex; flex-direction: column; gap: 2px; }
+.estado-celda small { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.estado {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+}
+
+.serie-celda { display: inline-flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.serie-celda > span { min-width: 54px; text-align: right; }
+.mini-serie { display: block; overflow: visible; }
+.mini-serie rect { transform-box: fill-box; transform-origin: bottom; animation: cartera-subir 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mini-serie .mes-lleno { fill: var(--primario); }
+.mini-serie .mes-curso { fill: color-mix(in srgb, var(--primario) 45%, var(--surface)); }
+.mini-serie .mes-vacio { fill: var(--border); }
+tr:hover .mini-serie .mes-lleno { fill: var(--primario-oscuro); }
+
+.tendencia { font-size: 12.5px; font-weight: 620; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tendencia-sube { color: var(--positive); }
+.tendencia-baja { color: var(--danger); }
+.tendencia-igual { color: var(--text-3); font-weight: 500; }
+
+/* El hueco mientras llega la actividad: un brillo que pasa. */
+.hueco {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 45%, var(--surface-2) 65%);
+  background-size: 300% 100%;
+  animation: cartera-brillo 1.3s ease-in-out infinite;
+}
+
+@keyframes cartera-crecer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes cartera-subir { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes cartera-brillo { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+@media (max-width: 1100px) {
+  .clasificacion { grid-template-columns: 1fr; }
+}
+/* En estrecho, la serie es lo primero que sobra: la tendencia ya dice hacia dónde va. */
+@media (max-width: 880px) {
+  .col-serie .mini-serie { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reparto > span, .clase-barra > span, .mini-serie rect, .hueco { animation: none; }
+  .ficha, .clase-boton { transition: none; }
+}

@@ -8,6 +8,7 @@ import {
 } from '../controllers/salesperson.controller.js';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
+import { actividadDeCartera } from '../services/actividadCartera.service.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
 import { reporte } from '../services/reportes.service.js';
@@ -34,6 +35,30 @@ export const salespersonRouter = Router();
 salespersonRouter.use(authJwt());
 
 salespersonRouter.get('/portfolio', autorizar('cartera.ver'), getPortfolio);
+
+/**
+ * Estado, clase ABC y tendencia de cada cliente de la PROPIA cartera.
+ *
+ * Mismo permiso y mismo alcance que `/portfolio`: los clientes salen del
+ * `odooUserId` del token (`dominioCartera`), nunca de un parámetro.
+ */
+salespersonRouter.get('/portfolio/actividad', autorizar('cartera.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(409).json({
+        error: {
+          code: 'CONFLICT',
+          message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.',
+        },
+      });
+      return;
+    }
+    res.json(await actividadDeCartera(odooUserId));
+  } catch (error) {
+    next(error);
+  }
+});
 
 salespersonRouter.get(
   '/clients/:partnerId/invoicing',
