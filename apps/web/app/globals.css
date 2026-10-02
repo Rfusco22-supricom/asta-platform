@@ -1803,6 +1803,38 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 .acceso-ayuda summary:hover { color: var(--text); }
 .acceso-ayuda p { margin: 10px 0 0; line-height: 1.5; }
 
+/* El WhatsApp de soporte (`lib/soporte.ts`): verde de WhatsApp, a la vista. */
+.acceso-soporte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--text-2);
+}
+.acceso-whatsapp {
+  --verde: #128c4a;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, #25d366 40%, transparent);
+  background: color-mix(in srgb, #25d366 11%, var(--surface));
+  color: var(--verde);
+  font-weight: 600;
+  transition: background 0.15s, transform 0.15s;
+}
+.acceso-whatsapp:hover { text-decoration: none; background: color-mix(in srgb, #25d366 20%, var(--surface)); transform: translateY(-1px); }
+.acceso-whatsapp:focus-visible { outline: 2px solid #25d366; outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .acceso-whatsapp { --verde: #5fd38d; }
+}
+
 @keyframes acceso-entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes acceso-flotar {
   0% { transform: translate(0, 0) scale(1); }

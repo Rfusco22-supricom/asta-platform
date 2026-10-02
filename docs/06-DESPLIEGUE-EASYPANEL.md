@@ -143,6 +143,11 @@ PORT=3000
 
 # Nombre del servicio en la red interna de EasyPanel, NO un dominio publico.
 MIDDLEWARE_URL=http://asta-middleware:3001
+
+# WhatsApp de soporte del login («¿Problemas para entrar?»), con codigo de
+# pais. Se aceptan espacios, guiones y «+». Sin esta variable, el login enseña
+# la ayuda de antes en vez del enlace.
+SOPORTE_WHATSAPP=+58 4XX XXX XXXX
 ```
 
 ---

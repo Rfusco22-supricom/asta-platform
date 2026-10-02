@@ -3,7 +3,8 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { destinoPara } from '@/lib/rutas';
 import { setSession } from '@/lib/session';
-import { BotonEnviar, CampoContrasena, IconoCorreo } from '@/components/acceso/CamposAcceso';
+import { enlaceWhatsappSoporte } from '@/lib/soporte';
+import { BotonEnviar, CampoContrasena, IconoCorreo, IconoWhatsapp } from '@/components/acceso/CamposAcceso';
 import { PantallaAcceso } from '@/components/acceso/PantallaAcceso';
 
 /**
@@ -121,6 +122,8 @@ export default async function LoginPage({ searchParams }: Props) {
    * Un solo login para todos —administración, equipo de ventas y clientes—:
    * por eso no dice de quién es. El rol decide a dónde se va al entrar.
    */
+  const whatsapp = enlaceWhatsappSoporte('Hola, tengo problemas para entrar en Asta.');
+
   return (
     <PantallaAcceso>
       <h1>Inicia sesión</h1>
@@ -160,21 +163,32 @@ export default async function LoginPage({ searchParams }: Props) {
       </form>
 
       {/*
-        Sin esto, quien tiene la contraseña del panel y quien entra con la de
-        Odoo no saben cuál escribir. Va aquí, para todos, y no en el error: en
-        el error le diría a cualquiera qué cuentas tienen la verificación en
-        dos pasos.
+        Quien no consigue entrar habla con una persona: el WhatsApp de soporte
+        (`lib/soporte.ts`). Sin número configurado, la ayuda de antes: sin esto,
+        quien tiene la contraseña del panel y quien entra con la de Odoo no
+        saben cuál escribir. Va aquí, para todos, y no en el error: en el error
+        le diría a cualquiera qué cuentas tienen la verificación en dos pasos.
       */}
-      <details className="acceso-ayuda">
-        <summary>¿Problemas para entrar?</summary>
-        <p>
-          Si entras con tu usuario de Odoo y tienes activada la verificación en dos pasos, usa la contraseña del panel.
-        </p>
-        <p>
-          Si todavía no tienes acceso, pide que te envíen una invitación. Llega por correo, con un enlace para elegir tu
-          contraseña.
-        </p>
-      </details>
+      {whatsapp ? (
+        <div className="acceso-soporte">
+          <span>¿Problemas para entrar?</span>
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="acceso-whatsapp">
+            <IconoWhatsapp />
+            Contáctanos al WhatsApp de soporte
+          </a>
+        </div>
+      ) : (
+        <details className="acceso-ayuda">
+          <summary>¿Problemas para entrar?</summary>
+          <p>
+            Si entras con tu usuario de Odoo y tienes activada la verificación en dos pasos, usa la contraseña del panel.
+          </p>
+          <p>
+            Si todavía no tienes acceso, pide que te envíen una invitación. Llega por correo, con un enlace para elegir
+            tu contraseña.
+          </p>
+        </details>
+      )}
     </PantallaAcceso>
   );
 }
