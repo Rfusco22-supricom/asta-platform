@@ -19,11 +19,39 @@ extension ProductoCompatible {
         nombre.range(of: #"\b(POLVO|POWDER)\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    /// «Tóner compatible Asta», «Tóner original HP», «Polvo de recarga Asta».
+    enum Clase: Equatable { case toner, polvo, tinta, tambor, otro }
+
+    /// Qué es: tóner, polvo de recarga, tinta, tambor u otra cosa.
+    ///
+    /// El polvo sale del nombre (`esPolvo`), y manda: en el catálogo de
+    /// cartuchos el polvo es «tóner». Lo demás, del tipo de los cartuchos que
+    /// manda el servidor. Una botella de tinta o un tambor no son tóner, y
+    /// llamarlos así es la misma confusión que con el polvo: el cliente pide el
+    /// tambor creyendo que es el tóner. Si el tipo no es uno solo, o no se
+    /// conoce, no se afirma nada: `.otro`.
+    var clase: Clase {
+        if esPolvo { return .polvo }
+        let tipos = Set(cartuchos.map(\.tipo))
+        guard tipos.count == 1, let tipo = tipos.first else { return .otro }
+        switch tipo {
+        case "toner": return .toner
+        case "tinta": return .tinta
+        case "tambor": return .tambor
+        default: return .otro
+        }
+    }
+
+    /// «Tóner compatible Asta», «Tambor original Brother», «Polvo de recarga Asta».
     func titulo(para impresora: Impresora) -> String {
         let marca = esAsta ? "Asta" : (cartuchos.first?.marca ?? impresora.marca)
-        if esPolvo { return "Polvo de recarga \(marca)" }
-        return tipo == .original ? "Tóner original \(marca)" : "Tóner compatible \(marca)"
+        let origen = tipo == .original ? "original" : "compatible"
+        switch clase {
+        case .polvo: return "Polvo de recarga \(marca)"
+        case .toner: return "Tóner \(origen) \(marca)"
+        case .tinta: return "Tinta \(origen) \(marca)"
+        case .tambor: return "Tambor \(origen) \(marca)"
+        case .otro: return "Consumible \(origen) \(marca)"
+        }
     }
 }
 

@@ -22,13 +22,40 @@ val ProductoCompatible.esAsta: Boolean get() = ASTA.containsMatchIn(nombre.trim(
  */
 val ProductoCompatible.esPolvo: Boolean get() = POLVO.containsMatchIn(nombre)
 
-/** «Tóner compatible Asta», «Tóner original HP», «Polvo de recarga Asta». */
+enum class Clase { TONER, POLVO, TINTA, TAMBOR, OTRO }
+
+/**
+ * Qué es: tóner, polvo de recarga, tinta, tambor u otra cosa.
+ *
+ * El polvo sale del nombre (`esPolvo`), y manda: en el catálogo de cartuchos el
+ * polvo es «tóner». Lo demás, del tipo de los cartuchos que manda el servidor.
+ * Una botella de tinta o un tambor no son tóner, y llamarlos así es la misma
+ * confusión que con el polvo: el cliente pide el tambor creyendo que es el
+ * tóner. Si el tipo no es uno solo, o no se conoce, no se afirma nada: `OTRO`.
+ */
+val ProductoCompatible.clase: Clase
+    get() {
+        if (esPolvo) return Clase.POLVO
+        val tipos = cartuchos.map { it.tipo }.toSet()
+        if (tipos.size != 1) return Clase.OTRO
+        return when (tipos.single()) {
+            "toner" -> Clase.TONER
+            "tinta" -> Clase.TINTA
+            "tambor" -> Clase.TAMBOR
+            else -> Clase.OTRO
+        }
+    }
+
+/** «Tóner compatible Asta», «Tambor original Brother», «Polvo de recarga Asta». */
 fun ProductoCompatible.titulo(impresora: Impresora): String {
     val marca = if (esAsta) "Asta" else (cartuchos.firstOrNull()?.marca ?: impresora.marca)
-    return when {
-        esPolvo -> "Polvo de recarga $marca"
-        tipo == ProductoCompatible.Tipo.ORIGINAL -> "Tóner original $marca"
-        else -> "Tóner compatible $marca"
+    val origen = if (tipo == ProductoCompatible.Tipo.ORIGINAL) "original" else "compatible"
+    return when (clase) {
+        Clase.POLVO -> "Polvo de recarga $marca"
+        Clase.TONER -> "Tóner $origen $marca"
+        Clase.TINTA -> "Tinta $origen $marca"
+        Clase.TAMBOR -> "Tambor $origen $marca"
+        Clase.OTRO -> "Consumible $origen $marca"
     }
 }
 

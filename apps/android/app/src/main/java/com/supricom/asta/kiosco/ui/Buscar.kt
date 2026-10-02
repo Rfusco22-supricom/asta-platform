@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -78,8 +79,13 @@ fun Buscar(kiosco: Kiosco) {
     var estado by remember { mutableStateOf<EstadoBusqueda>(EstadoBusqueda.Vacio) }
     val escribiendo = estado == EstadoBusqueda.Vacio
     val puedeBuscar = texto.trim().length >= 2
+    // Cuál es la búsqueda que vale. «Corregir» se puede pulsar con una en curso:
+    // sin esto, su respuesta llegaba después y quitaba el teclado de debajo del
+    // dedo con los resultados de lo que ya no está escrito.
+    var vigente by remember { mutableIntStateOf(0) }
 
     fun corregir() {
+        vigente++ // la que estuviera en curso ya no se enseña
         estado = EstadoBusqueda.Vacio
     }
 
@@ -87,9 +93,12 @@ fun Buscar(kiosco: Kiosco) {
         val consulta = texto.trim()
         if (consulta.length < 2) return
         kiosco.tocar()
+        val esta = ++vigente
         estado = EstadoBusqueda.Buscando
         kiosco.alcance.launch {
-            estado = when (val r = kiosco.datos.buscar(consulta, kiosco::informar)) {
+            val r = kiosco.datos.buscar(consulta, kiosco::informar)
+            if (esta != vigente) return@launch
+            estado = when (r) {
                 is ConCache.Ok -> EstadoBusqueda.Resultados(r.datos, consulta, r.guardadoEn)
                 is ConCache.Fallo -> EstadoBusqueda.Error(r.motivo)
             }

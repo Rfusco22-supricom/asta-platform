@@ -29,6 +29,29 @@ import Testing
         #expect(producto(3, "ASTA POLVO TONER POWDER").titulo(para: impresora) == "Polvo de recarga Asta")
     }
 
+    @Test func noLlamaTonerAUnaTintaNiAUnTambor() {
+        let brother = Impresora(id: 9, marca: "Brother", nombre: "HL-L2350DW")
+        func cartucho(_ codigo: String, _ tipo: String, marca: String = "Brother") -> Cartucho {
+            Cartucho(marca: marca, codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil)
+        }
+        func con(_ id: Int, _ nombre: String, _ cartuchos: [Cartucho], tipo: ProductoCompatible.Tipo = .compatible) -> ProductoCompatible {
+            ProductoCompatible(id: id, templateId: id, sku: nil, nombre: nombre, stock: .disponible, tipo: tipo, cartuchos: cartuchos)
+        }
+
+        let tambor = con(1, "BROTHER DRUM DR2370 ORIGINAL", [cartucho("DR-2370", "tambor")], tipo: .original)
+        #expect(tambor.clase == .tambor)
+        #expect(tambor.titulo(para: brother) == "Tambor original Brother")
+        #expect(con(2, "EPSON TINTA T544 NEGRO", [cartucho("T544", "tinta", marca: "Epson")], tipo: .original).titulo(para: brother) == "Tinta original Epson")
+
+        // Tóner y tambor en el mismo producto, o un tipo que no conocemos: no se afirma ninguno.
+        #expect(con(3, "ASTA KIT TN2370 + DR2370", [cartucho("TN-2370", "toner"), cartucho("DR-2370", "tambor")]).titulo(para: brother) == "Consumible compatible Asta")
+        #expect(con(4, "X", [cartucho("X1", "otro")]).clase == .otro)
+        #expect(con(5, "X", []).clase == .otro)
+
+        // El polvo manda sobre el tipo del cartucho: en el catálogo es «tóner».
+        #expect(con(6, "ASTA POLVO TN2370", [cartucho("TN-2370", "toner")]).clase == .polvo)
+    }
+
     @Test func juntaLosCodigosSinRepetir() {
         #expect(codigosDeCartucho([producto(1, "a"), producto(2, "b"), producto(3, "c", codigo: "CE285A")]) == ["CE278A", "CE285A"])
     }

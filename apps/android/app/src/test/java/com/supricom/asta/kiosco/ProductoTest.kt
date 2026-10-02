@@ -1,6 +1,8 @@
 package com.supricom.asta.kiosco
 
 import com.supricom.asta.kiosco.dominio.Cartucho
+import com.supricom.asta.kiosco.dominio.Clase
+import com.supricom.asta.kiosco.dominio.clase
 import com.supricom.asta.kiosco.dominio.EstadoStock
 import com.supricom.asta.kiosco.dominio.Impresora
 import com.supricom.asta.kiosco.dominio.ProductoCompatible
@@ -39,6 +41,26 @@ class ProductoTest {
         assertEquals("Tóner compatible Asta", producto(1, "ASTA TONER CB435A").titulo(impresora))
         assertEquals("Tóner original HP", producto(2, "HP TONER P1606 BLACK ORIGINAL", tipo = ProductoCompatible.Tipo.ORIGINAL).titulo(impresora))
         assertEquals("Polvo de recarga Asta", producto(3, "ASTA POLVO TONER POWDER").titulo(impresora))
+    }
+
+    @Test fun noLlamaTonerAUnaTintaNiAUnTambor() {
+        val brother = Impresora(9, "Brother", "HL-L2350DW")
+        fun cartucho(codigo: String, tipo: String, marca: String = "Brother") = Cartucho(marca, codigo, tipo)
+        fun con(id: Int, nombre: String, cartuchos: List<Cartucho>, tipo: ProductoCompatible.Tipo = ProductoCompatible.Tipo.COMPATIBLE) =
+            ProductoCompatible(id, id, null, nombre, EstadoStock.DISPONIBLE, tipo, cartuchos)
+
+        val tambor = con(1, "BROTHER DRUM DR2370 ORIGINAL", listOf(cartucho("DR-2370", "tambor")), ProductoCompatible.Tipo.ORIGINAL)
+        assertEquals(Clase.TAMBOR, tambor.clase)
+        assertEquals("Tambor original Brother", tambor.titulo(brother))
+        assertEquals("Tinta original Epson", con(2, "EPSON TINTA T544 NEGRO", listOf(cartucho("T544", "tinta", "Epson")), ProductoCompatible.Tipo.ORIGINAL).titulo(brother))
+
+        // Tóner y tambor en el mismo producto, o un tipo que no conocemos: no se afirma ninguno.
+        assertEquals("Consumible compatible Asta", con(3, "ASTA KIT TN2370 + DR2370", listOf(cartucho("TN-2370", "toner"), cartucho("DR-2370", "tambor"))).titulo(brother))
+        assertEquals(Clase.OTRO, con(4, "X", listOf(cartucho("X1", "otro"))).clase)
+        assertEquals(Clase.OTRO, con(5, "X", emptyList()).clase)
+
+        // El polvo manda sobre el tipo del cartucho: en el catálogo es «tóner».
+        assertEquals(Clase.POLVO, con(6, "ASTA POLVO TN2370", listOf(cartucho("TN-2370", "toner"))).clase)
     }
 
     @Test fun juntaLosCodigosSinRepetir() {
