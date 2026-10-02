@@ -177,7 +177,13 @@ beforeAll(async () => {
 afterAll(async () => {
   quitarSink?.();
   await esperarBitacora(INICIO);
-  await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO } } });
+  // Solo las de este fichero: por su key, o sin key (las de un 401, que también
+  // caerían en la ventana de las alertas). Antes borraba TODO lo escrito desde
+  // `INICIO`, y los ficheros corren en paralelo: esta limpieza se llevaba por
+  // delante las filas que otro test estaba contando.
+  await prisma.apiRequestLog.deleteMany({
+    where: { createdAt: { gte: INICIO }, OR: [{ apiKeyId: { in: keysCreadas } }, { apiKeyId: null }] },
+  });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   await new Promise<void>((resolve) => server?.close(() => resolve()));

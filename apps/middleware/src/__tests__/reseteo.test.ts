@@ -1,5 +1,5 @@
 import type { Server } from 'node:http';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../config/dotenv.js';
 
 /**
@@ -260,6 +260,14 @@ describe('#53 · La ruta', () => {
     expect(conCuenta.status).toBe(200);
     expect(sinCuenta.status).toBe(200);
     expect(await conCuenta.text()).toBe(await sinCuenta.text());
+
+    // La ruta contesta ANTES de enviar el correo, a propósito (así el tiempo de
+    // respuesta tampoco dice si la cuenta existe). Hay que esperar a que salga:
+    // sin esto, el correo de mara llegaba DESPUÉS de que el `beforeEach` del
+    // test siguiente vaciara `enviados`, y ese test contaba dos correos en vez
+    // de uno. Fallaba solo en la suite completa, cuando la máquina va cargada.
+    await vi.waitFor(() => expect(enviados).toHaveLength(1), { timeout: 10_000, interval: 50 });
+    expect(enviados[0].to).toBe(`mara@${DOMINIO}`);
   });
 
   /** Un SUPERADMIN con sesión, para la ruta de invitar. */
