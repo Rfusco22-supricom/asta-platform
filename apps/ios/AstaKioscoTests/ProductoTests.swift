@@ -77,6 +77,30 @@ import Testing
         #expect(recomendado(ordenados)?.id == 4)
     }
 
+    /// El kiosco **solo ofrece Asta**, y distingue «no tenemos Asta» de «no sé qué
+    /// le sirve a esa impresora»: son dos cosas distintas para quien está de pie.
+    @Test func soloEnsenaAstaYDiceCuandoNoHay() {
+        let original = producto(1, "HP TONER P1566 / P1606 BLACK ORIGINAL", tipo: .original)
+        let asta = producto(2, "ASTA TONER CB435A/CB436A/CE278A/285", stock: .bajo)
+        let otroCompatible = producto(3, "TONER GENERICO CE278A")
+        let polvoAsta = producto(4, "ASTA POLVO POWDER A CB435A/CB436A/CE278A/285 NEGRO")
+        let astaAgotado = producto(5, "ASTA TONER CB435A", stock: .agotado)
+
+        // El original está disponible y aun así no sale: lo que se ofrece es Asta.
+        guard case let .asta(lista) = queEnsenar([original, asta, otroCompatible, polvoAsta, astaAgotado]) else {
+            Issue.record("con Asta en la lista tiene que salir .asta")
+            return
+        }
+        #expect(lista.map(\.id) == [2, 4, 5])
+        #expect(recomendado(lista)?.id == 2)
+
+        // Sin ningún Asta NO se ofrece el original: eso lo hace el mostrador.
+        #expect(queEnsenar([original, otroCompatible]) == .sinAsta)
+
+        // Y no es lo mismo que no tener cargada la compatibilidad (#56).
+        #expect(queEnsenar([]) == .sinNada)
+    }
+
     @Test func sinUnCartuchoAstaEnTiendaNoSeRecomiendaNada() {
         let original = producto(1, "HP TONER P1606 BLACK ORIGINAL", tipo: .original)
         let astaAgotado = producto(2, "ASTA TONER CB435A", stock: .agotado)

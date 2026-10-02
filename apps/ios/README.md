@@ -58,6 +58,11 @@ compararlas y cambiarlas a la vez:
 | `Vistas/Tema.swift` | `ui/Tema.kt` |
 | `Vistas/` | `ui/` |
 
+- **Solo Asta (#40).** El kiosco enseña únicamente los consumibles de la marca
+  propia: lo pidió la dirección. Si una impresora no tiene ninguno, **no se
+  ofrece el original**; se dice «todavía no tenemos Asta para esta impresora» y
+  se manda al mostrador, que es quien puede explicar la alternativa. Y eso es
+  distinto de no tener cargada la compatibilidad, que tiene su propia pantalla.
 - **La sesión (#41)**: se cierra sola a los 4 minutos sin tocar, avisando 30 s
   antes con cuenta atrás; «Terminar» la cierra a mano. Al cerrarse se rehacen
   las pantallas y no queda nada del cliente anterior.

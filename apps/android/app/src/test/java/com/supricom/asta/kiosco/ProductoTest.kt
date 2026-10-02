@@ -9,7 +9,9 @@ import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
+import com.supricom.asta.kiosco.dominio.ParaEnsenar
 import com.supricom.asta.kiosco.dominio.ordenarParaRecomendar
+import com.supricom.asta.kiosco.dominio.queEnsenar
 import com.supricom.asta.kiosco.dominio.recomendado
 import com.supricom.asta.kiosco.dominio.titulo
 import org.junit.Assert.assertEquals
@@ -89,6 +91,31 @@ class ProductoTest {
         // el polvo detrás de los cartuchos; lo agotado al final, aunque sea Asta.
         assertEquals(listOf(4, 1, 5, 3, 2), ordenados.map { it.id })
         assertEquals(4, recomendado(ordenados)?.id)
+    }
+
+    /**
+     * El kiosco **solo ofrece Asta**, y distingue «no tenemos Asta» de «no sé qué
+     * le sirve a esa impresora»: son dos cosas distintas para quien está de pie.
+     */
+    @Test fun soloEnsenaAstaYDiceCuandoNoHay() {
+        val original = producto(1, "HP TONER P1566 / P1606 BLACK ORIGINAL", tipo = ProductoCompatible.Tipo.ORIGINAL)
+        val asta = producto(2, "ASTA TONER CB435A/CB436A/CE278A/285", EstadoStock.BAJO)
+        val otroCompatible = producto(3, "TONER GENERICO CE278A")
+        val polvoAsta = producto(4, "ASTA POLVO POWDER A CB435A/CB436A/CE278A/285 NEGRO")
+        val astaAgotado = producto(5, "ASTA TONER CB435A", EstadoStock.AGOTADO)
+
+        // El original está disponible y aun así no sale: lo que se ofrece es Asta.
+        val que = queEnsenar(listOf(original, asta, otroCompatible, polvoAsta, astaAgotado))
+        assertTrue("con Asta en la lista tiene que salir Asta", que is ParaEnsenar.Asta)
+        val lista = (que as ParaEnsenar.Asta).productos
+        assertEquals(listOf(2, 4, 5), lista.map { it.id })
+        assertEquals(2, recomendado(lista)?.id)
+
+        // Sin ningún Asta NO se ofrece el original: eso lo hace el mostrador.
+        assertEquals(ParaEnsenar.SinAsta, queEnsenar(listOf(original, otroCompatible)))
+
+        // Y no es lo mismo que no tener cargada la compatibilidad (#56).
+        assertEquals(ParaEnsenar.SinNada, queEnsenar(emptyList()))
     }
 
     @Test fun sinUnCartuchoAstaEnTiendaNoSeRecomiendaNada() {
