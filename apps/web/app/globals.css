@@ -1337,7 +1337,8 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 .abierta > .rp-cabecera .rp-chevron,
 .rp-producto.abierto .rp-chevron { transform: rotate(90deg); color: var(--primario); }
 
-.rp-cuerpo { padding: 0 18px 14px; border-top: 1px solid var(--border); animation: rp-aparecer 0.25s ease both; }
+.rp-cuerpo { padding: 0 18px 14px; border-top: 1px solid var(--border); animation: rp-aparecer 0.25s ease both; overflow-x: auto; }
+.rp-cuerpo .rp-tabla { min-width: 560px; }
 .rp-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
 .rp-tabla th { padding: 10px 8px; text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
 .rp-tabla td { padding: 9px 8px; border-top: 1px solid var(--border); vertical-align: middle; }
@@ -1358,7 +1359,8 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 .rp-quien li > span:first-child { color: var(--text); }
 .rp-quien .num { text-align: right; font-variant-numeric: tabular-nums; }
 .rp-cliente-detalle { display: grid; gap: 8px; }
-.rp-ficha { justify-self: start; font-size: 12.5px; font-weight: 600; }
+.rp-ficha { font-size: 12.5px; font-weight: 600; }
+.rp-cliente-pie { display: flex; align-items: center; gap: 18px; }
 .rp-mas { display: block; margin: 12px auto 0; }
 
 /* Por cliente: la mezcla de categorías en una barra, con las tres primeras en color. */

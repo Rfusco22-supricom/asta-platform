@@ -57,8 +57,10 @@ export function VistaProductos({ categorias, clientes }: { categorias: Categoria
   const categoriasVisibles = useMemo(() => {
     if (!q) return categorias;
     return categorias
-      .map((c) => ({ ...c, productos: c.productos.filter((p) => sinAcentos(`${p.nombre} ${p.sku ?? ''} ${p.marca ?? ''}`).includes(q)) }))
-      .filter((c) => c.productos.length > 0 || sinAcentos(c.nombre).includes(q));
+      // Si lo buscado es el nombre de la categoría, se enseña entera: filtrar
+      // sus productos por «consumibles» los dejaba todos fuera.
+      .map((c) => (sinAcentos(c.nombre).includes(q) ? c : { ...c, productos: c.productos.filter((p) => sinAcentos(`${p.nombre} ${p.sku ?? ''} ${p.marca ?? ''}`).includes(q)) }))
+      .filter((c) => c.productos.length > 0);
   }, [categorias, q]);
 
   const clientesVisibles = useMemo(() => (q ? clientes.filter((c) => sinAcentos(c.nombre).includes(q)) : clientes), [clientes, q]);
@@ -116,9 +118,11 @@ function BarraAsta({ monto, montoAsta }: { monto: number; montoAsta: number }) {
 }
 
 function Categoria({ c, max, abiertaDeEntrada }: { c: CategoriaDelReporte; max: number; abiertaDeEntrada: boolean }) {
-  const [abierta, setAbierta] = useState(false);
+  // null = lo que toque (abierta si se está buscando); un clic lo fija. Con un
+  // booleano y un «o», buscando no había forma de plegar ninguna.
+  const [abierta, setAbierta] = useState<boolean | null>(null);
   const [todos, setTodos] = useState(false);
-  const verAbierta = abierta || abiertaDeEntrada;
+  const verAbierta = abierta ?? abiertaDeEntrada;
   const productos = todos ? c.productos : c.productos.slice(0, PRIMEROS);
 
   return (
@@ -261,6 +265,8 @@ function ClienteFila({
   alAbrir: () => void;
 }) {
   const principales = c.categorias.filter((x) => x.monto > 0).slice(0, 3);
+  const [todos, setTodos] = useState(false);
+  const suyos = todos ? productos : productos.slice(0, PRIMEROS);
   return (
     <>
       <tr className={abierto ? 'rp-producto abierto' : 'rp-producto'} onClick={alAbrir}>
@@ -287,7 +293,14 @@ function ClienteFila({
           </span>
         </td>
         <td>
-          <BarraAsta monto={c.monto} montoAsta={c.montoAsta} />
+          {/* Sobre lo que compra donde ASTA compite, como la tarjeta de arriba. */}
+          {c.montoEnCompetencia > 0 ? (
+            <BarraAsta monto={c.montoEnCompetencia} montoAsta={c.montoAsta} />
+          ) : (
+            <span className="rp-sin-asta" title="No compra en categorías donde ASTA tiene producto">
+              —
+            </span>
+          )}
         </td>
         <td className="num">{c.productosDistintos}</td>
         <td className="num">{money(c.monto)}</td>
@@ -297,7 +310,7 @@ function ClienteFila({
           <td colSpan={5}>
             <div className="rp-cliente-detalle">
               <ul>
-                {productos.slice(0, 15).map((p) => (
+                {suyos.map((p) => (
                   <li key={p.productId}>
                     <span>
                       {p.esAsta && <span className="tag-asta">ASTA</span>} {p.sku && <span className="rp-sku">{p.sku}</span>}
@@ -308,9 +321,16 @@ function ClienteFila({
                   </li>
                 ))}
               </ul>
-              <Link href={`/cartera/${c.partnerId}`} className="rp-ficha">
-                Abrir su ficha ›
-              </Link>
+              <div className="rp-cliente-pie">
+                {productos.length > PRIMEROS && (
+                  <button type="button" className="btn-link" onClick={() => setTodos(!todos)}>
+                    {todos ? 'Ver menos' : `Ver sus ${productos.length} productos`}
+                  </button>
+                )}
+                <Link href={`/cartera/${c.partnerId}`} className="rp-ficha">
+                  Abrir su ficha ›
+                </Link>
+              </div>
             </div>
           </td>
         </tr>

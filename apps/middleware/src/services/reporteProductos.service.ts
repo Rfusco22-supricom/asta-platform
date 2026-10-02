@@ -20,12 +20,14 @@ import type { RangoPedido } from './rango.js';
  *
  * Medido el 2-oct-2026 en producción con la cartera más grande (796 clientes):
  * con `partner_id in [...]` el agrupado tardaba 14,7 s; con el comercial del
- * cliente, 1,3 s. Es el mismo conjunto: comprobado en tres carteras, mismo
- * total al céntimo y ningún cliente fuera de `dominioCartera`. Al buscar por un
- * campo de otro modelo Odoo aplica `active_test`, así que los clientes
- * archivados quedan fuera igual que en la cartera; `parent_id = false` es la
- * otra mitad de esa definición. El alcance sigue saliendo del token: el
- * `odooUserId` no es un parámetro.
+ * cliente, 1,3 s. Son las tres condiciones de `dominioCartera`, dichas desde la
+ * línea: comercial, matriz y ACTIVO.
+ *
+ * El `active` hay que escribirlo: al recorrer un many2one, Odoo 17 busca en el
+ * otro modelo SIN `active_test`. Sin él se colaban los clientes archivados del
+ * vendedor —uno con 6.940 sin IVA en junio de 2026—, que la cartera no tiene y
+ * cuya ficha no abre. El alcance sigue saliendo del token: el `odooUserId` no
+ * es un parámetro.
  *
  * ── Caché ────────────────────────────────────────────────────────────────────
  *
@@ -88,7 +90,7 @@ export function agregarReporte(
 
   type Prod = { productId: number; sku: string | null; nombre: string; marca: string | null; esAsta: boolean; cantidad: number; monto: number; porCliente: Map<number, { nombre: string; cantidad: number; monto: number }> };
   const productos = new Map<number, Prod>();
-  const clientes = new Map<number, { nombre: string; monto: number; montoAsta: number; productos: Set<number>; porCategoria: Map<number, number> }>();
+  const clientes = new Map<number, { nombre: string; monto: number; montoAsta: number; montoEnCompetencia: number; productos: Set<number>; porCategoria: Map<number, number> }>();
   const nombreCategoria = new Map<number, string>();
   const categoriaDe = (productId: number): [number, string] => {
     const c = ficha.get(productId)?.categ_id;
@@ -132,9 +134,10 @@ export function agregarReporte(
 
     const [categoriaId, categoria] = categoriaDe(productId);
     nombreCategoria.set(categoriaId, categoria);
-    const c = clientes.get(partnerId) ?? { nombre: nombreCliente.trim(), monto: 0, montoAsta: 0, productos: new Set(), porCategoria: new Map() };
+    const c = clientes.get(partnerId) ?? { nombre: nombreCliente.trim(), monto: 0, montoAsta: 0, montoEnCompetencia: 0, productos: new Set(), porCategoria: new Map() };
     c.monto += monto;
     if (esAsta) c.montoAsta += monto;
+    if (enCompetencia.has(categoriaId)) c.montoEnCompetencia += monto;
     c.productos.add(productId);
     c.porCategoria.set(categoriaId, (c.porCategoria.get(categoriaId) ?? 0) + monto);
     clientes.set(partnerId, c);
@@ -180,6 +183,7 @@ export function agregarReporte(
       nombre: c.nombre,
       monto: redondear(c.monto),
       montoAsta: redondear(c.montoAsta),
+      montoEnCompetencia: redondear(c.montoEnCompetencia),
       productosDistintos: c.productos.size,
       categorias: [...c.porCategoria]
         .map(([categoriaId, monto]) => ({ categoriaId, nombre: nombreCategoria.get(categoriaId) ?? 'Sin categoría', monto: redondear(monto) }))
@@ -222,6 +226,7 @@ export async function reporteProductos(odooUserId: number, rango: RangoPedido, a
     // La cartera (`dominioCartera`), dicha desde la línea: ver la cabecera.
     ['partner_id.user_id', '=', odooUserId],
     ['partner_id.parent_id', '=', false],
+    ['partner_id.active', '=', true],
   ];
 
   const [grupos, competencia] = await Promise.all([
