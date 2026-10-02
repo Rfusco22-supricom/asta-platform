@@ -30,6 +30,10 @@ struct BuscarView: View {
 
     @State private var texto = ""
     @State private var estado: Estado = .vacio
+    /// Cuál es la búsqueda que vale. «Corregir» se puede pulsar con una en curso:
+    /// sin esto, su respuesta llegaba después y quitaba el teclado de debajo del
+    /// dedo con los resultados de lo que ya no está escrito.
+    @State private var vigente = 0
 
     private var escribiendo: Bool { if case .vacio = estado { true } else { false } }
     private var puedeBuscar: Bool { texto.trimmingCharacters(in: .whitespaces).count >= 2 }
@@ -66,15 +70,22 @@ struct BuscarView: View {
         texto += letra
     }
 
-    private func corregir() { estado = .vacio }
+    private func corregir() {
+        vigente += 1 // la que estuviera en curso ya no se enseña
+        estado = .vacio
+    }
 
     private func buscar() {
         let consulta = texto.trimmingCharacters(in: .whitespaces)
         guard consulta.count >= 2 else { return }
         kiosco.tocar()
+        vigente += 1
+        let esta = vigente
         estado = .buscando
         Task {
-            switch await kiosco.datos.buscar(consulta, informar: kiosco.informar) {
+            let r = await kiosco.datos.buscar(consulta, informar: kiosco.informar)
+            guard esta == vigente else { return }
+            switch r {
             case let .ok(b, guardadoEn): estado = .resultados(b, consulta: consulta, guardadoEn: guardadoEn)
             case let .fallo(m): estado = .error(m)
             }
