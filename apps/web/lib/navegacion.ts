@@ -75,7 +75,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           corto: 'Cartera',
         },
         { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca', corto: 'ASTA' },
-        { href: '/reportes', titulo: 'Reportes', icono: 'reportes' },
+        { href: '/reportes', titulo: 'Reportes', icono: 'reportes', prefijo: true },
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],
     },

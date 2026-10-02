@@ -1,6 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { VistaReporte } from '@/components/Reporte';
+import { PestanasReportes } from '@/components/PestanasReportes';
 import { getReporteCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
 
 /**
@@ -58,6 +59,7 @@ export default async function ReportesCarteraPage({
       titulo="Reportes"
       descripcion={`Tu cartera · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
     >
+      <PestanasReportes actual="resumen" periodo={datos.periodo} />
       <VistaReporte datos={datos} base="/reportes" />
     </Marco>
   );
