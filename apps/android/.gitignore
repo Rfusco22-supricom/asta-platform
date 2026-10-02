@@ -1,0 +1,7 @@
+.gradle/
+build/
+app/build/
+.idea/
+*.iml
+# La URL y la key de cada tablet, y la ruta del SDK de esta máquina.
+local.properties
