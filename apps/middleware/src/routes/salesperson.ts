@@ -12,6 +12,7 @@ import { actividadDeCartera } from '../services/actividadCartera.service.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
 import { reporte } from '../services/reportes.service.js';
+import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { z } from 'zod';
 import { nuevaCompatibilidadSchema } from '@asta/shared-types';
@@ -158,6 +159,31 @@ salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req
 
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
     res.json(await reporte({ ...rango, soloDelVendedor: odooUserId }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Qué compran los clientes de la PROPIA cartera, por categoría y producto.
+ *
+ * Mismo permiso y mismo alcance que `/reportes`: la cartera sale del
+ * `odooUserId` del token, y el periodo se valida con `rangoDeLaPeticion`.
+ */
+salespersonRouter.get('/reportes/productos', autorizar('reportes.propios.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({
+        error: {
+          code: 'ROLE_NOT_ALLOWED',
+          message: 'Tu usuario no tiene cartera asociada en Odoo.',
+        },
+      });
+      return;
+    }
+
+    res.json(await reporteProductos(odooUserId, rangoDeLaPeticion(req.query as Record<string, unknown>)));
   } catch (error) {
     next(error);
   }

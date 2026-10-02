@@ -36,7 +36,7 @@ import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
  */
 
 /** La marca propia en `product.template.spiff_brand_id`. */
-const MARCA_ASTA = 951;
+export const MARCA_ASTA = 951;
 
 export interface OportunidadAsta {
   partnerId: number;
@@ -91,7 +91,7 @@ export function vaciarCacheAsta(): void {
  * Las categorías donde ASTA tiene producto. Fuera de ellas no hay nada que
  * comparar: el cliente no elige otra marca, es que ASTA no fabrica eso.
  */
-async function categoriasEnCompetencia(): Promise<number[]> {
+export async function categoriasEnCompetencia(): Promise<number[]> {
   const enCache = cacheCategorias.get('todas');
   if (enCache !== undefined) return enCache;
 
