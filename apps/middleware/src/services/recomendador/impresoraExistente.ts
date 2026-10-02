@@ -42,19 +42,51 @@ export function esLaDelCatalogo(nuevo: string, clave: string): boolean {
 }
 
 /**
- * La impresora de esa marca con ese nombre normalizado, o la del catálogo que
- * es la misma, o null si hay que crearla.
+ * ¿Son la misma impresora dos nombres que no vienen del catálogo? (#173)
+ *
+ * Lo de arriba solo reconoce impresoras DEL CATÁLOGO, y eso deja fuera el caso
+ * más común cuando se pasan varios importadores: la L3110 no la vendemos, así
+ * que la lista del fabricante crea «EcoTank L3110» y el nombre de un tóner crea
+ * «L3110», sin nada en medio con lo que compararlas. Medido sobre los cuatro
+ * importadores: **12 pares duplicados** de 298 impresoras.
+ *
+ * La regla es la misma de antes, aplicada ahora entre dos nombres cualesquiera:
+ * uno acaba en el otro. Y con los mismos frenos, porque unir dos impresoras
+ * distintas sigue siendo peor que duplicar una:
+ *
+ *   · el nombre corto tiene que medir 4 o más y llevar alguna cifra, para que
+ *     «laser» no se coma a «laserjet»;
+ *   · acabar en, no contener: «LaserJet Pro M404dn» NO es la «M404», que es
+ *     otro modelo, porque no acaba en «m404»;
+ *   · y si hay dos candidatas, no se elige ninguna.
+ */
+export function esLaMisma(uno: string, otro: string): boolean {
+  const [corta, larga] = uno.length <= otro.length ? [uno, otro] : [otro, uno];
+  return corta.length >= 4 && /\d/.test(corta) && larga !== corta && larga.endsWith(corta);
+}
+
+/**
+ * La impresora de esa marca con ese nombre normalizado, la del catálogo que es
+ * la misma, la que ya existe con otro nombre, o null si hay que crearla.
  */
 export async function buscarImpresora(tx: Prisma.TransactionClient, brandId: number, nameNormalized: string): Promise<PrinterModel | null> {
   const exacta = await tx.printerModel.findUnique({ where: { brandId_nameNormalized: { brandId, nameNormalized } } });
   if (exacta) return exacta;
 
-  const catalogo = await tx.printerModel.findMany({ where: { brandId, inOdooCatalog: true }, include: { brand: { select: { name: true } } } });
-  const coinciden = catalogo.filter((m) => {
+  const deLaMarca = await tx.printerModel.findMany({ where: { brandId }, include: { brand: { select: { name: true } } } });
+  const coinciden = deLaMarca.filter((m) => {
+    if (!m.inOdooCatalog) return false;
     const clave = claveDelCatalogo(m.brand.name, m.name);
     return clave !== null && esLaDelCatalogo(nameNormalized, clave);
   });
-  if (coinciden.length !== 1) return null;
+  // Con dos del catálogo que encajan no se elige, y tampoco se baja a la regla
+  // de abajo: si la clave del catálogo ya era ambigua, el nombre suelto lo es más.
+  if (coinciden.length > 1) return null;
+  if (coinciden.length === 0) {
+    const parecidas = deLaMarca.filter((m) => esLaMisma(m.nameNormalized, nameNormalized));
+    if (parecidas.length !== 1) return null;
+    coinciden.push(parecidas[0]!);
+  }
   const { brand: _marca, ...modelo } = coinciden[0]!;
   return modelo;
 }
