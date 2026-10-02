@@ -2,7 +2,6 @@ node_modules/
 dist/
 build/
 .next/
-.expo/
 *.tsbuildinfo
 
 # `.env.*` cubre tambien los respaldos a mano (`.env.bak`, `.env.viejo`): el
@@ -62,7 +61,3 @@ odoo-config-*.json.gz
 # apps/web/public/, que es la única carpeta de la que Next sirve estáticos.
 /public/
 
-# Expo (kiosco)
-apps/mobile/.expo/
-apps/mobile/android/
-apps/mobile/ios/

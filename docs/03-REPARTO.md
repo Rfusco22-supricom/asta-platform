@@ -5,7 +5,7 @@
 | Responsable | `Rfusco22-supricom` | `LinoGouveia` |
 | Label | `track:A-core-vendedores` | `track:B-api-kiosco` |
 | Issues | 30 | 24 |
-| Frontend propio | Panel Next.js | App React Native |
+| Frontend propio | Panel Next.js | Apps del kiosco (SwiftUI y Kotlin) |
 | Superficie backend | Middleware core, identidad, `/salesperson/*` | `/api/v1/public/*`, recomendador |
 
 ---
@@ -119,7 +119,7 @@ apps/middleware/src/middleware/
     authJwt                        A
     apiKeyAuth                     B
 apps/web/                          A
-apps/mobile/                       B
+apps/ios/, apps/android/          B
 prisma/schema.prisma               A (migraciones), B avisa lo que necesita
 packages/shared-types/             COMPARTIDO — PR con revisión cruzada
 ```

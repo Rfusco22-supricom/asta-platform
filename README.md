@@ -1,6 +1,7 @@
 # ASTA — Plataforma
 
-Panel web (Next.js), app móvil de kiosco (React Native) y middleware Node.js
+Panel web (Next.js), apps nativas del kiosco (SwiftUI para iPad, Kotlin para
+Android) y middleware Node.js
 sobre un ERP **Odoo 17**.
 
 **Odoo es el sistema de registro. El middleware es el único que habla con Odoo.**
@@ -63,7 +64,8 @@ mysql -u root -p asta < db/mysql/002_seed.sql
 ```
 apps/middleware/     Node.js + Express + TS — lo único que habla con Odoo
 apps/web/            Next.js (pendiente)
-apps/mobile/         React Native (pendiente)
+apps/ios/            Kiosco para iPad — SwiftUI, ver su README
+apps/android/        Kiosco para tablets Android — Kotlin + Jetpack Compose, ver su README
 packages/shared-types/   Contrato de la API — COMPARTIDO, ver reglas abajo
 prisma/schema.prisma MySQL, 15 modelos
 db/mysql/            El mismo esquema como SQL, con las decisiones comentadas
