@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { GrupoNav } from '@/lib/navegacion';
+import { useEffect, useState } from 'react';
+import type { GrupoNav, Seccion } from '@/lib/navegacion';
 
 /**
  * El menú lateral.
@@ -168,5 +169,94 @@ export function NavLateral({ grupos }: { grupos: GrupoNav[] }) {
         </div>
       ))}
     </nav>
+  );
+}
+
+/** Cuántas pestañas caben abajo en un móvil de 360 px sin que el texto se corte. */
+const MAX_PESTANAS = 5;
+
+/**
+ * El menú en pantallas estrechas: pestañas fijas abajo, como en una app.
+ *
+ * Las mismas secciones que el lateral, que en estrecho se queda solo con el
+ * logo (ver `@media (max-width: 880px)` en `globals.css`). Si son más de cinco
+ * —el administrador tiene nueve— van cuatro y «Más», que abre una hoja con el
+ * resto. Las dos navegaciones se pintan siempre y es el CSS quien decide cuál
+ * se ve: con JavaScript mirando el ancho, servidor y navegador pintarían cosas
+ * distintas y la hidratación fallaría.
+ */
+export function NavInferior({ grupos }: { grupos: GrupoNav[] }) {
+  const ruta = usePathname();
+  const [abierta, setAbierta] = useState(false);
+
+  // Al cambiar de pantalla, la hoja se cierra sola.
+  useEffect(() => setAbierta(false), [ruta]);
+
+  useEffect(() => {
+    if (!abierta) return;
+    const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && setAbierta(false);
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [abierta]);
+
+  const todas = grupos.flatMap((g) => g.secciones);
+  const caben = todas.length <= MAX_PESTANAS;
+  const fijas = caben ? todas : todas.slice(0, MAX_PESTANAS - 1);
+  const resto = caben ? [] : todas.slice(MAX_PESTANAS - 1);
+  const masActiva = resto.some((s) => estaActiva(ruta, s.href, s.prefijo));
+
+  const pestana = (s: Seccion) => {
+    const activa = estaActiva(ruta, s.href, s.prefijo);
+    return (
+      <Link key={s.href} href={s.href} className={activa ? 'pestana activa' : 'pestana'} aria-current={activa ? 'page' : undefined}>
+        <span className="pestana-icono">
+          <Icono nombre={s.icono} />
+        </span>
+        <span className="pestana-texto">{s.corto ?? s.titulo}</span>
+      </Link>
+    );
+  };
+
+  return (
+    <>
+      <nav className="nav-inferior" aria-label="Secciones">
+        {fijas.map(pestana)}
+        {resto.length > 0 && (
+          <button
+            type="button"
+            className={masActiva || abierta ? 'pestana activa' : 'pestana'}
+            aria-expanded={abierta}
+            aria-controls="hoja-mas"
+            onClick={() => setAbierta((a) => !a)}
+          >
+            <span className="pestana-icono">
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="19" cy="12" r="1.8" />
+              </svg>
+            </span>
+            <span className="pestana-texto">Más</span>
+          </button>
+        )}
+      </nav>
+
+      {resto.length > 0 && (
+        <div className={abierta ? 'hoja-fondo abierta' : 'hoja-fondo'} onClick={() => setAbierta(false)} aria-hidden={!abierta}>
+          <div id="hoja-mas" className="hoja" role="dialog" aria-label="Más secciones" onClick={(e) => e.stopPropagation()}>
+            <span className="hoja-asa" aria-hidden="true" />
+            {resto.map((s) => {
+              const activa = estaActiva(ruta, s.href, s.prefijo);
+              return (
+                <Link key={s.href} href={s.href} className={activa ? 'hoja-item activa' : 'hoja-item'} aria-current={activa ? 'page' : undefined} tabIndex={abierta ? 0 : -1}>
+                  <Icono nombre={s.icono} />
+                  <span>{s.titulo}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

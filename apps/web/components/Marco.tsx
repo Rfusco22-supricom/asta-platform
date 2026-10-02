@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { clearSession } from '@/lib/session';
 import { ambitoDe, navegacionDe } from '@/lib/navegacion';
-import { NavLateral } from './NavLateral';
+import { NavInferior, NavLateral } from './NavLateral';
 import { MenuUsuario } from './MenuUsuario';
 
 /**
@@ -95,6 +95,9 @@ export function Marco({
           Facturación y cartera se leen de Odoo en cada carga.
         </div>
       </aside>
+
+      {/* En estrecho el menú baja a pestañas fijas; en ancho, el CSS lo oculta. */}
+      <NavInferior grupos={grupos} />
 
       <main className="contenido">
         <header className="cabecera">

@@ -1039,20 +1039,125 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
  * propósito: son cuatro entradas, y esconderlas detrás de un botón cuesta un
  * toque más cada vez para ahorrar 40 px de alto.
  */
+/* ── Pestañas de abajo (estrecho) ────────────────────────────────────────── */
+/*
+ * En estrecho el lateral se queda en una franja con el logo y el menú baja a
+ * pestañas fijas, como en una app: siempre a mano con el pulgar, y sin la tira
+ * con barra de desplazamiento que había antes. `NavInferior` en
+ * `components/NavLateral.tsx`. En ancho no se ve.
+ */
+.nav-inferior, .hoja-fondo { display: none; }
+
 @media (max-width: 880px) {
-  .app { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+  /* Abajo, sitio para la barra: que el final de una tabla no quede debajo. */
+  .app { grid-template-columns: 1fr; gap: 12px; padding: 12px 12px calc(92px + env(safe-area-inset-bottom)); }
 
   .lateral { position: static; height: auto; }
-  .lateral-marca { flex-direction: row; align-items: center; gap: 12px; padding: 14px 16px 12px; }
-  .nav { display: flex; gap: 6px; overflow-x: auto; padding: 0 12px 12px; }
-  .nav-grupo { display: flex; gap: 6px; }
-  .nav-grupo + .nav-grupo { margin-top: 0; }
-  .nav-titulo { display: none; }
-  .nav-item { white-space: nowrap; margin-bottom: 0; }
-  .lateral-pie { display: none; }
+  .lateral-marca { flex-direction: row; align-items: center; gap: 12px; padding: 12px 16px; }
+  .lateral .nav, .lateral-pie { display: none; }
 
   .cabecera { flex-wrap: wrap; padding: 4px 2px 16px; }
   .cabecera-acciones { margin-left: 0; width: 100%; }
+
+  .nav-inferior {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 50;
+    display: flex;
+    gap: 2px;
+    padding: 6px 4px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, var(--lateral-1) 0%, var(--lateral-2) 62%);
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.2), 0 14px 30px -10px rgba(17, 24, 39, 0.55);
+  }
+
+  .pestana {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 2px 6px;
+    border: 0;
+    border-radius: 14px;
+    background: none;
+    color: var(--lateral-text);
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+  .pestana:hover { color: var(--lateral-text-fuerte); text-decoration: none; }
+  .pestana:focus-visible { outline: 2px solid var(--primario-claro); outline-offset: -2px; }
+  .pestana-texto { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* La activa: el icono dentro de una pastilla azul, como el botón activo del lateral. */
+  .pestana-icono {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 28px;
+    border-radius: 999px;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  .pestana.activa { color: var(--lateral-text-fuerte); }
+  .pestana.activa .pestana-icono {
+    background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--sombra-azul);
+    transform: translateY(-1px);
+  }
+
+  /* «Más»: una hoja que sube por encima de la barra. */
+  .hoja-fondo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(10, 14, 24, 0.38);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .hoja-fondo.abierta { opacity: 1; pointer-events: auto; }
+  .hoja {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    display: grid;
+    gap: 2px;
+    padding: 10px 10px 12px;
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 20px 40px -12px rgba(17, 24, 39, 0.45);
+    transform: translateY(16px);
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .hoja-fondo.abierta .hoja { transform: none; }
+  .hoja-asa { justify-self: center; width: 36px; height: 4px; margin: 0 0 6px; border-radius: 999px; background: var(--border-strong); }
+  .hoja-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14.5px;
+    font-weight: 550;
+  }
+  .hoja-item:hover { background: var(--surface-2); text-decoration: none; }
+  .hoja-item.activa { background: color-mix(in srgb, var(--primario) 10%, var(--surface)); color: var(--primario-oscuro); }
+}
+
+@media (max-width: 880px) and (prefers-reduced-motion: reduce) {
+  .pestana, .pestana-icono, .hoja-fondo, .hoja { transition: none; }
 }
 
 /* ── Menú del usuario ─────────────────────────────────────────────────────── */
