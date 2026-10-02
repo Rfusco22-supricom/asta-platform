@@ -10,6 +10,9 @@ mostrador» a casi todo.
 Esta guía la ejecuta **una persona con acceso a EasyPanel**. Son cuatro
 comandos, tres de ellos con simulacro.
 
+> **Las cifras de aquí cuentan con las tres listas del PR que acompaña a este**
+> (CF258A, W1500A y el 125 de Canon). Sin ellas el techo baja de 20 a 17 de 20.
+>
 > **Ensayado el 2026-10-02 de principio a fin**, sobre una base vacía con las
 > migraciones aplicadas y el catálogo de impresoras cargado, que es exactamente
 > como está producción, y contra el mismo Odoo. Los números de cada paso son los
@@ -21,21 +24,20 @@ comandos, tres de ellos con simulacro.
 | | Producción hoy | Después |
 |---|---|---|
 | Marcas | 5 | **6** |
-| Impresoras | 120 | **287** |
+| Impresoras | 120 | **298** |
 | Cartuchos | 0 | **466** |
-| Cartucho ↔ impresora | 0 | **238** (145 del fabricante, 93 del nombre) |
+| Cartucho ↔ impresora | 0 | **256** (163 del fabricante, 93 del nombre) |
 | Producto ↔ cartucho | 0 | **1.124** |
 
 Y lo que de verdad decide, el **techo de cobertura del top 20**: si se validara
-todo lo que estos importadores proponen, **17 de los 20 más vendidos** quedarían
-con la cadena entera. Son **85 %**, y 906.293 de los 989.148 facturados en doce
-meses.
+todo lo que estos importadores proponen, **los 20 más vendidos** quedarían con la
+cadena entera. Es el **100 %**, los 989.148 facturados en doce meses.
 
-Los tres que se quedan fuera, y por qué: **CF258A**, **W1500A** y el **125 de
-Canon** no están en las listas de fabricante (#138) ni sus impresoras salen del
-nombre de ningún producto. Añadir esas tres listas —de la web oficial, como las
-otras— llevaría el techo a 20 de 20, y con eso la Fase 5 pasa de «procede con
-flujo de respaldo» a «procede como estaba planeada» (#7).
+El ensayo del 2026-10-02 dio primero **17 de 20**: se quedaban fuera el
+**CF258A**, el **W1500A** y el **125 de Canon**, que no estaban en las listas de
+fabricante y cuyas impresoras no salen del nombre de ningún producto. Se añadieron
+esas tres listas, de la web oficial de HP y de Canon, y con ellas el techo pasó a
+20 de 20. Por encima del 85 % de #7, la Fase 5 **procede como estaba planeada**.
 
 **El techo no es la cobertura.** Al acabar los cuatro pasos la cobertura real
 sigue siendo 0: lo cargado son propuestas. El 85 % es lo que la revisión puede
@@ -163,7 +165,7 @@ Epson para los cartuchos del top 20 de ventas (#138). Es la fuente más fiable
 que tenemos, y la que cubre justo lo que más factura: `T544`, `667`, `105A`,
 `151A`, `954XL`, `PG-145XL`, `CL-146XL`, `T03`, `GI-16`, `GI-190`, `GI-11`.
 
-En el ensayo: **40 listas, 47 cartuchos encontrados, 85 impresoras, 145
+En el ensayo: **43 listas, 51 cartuchos encontrados, 96 impresoras, 163
 compatibilidades**. Las impresoras que ya están en el catálogo se reconocen y no
 se duplican, así que ese 85 ya lleva descontadas las repetidas.
 
