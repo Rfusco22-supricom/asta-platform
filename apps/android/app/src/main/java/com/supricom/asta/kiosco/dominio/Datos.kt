@@ -6,7 +6,7 @@ import kotlinx.serialization.KSerializer
 
 /**
  * La capa que decide qué se enseña cuando no hay datos en vivo (#42). La misma
- * regla que `apps/mobile/src/datos.ts`: **lo vivo manda; lo guardado rescata.**
+ * regla que `Dominio/Datos.swift` en iOS: **lo vivo manda; lo guardado rescata.**
  *
  * Rescata en los dos cortes que dejan a la tablet sin datos pero no la
  * estropean: `RED` y `ERP`. NO rescata con un 403, un 404 ni un 500 nuestro:

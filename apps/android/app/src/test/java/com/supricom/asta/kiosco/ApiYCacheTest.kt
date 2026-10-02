@@ -24,7 +24,7 @@ import org.junit.Test
 
 /**
  * #40, #42 · El cliente de la API y la caché sin conexión. Los mismos casos que
- * `apps/mobile/src/__tests__/api.test.ts` y `offline.test.ts`: que una tablet sin
+ * `ApiTests.swift` y `CacheTests.swift` en iOS: que una tablet sin
  * conexión o con una key mal puesta no reviente delante del cliente, y que lo
  * guardado rescate sin red o sin ERP, y nada más.
  */

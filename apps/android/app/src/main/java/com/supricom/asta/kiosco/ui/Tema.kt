@@ -17,7 +17,7 @@ import com.supricom.asta.kiosco.R
 import com.supricom.asta.kiosco.dominio.EstadoStock
 
 /**
- * Identidad visual del kiosco (#40). La misma que `apps/mobile/src/tema.ts` y
+ * Identidad visual del kiosco (#40). La misma que
  * `apps/ios/AstaKiosco/Vistas/Tema.swift`.
  *
  * Del logo de Asta: el azul (#0E8FDA) y sus letras de trazo grueso, cortes

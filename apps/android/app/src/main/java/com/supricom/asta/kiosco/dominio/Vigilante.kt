@@ -19,7 +19,7 @@ enum class EstadoConexion { CONECTADO, SIN_CONEXION, SIN_DATOS_VIVOS }
 
 /**
  * Estado de la conexión y reintento en segundo plano (#42). La misma regla que
- * `apps/mobile/src/conexion.ts`: el personal ve siempre si la tablet está
+ * `Dominio/Vigilante.swift` en iOS: el personal ve siempre si la tablet está
  * conectada, y al volver la red la pantalla se pone al día sola.
  *
  * Se sabe por lo que pasa con las peticiones de verdad ([reportar]), no por el

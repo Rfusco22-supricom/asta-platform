@@ -18,7 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Cliente de la API pública para el kiosco (#40). El mismo contrato que
- * `apps/mobile/src/api.ts` y `apps/ios/AstaKiosco/Dominio/Api.swift`.
+ * `apps/ios/AstaKiosco/Dominio/Api.swift`.
  *
  * ── Por qué una API key y no un token de dispositivo ─────────────────────────
  *

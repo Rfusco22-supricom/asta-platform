@@ -1,8 +1,8 @@
 # Kiosco de Asta para tablets Android (Kotlin + Jetpack Compose)
 
 App nativa del kiosco de piso de venta. Issue #40. Es la pareja de la de iPad
-(`apps/ios`) y sustituye a la app Expo de `apps/mobile`, que se borra cuando
-esta y la de iOS estén en uso.
+(`apps/ios`). Las dos sustituyen a la primera versión, en Expo, que se retiró
+(#164).
 
 El cliente escribe su modelo de impresora y ve **qué tóner le sirve y si lo hay
 en la tienda**. Tres pantallas: atracción → buscar → resultados.
@@ -42,16 +42,17 @@ cd apps/android
 
 ## Cómo está hecha
 
-La misma lógica que la app Expo y la de iOS, con los mismos nombres:
+La misma lógica que la de iOS, con los mismos nombres, para poder compararlas y
+cambiarlas a la vez:
 
-| Expo (`apps/mobile/src`) | iOS (`apps/ios`) | Android (`app/src/main/java/…/kiosco`) |
-|---|---|---|
-| `api.ts` | `Dominio/Api.swift` | `dominio/Api.kt` |
-| `cache.ts`, `datos.ts` | `Dominio/Cache.swift`, `Datos.swift` | `dominio/Cache.kt`, `Datos.kt` |
-| `conexion.ts` | `Dominio/Vigilante.swift` | `dominio/Vigilante.kt` |
-| `sesion.ts` | `Dominio/Sesion.swift` | `dominio/Sesion.kt` |
-| `producto.ts` | `Dominio/Producto.swift` | `dominio/Producto.kt` |
-| `tema.ts` | `Vistas/Tema.swift` | `ui/Tema.kt` |
+| Android (`app/src/main/java/…/kiosco`) | iOS (`apps/ios/AstaKiosco`) |
+|---|---|
+| `dominio/Api.kt` | `Dominio/Api.swift` |
+| `dominio/Cache.kt`, `Datos.kt` | `Dominio/Cache.swift`, `Datos.swift` |
+| `dominio/Vigilante.kt` | `Dominio/Vigilante.swift` |
+| `dominio/Sesion.kt` | `Dominio/Sesion.swift` |
+| `dominio/Producto.kt` | `Dominio/Producto.swift` |
+| `ui/Tema.kt` | `Vistas/Tema.swift` |
 
 - **La sesión (#41)**: se cierra sola a los 4 minutos sin tocar, avisando 30 s
   antes con cuenta atrás; «Terminar» la cierra a mano. Al cerrarse se rehacen

@@ -10,7 +10,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 
 /**
- * Caché local del kiosco (#42). La misma regla que `apps/mobile/src/cache.ts`.
+ * Caché local del kiosco (#42). La misma regla que `Dominio/Cache.swift` en iOS.
  *
  * «Una tablet en blanco en piso de venta es peor que una con datos de hace diez
  * minutos», dice el issue. Sin red, la tablet enseña lo último que supo, con la
