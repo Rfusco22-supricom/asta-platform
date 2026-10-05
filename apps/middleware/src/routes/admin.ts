@@ -14,6 +14,7 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
+  validarLoteAstaSchema,
   validarLoteFabricanteSchema,
   cambioKioscoSchema,
   guardarTonersSchema,
@@ -44,6 +45,7 @@ import {
   resumenLoteFabricante,
   validarLoteFabricante,
 } from '../services/recomendador/porImpresora.service.js';
+import { paresAstaClaros, validarLoteAsta } from '../services/recomendador/loteAsta.service.js';
 import { almacenesDeOdoo, cambiarKiosco, listarKioscos, nuevoTokenKiosco, registrarKiosco } from '../services/kioscos.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
@@ -421,6 +423,38 @@ adminRouter.post('/compatibilidades/impresoras/revision', autorizar('admin.compa
         decision: cuerpo.data.decision,
         filas: cuerpo.data.filas.map((f) => ({ cartridgeId: f.cartridgeId, printerModelId: f.printerModelId, antes: f.estadoEsperado })),
       },
+    });
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Los casos claros del tramo producto → cartucho: productos ASTA con el código exacto en el nombre. */
+adminRouter.get('/compatibilidades/productos/lote-asta', autorizar('admin.compatibilidades.revisar'), async (_req, res, next) => {
+  try {
+    const pares = await paresAstaClaros();
+    res.json({ data: pares ?? [], meta: { odooDisponible: pares !== null } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Los valida. Cada par tiene que seguir siendo un caso claro pendiente: todo o nada. */
+adminRouter.post('/compatibilidades/productos/lote-asta', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = validarLoteAstaSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await validarLoteAsta(cuerpo.data.pares, req.identity.appUserId);
+    recordAudit({
+      action: 'compatibilidad.revisada',
+      ...auditContext(req),
+      targetType: 'product_cartridges',
+      targetId: null,
+      metadata: { lote: 'ASTA_CODIGO_EN_NOMBRE', decision: 'VALIDADA', validadas: r.validadas, pares: cuerpo.data.pares.slice(0, 500) },
     });
     res.json({ data: r });
   } catch (error) {

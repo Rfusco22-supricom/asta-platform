@@ -491,3 +491,40 @@ export const loteFabricanteRespuestaSchema = z.object({ data: loteFabricanteSche
 export const validarLoteFabricanteSchema = z.object({ esperadas: z.number().int().positive().max(100_000) });
 
 export const validarLoteFabricanteRespuestaSchema = z.object({ data: z.object({ validadas: z.number().int().nonnegative() }) });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Validar en lote los casos claros del tramo producto → cartucho
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Un producto ASTA a la venta, que no es polvo ni chip, propuesto como
+ * COMPATIBLE de un cartucho cuyo código exacto está en su nombre:
+ * «ASTA TONER CF258A CON CHIP» → CF258A. Lo demás sigue en la revisión una a una.
+ */
+export const parAstaClaroSchema = z.object({
+  templateId: odooIdSchema,
+  nombre: z.string(),
+  sku: z.string().nullable(),
+  cartridgeId: z.number().int().positive(),
+  marca: z.string(),
+  codigo: z.string(),
+});
+
+export type ParAstaClaro = z.infer<typeof parAstaClaroSchema>;
+
+export const loteAstaRespuestaSchema = z.object({
+  data: z.array(parAstaClaroSchema),
+  /** Sin Odoo no se sabe qué es ASTA: la lista sale vacía y se dice. */
+  meta: z.object({ odooDisponible: z.boolean() }),
+});
+
+export type LoteAstaRespuesta = z.infer<typeof loteAstaRespuestaSchema>;
+
+export const validarLoteAstaSchema = z.object({
+  pares: z
+    .array(z.object({ templateId: odooIdSchema.max(4_294_967_295), cartridgeId: z.number().int().positive().max(4_294_967_295) }))
+    .min(1)
+    .max(5_000),
+});
+
+export const validarLoteAstaRespuestaSchema = z.object({ data: z.object({ validadas: z.number().int().nonnegative() }) });

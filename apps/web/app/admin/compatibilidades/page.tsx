@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getRevisionCompatibilidades, getCoberturaTop, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getLoteAsta, getRevisionCompatibilidades, getCoberturaTop, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { RevisionLista } from './RevisionLista';
 import { Pestanas } from './Pestanas';
 import { AvisoOdoo } from './AvisoOdoo';
 import { Cobertura } from './Cobertura';
+import { LoteAsta } from './LoteAsta';
 
 /**
  * Revisión de compatibilidades: qué producto de Odoo es, o sustituye a, qué
@@ -46,6 +47,11 @@ export default async function CompatibilidadesPage({
 
   let datos;
   let cobertura;
+  // El aviso del lote no puede tumbar la página: sin él, se revisa una a una como antes.
+  const lote = await getLoteAsta(sesion.accessToken).catch((e) => {
+    if (esRedireccion(e)) throw e;
+    return null;
+  });
   try {
     // En paralelo: las dos leen ventas de Odoo, y la cache es la misma.
     [datos, cobertura] = await Promise.all([
@@ -88,6 +94,8 @@ export default async function CompatibilidadesPage({
       {(!datos.meta.odooDisponible || !cobertura.odooDisponible) && <AvisoOdoo cobertura={!cobertura.odooDisponible} />}
 
       <Cobertura datos={cobertura} />
+
+      {lote && lote.data.length > 0 && <LoteAsta pares={lote.data} />}
 
       <section className="stats">
         <div className="stat">
