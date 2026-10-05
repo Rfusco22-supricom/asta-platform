@@ -14,6 +14,7 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
+  validarLoteFabricanteSchema,
   cambioKioscoSchema,
   guardarTonersSchema,
   nuevoKioscoSchema,
@@ -36,7 +37,13 @@ import {
 } from '../services/recomendador/revisionImpresoras.service.js';
 import { buscarImpresorasPanel } from '../services/recomendador/recomendador.service.js';
 import { coberturaDelTop } from '../services/recomendador/cobertura.service.js';
-import { buscarCartuchos, guardarTonersDeImpresora, listarPorImpresora } from '../services/recomendador/porImpresora.service.js';
+import {
+  buscarCartuchos,
+  guardarTonersDeImpresora,
+  listarPorImpresora,
+  resumenLoteFabricante,
+  validarLoteFabricante,
+} from '../services/recomendador/porImpresora.service.js';
 import { almacenesDeOdoo, cambiarKiosco, listarKioscos, nuevoTokenKiosco, registrarKiosco } from '../services/kioscos.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
@@ -414,6 +421,37 @@ adminRouter.post('/compatibilidades/impresoras/revision', autorizar('admin.compa
         decision: cuerpo.data.decision,
         filas: cuerpo.data.filas.map((f) => ({ cartridgeId: f.cartridgeId, printerModelId: f.printerModelId, antes: f.estadoEsperado })),
       },
+    });
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Lo pendiente de las listas oficiales del fabricante: cuánto y de dónde. */
+adminRouter.get('/compatibilidades/lote-fabricante', autorizar('admin.compatibilidades.revisar'), async (_req, res, next) => {
+  try {
+    res.json({ data: await resumenLoteFabricante() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Lo valida de una vez. 409 si ya no son las que se vieron en pantalla. */
+adminRouter.post('/compatibilidades/lote-fabricante', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const cuerpo = validarLoteFabricanteSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await validarLoteFabricante(cuerpo.data.esperadas, req.identity.appUserId);
+    recordAudit({
+      action: 'compatibilidad.revisada',
+      ...auditContext(req),
+      targetType: 'cartridge_printer_models',
+      targetId: null,
+      metadata: { lote: 'FABRICANTE', decision: 'VALIDADA', validadas: r.validadas },
     });
     res.json({ data: r });
   } catch (error) {

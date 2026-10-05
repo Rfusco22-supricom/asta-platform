@@ -24,6 +24,8 @@ import {
   type RevisionRespuesta,
   porImpresoraRespuestaSchema,
   type PorImpresoraRespuesta,
+  loteFabricanteRespuestaSchema,
+  type LoteFabricante,
   kioscosRespuestaSchema,
   type KioscosRespuesta,
   almacenesKioscoRespuestaSchema,
@@ -529,6 +531,12 @@ export async function getPorImpresora(
   if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
   const sufijo = qs.size ? `?${qs.toString()}` : '';
   return request(`/api/v1/admin/compatibilidades/por-impresora${sufijo}`, porImpresoraRespuestaSchema, accessToken);
+}
+
+/** Lo pendiente de las listas oficiales del fabricante, para validarlo en lote. */
+export async function getLoteFabricante(accessToken: string): Promise<LoteFabricante> {
+  const r = await request('/api/v1/admin/compatibilidades/lote-fabricante', loteFabricanteRespuestaSchema, accessToken);
+  return r.data;
 }
 
 /** Las tablets del kiosco dadas de alta (#120). */

@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { FormularioCompatibilidad } from '@/components/FormularioCompatibilidad';
-import { getPorImpresora, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getLoteFabricante, getPorImpresora, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { AvisoOdoo } from '../AvisoOdoo';
 import { Pestanas } from '../Pestanas';
 import { TonersPorImpresora } from './TonersPorImpresora';
+import { LoteFabricante } from './LoteFabricante';
 
 /**
  * Compatibilidades → Impresoras: «Impresora | Tóners compatibles» (#56).
@@ -46,6 +47,11 @@ export default async function ImpresorasPage({
   const pagina = Math.max(1, Number(params.pagina) || 1);
 
   let datos;
+  // El aviso del lote no puede tumbar la página: sin él, se revisa una a una como antes.
+  const lote = await getLoteFabricante(sesion.accessToken).catch((e) => {
+    if (esRedireccion(e)) throw e;
+    return null;
+  });
   try {
     // Con un tóner buscado se mira en todas: puede estar ya validado.
     datos = await getPorImpresora(sesion.accessToken, { vista: cartucho && !params.vista ? 'todas' : vista, marca, q, pagina });
@@ -80,6 +86,8 @@ export default async function ImpresorasPage({
       <Pestanas actual="impresoras" />
 
       {!odooDisponible && <AvisoOdoo />}
+
+      {lote && lote.propuestas > 0 && <LoteFabricante lote={lote} />}
 
       <section className="pi-avance" aria-label="Avance de la revisión">
         <div className="pi-avance-texto">
