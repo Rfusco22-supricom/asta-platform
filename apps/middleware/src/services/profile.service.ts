@@ -1,6 +1,7 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { listarNotas, type Nota } from './notes.service.js';
 import { FACTURA, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { FACTURA_CON_ASTA, LINEA_ASTA } from './ventasAsta.service.js';
 
 /**
  * Perfilado del cliente (issue #24).
@@ -132,6 +133,8 @@ export async function getClientProfile(
     ['partner_id', 'in', familia],
     ['display_type', '=', 'product'],
     ['product_id', '!=', false],
+    // Solo ASTA: el panel del vendedor es de la marca (ver `ventasAsta.service`).
+    LINEA_ASTA,
   ];
 
   const [grupos, ultimas, notas] = await Promise.all([
@@ -147,9 +150,11 @@ export async function getClientProfile(
       'account.move',
       [
         ['partner_id', 'child_of', partnerId],
-        // Última COMPRA: una devolución no lo es.
+        // Última COMPRA de ASTA: una devolución no lo es, y una factura sin
+        // nada de la marca tampoco cuenta.
         ['move_type', '=', FACTURA],
         ['state', '=', 'posted'],
+        FACTURA_CON_ASTA,
       ],
       ['invoice_date'],
       { limit: 1, order: 'invoice_date desc, id desc' },

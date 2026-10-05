@@ -100,10 +100,41 @@ function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
   );
 }
 
-export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) {
+/**
+ * `soloAsta`: la vista del vendedor, que cuenta solo lo vendido de ASTA, sin IVA
+ * (ver `reporteAsta.service.ts`). Cambian los rótulos, no la forma: el saldo es
+ * el de las facturas que llevan ASTA, así que no se da como «% de lo facturado»,
+ * que mezclaría la factura entera con su parte ASTA.
+ */
+export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte; base: string; soloAsta?: boolean }) {
   const { totales, asta } = datos;
   const pctDeuda = totales.facturado > 0 ? (totales.porCobrar / totales.facturado) * 100 : 0;
   const hayAlgo = totales.facturas > 0;
+  const t = soloAsta
+    ? {
+        vacio: 'No hay ventas de ASTA en este periodo',
+        vacioTexto: 'ninguna factura con productos ASTA',
+        facturado: 'Vendido en ASTA',
+        facturas: `${totales.facturas.toLocaleString('es-VE')} facturas con ASTA · sin IVA`,
+        deuda: 'en las facturas con ASTA',
+        ticket: 'de ASTA por factura',
+        clientes: 'con al menos una compra de ASTA',
+        serie: 'ASTA mes a mes',
+        top: 'Los que más compran ASTA',
+        columna: 'ASTA',
+      }
+    : {
+        vacio: 'No hay facturas en este periodo',
+        vacioTexto: 'ninguna factura contabilizada',
+        facturado: 'Facturado',
+        facturas: `${totales.facturas.toLocaleString('es-VE')} facturas`,
+        deuda: `${pctDeuda.toFixed(0)} % de lo facturado`,
+        ticket: 'por factura',
+        clientes: 'con al menos una factura',
+        serie: 'Facturación mes a mes',
+        top: 'Los que más facturaron',
+        columna: 'Facturado',
+      };
 
   return (
     <>
@@ -111,40 +142,40 @@ export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) 
 
       {!hayAlgo ? (
         <div className="notice">
-          <h2>No hay facturas en este periodo</h2>
+          <h2>{t.vacio}</h2>
           <p>
-            Entre el {datos.periodo.desde} y el {datos.periodo.hasta} no hay ninguna factura
-            contabilizada. Prueba con un rango más amplio.
+            Entre el {datos.periodo.desde} y el {datos.periodo.hasta} no hay {t.vacioTexto}. Prueba con un rango más
+            amplio.
           </p>
         </div>
       ) : (
         <>
           <section className="stats">
             <Metrica
-              etiqueta="Facturado"
+              etiqueta={t.facturado}
               valor={moneyCompact(totales.facturado)}
-              nota={`${totales.facturas.toLocaleString('es-VE')} facturas`}
+              nota={t.facturas}
             />
             <Metrica
               etiqueta="Por cobrar"
               valor={moneyCompact(totales.porCobrar)}
-              nota={`${pctDeuda.toFixed(0)} % de lo facturado`}
-              tono={pctDeuda >= 30 ? 'mal' : undefined}
+              nota={t.deuda}
+              tono={!soloAsta && pctDeuda >= 30 ? 'mal' : undefined}
             />
             <Metrica
               etiqueta="Ticket promedio"
               valor={moneyCompact(totales.ticketPromedio)}
-              nota="por factura"
+              nota={t.ticket}
             />
             <Metrica
               etiqueta="Clientes que compraron"
               valor={totales.clientes.toLocaleString('es-VE')}
-              nota="con al menos una factura"
+              nota={t.clientes}
             />
           </section>
 
           <section className="panel">
-            <h2>Facturación mes a mes</h2>
+            <h2>{t.serie}</h2>
             <Serie puntos={datos.serieMensual} />
           </section>
 
@@ -152,7 +183,7 @@ export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) 
             <h2>ASTA frente a las demás marcas</h2>
             <p className="panel-nota">
               Solo consumibles: las categorías donde ASTA tiene producto. Fuera de ellas no hay
-              nada que comparar.
+              nada que comparar.{soloAsta && ' Lo de otras marcas es lo que todavía se le puede pasar a ASTA.'}
             </p>
             <div className="cuota">
               <div className="cuota-barra">
@@ -198,13 +229,13 @@ export function VistaReporte({ datos, base }: { datos: Reporte; base: string }) 
           )}
 
           <section className="panel">
-            <h2>Los que más facturaron</h2>
+            <h2>{t.top}</h2>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Cliente</th>
-                    <th className="num">Facturado</th>
+                    <th className="num">{t.columna}</th>
                     <th className="num">Facturas</th>
                   </tr>
                 </thead>

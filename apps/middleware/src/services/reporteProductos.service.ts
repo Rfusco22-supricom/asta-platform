@@ -3,11 +3,18 @@ import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { MARCA_ASTA, categoriasEnCompetencia } from './asta.service.js';
 import { NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
+import { LINEA_ASTA } from './ventasAsta.service.js';
 import type { RangoPedido } from './rango.js';
 
 /**
- * Qué compran los clientes de un vendedor, producto a producto (contrato en
+ * Qué productos ASTA compran los clientes de un vendedor (contrato en
  * `@asta/shared-types`, `reporteProductos.ts`).
+ *
+ * Solo ASTA desde el 5-oct-2026: el panel del vendedor es de la marca (ver
+ * `ventasAsta.service`). `agregarReporte` sigue sabiendo separar ASTA de otras
+ * marcas —sus tests lo prueban con las dos—, pero lo que le llega ya es ASTA,
+ * así que `montoAsta` coincide con `monto`. Lo que se compra de otras marcas
+ * vive en «Oportunidades ASTA».
  *
  * ── Un `read_group` y una lectura ────────────────────────────────────────────
  *
@@ -98,6 +105,10 @@ export function agregarReporte(
   };
 
   const apartados = new Map<string, { nombre: string; monto: number; clientes: Set<number> }>();
+  // «Compraron» es tener una factura: quien solo tiene una nota de crédito en el
+  // periodo sale en la lista, con su negativo, pero no se cuenta como comprador.
+  // La misma regla que «Compran ASTA» de la cartera.
+  const conFactura = new Set<number>();
 
   for (const g of grupos) {
     // Líneas sin producto (un concepto escrito a mano): no son de ningún producto.
@@ -115,6 +126,7 @@ export function agregarReporte(
     }
 
     const signo = g.move_type === NOTA_DE_CREDITO ? -1 : 1;
+    if (signo === 1) conFactura.add(partnerId);
     const monto = -g.balance;
     const cantidad = signo * g.quantity;
     const marca = ficha.get(productId)?.spiff_brand_id || false;
@@ -200,7 +212,7 @@ export function agregarReporte(
       monto: redondear(monto),
       montoAsta: redondear(montoAsta),
       montoEnCompetencia: redondear(montoEnCompetencia),
-      clientes: clientes.size,
+      clientes: conFactura.size,
       productos: productos.size,
     },
     categorias: listaCategorias,
@@ -227,6 +239,7 @@ export async function reporteProductos(odooUserId: number, rango: RangoPedido, a
     ['partner_id.user_id', '=', odooUserId],
     ['partner_id.parent_id', '=', false],
     ['partner_id.active', '=', true],
+    LINEA_ASTA,
   ];
 
   const [grupos, competencia] = await Promise.all([

@@ -193,7 +193,7 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
               <th className="sortable" onClick={() => ordenarPor('nombre')}>
                 Cliente {flecha('nombre')}
               </th>
-              <th className="sortable col-clase" onClick={() => ordenarPor('clase')} title="A: el 80 % de tus ventas en 12 meses · B: el 15 % siguiente · C: el resto">
+              <th className="sortable col-clase" onClick={() => ordenarPor('clase')} title="Por lo que compra de ASTA en 12 meses · A: el 80 % de tus ventas de ASTA · B: el 15 % siguiente · C: el resto">
                 Clase {flecha('clase')}
               </th>
               <th className="sortable" onClick={() => ordenarPor('estado')}>
@@ -303,7 +303,7 @@ function Clasificacion({
           <h2>Estado de compra</h2>
           {datos && (
             <span>
-              Activo: compró hace menos de {datos.meta.umbrales.enRiesgo} días · dormido: más de {datos.meta.umbrales.dormido}
+              Activo: compró ASTA hace menos de {datos.meta.umbrales.enRiesgo} días · dormido: más de {datos.meta.umbrales.dormido}
             </span>
           )}
         </div>
@@ -339,8 +339,8 @@ function Clasificacion({
 
       <div className="panel clasificacion-bloque">
         <div className="clasificacion-titulo">
-          <h2>Valor · últimos 12 meses</h2>
-          {datos && <span>{moneyCompact(total12m)} facturado</span>}
+          <h2>ASTA · últimos 12 meses</h2>
+          {datos && <span>{moneyCompact(total12m)} vendido</span>}
         </div>
         <div className="clases">
           {CLASES.map(({ valor, detalle }) => {
@@ -373,7 +373,7 @@ function Clasificacion({
 function Estado({ a }: { a: ActividadCliente }) {
   const detalle =
     a.estado === 'prospecto'
-      ? 'sin compras'
+      ? 'sin compras de ASTA'
       : a.diasSinComprar === 0
         ? 'compró hoy'
         : a.diasSinComprar === 1
@@ -391,8 +391,12 @@ function Tendencia({ valor }: { valor: number | null }) {
   if (valor === null) return <span className="zero">—</span>;
   // ±5 % es ruido de un pedido más o menos: se lee como estable.
   if (Math.abs(valor) < 5) return <span className="tendencia tendencia-igual">≈ estable</span>;
+  // Con base mínima (`BASE_MINIMA_TENDENCIA`) aún salen saltos grandes: por
+  // encima de +300 % ya solo importa que sube mucho.
   return valor > 0 ? (
-    <span className="tendencia tendencia-sube">▲ {valor} %</span>
+    <span className="tendencia tendencia-sube" title={`${valor} %`}>
+      ▲ {valor > 300 ? '+300' : valor} %
+    </span>
   ) : (
     <span className="tendencia tendencia-baja">▼ {Math.abs(valor)} %</span>
   );
@@ -419,7 +423,7 @@ function MiniSerie({ serie, meses }: { serie: number[]; meses: string[] }) {
             className={v > 0 ? (i === serie.length - 1 ? 'mes-curso' : 'mes-lleno') : 'mes-vacio'}
             style={{ animationDelay: `${i * 25}ms` }}
           >
-            <title>{`${nombreMes(meses[i] ?? '')}: ${v === 0 ? 'sin compras' : money(v)}`}</title>
+            <title>{`${nombreMes(meses[i] ?? '')}: ${v === 0 ? 'sin ASTA' : money(v)}`}</title>
           </rect>
         );
       })}

@@ -71,9 +71,9 @@ export default async function CarteraPage() {
   }
 
   const { filas, meta } = portfolio;
-  // Con al menos una factura, la misma regla que separa a los prospectos en la
-  // clasificación de abajo. `esCliente` (el `customer_rank` de Odoo) se enciende
-  // también con un pedido confirmado sin facturar, y las dos cifras no casaban.
+  // Con al menos una factura con ASTA, la misma regla que separa a los
+  // prospectos en la clasificación de abajo. `esCliente` (el `customer_rank` de
+  // Odoo) se enciende también con un pedido confirmado sin facturar.
   const conHistorial = filas.filter((f) => f.numeroFacturas > 0).length;
   const conDeuda = filas.filter((f) => f.porCobrar > 0).length;
   const mayor = filas.reduce<number>((m, f) => Math.max(m, f.totalFacturado), 0);
@@ -82,11 +82,11 @@ export default async function CarteraPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Mi cartera"
-      descripcion={`${meta.clientes} clientes asignados · datos en vivo desde Odoo, en moneda de la compañía, netos de devoluciones`}
+      descripcion={`${meta.clientes} clientes asignados · solo ASTA, sin IVA y neto de devoluciones · en vivo desde Odoo`}
     >
       <section className="stats">
         <div className="stat">
-          <div className="stat-label">Total facturado</div>
+          <div className="stat-label">Vendido en ASTA</div>
           <div className="stat-value">{moneyCompact(meta.totalCartera)}</div>
           <div className="stat-sub">{money(meta.totalCartera)}</div>
         </div>
@@ -100,12 +100,12 @@ export default async function CarteraPage() {
           >
             {moneyCompact(meta.porCobrarCartera)}
           </div>
-          <div className="stat-sub">{conDeuda} clientes con saldo</div>
+          <div className="stat-sub">{conDeuda} clientes con saldo en facturas con ASTA</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Con historial</div>
+          <div className="stat-label">Compran ASTA</div>
           <div className="stat-value">{conHistorial}</div>
-          <div className="stat-sub">{filas.length - conHistorial} prospectos sin facturas</div>
+          <div className="stat-sub">{filas.length - conHistorial} todavía sin comprar ASTA</div>
         </div>
         <div className="stat">
           <div className="stat-label">Mayor cliente</div>

@@ -1304,7 +1304,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 
 .rp-cabecera {
   display: grid;
-  grid-template-columns: 18px minmax(160px, 1.4fr) minmax(80px, 1fr) 150px 92px;
+  grid-template-columns: 18px minmax(160px, 1.4fr) minmax(80px, 1fr) 92px;
   align-items: center;
   gap: 14px;
   width: 100%;

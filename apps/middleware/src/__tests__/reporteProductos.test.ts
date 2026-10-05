@@ -4,6 +4,7 @@ import { NO_SON_VENTA, agregarReporte, reporteProductos, vaciarCacheReporteProdu
 import { idsDeCartera } from '../services/partners.service.js';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { TIPO_FACTURADO_LINEA } from '../services/criterioFacturacion.js';
+import { LINEA_ASTA } from '../services/ventasAsta.service.js';
 
 /**
  * Reporte de clientes por producto.
@@ -58,6 +59,18 @@ describe('agregación del reporte', () => {
   it('el saldo inicial no es una venta: se aparta y se dice cuánto', () => {
     expect(r.apartados).toEqual([{ sku: 'SAL_INI', nombre: 'Saldo Inicial', monto: 7000, clientes: 2 }]);
     expect(r.categorias.flatMap((c) => c.productos).some((p) => p.sku === 'SAL_INI')).toBe(false);
+  });
+
+  it('quien solo tiene una nota de crédito sale en la lista pero no cuenta como comprador', () => {
+    const r2 = agregarReporte(
+      [linea(TONER_ASTA, ANA, -300, 3), linea(TONER_ASTA, BETO, 63, 1, 'out_refund')],
+      fichas,
+    );
+    expect(r2.totales.clientes).toBe(1);
+    expect(r2.clientes.map((c) => [c.nombre, c.monto])).toEqual([
+      ['ANA C.A.', 300],
+      ['BETO S.R.L.', -63],
+    ]);
   });
 
   it('las cantidades también restan con la devolución', () => {
@@ -160,6 +173,8 @@ describe('reporte por producto · cada vendedor ve solo su cartera', () => {
         ['partner_id', 'in', ids],
         ['product_id', '!=', false],
         ['product_id.default_code', 'not in', [...NO_SON_VENTA]],
+        // Solo ASTA, como el reporte (ver `ventasAsta.service`).
+        LINEA_ASTA,
       ],
       ['balance:sum'],
       ['product_id'],
