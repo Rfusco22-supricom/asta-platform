@@ -303,6 +303,105 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
       consultado: '2026-10-01',
     }),
   ),
+  // ── El segundo tramo: lo que más pesa después del top 20 ──────────────────
+  //
+  // Medido el 2026-10-05 sobre el top 60 de ventas, ya pasados los importadores:
+  // estos cartuchos tienen producto y NINGUNA impresora. Van por orden de peso.
+  //
+  // Fuera de esta tanda, y por qué:
+  //   · GT53 y GT52 (28.311 juntos): HP solo publica SERIES —«Smart Tank serie
+  //     510», «Plus serie 550»—, y aquí los rangos no se enumeran.
+  //   · Canon T06 (33.273), T10, GPR-58, 067H, BH-1/CH-1: la web de Canon
+  //     Latinoamérica no nombra el consumible en la ficha de la impresora, y la
+  //     página del cartucho en Canon USA no existe para estos. Hace falta otra
+  //     vuelta.
+  {
+    marca: 'HP',
+    cartuchos: ['664'],
+    impresoras: [
+      'DeskJet Ink Advantage 1115',
+      'DeskJet Ink Advantage 2135',
+      'DeskJet Ink Advantage 2675',
+      'DeskJet Ink Advantage 3635',
+      'DeskJet Ink Advantage 3775',
+      'DeskJet Ink Advantage 3787',
+      'DeskJet Ink Advantage 3835',
+      'DeskJet Ink Advantage 4675',
+    ],
+    fuentes: ['https://www.hp.com/ve-es/products/ink-toner/product-details/7907798'],
+    consultado: '2026-10-05',
+  },
+  {
+    // Los cuatro colores del 230A llevan la misma lista: comprobado en la página
+    // del negro y en la del cian, que coinciden modelo a modelo.
+    marca: 'HP',
+    cartuchos: ['230A', 'W2300A', 'W2301A', 'W2302A', 'W2303A'],
+    impresoras: [
+      'Color LaserJet Pro 4203cdn',
+      'Color LaserJet Pro 4203dn',
+      'Color LaserJet Pro 4203dw',
+      'Color LaserJet Pro MFP 4303dw',
+      'Color LaserJet Pro MFP 4303fdn',
+      'Color LaserJet Pro MFP 4303fdw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-230a-laserjet-negro-original-w2300a.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-230a-laserjet-cian-original-w2301a.html',
+    ],
+    consultado: '2026-10-05',
+  },
+  {
+    // El 151X es el de alto rendimiento del 151A: misma lista, y por eso las dos
+    // entradas apuntan a las mismas impresoras y no se duplica ninguna.
+    marca: 'HP',
+    cartuchos: ['151X', 'W1510X'],
+    impresoras: [
+      'LaserJet Pro 4003',
+      'LaserJet Pro 4003n',
+      'LaserJet Pro MFP 4103',
+      'LaserJet Pro MFP 4103dw',
+      'LaserJet Pro MFP 4103fdn',
+      'LaserJet Pro MFP 4103fdw',
+    ],
+    fuentes: ['https://www.hp.com/emea_africa-en/products/ink-toner/product-details/2100584418'],
+    consultado: '2026-10-05',
+  },
+  {
+    // El 58X es el de alto rendimiento del 58A, y la tienda de HP le da los
+    // mismos siete modelos, uno a uno.
+    marca: 'HP',
+    cartuchos: ['CF258X', '58X'],
+    impresoras: [
+      'LaserJet Enterprise M406dn',
+      'LaserJet Enterprise MFP M430f',
+      'LaserJet Pro M404dn',
+      'LaserJet Pro M404dw',
+      'LaserJet Pro M404n',
+      'LaserJet Pro MFP M428fdn',
+      'LaserJet Pro MFP M428fdw',
+    ],
+    fuentes: ['https://www.hp.com/us-en/shop/pdp/hp-58x-high-yield-black-original-laserjet-toner-cartridge'],
+    consultado: '2026-10-05',
+  },
+  {
+    // La página de HP Venezuela y la de México solo dan familias («serie M454»,
+    // «M479»); los cuatro modelos salen de la lista de compatibles de la tienda
+    // de HP, que es la que queda en `source_ref`.
+    marca: 'HP',
+    cartuchos: ['414A', 'W2020A'],
+    impresoras: [
+      'Color LaserJet Enterprise M455dn',
+      'Color LaserJet Enterprise MFP M480f',
+      'Color LaserJet Pro MFP M479fdn',
+      'Color LaserJet Pro MFP M479fdw',
+    ],
+    fuentes: [
+      'https://www.hp.com/us-en/shop/pdp/hp-414a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ve-es/products/ink-toner/product-details/21959550',
+    ],
+    consultado: '2026-10-05',
+  },
+
   {
     // El 125 rompe la regla de arriba —una entrada por ficha de impresora—
     // porque aquí Canon sí publica la página del cartucho, y las fichas de estas
