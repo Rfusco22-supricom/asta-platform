@@ -9,7 +9,7 @@ import { correoConfigurado, enviarCorreo, plantillaAlertas } from './correo.serv
  *
  *   · `cli/alertas.ts`, para un cron externo. Es la única que puede avisar de
  *     que el middleware está caído, porque corre fuera de él.
- *   · `programarAlertas`, dentro del propio middleware, cada pocos minutos. Es
+ *   · `programarCada` (programador.ts), dentro del propio middleware, cada pocos minutos. Es
  *     la de producción desde el 2026-10-05: EasyPanel no tiene programador de
  *     tareas para el servicio. El «middleware caído» lo cubre entonces un
  *     monitor externo de `/health` (ver `docs/05-RUNBOOKS.md`).
@@ -204,56 +204,4 @@ export function resumirPasada(r: ResultadoPasada): string {
     ? 'sin novedades que avisar'
     : `avisos ${r.avisos.cuenta.nueva} nuevas · ${r.avisos.cuenta.cambiada} cambiadas · ${r.avisos.cuenta.recordatorio} recordatorios · ${r.avisos.cuenta.resuelta} resueltas → correo ${canal(r.avisos.correo)}, webhook ${canal(r.avisos.webhook)}`;
   return `alertas: ${criticas} críticas · ${avisosN} avisos · ${r.fallos.length} sin evaluar · ${envio}${r.avisos.errores.length ? ` · ${r.avisos.errores.join(' · ')}` : ''}`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dentro del middleware
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface Programacion {
-  parar: () => void;
-}
-
-/**
- * Corre `pasada` cada `cadaMs`, sin solaparse: si una tarda más que el
- * intervalo (Odoo lento), la siguiente se salta en vez de amontonarse. Un error
- * se escribe y no para el programador: la próxima pasada lo vuelve a intentar.
- *
- * La primera, al cabo de `primeraEnMs`: recién arrancado, el `/health` del
- * propio proceso todavía no tiene muestras de latencia, y un despliegue no
- * tiene por qué empezar con un correo.
- */
-export function programarAlertas(
-  pasada: () => Promise<string>,
-  opciones: { cadaMs: number; primeraEnMs: number; escribir?: (linea: string) => void },
-): Programacion {
-  const escribir = opciones.escribir ?? ((l: string) => console.log(l));
-  let enCurso = false;
-  const correr = async () => {
-    if (enCurso) {
-      escribir('alertas: la pasada anterior sigue en curso; esta se salta');
-      return;
-    }
-    enCurso = true;
-    try {
-      escribir(await pasada());
-    } catch (error) {
-      escribir(`alertas: la pasada falló: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      enCurso = false;
-    }
-  };
-  let intervalo: ReturnType<typeof setInterval> | undefined;
-  const primera = setTimeout(() => {
-    void correr();
-    intervalo = setInterval(() => void correr(), opciones.cadaMs);
-    intervalo.unref?.();
-  }, opciones.primeraEnMs);
-  primera.unref?.();
-  return {
-    parar: () => {
-      clearTimeout(primera);
-      if (intervalo) clearInterval(intervalo);
-    },
-  };
 }
