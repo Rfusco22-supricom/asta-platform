@@ -22,7 +22,9 @@ import { exigirEntornoValido } from './config/validarEntorno.js';
 import { env } from './config/env.js';
 import { version } from './config/version.js';
 import { VigilanteCambios } from './services/vigilanteCambios.js';
-import { pasarAlertas, programarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
+import { pasarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
+import { programarCada } from './services/programador.js';
+import { sincronizarPartners } from './services/sync.service.js';
 
 /**
  * Servidor del middleware.
@@ -270,16 +272,32 @@ if (
   // defecto en producción y apagadas en desarrollo; `ALERTAS_INTERNAS` manda.
   // El «middleware caído» no lo puede avisar él mismo: eso es de un monitor
   // externo de /health (docs/05-RUNBOOKS.md).
-  const alertasInternas = process.env.ALERTAS_INTERNAS
-    ? process.env.ALERTAS_INTERNAS === 'true'
-    : process.env.NODE_ENV === 'production';
-  const alertas = alertasInternas
-    ? programarAlertas(async () => resumirPasada(await pasarAlertas(`http://127.0.0.1:${PORT}`)), {
+  // Sin poner la variable, encendido solo en producción.
+  const encendido = (variable: string) =>
+    process.env[variable] ? process.env[variable] === 'true' : process.env.NODE_ENV === 'production';
+  const alertas = encendido('ALERTAS_INTERNAS')
+    ? programarCada('alertas', async () => resumirPasada(await pasarAlertas(`http://127.0.0.1:${PORT}`)), {
         cadaMs: Math.max(1, Number(process.env.ALERTAS_CADA_MIN ?? 5)) * 60_000,
         primeraEnMs: 2 * 60_000,
       })
     : null;
   if (alertas) console.log(`  alertas   cada ${Number(process.env.ALERTAS_CADA_MIN ?? 5)} min, desde este proceso (#46)`);
+
+  // Sync incremental de clientes, el que `sync-partners` pensaba para un cron:
+  // sin programador en EasyPanel, en producción no corría desde el 1 de octubre,
+  // y los clientes nuevos de Odoo no podían entrar al panel. Si ya hay uno en
+  // curso (lanzado a mano, por ejemplo), la pasada lo dice y espera a la siguiente.
+  const sync = encendido('SYNC_INTERNO')
+    ? programarCada(
+        'sync',
+        async () => {
+          const r = await sincronizarPartners();
+          return `sync: ${r.leidos} leídos · ${r.creados} creados · ${r.actualizados} actualizados · ${r.sinCambios} sin cambios · ${r.fallidos} fallidos · ${(r.duracionMs / 1000).toFixed(1)} s`;
+        },
+        { cadaMs: Math.max(1, Number(process.env.SYNC_CADA_MIN ?? 15)) * 60_000, primeraEnMs: 60_000 },
+      )
+    : null;
+  if (sync) console.log(`  sync      cada ${Number(process.env.SYNC_CADA_MIN ?? 15)} min, desde este proceso`);
 
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
@@ -287,6 +305,7 @@ if (
       console.log(`\n${signal} recibido, cerrando...`);
       vigilante.detener();
       alertas?.parar();
+      sync?.parar();
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(1), 10_000).unref();
     });

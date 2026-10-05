@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { programarAlertas } from '../services/pasadaAlertas.service.js';
+import { programarCada } from '../services/programador.js';
 
 /**
- * #46 · Las alertas desde el propio middleware, cada pocos minutos.
+ * #46 · Las tareas periódicas del propio middleware: las alertas cada 5 min y el
+ * sync de clientes cada 15 (EasyPanel no tiene programador para el servicio).
  *
  * Lo que tiene que cumplir un programador que vive dentro del servidor: que no
  * empiece nada más arrancar, que repita, que una pasada lenta no se amontone
@@ -12,11 +13,11 @@ import { programarAlertas } from '../services/pasadaAlertas.service.js';
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-describe('programarAlertas', () => {
+describe('programarCada', () => {
   it('espera la primera, y luego repite cada intervalo', async () => {
     const lineas: string[] = [];
     let pasadas = 0;
-    const p = programarAlertas(async () => `pasada ${++pasadas}`, { cadaMs: 5_000, primeraEnMs: 2_000, escribir: (l) => lineas.push(l) });
+    const p = programarCada('alertas', async () => `pasada ${++pasadas}`, { cadaMs: 5_000, primeraEnMs: 2_000, escribir: (l) => lineas.push(l) });
 
     await vi.advanceTimersByTimeAsync(1_999);
     expect(pasadas).toBe(0);
@@ -34,7 +35,7 @@ describe('programarAlertas', () => {
   it('una pasada más lenta que el intervalo no se amontona: la siguiente se salta', async () => {
     const lineas: string[] = [];
     let empezadas = 0;
-    const p = programarAlertas(
+    const p = programarCada('alertas', 
       async () => {
         empezadas++;
         await new Promise((r) => setTimeout(r, 12_000));
@@ -51,7 +52,7 @@ describe('programarAlertas', () => {
   it('un error se escribe y la siguiente pasada vuelve a intentarlo', async () => {
     const lineas: string[] = [];
     let n = 0;
-    const p = programarAlertas(
+    const p = programarCada('alertas', 
       async () => {
         if (++n === 1) throw new Error('MySQL no responde');
         return 'bien';

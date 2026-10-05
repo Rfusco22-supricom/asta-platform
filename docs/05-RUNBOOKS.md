@@ -63,7 +63,9 @@ ALERTAS_INTERNAS=true    # o false para apagarlo; sin ponerla, encendido solo en
 ALERTAS_CADA_MIN=5
 ```
 
-La primera pasada es a los 2 minutos de arrancar. Cada pasada deja una línea en
+La primera pasada es a los 2 minutos de arrancar. Igual que el sync incremental
+de clientes, cada 15 minutos (`SYNC_INTERNO`, `SYNC_CADA_MIN`); ver
+[`sync-atrasado`](#sync-atrasado). Cada pasada deja una línea en
 el log del contenedor (`alertas: 0 críticas · 1 avisos · …`), y lo nuevo llega a
 `ALERTAS_CORREO` (con el SMTP configurado) o a `ALERTAS_WEBHOOK_URL`.
 
@@ -213,8 +215,12 @@ panel**: no tienen fila en `app_users`. Para ellos el sistema parece roto.
 
 No es urgente a las tres de la mañana. Sí lo es antes de que abran las tiendas.
 
-1. ¿Está programado el job? `pnpm sync:partners` es lo que debería correr por
-   cron.
+1. ¿Está corriendo? En producción lo corre el propio middleware cada 15 min
+   (`SYNC_INTERNO`, `SYNC_CADA_MIN`): en el log del contenedor tiene que haber
+   una línea `sync: … leídos · … creados` cada cuarto de hora. Si dice
+   «la pasada falló», el motivo va detrás. Si no aparece ninguna, mirar que
+   `SYNC_INTERNO` no esté en `false`. (Hasta el 2026-10-05 dependía de un cron
+   que nunca existió: estuvo cuatro días sin correr.)
 2. Correrlo a mano y mirar la salida. Si falla, el error suele ser de Odoo
    (credenciales, la API key rotada) o de MySQL.
 3. Si termina bien, el problema es el cron, no el código.
