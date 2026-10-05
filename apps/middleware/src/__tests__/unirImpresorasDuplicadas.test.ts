@@ -120,9 +120,10 @@ describe('unirEn, contra MySQL', () => {
     );
     expect(queda.aliases.map((a) => a.aliasNormalized).sort()).toEqual(['zz9951', 'zz9951x']);
 
+    // La fila repetida no se borra (producción no tiene DELETE): se queda con la desactivada.
     const sobra = await prisma.printerModel.findUniqueOrThrow({ where: { id: corta }, include: { cartridges: true } });
     expect(sobra.isActive).toBe(false);
-    expect(sobra.cartridges).toEqual([]);
+    expect(sobra.cartridges.map((c) => c.cartridgeId)).toEqual([cartucho.B]);
     // El conflicto, intacto.
     expect(await prisma.printerModel.count({ where: { brandId: marcaId, isActive: true } })).toBe(3);
 
