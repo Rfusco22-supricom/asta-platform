@@ -3,7 +3,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import cookieParser from 'cookie-parser';
-import { odooEnv } from './config/odooEnv.js';
 import { getUid, executeKw } from './odoo/client.js';
 import { metricasOdoo } from './odoo/metrics.js';
 import { salespersonRouter } from './routes/salesperson.js';
@@ -201,10 +200,15 @@ export function createApp() {
       status: sano ? 'ok' : 'degraded',
       version: version(),
       dependencias: {
+        /*
+         * Sin la URL ni el nombre de la base de Odoo. Estuvieron aquí hasta que
+         * el dominio público del middleware empezó a responder (2026-10-05), y
+         * esto se sirve sin autenticar: no hay por qué decirle a cualquiera
+         * contra qué instancia y qué base de producción trabajamos. Quien está
+         * de guardia los tiene en el entorno del servicio.
+         */
         odoo: {
           ...odoo,
-          url: odooEnv.ODOO_URL,
-          db: odooEnv.ODOO_DB,
           /*
            * Latencia del tráfico REAL, no de la sonda de arriba (issue #46).
            *
