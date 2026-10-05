@@ -74,7 +74,8 @@ describe('ventas ASTA · cada vendedor ve solo su cartera', () => {
 
 describe('ventas ASTA · la cartera y la ficha dicen lo mismo', () => {
   it('el cliente que más compra ASTA: mismo total, mismas facturas y mismo saldo', async () => {
-    const t = await totalesAstaDeCartera(A);
+    // Como la pide «Mi cartera»: con la historia de Smartbit de sus clientes.
+    const t = await totalesAstaDeCartera(A, {}, await idsDeCartera(A));
     const [primero] = [...t].sort((x, y) => y[1].total - x[1].total);
     if (!primero) return;
     const [partnerId, enCartera] = primero;
@@ -82,7 +83,9 @@ describe('ventas ASTA · la cartera y la ficha dicen lo mismo', () => {
     expect(ficha.totalFacturado).toBeCloseTo(enCartera.total, 1);
     expect(ficha.numeroFacturas).toBe(enCartera.facturas);
     expect(ficha.porCobrar).toBeCloseTo(enCartera.porCobrar, 1);
-    expect(ficha.ultimaFactura).not.toBeNull();
+    // `ultimaFactura` es una factura de Odoo: con la historia de Smartbit, el
+    // que más compra puede no tener ninguna.
+    expect(ficha.numeroFacturas).toBeGreaterThan(0);
   });
 });
 

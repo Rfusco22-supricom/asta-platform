@@ -2,6 +2,7 @@ import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { MARCA_ASTA } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
 import type { InvoicingQuery, InvoicingSummary } from './invoicing.service.js';
+import { compras, enRango, smartbit, ventasDeClientes, ventasSmartbitDeCliente } from './smartbit.service.js';
 
 /**
  * Lo que el panel del vendedor cuenta: ASTA, y solo ASTA (decisión del 2-oct-2026).
@@ -75,9 +76,18 @@ export interface TotalAsta {
  * Lo de ASTA de cada cliente, en dos `read_group` en paralelo: de la cartera de
  * un vendedor, o de toda la empresa con `null` (la vista de administración).
  * Los clientes sin ASTA no salen: el llamante los rellena a cero.
+ *
+ * Con `conSmartbit`, los ids de la cartera (o la promesa de ellos, para no
+ * esperarlos antes de preguntar a Odoo), suma también la historia de
+ * Smartbit de cada uno de ellos (`smartbit.service`): lo vendido y las compras,
+ * no el saldo. Sin él, solo Odoo.
  */
-export async function totalesAstaDeCartera(odooUserId: number | null, query: Pick<InvoicingQuery, 'desde' | 'hasta'> = {}): Promise<Map<number, TotalAsta>> {
-  const [lineas, facturas] = await Promise.all([
+export async function totalesAstaDeCartera(
+  odooUserId: number | null,
+  query: Pick<InvoicingQuery, 'desde' | 'hasta'> = {},
+  conSmartbit?: number[] | Promise<number[]>,
+): Promise<Map<number, TotalAsta>> {
+  const [lineas, facturas, sb] = await Promise.all([
     readGroup<{ partner_id: [number, string] | false; balance: number }>(
       'account.move.line',
       [...LINEAS_ASTA, ...(odooUserId === null ? [] : carteraDesdeLinea(odooUserId)), ...rangoLinea(query)],
@@ -96,6 +106,7 @@ export async function totalesAstaDeCartera(odooUserId: number | null, query: Pic
       ['amount_residual_signed:sum'],
       ['commercial_partner_id', 'move_type'],
     ),
+    conSmartbit ? Promise.all([smartbit(), conSmartbit]) : null,
   ]);
 
   const r = new Map<number, TotalAsta>();
@@ -110,6 +121,15 @@ export async function totalesAstaDeCartera(odooUserId: number | null, query: Pic
     const t = de(g.commercial_partner_id[0]);
     t.porCobrar += g.amount_residual_signed;
     if (g.move_type === FACTURA) t.facturas += g.__count;
+  }
+  if (sb) {
+    for (const [id, ventas] of ventasDeClientes(...sb)) {
+      const delRango = ventas.filter((v) => enRango(v, query));
+      if (delRango.length === 0) continue;
+      const t = de(id);
+      t.total += delRango.reduce((s, v) => s + v.venta, 0);
+      t.facturas += compras(delRango).length;
+    }
   }
   for (const t of r.values()) {
     t.total = redondear(t.total);
@@ -146,18 +166,25 @@ interface FacturaLeida {
  *   · `cobrado`: lo cobrado de esas facturas (su total menos su saldo), así que
  *     el «% cobrado» es `cobrado / (cobrado + porCobrar)`.
  *
+ * Con la historia de Smartbit de su RIF (`smartbit.service`): suma a lo
+ * vendido, las facturas (cada compra), el ticket y la serie. No al saldo, al
+ * desglose por estado de pago ni a `ultimaFactura`, que son de facturas de Odoo.
+ *
  * Cuesta 2 RPC: las líneas ASTA agrupadas por factura, y esas facturas.
  */
 export async function resumenAstaDeCliente(partnerId: number, query: InvoicingQuery = {}): Promise<InvoicingSummary> {
   if (!Number.isInteger(partnerId) || partnerId <= 0) throw new TypeError(`partnerId inválido: ${partnerId}`);
 
   // Las sucursales cuentan como el cliente, igual que en `buildDomain`.
-  const porFactura = await readGroup<{ move_id: [number, string] | false; balance: number }>(
-    'account.move.line',
-    [...LINEAS_ASTA, ['move_id.partner_id', 'child_of', partnerId], ...rangoLinea(query)],
-    ['balance:sum'],
-    ['move_id'],
-  );
+  const [porFactura, ventasSb] = await Promise.all([
+    readGroup<{ move_id: [number, string] | false; balance: number }>(
+      'account.move.line',
+      [...LINEAS_ASTA, ['move_id.partner_id', 'child_of', partnerId], ...rangoLinea(query)],
+      ['balance:sum'],
+      ['move_id'],
+    ),
+    ventasSmartbitDeCliente(partnerId).then((vs) => vs.filter((v) => enRango(v, query))),
+  ]);
   const astaDe = new Map<number, number>();
   for (const g of porFactura) if (g.move_id) astaDe.set(g.move_id[0], (astaDe.get(g.move_id[0]) ?? 0) - g.balance);
 
@@ -204,6 +231,17 @@ export async function resumenAstaDeCliente(partnerId: number, query: InvoicingQu
     if (esFactura && f.invoice_date && (!ultima || !ultima.invoice_date || f.invoice_date > ultima.invoice_date || (f.invoice_date === ultima.invoice_date && f.id > ultima.id))) {
       ultima = f;
     }
+  }
+
+  for (const v of ventasSb) {
+    total += v.venta;
+    const m = porMes.get(v.fecha.slice(0, 7)) ?? { inicio: v.fecha, monto: 0, facturas: 0 };
+    m.monto += v.venta;
+    porMes.set(v.fecha.slice(0, 7), m);
+  }
+  for (const c of compras(ventasSb)) {
+    numeroFacturas++;
+    porMes.get(c.fecha.slice(0, 7))!.facturas++;
   }
 
   const summary: InvoicingSummary = {

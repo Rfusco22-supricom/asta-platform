@@ -5,6 +5,7 @@ import { FACTURA } from './criterioFacturacion.js';
 import { idsDeCartera } from './partners.service.js';
 import { UMBRAL_ATENCION_DIAS, UMBRAL_INACTIVO_DIAS, clasificarRecencia } from './profile.service.js';
 import { mesDelGrupo, mesesDe } from './reportes.service.js';
+import { compras, smartbit, ventasDeClientes } from './smartbit.service.js';
 import { LINEAS_ASTA, carteraDesdeLinea } from './ventasAsta.service.js';
 
 /**
@@ -22,6 +23,9 @@ import { LINEAS_ASTA, carteraDesdeLinea } from './ventasAsta.service.js';
  *
  * Así el estado es «cuánto hace que no compra ASTA», y la clase y la tendencia
  * hablan de la marca, no de portátiles e impresoras (decisión del 5-oct-2026).
+ *
+ * Más la historia de Smartbit de cada cliente (`smartbit.service`), lo de
+ * antes del 1-abr-2026: sin ella, quien compró ASTA en marzo era un prospecto.
  * Agrupados por el cliente de la línea, que es el comercial: una sucursal
  * cuenta como su matriz.
  *
@@ -166,7 +170,7 @@ export async function actividadDeCartera(odooUserId: number, ahora = new Date())
   if (ids.length > 0) {
     const base: OdooDomain = [...LINEAS_ASTA, ...carteraDesdeLinea(odooUserId)];
 
-    const [gruposFechas, gruposMes] = await Promise.all([
+    const [gruposFechas, gruposMes, sb] = await Promise.all([
       // Solo facturas: una nota de crédito no es una compra.
       readGroup<{ partner_id: [number, string] | false; primera: string | false; ultima: string | false }>(
         'account.move.line',
@@ -182,6 +186,7 @@ export async function actividadDeCartera(odooUserId: number, ahora = new Date())
         ['balance:sum'],
         ['partner_id', 'invoice_date:month'],
       ),
+      smartbit(),
     ]);
 
     // Solo los de la cartera: el filtro por comercial ya es el mismo conjunto,
@@ -201,6 +206,23 @@ export async function actividadDeCartera(odooUserId: number, ahora = new Date())
       const delCliente = porMes.get(id) ?? new Map<string, number>();
       delCliente.set(mes, (delCliente.get(mes) ?? 0) - g.balance);
       porMes.set(id, delCliente);
+    }
+
+    for (const [id, ventas] of ventasDeClientes(sb, ids)) {
+      for (const c of compras(ventas)) {
+        const f = fechas.get(id);
+        if (!f) fechas.set(id, { primera: c.fecha, ultima: c.fecha });
+        else {
+          if (c.fecha < f.primera) f.primera = c.fecha;
+          if (c.fecha > f.ultima) f.ultima = c.fecha;
+        }
+      }
+      for (const v of ventas) {
+        if (v.fecha < desde || v.fecha > hoy) continue;
+        const delCliente = porMes.get(id) ?? new Map<string, number>();
+        delCliente.set(v.fecha.slice(0, 7), (delCliente.get(v.fecha.slice(0, 7)) ?? 0) + v.venta);
+        porMes.set(id, delCliente);
+      }
     }
   }
 

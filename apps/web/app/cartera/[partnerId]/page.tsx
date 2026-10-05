@@ -237,7 +237,11 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <div className="stat-value" style={{ color: f.porCobrar > 0 ? 'var(--danger)' : undefined }}>
             {money(f.porCobrar)}
           </div>
-          <div className="stat-sub">{pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA</div>
+          <div className="stat-sub">
+            {f.cobrado + f.porCobrar > 0
+              ? `${pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA`
+              : 'sin facturas con ASTA en Odoo'}
+          </div>
         </div>
         <div className="stat">
           <div className="stat-label">Ticket promedio</div>
@@ -252,7 +256,9 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <div className="stat-sub">
             {f.ultimaFactura
               ? `${f.ultimaFactura.folio} · ${fecha(f.ultimaFactura.fecha)}`
-              : 'nunca ha comprado ASTA'}
+              : perfil?.ultimaCompra
+                ? `en Smartbit · ${fecha(perfil.ultimaCompra)}`
+                : 'nunca ha comprado ASTA'}
           </div>
         </div>
       </section>

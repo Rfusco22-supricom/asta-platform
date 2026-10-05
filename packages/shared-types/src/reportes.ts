@@ -27,7 +27,11 @@ export const puntoSerieSchema = z.object({
 });
 
 export const clienteDelReporteSchema = z.object({
-  partnerId: z.number().int().positive(),
+  /**
+   * null si es un cliente de Smartbit (antes de abril de 2026) cuyo RIF no está
+   * en Odoo: tiene ventas, pero no ficha.
+   */
+  partnerId: z.number().int().positive().nullable(),
   nombre: z.string(),
   facturado: montoSchema,
   facturas: z.number().int().nonnegative(),

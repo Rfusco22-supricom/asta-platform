@@ -102,7 +102,8 @@ Es de **solo lectura**: compara y escribe en pantalla, no toca la base.
 
 **Contra `linea-base.prisma`, no contra `schema.prisma`.** `linea-base.prisma`
 describe la base tal como se montó a mano: lo que dicen las tres migraciones de
-la línea base más `compatibilidad_productos`, la tabla creada desde phpMyAdmin.
+la línea base más `compatibilidad_productos` y `ventas_smartbit`, las tablas
+creadas desde phpMyAdmin.
 `schema.prisma` ya incluye todo lo que las migraciones posteriores van a crear, y
 compararlo con producción lo enseñaría como si fuera deriva.
 
@@ -126,8 +127,12 @@ Lo más probable, si sale algo:
   dedujeron del contenido, no del `SHOW CREATE TABLE` (salió cortado). No borra
   datos, pero hay que ajustar el modelo en `schema.prisma` y en
   `linea-base.prisma` a lo que hay, y repetir.
-- **`DROP TABLE compatibilidad_productos`**: se está comparando con un
-  `linea-base.prisma` que no tiene el modelo. **No aplicar nada.**
+- **`DROP TABLE compatibilidad_productos`** o **`DROP TABLE ventas_smartbit`**:
+  se está comparando con un `linea-base.prisma` que no tiene el modelo. **No
+  aplicar nada**: borraría la tabla con sus datos.
+- **`ALTER TABLE ventas_smartbit MODIFY ...`**: el modelo sale del volcado de
+  phpMyAdmin del 5-oct-2026. Igual que con `compatibilidad_productos`: ajustar
+  el modelo en los dos ficheros a lo que hay, y repetir.
 - **Algo de tipos (`JSON`, `DATETIME`…)**: producción es MySQL 9 y el ensayo fue
   sobre MariaDB. Si los dos motores describen un tipo de forma distinta, sale
   aquí. Hay que entenderlo antes de seguir.
@@ -178,6 +183,7 @@ Aplica lo que haya en la imagen después de la línea base. Al 5-oct-2026, en
 | `20261001200000_api_order_requests` | Claves de idempotencia de `POST /orders` (#33) |
 | `20261001210000_impresoras_catalogo_odoo` | Marca las impresoras que Supricom vende (#40) |
 | `20261005120000_impulsa_acciones` | Lo que el vendedor hizo con cada sugerencia de «Impulsa» (#40) |
+| `20261005150000_ventas_smartbit_fuente` | `ventas_smartbit` con `IF NOT EXISTS`: **en producción no hace nada**, la tabla ya está |
 
 ## Paso 4 · Confirmar que no queda deriva
 
@@ -232,6 +238,7 @@ GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<ho
 GRANT SELECT, INSERT, UPDATE ON Asta.alert_states             TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.api_order_requests       TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.impulsa_acciones         TO 'asta_app'@'<host>';
+GRANT SELECT                 ON Asta.ventas_smartbit          TO 'asta_app'@'<host>';
 
 -- Esta tabla ya existía, pero la telemetría del recomendador (#43) completa sus
 -- filas: UPDATE solo en estas tres columnas (#150). Sin él, el clic del kiosco
@@ -249,6 +256,7 @@ GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.alert_states             TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.api_order_requests       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.impulsa_acciones         TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.ventas_smartbit          TO 'asta_lectura'@'<host>';
 ```
 
 Son las mismas que `004_usuarios.sql` concede para esas tablas, sin DELETE en

@@ -86,7 +86,7 @@ export default async function AgentesPage() {
         <Metrica
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota="histórico, sin IVA, neto de devoluciones"
+          nota="histórico, sin IVA, neto de devoluciones; lo de Smartbit, por quien hizo la venta"
         />
         <Metrica
           etiqueta="Por cobrar"

@@ -105,6 +105,9 @@ function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
  * (ver `reporteAsta.service.ts`). Cambian los rótulos, no la forma: el saldo es
  * el de las facturas que llevan ASTA, así que no se da como «% de lo facturado»,
  * que mezclaría la factura entera con su parte ASTA.
+ *
+ * Con `soloAsta` también entra Smartbit, lo de antes de abril de 2026: en una
+ * compra de Smartbit (un cliente en un día) cuenta como factura.
  */
 export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte; base: string; soloAsta?: boolean }) {
   const { totales, asta } = datos;
@@ -116,6 +119,7 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
         vacioTexto: 'ninguna factura con productos ASTA',
         facturado: 'Vendido en ASTA',
         facturas: `${totales.facturas.toLocaleString('es-VE')} facturas con ASTA · sin IVA`,
+        fuente: 'Odoo y Smartbit (antes de abril de 2026)',
         deuda: 'en las facturas con ASTA',
         ticket: 'de ASTA por factura',
         clientes: 'con al menos una compra de ASTA',
@@ -128,6 +132,7 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
         vacioTexto: 'ninguna factura contabilizada',
         facturado: 'Facturado',
         facturas: `${totales.facturas.toLocaleString('es-VE')} facturas`,
+        fuente: 'Odoo',
         deuda: `${pctDeuda.toFixed(0)} % de lo facturado`,
         ticket: 'por factura',
         clientes: 'con al menos una factura',
@@ -183,27 +188,40 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
             <h2>ASTA frente a las demás marcas</h2>
             <p className="panel-nota">
               Solo consumibles: las categorías donde ASTA tiene producto. Fuera de ellas no hay
-              nada que comparar.{soloAsta && ' Lo de otras marcas es lo que todavía se le puede pasar a ASTA.'}
+              nada que comparar.
+              {soloAsta &&
+                ' Lo de otras marcas es lo que todavía se le puede pasar a ASTA. Solo con lo facturado en Odoo, desde abril de 2026: Smartbit trae ASTA, pero no las otras marcas.'}
             </p>
-            <div className="cuota">
-              <div className="cuota-barra">
-                <div className="cuota-asta" style={{ width: `${asta.cuota}%` }} />
+            {asta.asta + asta.competencia === 0 ? (
+              <div className="empty" style={{ padding: '20px' }}>
+                Sin consumibles facturados en Odoo en este periodo: no hay cuota que medir.
               </div>
-              <div className="cuota-pie">
-                <span>
-                  <strong>{asta.cuota.toFixed(1)} %</strong> ASTA · {money(asta.asta)}
-                </span>
-                <span className="cuota-otros">
-                  {(100 - asta.cuota).toFixed(1)} % otras marcas · {money(asta.competencia)}
-                </span>
+            ) : (
+              <div className="cuota">
+                <div className="cuota-barra">
+                  <div className="cuota-asta" style={{ width: `${asta.cuota}%` }} />
+                </div>
+                <div className="cuota-pie">
+                  <span>
+                    <strong>{asta.cuota.toFixed(1)} %</strong> ASTA · {money(asta.asta)}
+                  </span>
+                  <span className="cuota-otros">
+                    {(100 - asta.cuota).toFixed(1)} % otras marcas · {money(asta.competencia)}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           {datos.porVendedor && datos.porVendedor.length > 0 && (
             <section className="panel">
               <h2>Por vendedor</h2>
-              {soloAsta && <p className="panel-nota">Por el comercial asignado a cada cliente: la fila de cada vendedor es su cartera.</p>}
+              {soloAsta && (
+                <p className="panel-nota">
+                  Lo de Odoo, por el comercial asignado a cada cliente; lo de Smartbit (antes de abril de 2026), por quien hizo
+                  la venta. Los vendedores de Smartbit sin usuario en Odoo salen con su nombre.
+                </p>
+              )}
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -242,10 +260,8 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
                 </thead>
                 <tbody>
                   {datos.topClientes.map((c) => (
-                    <tr key={c.partnerId}>
-                      <td>
-                        <Link href={`/cartera/${c.partnerId}`}>{c.nombre}</Link>
-                      </td>
+                    <tr key={c.partnerId ?? c.nombre}>
+                      <td>{c.partnerId ? <Link href={`/cartera/${c.partnerId}`}>{c.nombre}</Link> : c.nombre}</td>
                       <td className="num">{money(c.facturado)}</td>
                       <td className="num">{c.facturas}</td>
                     </tr>
@@ -266,7 +282,7 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
         {datos.criterio.incluyeNotasDeCredito
           ? ', restando las notas de crédito'
           : ', sin restar notas de crédito'}
-        . Leído de Odoo en {(datos.duracionMs / 1000).toFixed(1)} s.
+        . Leído de {t.fuente} en {(datos.duracionMs / 1000).toFixed(1)} s.
       </p>
     </>
   );

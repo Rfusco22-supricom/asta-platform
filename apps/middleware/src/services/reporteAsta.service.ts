@@ -2,6 +2,7 @@ import { readGroup, searchRead } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO } from './criterioFacturacion.js';
 import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, type Reporte } from './reportes.service.js';
+import { compras, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
 import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea } from './ventasAsta.service.js';
 
 /**
@@ -20,6 +21,13 @@ import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea }
  *     cartera. Antes era el comercial de la factura (`invoice_user_id`);
  *   · `asta`: la cuota frente a la competencia, que sigue mirando las otras
  *     marcas porque es la oportunidad (decisión del 5-oct-2026).
+ *
+ * Con las ventas de Smartbit (`smartbit.service`), lo de antes del
+ * 1-abr-2026: suman a lo facturado, la serie, los clientes y las facturas
+ * (cada cliente en un día es una compra), no a «por cobrar». En la vista del
+ * vendedor, las que hizo él; en `porVendedor`, cada una con quien la hizo.
+ * La cuota sigue siendo solo de Odoo: Smartbit trae ASTA, no la competencia, y
+ * mezclarlas la inflaría.
  */
 async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promise<Reporte> {
   const t0 = Date.now();
@@ -37,7 +45,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     ...enRango,
   ];
 
-  const [lineasPorMes, lineasPorCliente, facturasPorMes, facturasPorCliente, competencia] = await Promise.all([
+  const [lineasPorMes, lineasPorCliente, facturasPorMes, facturasPorCliente, competencia, sb] = await Promise.all([
     readGroup<{ balance: number; __domain?: unknown }>('account.move.line', lineas as never, ['balance:sum'], ['invoice_date:month']),
     readGroup<{ partner_id: [number, string] | false; balance: number }>('account.move.line', lineas as never, ['balance:sum'], ['partner_id']),
     readGroup<{ move_type: string | false; amount_residual_signed: number; __count: number; __domain?: unknown }>(
@@ -55,7 +63,9 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     // La competencia, como oportunidad: lo que se compró de otras marcas en las
     // categorías donde ASTA tiene producto.
     (async () => totalDeProductos((await productosEnCompetencia()).otros, rango, deLaEmpresa ? null : await carteraDe(odooUserId)))(),
+    smartbit(),
   ]);
+  const ventasSb = sb.ventas.filter((v) => enRangoSb(v, rango) && (deLaEmpresa || v.vendedorId === odooUserId));
 
   const monto = new Map<string, number>();
   for (const g of lineasPorMes) {
@@ -72,6 +82,12 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     const mes = mesDelGrupo(g);
     if (mes) nFacturas.set(mes, (nFacturas.get(mes) ?? 0) + g.__count);
   }
+  for (const v of ventasSb) monto.set(v.fecha.slice(0, 7), (monto.get(v.fecha.slice(0, 7)) ?? 0) + v.venta);
+  const comprasSb = compras(ventasSb);
+  for (const c of comprasSb) {
+    facturas++;
+    nFacturas.set(c.fecha.slice(0, 7), (nFacturas.get(c.fecha.slice(0, 7)) ?? 0) + 1);
+  }
 
   const facturasDe = new Map<number, number>();
   const saldoDe = new Map<number, number>();
@@ -82,17 +98,30 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     if (g.move_type === FACTURA) facturasDe.set(id, (facturasDe.get(id) ?? 0) + g.__count);
   }
 
-  const clientes = lineasPorCliente
-    .filter((g) => g.partner_id)
-    .map((g) => ({
-      partnerId: (g.partner_id as [number, string])[0],
-      nombre: (g.partner_id as [number, string])[1].trim(),
-      facturado: redondear(-g.balance),
-      facturas: facturasDe.get((g.partner_id as [number, string])[0]) ?? 0,
-    }));
+  // Por cliente: los de Odoo por su id; los de Smartbit, por el cliente de
+  // Odoo con su RIF, o por el RIF si no está en Odoo.
+  const porCliente = new Map<string, { partnerId: number | null; nombre: string; facturado: number; facturas: number }>();
+  for (const g of lineasPorCliente) {
+    if (!g.partner_id) continue;
+    const [id, nombre] = g.partner_id;
+    porCliente.set(`p${id}`, { partnerId: id, nombre: nombre.trim(), facturado: -g.balance, facturas: facturasDe.get(id) ?? 0 });
+  }
+  const claveCliente = (v: VentaSmartbit) => (v.partnerId ? `p${v.partnerId}` : `r${v.rif ?? v.cliente}`);
+  const filaSb = (v: VentaSmartbit) => {
+    const clave = claveCliente(v);
+    const f = porCliente.get(clave) ?? { partnerId: v.partnerId, nombre: v.cliente, facturado: 0, facturas: 0 };
+    porCliente.set(clave, f);
+    return f;
+  };
+  for (const v of ventasSb) filaSb(v).facturado += v.venta;
+  for (const c of comprasSb) filaSb(c).facturas++;
+
+  const clientes = [...porCliente.values()].map((c) => ({ ...c, facturado: redondear(c.facturado) }));
+  const conCompra = new Set([...[...facturasDe.keys()].map((id) => `p${id}`), ...comprasSb.map(claveCliente)]);
 
   const facturado = clientes.reduce((s, c) => s + c.facturado, 0);
-  const asta = facturado;
+  // La cuota, solo con Odoo (ver arriba).
+  const asta = lineasPorCliente.reduce((s, g) => s - g.balance, 0);
   const consumibles = asta + competencia;
 
   return {
@@ -104,7 +133,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
       facturas,
       ticketPromedio: facturas > 0 ? redondear(facturado / facturas) : 0,
       // Clientes con al menos una factura con ASTA en el periodo.
-      clientes: facturasDe.size,
+      clientes: conCompra.size,
     },
     serieMensual: mesesDe(rango).map((periodo) => ({
       periodo,
@@ -112,7 +141,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
       facturas: nFacturas.get(periodo) ?? 0,
     })),
     topClientes: [...clientes].sort((a, b) => b.facturado - a.facturado).slice(0, 15),
-    porVendedor: deLaEmpresa ? await porComercialAsignado(clientes, facturasDe, saldoDe) : null,
+    porVendedor: deLaEmpresa ? await porVendedorDeLaEmpresa(lineasPorCliente, facturasDe, saldoDe, ventasSb, comprasSb) : null,
     asta: {
       asta: redondear(asta),
       competencia: redondear(competencia),
@@ -124,41 +153,47 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
 }
 
 /**
- * Por vendedor: cada cliente, con su comercial asignado en Odoo. Una lectura
- * de `res.partner` con los clientes que compraron ASTA en el periodo.
+ * Por vendedor. Lo de Odoo, por el comercial ASIGNADO al cliente (una lectura
+ * de `res.partner` con los que compraron ASTA en el periodo); lo de Smartbit,
+ * por el vendedor que hizo la venta. Los de Smartbit sin usuario en Odoo salen
+ * cada uno con su nombre, sin id.
  */
-async function porComercialAsignado(
-  clientes: Array<{ partnerId: number; facturado: number }>,
+async function porVendedorDeLaEmpresa(
+  lineasPorCliente: Array<{ partner_id: [number, string] | false; balance: number }>,
   facturasDe: Map<number, number>,
   saldoDe: Map<number, number>,
+  ventasSb: VentaSmartbit[],
+  comprasSb: VentaSmartbit[],
 ): Promise<NonNullable<Reporte['porVendedor']>> {
-  const ids = [...new Set([...clientes.map((c) => c.partnerId), ...saldoDe.keys()])];
+  const ids = [...new Set([...lineasPorCliente.flatMap((g) => (g.partner_id ? [g.partner_id[0]] : [])), ...saldoDe.keys()])];
   // Los archivados también: compraron en el periodo, y su venta tiene que estar.
   const partners = ids.length
     ? await searchRead<{ id: number; user_id: [number, string] | false }>('res.partner', [['id', 'in', ids]], ['user_id'], { context: { active_test: false } })
     : [];
   const comercial = new Map(partners.map((p) => [p.id, p.user_id || null]));
 
-  const filas = new Map<number, { nombre: string; facturado: number; porCobrar: number; facturas: number }>();
-  const fila = (id: number) => {
-    const u = comercial.get(id) ?? null;
-    const clave = u ? u[0] : 0;
-    const f = filas.get(clave) ?? { nombre: u ? u[1].trim() : 'Sin comercial asignado', facturado: 0, porCobrar: 0, facturas: 0 };
+  const filas = new Map<string, { odooUserId: number | null; nombre: string; facturado: number; porCobrar: number; facturas: number }>();
+  const fila = (odooUserId: number | null, nombre: string) => {
+    const clave = odooUserId ? `u${odooUserId}` : `n${nombre}`;
+    const f = filas.get(clave) ?? { odooUserId, nombre, facturado: 0, porCobrar: 0, facturas: 0 };
     filas.set(clave, f);
     return f;
   };
-  for (const c of clientes) fila(c.partnerId).facturado += c.facturado;
-  for (const [id, saldo] of saldoDe) fila(id).porCobrar += saldo;
-  for (const [id, n] of facturasDe) fila(id).facturas += n;
+  const deCliente = (id: number) => {
+    const u = comercial.get(id) ?? null;
+    return u ? fila(u[0], u[1].trim()) : fila(null, 'Sin comercial asignado');
+  };
+  for (const g of lineasPorCliente) if (g.partner_id) deCliente(g.partner_id[0]).facturado -= g.balance;
+  for (const [id, saldo] of saldoDe) deCliente(id).porCobrar += saldo;
+  for (const [id, n] of facturasDe) deCliente(id).facturas += n;
 
-  return [...filas]
-    .map(([uid, f]) => ({
-      odooUserId: uid === 0 ? null : uid,
-      nombre: f.nombre,
-      facturado: redondear(f.facturado),
-      porCobrar: redondear(f.porCobrar),
-      facturas: f.facturas,
-    }))
+  const deVendedor = (v: VentaSmartbit) => fila(v.vendedorId, v.vendedor || 'Sin vendedor');
+  for (const v of ventasSb) deVendedor(v).facturado += v.venta;
+  for (const c of comprasSb) deVendedor(c).facturas++;
+
+  // Un vendedor con fila de Odoo y de Smartbit es una sola: el nombre, el de Odoo.
+  return [...filas.values()]
+    .map((f) => ({ ...f, facturado: redondear(f.facturado), porCobrar: redondear(f.porCobrar) }))
     .sort((a, b) => b.facturado - a.facturado);
 }
 

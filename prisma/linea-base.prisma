@@ -3,9 +3,10 @@
 // `prisma/schema.prisma`. Este fichero no se edita.
 //
 // Describe la base de producción tal como se montó a mano —`001_schema.sql` más
-// `compatibilidad_productos`, creada desde phpMyAdmin—, que es exactamente lo
-// que dicen las tres migraciones de la línea base (`0_init`,
-// `20260914120000_api_logs_pk_compuesta`, `20260914130000_api_usage_monthly`).
+// `compatibilidad_productos` y `ventas_smartbit`, creadas desde phpMyAdmin—,
+// que es exactamente lo que dicen las tres migraciones de la línea base
+// (`0_init`, `20260914120000_api_logs_pk_compuesta`,
+// `20260914130000_api_usage_monthly`).
 //
 // Sirve para el paso 1 de `docs/09-BASELINE-PRISMA.md`: comparar producción con
 // ESTO, y no con `schema.prisma`, que ya incluye todo lo que las migraciones
@@ -13,7 +14,7 @@
 // tablas como si fueran deriva.
 //
 // Sale de `schema.prisma` en 2d7502b^ (el commit anterior a las tablas de #101),
-// más el modelo `CompatibilidadProducto` de hoy.
+// más los modelos `CompatibilidadProducto` y `VentaSmartbit`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ASTA — Esquema del Middleware · MySQL 8.0+
@@ -634,4 +635,32 @@ model CompatibilidadProducto {
   rendimientoPag Int?    @map("rendimiento_pag")
 
   @@map("compatibilidad_productos")
+}
+
+/// Creada a mano en producción (phpMyAdmin, 5-oct-2026). Ver el modelo en `schema.prisma`.
+model VentaSmartbit {
+  id             BigInt    @id @default(autoincrement())
+  companyId      Int       @map("company_id")
+  fecha          DateTime  @db.Date
+  idSucursal     Int?      @map("id_sucursal")
+  sucursal       String?   @db.VarChar(120)
+  /// El vendedor que hizo la venta, por nombre (no hay id).
+  vendedor       String?   @db.VarChar(150)
+  /// El RIF del cliente.
+  codigoCliente  String?   @map("codigo_cliente") @db.VarChar(60)
+  cliente        String?   @db.VarChar(255)
+  /// La referencia interna del producto, la misma que `default_code` en Odoo.
+  codigoArticulo String?   @map("codigo_articulo") @db.VarChar(80)
+  articulo       String?   @db.VarChar(255)
+  linea          String?   @db.VarChar(120)
+  marca          String?   @db.VarChar(120)
+  venta          Decimal   @default(0.00) @db.Decimal(16, 2)
+  unidades       Decimal   @default(0.0000) @db.Decimal(16, 4)
+  costo          Decimal?  @db.Decimal(16, 4)
+  importadoEn    DateTime? @default(now()) @map("importado_en") @db.Timestamp(0)
+
+  @@index([companyId, fecha], map: "idx_company_fecha")
+  @@index([codigoArticulo], map: "idx_articulo")
+  @@index([marca], map: "idx_marca")
+  @@map("ventas_smartbit")
 }
