@@ -55,8 +55,10 @@ struct ConfigApi: Sendable {
     /// alta en el panel, en Kioscos), por las rutas del kiosco: existencias del
     /// almacén de la tienda. Con una API key de cliente, por la API pública,
     /// como antes: así una tablet ya configurada sigue funcionando.
+    var esTablet: Bool { apiKey.hasPrefix("asta_kio_") }
+
     var prefijo: String {
-        apiKey.hasPrefix("asta_kio_") ? "/api/v1/kiosk" : "/api/v1/public"
+        esTablet ? "/api/v1/kiosk" : "/api/v1/public"
     }
 
     /// La de `Info.plist`, que sale del xcconfig de la tablet.
@@ -151,6 +153,16 @@ struct ClienteApi: Sendable {
     }
 
     private struct Vacio: Decodable, Sendable {}
+
+    /// Señal de vida para el panel (Kioscos) y la alerta de kiosco mudo (#46).
+    /// Solo con token de tablet: una key de cliente no tiene tablet que marcar.
+    /// Devuelve si se mandó.
+    @discardableResult
+    func latir() async -> Bool {
+        guard config.esTablet else { return false }
+        let _: Resultado<Vacio> = await pedir("\(config.prefijo)/latido")
+        return true
+    }
 
     /// Qué producto miró el cliente (#43). Se lanza y se olvida: que la
     /// telemetría falle no puede estropear lo que el cliente está haciendo.

@@ -49,6 +49,20 @@ private let busquedaJSON = Data(#"{"data":[{"id":1726,"marca":"HP","nombre":"P16
         #expect(vista.peticion?.value(forHTTPHeaderField: "X-App-Version") == "1.2.0")
     }
 
+    /// #46 · El latido: solo con token de tablet, a su ruta.
+    @Test func elLatidoSoloLoMandaUnaTablet() async {
+        final class Vista: @unchecked Sendable { var peticion: URLRequest? }
+        let vista = Vista()
+        let token = "asta_kio_" + String(repeating: "A", count: 43)
+        let tablet = ClienteApi(config: ConfigApi(base: "http://kiosco.test", apiKey: token),
+                                transporte: TransporteFalso(cuerpo: Data("{}".utf8), vista: { vista.peticion = $0 }))
+        #expect(await tablet.latir())
+        #expect(vista.peticion?.url?.absoluteString == "http://kiosco.test/api/v1/kiosk/latido")
+        vista.peticion = nil
+        #expect(await cliente(TransporteFalso(vista: { vista.peticion = $0 })).latir() == false)
+        #expect(vista.peticion == nil)
+    }
+
     @Test func sinRedEsRed() async {
         #expect(await cliente(TransporteFalso(falla: true)).buscarImpresoras("x") == .fallo(.red))
     }

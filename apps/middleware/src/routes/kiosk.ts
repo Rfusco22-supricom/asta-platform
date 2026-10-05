@@ -67,6 +67,13 @@ export function crearKioskRouter(): Router {
   router.get('/recommender/printers', buscarImpresorasHandler);
   router.get('/recommender/printers/:printerId/compatible', compatiblesHandler);
   router.post('/recommender/busquedas/:busquedaId/clic', clicRecomendadorHandler);
+  // Señal de vida (#46): la app la manda cada pocos minutos mientras está
+  // abierta. Basta con pasar por `authKiosco`, que apunta `last_seen_at`. Sin
+  // esto, una tablet encendida pero sin clientes parecería apagada: la alerta
+  // «kiosco mudo» saltaría cada vez que la tienda tiene una hora floja.
+  router.get('/latido', (_req, res) => {
+    res.json({ data: { ok: true } });
+  });
 
   return router;
 }

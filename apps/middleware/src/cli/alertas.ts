@@ -1,14 +1,17 @@
 // Solo para poner el .env en process.env. No valida nada ni lanza (issue #9).
 import '../config/dotenv.js';
 import { prisma } from '../config/prisma.js';
-import { evaluarTodo, type Alerta } from '../services/alerts.service.js';
-import { cargarEstados, decidirAvisos, guardarEstados, todoComoNuevo, type Aviso, type EstadoAlerta, type TipoAviso } from '../services/avisosAlertas.service.js';
-import { correoConfigurado, enviarCorreo, plantillaAlertas } from '../services/correo.service.js';
+import { evaluarTodo } from '../services/alerts.service.js';
+import { avisar, consultarSalud, type ResultadoAvisos } from '../services/pasadaAlertas.service.js';
 
 /**
  * `pnpm alertas` — comprueba el estado y avisa (issue #46).
  *
- * Pensado para un cron cada pocos minutos.
+ * Pensado para un cron cada pocos minutos. En producción las alertas las corre
+ * el propio middleware (`programarAlertas`, desde el 2026-10-05): EasyPanel no
+ * tiene programador para el servicio. Esto sigue sirviendo para correrlas a
+ * mano, o desde un cron externo, que es lo único que puede avisar de que el
+ * middleware está caído.
  *
  * ── Por qué es un proceso aparte y no algo dentro del middleware ─────────────
  *
@@ -43,178 +46,24 @@ const FIN = '\x1b[0m';
 
 const MIDDLEWARE_URL = process.env.MIDDLEWARE_URL ?? 'http://localhost:3001';
 
-interface Salud {
-  alcanzable: boolean;
-  status?: string;
-  detalle?: string;
-  latencia?: { muestras: number; p95: number | null };
-}
-
-/**
- * Pregunta a `/health`.
- *
- * Con timeout propio: sin él, un middleware colgado —no caído, colgado— dejaría
- * este script esperando indefinidamente, y el cron acumularía procesos hasta que
- * el problema fuera otro.
- */
-async function consultarSalud(): Promise<Salud> {
-  const corte = AbortSignal.timeout(10_000);
-
-  try {
-    const res = await fetch(`${MIDDLEWARE_URL}/health`, { signal: corte });
-    const cuerpo = (await res.json()) as {
-      status?: string;
-      dependencias?: {
-        odoo?: { ok?: boolean; error?: string; latencia?: { muestras: number; p95: number | null } };
-        mysql?: { ok?: boolean; error?: string };
-      };
-    };
-
-    const caidas = Object.entries(cuerpo.dependencias ?? {})
-      .filter(([, d]) => d && (d as { ok?: boolean }).ok === false)
-      .map(([nombre, d]) => `${nombre}: ${(d as { error?: string }).error ?? 'sin detalle'}`);
-
-    return {
-      alcanzable: true,
-      status: cuerpo.status,
-      detalle: caidas.length > 0 ? caidas.join(' · ') : undefined,
-      latencia: cuerpo.dependencias?.odoo?.latencia,
-    };
-  } catch (error) {
-    /*
-     * El `fetch` de Node dice "fetch failed" y esconde el motivo en `cause`.
-     *
-     * A quien esté de guardia, "fetch failed" no le dice nada. La causa sí:
-     * ECONNREFUSED es un proceso que no está, ETIMEDOUT o TimeoutError es un
-     * proceso colgado o una red que no llega, ENOTFOUND es un nombre mal puesto.
-     * Son tres problemas distintos con tres arreglos distintos.
-     */
-    const causa = (error as { cause?: { code?: string; message?: string } })?.cause;
-    const motivo = causa?.code ?? causa?.message;
-    const base = error instanceof Error ? error.message : 'sin respuesta';
-
-    return {
-      alcanzable: false,
-      detalle: motivo ? `${base} (${motivo})` : base,
-    };
-  }
-}
-
-/**
- * Enlace completo al runbook. En la terminal basta la ruta del repositorio; en
- * un correo hace falta algo que se pueda pulsar.
- */
-function enlaceRunbook(runbook: string): string {
-  const base = process.env.ALERTAS_RUNBOOK_BASE ?? 'https://github.com/Rfusco22-supricom/asta-platform/blob/main/';
-  return base.replace(/\/?$/, '/') + runbook;
-}
-
-const SIMBOLO: Record<TipoAviso, string> = { nueva: '', cambiada: '↕ ', recordatorio: '⏳ ', resuelta: '✅ ' };
-
-/** `true` si llegó; `false` si falló. Sin URL configurada no hay nada que decir: `null`. */
-async function enviarAlWebhook(avisos: Aviso[]): Promise<boolean | null> {
-  const url = process.env.ALERTAS_WEBHOOK_URL;
-  if (!url) return null;
-
-  const texto = avisos
-    .map((a) => {
-      const color = a.tipo === 'resuelta' ? '' : a.severidad === 'critica' ? '🔴 ' : '🟡 ';
-      return `${SIMBOLO[a.tipo]}${color}*${a.titulo}*${a.tipo === 'resuelta' ? ' — resuelta' : ''}\n${a.detalle}\n${enlaceRunbook(a.runbook)}`.trim();
-    })
-    .join('\n\n');
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // `text` es lo que entienden Slack, Discord y Google Chat sin configurar
-      // nada más; `avisos` va al lado para quien quiera tratarlos como datos.
-      body: JSON.stringify({ text: texto, avisos }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    return res.ok;
-  } catch (error) {
-    // Que falle el aviso no puede tumbar la comprobación: las alertas ya se
-    // imprimieron, y el código de salida sigue diciendo la verdad.
-    console.error(`  (no se pudo avisar al webhook: ${error instanceof Error ? error.message : 'error'})`);
-    return false;
-  }
-}
-
-/** Las direcciones de `ALERTAS_CORREO`, separadas por comas. */
-function destinatarios(): string[] {
-  return (process.env.ALERTAS_CORREO ?? '')
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
-}
-
-/** `true` si salió; `false` si falló; `null` si no hay direcciones o no hay SMTP. */
-async function enviarPorCorreo(avisos: Aviso[]): Promise<boolean | null> {
-  const para = destinatarios();
-  if (para.length === 0 || !correoConfigurado()) return null;
-  const { enviado } = await enviarCorreo(
-    plantillaAlertas(
-      para.join(', '),
-      avisos.map((a) => ({ tipo: a.tipo, severidad: a.severidad, titulo: a.titulo, detalle: a.detalle, enlace: enlaceRunbook(a.runbook), desde: a.desde })),
-    ),
-  );
-  return enviado;
-}
-
-/**
- * Decide qué toca avisar en esta pasada, lo manda y lo recuerda.
- *
- * El orden importa: primero se envía y DESPUÉS se guarda. Al revés, si fallara
- * el envío, el estado diría que ya se avisó y la alerta no volvería a salir
- * hasta el recordatorio. Y solo se guarda si algún canal entregó, o si no hay
- * ninguno configurado (entonces la salida estándar es el canal).
- */
-async function avisar(alertas: Alerta[], hayReglasSinEvaluar: boolean): Promise<void> {
-  const ahora = new Date();
-  const recordatorioMs = Number(process.env.ALERTAS_RECORDATORIO_HORAS ?? 4) * 3600_000;
-
-  let avisos: Aviso[];
-  let escribir: EstadoAlerta[] = [];
-  let conMemoria = true;
-  try {
-    ({ avisos, escribir } = decidirAvisos(alertas, await cargarEstados(), { ahora, recordatorioMs, hayReglasSinEvaluar }));
-  } catch {
-    // Sin poder leer qué se avisó, se avisa de todo: repetir molesta, callar no.
-    conMemoria = false;
-    avisos = todoComoNuevo(alertas, ahora);
-  }
-
-  if (avisos.length === 0) {
+/** Lo que pasó con los avisos de esta pasada, en la salida estándar. */
+function informarAvisos(r: ResultadoAvisos): void {
+  for (const e of r.errores) console.error(`  (${e})`);
+  if (r.sinNovedades) {
     console.log(`  ${GRIS}Sin novedades: nada que avisar (lo activo ya se avisó).${FIN}`);
     return;
   }
-
-  const [webhook, correo] = await Promise.all([enviarAlWebhook(avisos), enviarPorCorreo(avisos)]);
-  const canales = [webhook, correo].filter((r) => r !== null);
-  const entregado = canales.length === 0 || canales.some((r) => r === true);
-
-  const cuenta = (t: TipoAviso) => avisos.filter((a) => a.tipo === t).length;
+  const canal = (v: boolean | null) => (v === null ? 'sin configurar' : v ? 'enviado' : 'FALLÓ');
   console.log(
-    `  ${GRIS}Avisos: ${cuenta('nueva')} nuevas · ${cuenta('cambiada')} cambiadas · ` +
-      `${cuenta('recordatorio')} recordatorios · ${cuenta('resuelta')} resueltas` +
-      ` → webhook ${webhook === null ? 'sin configurar' : webhook ? 'enviado' : 'FALLÓ'}` +
-      `, correo ${correo === null ? 'sin configurar' : correo ? 'enviado' : 'FALLÓ'}.${FIN}`,
+    `  ${GRIS}Avisos: ${r.cuenta.nueva} nuevas · ${r.cuenta.cambiada} cambiadas · ` +
+      `${r.cuenta.recordatorio} recordatorios · ${r.cuenta.resuelta} resueltas` +
+      ` → webhook ${canal(r.webhook)}, correo ${canal(r.correo)}.${FIN}`,
   );
-
-  if (!entregado) {
-    console.log(`  ${AMARILLO}Ningún canal entregó: se volverá a intentar en la próxima pasada.${FIN}`);
-    return;
-  }
-  if (conMemoria) {
-    await guardarEstados(escribir).catch((e: unknown) =>
-      console.error(`  (no se pudo guardar qué se avisó: ${e instanceof Error ? e.message : 'error'})`),
-    );
-  }
+  if (!r.entregado) console.log(`  ${AMARILLO}Ningún canal entregó: se volverá a intentar en la próxima pasada.${FIN}`);
 }
 
 async function main(): Promise<void> {
-  const salud = await consultarSalud();
+  const salud = await consultarSalud(MIDDLEWARE_URL);
 
   /*
    * Las reglas de base se evalúan SIEMPRE, incluso con el middleware caído.
@@ -272,7 +121,7 @@ async function main(): Promise<void> {
     console.log('');
   }
 
-  await avisar(alertas, fallos.length > 0);
+  informarAvisos(await avisar(alertas, fallos.length > 0));
   await prisma.$disconnect();
 
   const plural = (n: number, una: string, varias: string) =>

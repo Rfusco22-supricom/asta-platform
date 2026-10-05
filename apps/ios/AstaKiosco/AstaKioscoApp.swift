@@ -12,8 +12,13 @@ import SwiftUI
 /// modo de app única de un MDM. Ver `apps/ios/README.md`.
 @main
 struct AstaKioscoApp: App {
+    private static let api = ClienteApi(config: .delBundle())
+    /// Cada cuánto la tablet dice que sigue viva (#46). Menos que el umbral de
+    /// la alerta «kiosco mudo» (30 min), con margen para un latido perdido.
+    static let latido: Duration = .seconds(600)
+
     @State private var kiosco = Kiosco(datos: Datos(
-        api: ClienteApi(config: .delBundle()),
+        api: AstaKioscoApp.api,
         cache: CacheLocal(almacen: AlmacenUserDefaults(defaults: .standard))
     ))
 
@@ -21,6 +26,12 @@ struct AstaKioscoApp: App {
         WindowGroup {
             RaizView(kiosco: kiosco)
                 .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+                .task {
+                    while !Task.isCancelled {
+                        await Self.api.latir()
+                        try? await Task.sleep(for: Self.latido)
+                    }
+                }
         }
     }
 }

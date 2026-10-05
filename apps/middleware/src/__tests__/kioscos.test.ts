@@ -141,6 +141,16 @@ describe('#120 · El token de la tablet', () => {
     expect(fila.appVersion).toBe('1.0.0-test');
   });
 
+  it('el latido marca la tablet como viva sin buscar nada (#46)', async () => {
+    const { kiosco, token } = await alta('ZZ Kiosco latido');
+    olvidarVistos();
+    const r = await pedir('GET', '/api/v1/kiosk/latido', tablet(token));
+    expect(r.status).toBe(200);
+    const fila = await prisma.kioskDevice.findUniqueOrThrow({ where: { id: kiosco.id } });
+    expect(fila.lastSeenAt).not.toBeNull();
+    expect((await pedir('GET', '/api/v1/kiosk/latido', {})).status).toBe(401);
+  });
+
   it('no abre la API pública del cliente', async () => {
     const { token } = await alta('ZZ Kiosco publica');
     expect((await pedir('GET', '/api/v1/public/recommender/printers?q=m404', tablet(token))).status).toBe(401);

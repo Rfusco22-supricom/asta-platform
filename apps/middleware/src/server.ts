@@ -22,6 +22,7 @@ import { exigirEntornoValido } from './config/validarEntorno.js';
 import { env } from './config/env.js';
 import { version } from './config/version.js';
 import { VigilanteCambios } from './services/vigilanteCambios.js';
+import { pasarAlertas, programarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
 
 /**
  * Servidor del middleware.
@@ -264,11 +265,28 @@ if (
   const vigilante = new VigilanteCambios();
   vigilante.arrancar();
 
+  // Alertas de operación cada pocos minutos (#46), desde el propio proceso:
+  // EasyPanel no tiene programador de tareas para el servicio. Encendidas por
+  // defecto en producción y apagadas en desarrollo; `ALERTAS_INTERNAS` manda.
+  // El «middleware caído» no lo puede avisar él mismo: eso es de un monitor
+  // externo de /health (docs/05-RUNBOOKS.md).
+  const alertasInternas = process.env.ALERTAS_INTERNAS
+    ? process.env.ALERTAS_INTERNAS === 'true'
+    : process.env.NODE_ENV === 'production';
+  const alertas = alertasInternas
+    ? programarAlertas(async () => resumirPasada(await pasarAlertas(`http://127.0.0.1:${PORT}`)), {
+        cadaMs: Math.max(1, Number(process.env.ALERTAS_CADA_MIN ?? 5)) * 60_000,
+        primeraEnMs: 2 * 60_000,
+      })
+    : null;
+  if (alertas) console.log(`  alertas   cada ${Number(process.env.ALERTAS_CADA_MIN ?? 5)} min, desde este proceso (#46)`);
+
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.on(signal, () => {
       console.log(`\n${signal} recibido, cerrando...`);
       vigilante.detener();
+      alertas?.parar();
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(1), 10_000).unref();
     });
