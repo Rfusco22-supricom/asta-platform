@@ -7,7 +7,7 @@ import { reconciliar, resincronizarUno } from '../services/reconciliation.servic
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS } from '../services/invitation.service.js';
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
-import { reporte } from '../services/reportes.service.js';
+import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
@@ -204,7 +204,7 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
 });
 
 /**
- * Reportes de facturación de toda la empresa.
+ * Reportes de toda la empresa, solo ASTA (ver `reporteAsta.service`).
  *
  * Ruta APARTE de la del vendedor, con su propio permiso, por lo mismo que en
  * ASTA: un único endpoint que mirara el rol para decidir cuánto enseña es donde
@@ -214,7 +214,8 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
 adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, next) => {
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
-    res.json(await reporte(rango));
+    // Solo ASTA, como el panel del vendedor (decisión del 5-oct-2026).
+    res.json(await reporteAstaDeLaEmpresa(rango));
   } catch (error) {
     next(error);
   }

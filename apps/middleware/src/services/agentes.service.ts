@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
-import { searchRead, readGroup } from '../odoo/client.js';
+import { searchRead } from '../odoo/client.js';
+import { totalesAstaDeCartera } from './ventasAsta.service.js';
 import { authEnv } from '../config/authEnv.js';
-import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 
 /**
  * Estadísticas de los agentes de venta, para el panel de administración.
@@ -73,51 +73,6 @@ interface UsuarioOdoo {
   active: boolean;
 }
 
-/**
- * Lo facturado por cliente, por lotes de 250.
- *
- * El tamaño del lote no es arbitrario: con los 2.629 partners de la instancia en
- * un solo `in`, Odoo se pasa del timeout de 30 s. El coste crece mucho más
- * deprisa que el número de ids — 250 → 0,6 s, 500 → 1,7 s, 1.000 → 6,3 s — así
- * que sale más barato repetir la llamada que agrandarla. Medido en #81.
- */
-async function facturacionPorPartner(ids: number[]): Promise<
-  Map<number, { total: number; porCobrar: number; facturas: number }>
-> {
-  const mapa = new Map<number, { total: number; porCobrar: number; facturas: number }>();
-  const LOTE = 250;
-
-  for (let i = 0; i < ids.length; i += LOTE) {
-    const grupos = await readGroup<{
-      commercial_partner_id: [number, string] | false;
-      move_type: string | false;
-      amount_total_signed: number;
-      amount_residual_signed: number;
-      __count: number;
-    }>(
-      'account.move',
-      [TIPO_FACTURADO, ['state', '=', 'posted'], ['commercial_partner_id', 'in', ids.slice(i, i + LOTE)]],
-      ['amount_total_signed:sum', 'amount_residual_signed:sum'],
-      ['commercial_partner_id', 'move_type'],
-    );
-
-    const porCliente = plegarPorTipo(
-      grupos,
-      (g) => (g.commercial_partner_id ? g.commercial_partner_id[0] : null),
-      ['amount_total_signed', 'amount_residual_signed'],
-    );
-    for (const [id, { sumas, facturas }] of porCliente) {
-      mapa.set(id, {
-        total: sumas.amount_total_signed,
-        porCobrar: sumas.amount_residual_signed,
-        facturas,
-      });
-    }
-  }
-
-  return mapa;
-}
-
 export async function estadisticasAgentes(): Promise<ResumenAgentes> {
   const t0 = Date.now();
 
@@ -153,7 +108,9 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
   const uids = [...porUsuario.keys()];
 
   const [facturacion, usuarios, cuentas] = await Promise.all([
-    facturacionPorPartner([...porUsuario.values()].flatMap((v) => v.partners)),
+    // Solo ASTA, como «Mi cartera» de cada vendedor (`ventasAsta.service`):
+    // de toda la empresa en dos consultas, y se reparte por cartera abajo.
+    totalesAstaDeCartera(null),
 
     /*
      * Se piden también los INACTIVOS.

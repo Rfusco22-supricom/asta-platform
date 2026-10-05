@@ -102,7 +102,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
         <div className="segmented">
           {(
             [
-              ['facturado', 'Facturado'],
+              ['facturado', 'Vendido ASTA'],
               ['porCobrar', 'Por cobrar'],
               ['clientes', 'Clientes'],
               ['nombre', 'Nombre'],
@@ -140,7 +140,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
             <tr>
               <th>Vendedor</th>
               <th className="num">Clientes</th>
-              <th className="num">Facturado</th>
+              <th className="num">Vendido ASTA</th>
               <th className="num">Por cobrar</th>
               <th>Acceso al panel</th>
             </tr>
@@ -149,7 +149,6 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
             {visibles.map((a) => {
               // La proporción sin cobrar dice más que el importe: 6 M sobre 8 M
               // es otra conversación que 6 M sobre 60 M.
-              const pct = a.facturado > 0 ? (a.porCobrar / a.facturado) * 100 : 0;
 
               return (
                 <tr key={a.odooUserId}>
@@ -161,7 +160,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
                   <td className="num">
                     {a.clientes.toLocaleString('es-VE')}
                     <div className="cliente-contacto">
-                      {a.conCompra} con compra
+                      {a.conCompra} compran ASTA
                     </div>
                   </td>
 
@@ -174,9 +173,8 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
 
                   <td className={pct >= 50 ? 'num debt' : 'num'}>
                     {moneyCompact(a.porCobrar)}
-                    {a.facturado > 0 && (
-                      <div className="cliente-contacto">{pct.toFixed(0)} % del total</div>
-                    )}
+                    {/* El saldo es de las facturas con ASTA enteras: como % de lo
+                        vendido en ASTA mezclaría las dos cosas. */}
                   </td>
 
                   <td>

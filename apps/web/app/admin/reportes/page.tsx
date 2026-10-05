@@ -55,9 +55,9 @@ export default async function ReportesAdminPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Reportes"
-      descripcion={`Toda la empresa · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
+      descripcion={`Toda la empresa · solo ASTA, sin IVA · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
     >
-      <VistaReporte datos={datos} base="/admin/reportes" />
+      <VistaReporte datos={datos} base="/admin/reportes" soloAsta />
     </Marco>
   );
 }
