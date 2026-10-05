@@ -6,6 +6,8 @@ import {
   portfolioRowSchema,
   portfolioMetaSchema,
   actividadCarteraRespuestaSchema,
+  impulsaRespuestaSchema,
+  type ImpulsaRespuesta,
   type ActividadCartera,
   invoicingSummarySchema,
   clientProfileSchema,
@@ -187,6 +189,11 @@ export interface Portfolio {
 export async function getPortfolio(accessToken: string): Promise<Portfolio> {
   const r = await request('/api/v1/salesperson/portfolio', portfolioSchema, accessToken);
   return { filas: r.data, meta: r.meta };
+}
+
+/** «Impulsa a tus clientes»: las sugerencias de la propia cartera (ver `impulsa.ts`). */
+export async function getImpulsa(accessToken: string): Promise<ImpulsaRespuesta> {
+  return request('/api/v1/salesperson/impulsa', impulsaRespuestaSchema, accessToken);
 }
 
 /** Estado, clase ABC y tendencia de cada cliente de la cartera (ver `cartera.ts`). */

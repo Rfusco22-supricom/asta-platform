@@ -41,6 +41,8 @@ export const accionSchema = z.enum([
   'cliente.ver',
   'cliente.perfil.ver',
   'cliente.notas.escribir',
+  'impulsa.ver',
+  'impulsa.marcar',
 
   // ── Administración ────────────────────────────────────────────────────────
   'admin.sync.ejecutar',
@@ -108,6 +110,18 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: STAFF,
     ambito: 'partner-propio',
     descripcion: 'Escribir notas sobre un cliente',
+  },
+  'impulsa.ver': {
+    // Como `cartera.ver`: son sugerencias sobre «mis clientes», y un
+    // administrador no tiene cartera propia.
+    roles: ['VENDEDOR'],
+    ambito: 'ninguno',
+    descripcion: 'Ver las sugerencias de «Impulsa a tus clientes» de la propia cartera',
+  },
+  'impulsa.marcar': {
+    roles: ['VENDEDOR'],
+    ambito: 'partner-propio',
+    descripcion: 'Marcar una sugerencia de «Impulsa» como hecha, pospuesta o activa',
   },
 
   'admin.sync.ejecutar': {

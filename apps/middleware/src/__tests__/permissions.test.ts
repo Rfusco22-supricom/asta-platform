@@ -53,6 +53,8 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'cliente.ver',
     'cliente.perfil.ver',
     'cliente.notas.escribir',
+    'impulsa.ver',
+    'impulsa.marcar',
     'catalogo.leer',
   ],
   BRONCE: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],

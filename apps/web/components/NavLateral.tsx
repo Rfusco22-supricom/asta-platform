@@ -111,6 +111,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M8 4h11a2 2 0 0 1 2 2v11" />
         </svg>
       );
+    case 'impulsa':
+      // Una flecha que sube: lo que se puede vender más.
+      return (
+        <svg {...comun}>
+          <path d="M3 17l6-6 4 4 8-8" />
+          <path d="M15 7h6v6" />
+        </svg>
+      );
     case 'sesiones':
       return (
         <svg {...comun}>

@@ -67,6 +67,8 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     {
       titulo: null,
       secciones: [
+        // Lo primero que abre el vendedor: qué hacer hoy (#40).
+        { href: '/impulsa', titulo: 'Impulsa a tus clientes', icono: 'impulsa', corto: 'Impulsa' },
         {
           href: '/cartera',
           titulo: 'Mi cartera',
