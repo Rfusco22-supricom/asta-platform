@@ -9,6 +9,6 @@
 // El middleware. En el simulador, `localhost` es este Mac.
 ASTA_API_BASE = http:/$()/localhost:3001
 
-// La API key de la tienda, con el permiso RECOMMENDER_READ y NINGUNO más.
-// Se crea en el panel, en «Mis API keys». No se commitea.
+// El token de la tablet (asta_kio_…): en el panel, Kioscos → «Registrar una
+// tablet», con el almacén de la tienda. Sale una sola vez. No se commitea.
 ASTA_API_KEY =

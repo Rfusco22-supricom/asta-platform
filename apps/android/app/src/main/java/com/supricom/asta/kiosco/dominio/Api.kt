@@ -80,7 +80,17 @@ class ClienteApi(
     private val base: String,
     private val apiKey: String,
     private val transporte: Transporte = TransporteHttp,
+    /** La versión de la app, para que el panel diga qué tablet se quedó atrás. */
+    private val version: String = "",
 ) {
+    /**
+     * Dónde pregunta la tablet. Con un token de tablet (`asta_kio_…`, dado de alta
+     * en el panel, en Kioscos), por las rutas del kiosco: existencias del almacén
+     * de la tienda. Con una API key de cliente, por la API pública, como antes:
+     * así una tablet ya configurada sigue funcionando.
+     */
+    private val prefijo = if (apiKey.startsWith("asta_kio_")) "/api/v1/kiosk" else "/api/v1/public"
+
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable private data class Meta(val busquedaId: String? = null)
@@ -97,6 +107,7 @@ class ClienteApi(
     private suspend fun <T> pedir(ruta: String, lector: KSerializer<T>, metodo: String = "GET", cuerpo: String? = null): Resultado<T> {
         val cabeceras = buildMap {
             put("X-API-Key", apiKey)
+            if (version.isNotEmpty()) put("X-App-Version", version)
             if (cuerpo != null) put("Content-Type", "application/json")
         }
         val r = try {
@@ -116,7 +127,7 @@ class ClienteApi(
 
     suspend fun buscarImpresoras(q: String): Resultado<Busqueda> {
         val consulta = URLEncoder.encode(q, "UTF-8").replace("+", "%20")
-        return when (val r = pedir("/api/v1/public/recommender/printers?q=$consulta&limit=12", RespuestaBusqueda.serializer())) {
+        return when (val r = pedir("$prefijo/recommender/printers?q=$consulta&limit=12", RespuestaBusqueda.serializer())) {
             is Resultado.Ok -> Resultado.Ok(Busqueda(r.datos.data, r.datos.sugerencias, r.datos.meta.busquedaId))
             is Resultado.Fallo -> r
         }
@@ -126,7 +137,7 @@ class ClienteApi(
 
     suspend fun compatiblesDe(impresoraId: Int, busquedaId: String?): Resultado<List<ProductoCompatible>> {
         val q = busquedaId?.let { "?busquedaId=" + URLEncoder.encode(it, "UTF-8") } ?: ""
-        return when (val r = pedir("/api/v1/public/recommender/printers/$impresoraId/compatible$q", RespuestaCompatibles.serializer())) {
+        return when (val r = pedir("$prefijo/recommender/printers/$impresoraId/compatible$q", RespuestaCompatibles.serializer())) {
             is Resultado.Ok -> Resultado.Ok(r.datos.data)
             is Resultado.Fallo -> r
         }
@@ -142,7 +153,7 @@ class ClienteApi(
     fun registrarClic(alcance: CoroutineScope, busquedaId: String?, productId: Int) {
         if (busquedaId == null) return
         alcance.launch {
-            pedir("/api/v1/public/recommender/busquedas/$busquedaId/clic", JsonObject.serializer(), "POST", """{"productId":$productId}""")
+            pedir("$prefijo/recommender/busquedas/$busquedaId/clic", JsonObject.serializer(), "POST", """{"productId":$productId}""")
         }
     }
 

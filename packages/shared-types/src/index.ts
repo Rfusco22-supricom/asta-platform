@@ -30,6 +30,7 @@ export * from './orders.js';
 export * from './catalog.js';
 export * from './recommender.js';
 export * from './compatibilidades.js';
+export * from './kioscos.js';
 export * from './apiKeys.js';
 export * from './permissions.js';
 export * from './sessions.js';

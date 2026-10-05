@@ -50,9 +50,12 @@ TestFlight.**
    así que la URL se escribe `https:/$()/…`. **Ese fichero no se sube**: está en
    `.gitignore`, y cada tienda lleva la suya.
 
-   La key se crea en el panel, en «Mis API keys», **con el permiso
-   `RECOMMENDER_READ` y ninguno más**: si la tablet se pierde, lo único que se
-   puede hacer con ella es consultar qué tóner sirve.
+   La credencial es el **token de la tablet**: en el panel, **Kioscos** →
+   «Registrar una tablet», con el nombre, la tienda y el **almacén de Odoo** de
+   esa tienda. El token sale una sola vez. Solo abre el recomendador
+   (`/api/v1/kiosk`): si la tablet se pierde, lo único que se puede hacer con él
+   es consultar qué tóner sirve, y desde la misma pantalla se desactiva o se
+   renueva. Las existencias que enseña son las de ese almacén.
 
 3. Generar el proyecto e abrirlo:
 

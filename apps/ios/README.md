@@ -29,9 +29,11 @@ xcodebuild test -project AstaKiosco.xcodeproj -scheme AstaKiosco \
 
 ## Preparar una tablet
 
-1. **La API key**, en `Config/Kiosco.xcconfig` (`ASTA_API_KEY`): la de la
-   tienda, con el permiso `RECOMMENDER_READ` **y ninguno más**. Se crea en el
-   panel, en «Mis API keys». **No se commitea**: el fichero está en `.gitignore`.
+1. **La credencial**, en `Config/Kiosco.xcconfig` (`ASTA_API_KEY`): el **token de la tablet** (`asta_kio_…`): se da de alta en el panel, en **Kioscos** → «Registrar una tablet», eligiendo el almacén de la tienda, y sale una sola vez.
+   Solo abre el recomendador (`/api/v1/kiosk`), y las existencias son las de ese
+   almacén. Una API key de cliente con `RECOMMENDER_READ` también vale (va por
+   `/api/v1/public`), pero el personal no puede crearlas. **No se commitea**: el
+   fichero está en `.gitignore`.
 2. **La URL** del middleware (`ASTA_API_BASE`). En un xcconfig `//` empieza un
    comentario, así que va como `https:/$()/…`. En el simulador, `localhost` es el
    Mac.

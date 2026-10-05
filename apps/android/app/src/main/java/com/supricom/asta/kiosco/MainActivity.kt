@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
 
         kiosco = Kiosco(
             Datos(
-                ClienteApi(BuildConfig.ASTA_API_BASE, BuildConfig.ASTA_API_KEY),
+                ClienteApi(BuildConfig.ASTA_API_BASE, BuildConfig.ASTA_API_KEY, version = BuildConfig.VERSION_NAME),
                 CacheLocal(AlmacenPreferencias(getSharedPreferences("asta.kiosco", MODE_PRIVATE))),
             ),
             lifecycleScope,

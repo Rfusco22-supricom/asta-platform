@@ -36,6 +36,19 @@ private let busquedaJSON = Data(#"{"data":[{"id":1726,"marca":"HP","nombre":"P16
         #expect(vista.peticion?.url?.absoluteString == "http://kiosco.test/api/v1/public/recommender/printers?q=HL%202350&limit=12")
     }
 
+    /// #120 · Con un token de tablet, por las rutas del kiosco, y con la versión.
+    @Test func conTokenDeTabletVaPorElKiosco() async {
+        final class Vista: @unchecked Sendable { var peticion: URLRequest? }
+        let vista = Vista()
+        let token = "asta_kio_" + String(repeating: "A", count: 43)
+        let api = ClienteApi(config: ConfigApi(base: "http://kiosco.test", apiKey: token, version: "1.2.0"),
+                             transporte: TransporteFalso(cuerpo: busquedaJSON, vista: { vista.peticion = $0 }))
+        _ = await api.buscarImpresoras("m404")
+        #expect(vista.peticion?.url?.absoluteString == "http://kiosco.test/api/v1/kiosk/recommender/printers?q=m404&limit=12")
+        #expect(vista.peticion?.value(forHTTPHeaderField: "X-API-Key") == token)
+        #expect(vista.peticion?.value(forHTTPHeaderField: "X-App-Version") == "1.2.0")
+    }
+
     @Test func sinRedEsRed() async {
         #expect(await cliente(TransporteFalso(falla: true)).buscarImpresoras("x") == .fallo(.red))
     }

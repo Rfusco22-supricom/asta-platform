@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { accountRouter } from './routes/account.js';
 import { crearPublicRouter } from './routes/public.js';
+import { crearKioskRouter } from './routes/kiosk.js';
 import { crearDescargasRouter } from './routes/descargas.js';
 import { crearDocsRouter } from './routes/docs.js';
 import { ocultarTokenDeUrl } from './services/enlacesFirmados.js';
@@ -82,6 +83,8 @@ export function createApp() {
   app.use('/api/v1/admin', corsPanel, adminRouter);
   app.use('/api/v1/account', corsPanel, accountRouter);
   app.use('/api/v1/public', crearPublicRouter());
+  // Las tablets del kiosco, con su token de dispositivo (#120). Sin CORS: es una app, no un navegador.
+  app.use('/api/v1/kiosk', crearKioskRouter());
   app.use('/api/v1/descargas', crearDescargasRouter());
   app.use('/api/v1/docs', crearDocsRouter());
 
