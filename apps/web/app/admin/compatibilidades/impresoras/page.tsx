@@ -2,25 +2,28 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { FormularioCompatibilidad } from '@/components/FormularioCompatibilidad';
-import { getRevisionImpresoras, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getPorImpresora, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { AvisoOdoo } from '../AvisoOdoo';
 import { Pestanas } from '../Pestanas';
-import { RevisionImpresoras } from './RevisionImpresoras';
+import { TonersPorImpresora } from './TonersPorImpresora';
 
 /**
- * Compatibilidades → Impresoras: a qué impresora le sirve cada cartucho (#56).
+ * Compatibilidades → Impresoras: «Impresora | Tóners compatibles» (#56).
  *
- * Aquí se revisa lo que trajo el importador de `compatibilidad_productos` y lo
- * que proponen los vendedores, y se añade lo que falta. Lo añadido por un
- * administrador queda validado.
+ * Una fila por impresora, con sus tóners en un selector. Lo sugerido viene de
+ * las listas del fabricante, de `compatibilidad_productos` y de los vendedores;
+ * aquí se marca lo que sirve, se busca o se crea lo que falta, y se guarda.
+ *
+ * La impresora que no existe todavía se añade con el formulario de abajo.
  */
 
 export const dynamic = 'force-dynamic';
 
-const ESTADOS = [
-  { valor: 'PROPUESTA', titulo: 'Pendientes' },
-  { valor: 'VALIDADA', titulo: 'Validadas' },
-  { valor: 'RECHAZADA', titulo: 'Rechazadas' },
+const VISTAS = [
+  { valor: 'por_revisar', titulo: 'Por revisar', vacio: 'No queda ninguna impresora con sugerencias por revisar.' },
+  { valor: 'sin_toner', titulo: 'Sin tóner', vacio: 'Todas las impresoras tienen algún tóner.' },
+  { valor: 'listas', titulo: 'Listas', vacio: 'Todavía no hay ninguna impresora con tóner validado.' },
+  { valor: 'todas', titulo: 'Todas', vacio: 'No hay impresoras cargadas.' },
 ] as const;
 
 function texto(v: string | string[] | undefined): string | undefined {
@@ -34,16 +37,18 @@ export default async function ImpresorasPage({
 }) {
   const sesion = await requireSession();
   const params = await searchParams;
-  const estado = ESTADOS.find((e) => e.valor === params.estado)?.valor ?? 'PROPUESTA';
+  const vista = VISTAS.find((v) => v.valor === params.vista)?.valor ?? 'por_revisar';
   const marca = texto(params.marca);
-  const q = texto(params.q) && texto(params.q)!.length >= 2 ? texto(params.q) : undefined;
-  const pagina = Math.max(1, Number(params.pagina) || 1);
-  // Se llega así desde la cobertura del top: el cartucho que falta, ya escrito.
+  // Desde la cobertura del top se llega con `?cartucho=`: las impresoras de ese tóner.
   const cartucho = texto(params.cartucho);
+  const buscado = texto(params.q) ?? cartucho;
+  const q = buscado && buscado.length >= 2 ? buscado : undefined;
+  const pagina = Math.max(1, Number(params.pagina) || 1);
 
   let datos;
   try {
-    datos = await getRevisionImpresoras(sesion.accessToken, { estado, marca, q, pagina });
+    // Con un tóner buscado se mira en todas: puede estar ya validado.
+    datos = await getPorImpresora(sesion.accessToken, { vista: cartucho && !params.vista ? 'todas' : vista, marca, q, pagina });
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -57,112 +62,100 @@ export default async function ImpresorasPage({
     );
   }
 
-  const { porEstado, totalCartuchos, porPagina, marcas } = datos.meta;
-  const total = porEstado.PROPUESTA + porEstado.VALIDADA + porEstado.RECHAZADA;
-  const paginas = Math.max(1, Math.ceil(totalCartuchos / porPagina));
+  const vistaActual = cartucho && !params.vista ? 'todas' : vista;
+  const { porVista, total, porPagina, marcas, odooDisponible } = datos.meta;
+  const paginas = Math.max(1, Math.ceil(total / porPagina));
+  const conToner = porVista.listas + porVista.por_revisar;
+  const avance = porVista.todas ? Math.round((porVista.listas / porVista.todas) * 100) : 0;
   const enlace = (cambios: Record<string, string | number | undefined>) => {
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries({ estado, marca, q, ...cambios })) {
-      if (v !== undefined && v !== '' && !(k === 'pagina' && String(v) === '1')) qs.set(k, String(v));
+    for (const [k, v] of Object.entries({ vista: vistaActual, marca, q, ...cambios })) {
+      if (v !== undefined && v !== '' && !(k === 'pagina' && String(v) === '1') && !(k === 'vista' && v === 'por_revisar')) qs.set(k, String(v));
     }
     return `/admin/compatibilidades/impresoras${qs.size ? `?${qs}` : ''}`;
   };
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Qué cartucho le sirve a cada impresora. El kiosco solo recomienda lo validado.">
+    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Qué tóner le sirve a cada impresora. El kiosco solo recomienda lo validado, y solo ofrece ASTA.">
       <Pestanas actual="impresoras" />
 
-      {!datos.meta.odooDisponible && <AvisoOdoo />}
+      {!odooDisponible && <AvisoOdoo />}
 
-      <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Pendientes</div>
-          <div className="stat-value" style={{ color: porEstado.PROPUESTA ? 'var(--warning)' : undefined }}>
-            {porEstado.PROPUESTA.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">impresora ↔ cartucho sin revisar</div>
+      <section className="pi-avance" aria-label="Avance de la revisión">
+        <div className="pi-avance-texto">
+          <strong>{porVista.listas.toLocaleString('es-VE')}</strong> de {porVista.todas.toLocaleString('es-VE')} impresoras listas
+          {(q || marca) && <span className="pi-avance-filtro"> · con estos filtros</span>}
         </div>
-        <div className="stat">
-          <div className="stat-label">Validadas</div>
-          <div className="stat-value" style={{ color: 'var(--positive)' }}>
-            {porEstado.VALIDADA.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">
-            {!total ? 'nada cargado' : porEstado.VALIDADA > 0 && porEstado.VALIDADA / total < 0.01 ? 'menos del 1 % del total' : `${Math.round((porEstado.VALIDADA / total) * 100)} % del total`}
-          </div>
+        <div className="pi-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={avance} aria-label="Impresoras listas">
+          <span className="listas" style={{ width: `${porVista.todas ? (porVista.listas / porVista.todas) * 100 : 0}%` }} />
+          <span className="revisar" style={{ width: `${porVista.todas ? (porVista.por_revisar / porVista.todas) * 100 : 0}%` }} />
         </div>
-        <div className="stat">
-          <div className="stat-label">Rechazadas</div>
-          <div className="stat-value">{porEstado.RECHAZADA.toLocaleString('es-VE')}</div>
-          <div className="stat-sub">no se vuelven a proponer</div>
+        <div className="pi-leyenda">
+          <span><i className="listas" /> Listas {porVista.listas}</span>
+          <span><i className="revisar" /> Por revisar {porVista.por_revisar}</span>
+          <span><i className="sin" /> Sin tóner {porVista.sin_toner}</span>
+          <span className="pi-leyenda-nota">{conToner} con algún tóner</span>
         </div>
       </section>
 
-      <FormularioCompatibilidad como="admin" marcas={marcas} codigoInicial={cartucho} />
+      <div className="pi-barra-herramientas">
+        <nav className="pi-vistas" aria-label="Qué impresoras ver">
+          {VISTAS.map((v) => (
+            <Link key={v.valor} href={enlace({ vista: v.valor, pagina: undefined })} aria-current={v.valor === vistaActual ? 'page' : undefined}>
+              {v.titulo}
+              <span className="pi-cuenta">{porVista[v.valor].toLocaleString('es-VE')}</span>
+            </Link>
+          ))}
+        </nav>
 
-      <form className="filtros revision-filtros" action="/admin/compatibilidades/impresoras" method="get">
-        <input type="hidden" name="estado" value={estado} />
-        <div className="filtro-campo">
-          <label htmlFor="q">Buscar</label>
-          <input id="q" name="q" className="input" defaultValue={q} placeholder="Impresora o cartucho: m404, CF258A" />
-        </div>
-        <div className="filtro-campo">
-          <label htmlFor="marca">Marca del cartucho</label>
-          <select id="marca" name="marca" className="select" defaultValue={marca ?? ''}>
-            <option value="">Todas</option>
+        <form className="pi-filtros" action="/admin/compatibilidades/impresoras" method="get" role="search">
+          {vistaActual !== 'por_revisar' && <input type="hidden" name="vista" value={vistaActual} />}
+          <label className="pi-buscar">
+            <span className="sr-only">Buscar impresora o tóner</span>
+            <span className="pi-lupa" aria-hidden="true">⌕</span>
+            <input name="q" className="input" defaultValue={q} placeholder="Impresora o tóner: M404, L3110, CF258A" />
+          </label>
+          <select name="marca" className="select" defaultValue={marca ?? ''} aria-label="Marca de la impresora">
+            <option value="">Todas las marcas</option>
             {marcas.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>
             ))}
           </select>
-        </div>
-        <button className="btn btn-inline" type="submit">
-          Filtrar
-        </button>
-        {(q || marca) && (
-          <Link className="btn-link" href={enlace({ q: undefined, marca: undefined, pagina: undefined })}>
-            Quitar filtros
-          </Link>
-        )}
-      </form>
-
-      <div className="toolbar">
-        <nav className="segmented" aria-label="Estado">
-          {ESTADOS.map((e) => (
-            <Link key={e.valor} href={enlace({ estado: e.valor, pagina: undefined })} aria-current={e.valor === estado ? 'page' : undefined} className="segmented-enlace">
-              {e.titulo}
+          <button className="btn btn-inline" type="submit">
+            Buscar
+          </button>
+          {(q || marca) && (
+            <Link className="btn-link" href={enlace({ q: undefined, marca: undefined, pagina: undefined })}>
+              Quitar filtros
             </Link>
-          ))}
-        </nav>
-        <span className="count">
-          {totalCartuchos.toLocaleString('es-VE')} {totalCartuchos === 1 ? 'cartucho' : 'cartuchos'} · lo más vendido primero
-        </span>
+          )}
+        </form>
       </div>
 
       {datos.data.length === 0 ? (
         <div className="table-wrap">
-          <div className="empty">
-            {total === 0
-              ? 'Todavía no hay compatibilidades. Se cargan con importar-compatibilidades, o se añaden con el formulario de arriba.'
-              : q || marca
-                ? 'Nada coincide con estos filtros.'
-                : { PROPUESTA: 'No queda nada pendiente de revisar.', VALIDADA: 'Todavía no hay nada validado.', RECHAZADA: 'No hay nada rechazado.' }[estado]}
-          </div>
+          <div className="empty">{q || marca ? 'Ninguna impresora coincide con estos filtros.' : VISTAS.find((v) => v.valor === vistaActual)!.vacio}</div>
         </div>
       ) : (
-        <RevisionImpresoras key={`${estado}|${marca}|${q}|${pagina}`} cartuchos={datos.data} estado={estado} />
+        <TonersPorImpresora key={`${vistaActual}|${marca}|${q}|${pagina}`} impresoras={datos.data} odooDisponible={odooDisponible} marcas={marcas} />
       )}
 
       {paginas > 1 && (
         <nav className="paginacion" aria-label="Páginas">
           {pagina > 1 ? <Link href={enlace({ pagina: pagina - 1 })}>← Anterior</Link> : <span />}
           <span>
-            Página {pagina} de {paginas}
+            Página {pagina} de {paginas} · {total.toLocaleString('es-VE')} impresoras
           </span>
           {pagina < paginas ? <Link href={enlace({ pagina: pagina + 1 })}>Siguiente →</Link> : <span />}
         </nav>
       )}
+
+      <details className="pi-falta" open={Boolean(cartucho) && datos.data.length === 0}>
+        <summary>¿Falta una impresora? Añádela con su tóner</summary>
+        <FormularioCompatibilidad como="admin" marcas={marcas} codigoInicial={cartucho} />
+      </details>
     </Marco>
   );
 }

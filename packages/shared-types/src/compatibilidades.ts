@@ -338,3 +338,125 @@ export const coberturaTopSchema = z.object({
 export type CoberturaTop = z.infer<typeof coberturaTopSchema>;
 
 export const coberturaTopRespuestaSchema = z.object({ data: coberturaTopSchema });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Por impresora: «Impresora | Tóners compatibles»
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * La pestaña Impresoras, vista desde la impresora y no desde el cartucho.
+ *
+ * Así es como se piensa la pregunta en tienda —«¿qué tóner lleva esta
+ * impresora?»—, y así se revisa de una vez todo lo de una impresora en vez de
+ * encontrarla repartida entre los cartuchos.
+ *
+ *   · `por_revisar`  tiene alguna propuesta sin decidir
+ *   · `sin_toner`    nada propuesto ni validado: hay que añadirle el tóner a mano
+ *   · `listas`       algo validado y nada pendiente
+ */
+export const vistaPorImpresoraSchema = z.enum(['por_revisar', 'sin_toner', 'listas', 'todas']);
+export type VistaPorImpresora = z.infer<typeof vistaPorImpresoraSchema>;
+
+export const porImpresoraQuerySchema = z.object({
+  vista: vistaPorImpresoraSchema.default('por_revisar'),
+  /** Marca de la IMPRESORA. */
+  marca: z.string().min(1).max(60).optional(),
+  /** Nombre de la impresora o código de uno de sus tóners. */
+  q: z.string().trim().min(2).max(80).optional(),
+  pagina: z.coerce.number().int().positive().default(1),
+  porPagina: z.coerce.number().int().positive().max(50).default(20),
+});
+
+export type PorImpresoraQuery = z.infer<typeof porImpresoraQuerySchema>;
+
+/** El producto ASTA validado que vende ese cartucho: lo que el kiosco ofrece. */
+const productoAstaSchema = z.object({ nombre: z.string(), sku: z.string().nullable() }).nullable();
+
+export const cartuchoElegibleSchema = z.object({
+  cartridgeId: z.number().int().positive(),
+  marca: z.string(),
+  codigo: z.string(),
+  tipo: tipoCartuchoSchema,
+  color: z.string().nullable(),
+  asta: productoAstaSchema,
+});
+
+export type CartuchoElegible = z.infer<typeof cartuchoElegibleSchema>;
+
+export const tonerDeImpresoraSchema = cartuchoElegibleSchema.extend({
+  estado: estadoRevisionSchema,
+  fuente: fuenteCompatibilidadSchema,
+  /** El texto original de la lista o tabla de la que salió. */
+  origen: z.string().nullable(),
+  propuestaPor: z.string().nullable(),
+  revisadoPor: z.string().nullable(),
+  revisadoEn: z.iso.datetime().nullable(),
+});
+
+export type TonerDeImpresora = z.infer<typeof tonerDeImpresoraSchema>;
+
+export const impresoraConTonersSchema = z.object({
+  printerModelId: z.number().int().positive(),
+  marca: z.string(),
+  nombre: z.string(),
+  /** Está en la categoría IMPRESORA de Odoo: la vendemos. */
+  seVende: z.boolean(),
+  /** Ventas de 12 meses de los productos de sus tóners: decide el orden. */
+  ventas12m: z.number().nonnegative(),
+  toners: z.array(tonerDeImpresoraSchema),
+});
+
+export type ImpresoraConToners = z.infer<typeof impresoraConTonersSchema>;
+
+export const porImpresoraRespuestaSchema = z.object({
+  data: z.array(impresoraConTonersSchema),
+  meta: z.object({
+    pagina: z.number().int().positive(),
+    porPagina: z.number().int().positive(),
+    /** Impresoras de la vista pedida, con los filtros. */
+    total: z.number().int().nonnegative(),
+    /** Cuántas hay en cada vista, con los mismos filtros: los números de las pestañas. */
+    porVista: z.object({ por_revisar: z.number().int(), sin_toner: z.number().int(), listas: z.number().int(), todas: z.number().int() }),
+    /** Sin Odoo no se sabe qué es ASTA ni qué se vende más (#127). */
+    odooDisponible: z.boolean(),
+    marcas: z.array(z.string()),
+  }),
+});
+
+export type PorImpresoraRespuesta = z.infer<typeof porImpresoraRespuestaSchema>;
+
+export const busquedaCartuchosRespuestaSchema = z.object({ data: z.array(cartuchoElegibleSchema) });
+
+export type BusquedaCartuchosRespuesta = z.infer<typeof busquedaCartuchosRespuestaSchema>;
+
+/**
+ * Guardar los tóners de UNA impresora: los que se marcaron quedan VALIDADOS; lo
+ * que estaba propuesto o validado y no se marcó, RECHAZADO.
+ *
+ * `vistos` es lo que había en pantalla, tóner por tóner. Si la base ya no
+ * coincide —otro lo cambió, o un importador añadió una propuesta—, 409 y no se
+ * guarda nada: se decide otra vez sobre lo que hay.
+ */
+export const guardarTonersSchema = z.object({
+  vistos: z
+    .array(z.object({ cartridgeId: z.number().int().positive().max(4_294_967_295), estado: estadoRevisionSchema }))
+    .max(300),
+  compatibles: z.array(z.number().int().positive().max(4_294_967_295)).max(100),
+  /** Tóners que no existían: se crean y quedan compatibles. */
+  nuevos: z
+    .array(z.object({ marca: z.string().trim().min(2).max(60), codigo: z.string().trim().min(2).max(40), tipo: tipoCartuchoSchema.default('TONER') }))
+    .max(20),
+});
+
+export type GuardarToners = z.infer<typeof guardarTonersSchema>;
+
+export const guardarTonersRespuestaSchema = z.object({
+  data: z.object({
+    impresora: impresoraConTonersSchema,
+    validadas: z.number().int().nonnegative(),
+    rechazadas: z.number().int().nonnegative(),
+    cartuchosNuevos: z.number().int().nonnegative(),
+  }),
+});
+
+export type GuardarTonersRespuesta = z.infer<typeof guardarTonersRespuestaSchema>;

@@ -14,8 +14,10 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
+  guardarTonersSchema,
   nuevaCompatibilidadSchema,
   nuevoAliasSchema,
+  porImpresoraQuerySchema,
   printerSearchQuerySchema,
   revisionDecisionSchema,
   revisionImpresorasDecisionSchema,
@@ -32,6 +34,7 @@ import {
 } from '../services/recomendador/revisionImpresoras.service.js';
 import { buscarImpresorasPanel } from '../services/recomendador/recomendador.service.js';
 import { coberturaDelTop } from '../services/recomendador/cobertura.service.js';
+import { buscarCartuchos, guardarTonersDeImpresora, listarPorImpresora } from '../services/recomendador/porImpresora.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -409,6 +412,63 @@ adminRouter.post('/compatibilidades/impresoras/revision', autorizar('admin.compa
       },
     });
     res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** «Impresora | Tóners compatibles»: cada impresora con todos sus tóners. */
+adminRouter.get('/compatibilidades/por-impresora', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const consulta = porImpresoraQuerySchema.safeParse(req.query);
+    if (!consulta.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: z.prettifyError(consulta.error) } });
+      return;
+    }
+    res.json(await listarPorImpresora(consulta.data));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Deja una impresora con exactamente los tóners marcados: lo marcado, VALIDADO;
+ * lo propuesto o validado que no se marcó, RECHAZADO. Todo o nada, y 409 si la
+ * base cambió desde que se cargó la pantalla.
+ */
+adminRouter.put('/compatibilidades/por-impresora/:printerModelId', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const id = z.coerce.number().int().positive().max(4_294_967_295).safeParse(req.params.printerModelId);
+    const cuerpo = guardarTonersSchema.safeParse(req.body);
+    if (!id.success || !cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: cuerpo.success ? 'Impresora no válida.' : z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const { detalle, ...r } = await guardarTonersDeImpresora(id.data, cuerpo.data, req.identity.appUserId);
+    if (detalle.validados.length || detalle.rechazados.length) {
+      recordAudit({
+        action: 'compatibilidad.revisada',
+        ...auditContext(req),
+        targetType: 'printer_models',
+        targetId: String(id.data),
+        metadata: { validados: detalle.validados, rechazados: detalle.rechazados, creados: detalle.creados },
+      });
+    }
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Tóners que coinciden con lo tecleado, para el selector de compatibles. */
+adminRouter.get('/compatibilidades/cartuchos', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
+  try {
+    const q = z.string().trim().min(2).max(40).safeParse(req.query.q);
+    if (!q.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'Escribe al menos dos caracteres del código.' } });
+      return;
+    }
+    res.json({ data: await buscarCartuchos(q.data) });
   } catch (error) {
     next(error);
   }
