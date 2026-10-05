@@ -13,13 +13,14 @@
  * Los productos sin candidato salen también, con el código vacío: son la cola de
  * captura manual.
  *
- * Solo lectura. Nada entra en `product_cartridges` desde aquí: cuando existan las
- * tablas de #101, lo validado se carga con `status = VALIDADA` y lo demás queda
- * como `PROPUESTA`.
+ * Solo lectura. Las columnas `decision` y `nota` van vacías para rellenarlas en
+ * Excel y devolverlas con `pnpm cartuchos:validar`. `estado_actual` dice lo que
+ * ya hay en MySQL, para no revisar dos veces lo ya decidido.
  */
 import { writeFileSync } from 'node:fs';
 import { executeKw, searchRead } from '../apps/middleware/src/odoo/client.js';
 import { extraerCartuchos } from '../apps/middleware/src/services/recomendador/extraerCartuchos.js';
+import { prisma } from '../apps/middleware/src/config/prisma.js';
 
 const CATEGORIA_CONSUMIBLES = 2614;
 
@@ -63,16 +64,27 @@ for (const v of ventas) {
 }
 
 const csv = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-const lineas = ['odoo_product_tmpl_id,default_code,nombre,importe_12m,marca,codigo,evidencia'];
+// Lo que ya hay en MySQL, por producto y cartucho.
+const estados = await prisma.productCartridge.findMany({
+  where: { odooProductTmplId: { in: plantillas.map((p) => p.id) } },
+  include: { cartridge: { include: { brand: true } } },
+});
+const estadoDe = new Map(estados.map((e) => [`${e.odooProductTmplId}:${e.cartridge.brand.name}:${e.cartridge.codeNormalized}`, e.status]));
+
+const lineas = ['odoo_product_tmpl_id,default_code,nombre,importe_12m,marca,codigo,evidencia,estado_actual,decision,nota'];
 
 for (const p of plantillas.sort((a, b) => (importe.get(b.id) ?? 0) - (importe.get(a.id) ?? 0))) {
   const base = [p.id, p.default_code || '', p.name, Math.round(importe.get(p.id) ?? 0)];
   const candidatos = extraerCartuchos(p.name, p.default_code || null);
-  if (candidatos.length === 0) lineas.push([...base, '', '', ''].map(csv).join(','));
-  for (const c of candidatos) lineas.push([...base, c.marca, c.codigo, c.evidencia].map(csv).join(','));
+  if (candidatos.length === 0) lineas.push([...base, '', '', '', '', '', ''].map(csv).join(','));
+  for (const c of candidatos) {
+    const estado = estadoDe.get(`${p.id}:${c.marca}:${c.codigoNormalizado}`) ?? '';
+    lineas.push([...base, c.marca, c.codigo, c.evidencia, estado, '', ''].map(csv).join(','));
+  }
 }
 
 writeFileSync(salida, `${lineas.join('\n')}\n`);
 const sinCandidato = plantillas.filter((p) => extraerCartuchos(p.name, p.default_code || null).length === 0).length;
 console.log(`${salida}: ${plantillas.length} plantillas · ${plantillas.length - sinCandidato} con candidato · ${sinCandidato} para captura manual`);
+await prisma.$disconnect();
 process.exit(0);

@@ -18,6 +18,7 @@
     "cartuchos:proponer": "tsx scripts/proponer-cartuchos.ts",
     "cartuchos:importar": "tsx scripts/importar-propuestas-cartuchos.ts",
     "compatibilidades:importar": "tsx apps/middleware/src/cli/importar-compatibilidades.ts",
+    "cartuchos:validar": "tsx apps/middleware/src/cli/validar-propuestas.ts",
     "impresoras:importar": "tsx apps/middleware/src/cli/importar-impresoras.ts",
     "impresoras-catalogo:importar": "tsx apps/middleware/src/cli/importar-impresoras-catalogo.ts",
     "listas:importar": "tsx apps/middleware/src/cli/importar-listas-fabricante.ts",

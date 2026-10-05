@@ -199,6 +199,42 @@ Lo que **no** hay que hacer es adivinarlo desde aquí. Una compatibilidad
 inventada es exactamente el fallo que este proyecto decidió no cometer, y para
 estos seis no hay fuente que la respalde.
 
+## Para la cola larga: la hoja de cálculo
+
+Lo de arriba son 188 decisiones y se hacen en el panel. **Para lo que viene
+después no sirve pulsar**: hay más de **1.100** propuestas de producto ↔ cartucho
+en todo el catálogo, y nadie va a entrar una por una.
+
+Para eso está el camino del CSV:
+
+```bash
+pnpm cartuchos:proponer                      # saca el CSV, con lo ya decidido marcado
+# se abre en Excel y se rellena la columna `decision`: VALIDADA, RECHAZADA o vacía
+pnpm cartuchos:validar --archivo revisado.csv --revisor <email>            # simulacro
+pnpm cartuchos:validar --archivo revisado.csv --revisor <email> --aplicar
+```
+
+Dentro del contenedor, `node dist/cli/validar-propuestas.js` con las mismas
+opciones.
+
+Está hecho para equivocarse poco, que es lo que importa cuando se validan mil
+filas de golpe:
+
+- **primero planifica y no escribe**: sin `--aplicar` solo dice qué haría;
+- **todo o nada**: si una fila es inválida no entra ninguna, para que no haya que
+  averiguar después qué se aplicó;
+- **no cambia en silencio una decisión ya tomada**: un CSV viejo reutilizado por
+  error no deshace la revisión de otro, salvo que se pida con `--permitir-cambios`;
+- **queda quién y cuándo**, y el revisor tiene que ser SUPERADMIN.
+
+Las filas sin propuesta previa con `decision = VALIDADA` son **captura manual**:
+los productos a los que el extractor no les encontró cartucho y alguien lo
+escribió a mano. Es también la vía para los seis de Canon de la sección
+anterior.
+
+Lo que el CSV **no** cubre es cartucho ↔ impresora, que es la parte 2 de esta
+lista: eso sigue siendo del panel.
+
 ## Cuándo parar
 
 Cuando la pantalla de cobertura marque **100 % del top 20**. A partir de ahí, lo
