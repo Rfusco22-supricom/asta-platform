@@ -17,6 +17,8 @@ import com.supricom.asta.kiosco.dominio.ClienteApi
 import com.supricom.asta.kiosco.dominio.Datos
 import com.supricom.asta.kiosco.ui.Kiosco
 import com.supricom.asta.kiosco.ui.Raiz
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Kiosco de Asta para tablets Android (#40).
@@ -32,6 +34,8 @@ import com.supricom.asta.kiosco.ui.Raiz
  * Eso NO impide salirse de la app: para eso, fijar la pantalla o el modo
  * dispositivo dedicado. Ver `apps/android/README.md`.
  */
+private const val LATIDO_MS = 10 * 60 * 1000L
+
 class MainActivity : ComponentActivity() {
     private lateinit var kiosco: Kiosco
 
@@ -46,9 +50,18 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         ocultarBarras()
 
+        val api = ClienteApi(BuildConfig.ASTA_API_BASE, BuildConfig.ASTA_API_KEY, version = BuildConfig.VERSION_NAME)
+        // Señal de vida cada 10 min mientras la app está abierta (#46): menos que el
+        // umbral de la alerta «kiosco mudo» (30 min), con margen para un latido perdido.
+        lifecycleScope.launch {
+            while (true) {
+                api.latir()
+                delay(LATIDO_MS)
+            }
+        }
         kiosco = Kiosco(
             Datos(
-                ClienteApi(BuildConfig.ASTA_API_BASE, BuildConfig.ASTA_API_KEY, version = BuildConfig.VERSION_NAME),
+                api,
                 CacheLocal(AlmacenPreferencias(getSharedPreferences("asta.kiosco", MODE_PRIVATE))),
             ),
             lifecycleScope,

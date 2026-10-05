@@ -54,18 +54,38 @@ Para empezar de cero (por ejemplo, después de una prueba):
 
 ## Cómo se programa
 
-En el contenedor del middleware el comando es:
+**En producción las corre el propio middleware**, cada 5 minutos, desde el
+2026-10-05: EasyPanel no tiene programador de tareas para el servicio. Va
+encendido por defecto con `NODE_ENV=production`:
+
+```bash
+ALERTAS_INTERNAS=true    # o false para apagarlo; sin ponerla, encendido solo en producción
+ALERTAS_CADA_MIN=5
+```
+
+La primera pasada es a los 2 minutos de arrancar. Cada pasada deja una línea en
+el log del contenedor (`alertas: 0 críticas · 1 avisos · …`), y lo nuevo llega a
+`ALERTAS_CORREO` (con el SMTP configurado) o a `ALERTAS_WEBHOOK_URL`.
+
+**Lo que esto NO cubre: el middleware caído.** Esa alerta no la puede dar él
+mismo. Para eso hace falta **un monitor externo de `/health`**, por ejemplo uno
+gratuito como UptimeRobot o Better Stack:
+
+```
+URL:        https://asta-middleware.larlxe.easypanel.host/health
+Intervalo:  5 min
+Aviso:      si no responde 200, o si el cuerpo no contiene "status":"ok"
+```
+
+Se puede seguir corriendo a mano, o desde un cron externo:
 
 ```bash
 node dist/cli/alertas.js
 ```
 
-Cada 5 minutos, desde el programador de tareas de EasyPanel o cualquier cron que
-pueda ejecutar órdenes en ese contenedor. **Va aparte del middleware a
-propósito**: la alerta más importante es «el middleware no responde», y esa no la
-puede dar él mismo. Si el programador solo puede lanzar órdenes DENTRO del propio
-contenedor del middleware, esa alerta concreta no saldrá cuando el contenedor
-esté caído; en ese caso conviene además un monitor externo de `/health`.
+Las tablets del kiosco mandan un latido cada 10 minutos (`/api/v1/kiosk/latido`)
+mientras la app está abierta. Una tablet sin clientes no queda «muda»; una
+apagada, sin red o con la app cerrada, sí.
 
 ---
 
@@ -73,8 +93,8 @@ esté caído; en ese caso conviene además un monitor externo de `/health`.
 
 Conviene saberlo antes de confiar en esta lista.
 
-De las reglas escritas, **todas menos `kiosco-mudo` pueden dispararse con datos
-reales**. `kiosco-mudo` espera a la Fase 5.
+Desde #197 (tablets dadas de alta en el panel, en Kioscos) y su latido, **todas
+las reglas pueden dispararse con datos reales**, `kiosco-mudo` incluida.
 
 Las que miran `api_request_logs` (`key-401`, `key-429`, `tasa-5xx`,
 `odoo-n-mas-uno`) funcionan desde #29, que es cuando la API pública empezó a

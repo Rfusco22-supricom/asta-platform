@@ -89,7 +89,19 @@ class ClienteApi(
      * de la tienda. Con una API key de cliente, por la API pública, como antes:
      * así una tablet ya configurada sigue funcionando.
      */
-    private val prefijo = if (apiKey.startsWith("asta_kio_")) "/api/v1/kiosk" else "/api/v1/public"
+    private val esTablet = apiKey.startsWith("asta_kio_")
+    private val prefijo = if (esTablet) "/api/v1/kiosk" else "/api/v1/public"
+
+    /**
+     * Señal de vida para el panel (Kioscos) y la alerta de kiosco mudo (#46).
+     * Solo con token de tablet: una key de cliente no tiene tablet que marcar.
+     * Devuelve si se mandó.
+     */
+    suspend fun latir(): Boolean {
+        if (!esTablet) return false
+        pedir("$prefijo/latido", JsonObject.serializer())
+        return true
+    }
 
     private val json = Json { ignoreUnknownKeys = true }
 

@@ -62,6 +62,17 @@ class ApiYCacheTest {
         assertEquals("1.2.0", vista!!.cabeceras["X-App-Version"])
     }
 
+    /** #46 · El latido: solo con token de tablet, a su ruta. */
+    @Test fun elLatidoSoloLoMandaUnaTablet() = runTest {
+        var vista: Peticion? = null
+        val token = "asta_kio_" + "A".repeat(43)
+        assertTrue(ClienteApi("http://kiosco.test", token, { vista = it; Respuesta(200, "{}") }).latir())
+        assertEquals("http://kiosco.test/api/v1/kiosk/latido", vista!!.url)
+        vista = null
+        assertEquals(false, api { vista = it; Respuesta(200, "{}") }.latir())
+        assertNull(vista)
+    }
+
     @Test fun cadaFalloSeDistingue() = runTest {
         assertEquals(Resultado.Fallo(MotivoFallo.RED), api(sinRed).buscarImpresoras("x"))
         assertEquals(Resultado.Fallo(MotivoFallo.PERMISO), api(responde(401)).buscarImpresoras("x"))
