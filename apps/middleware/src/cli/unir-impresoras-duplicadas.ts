@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   const v = (hecho: string, futuro: string) => (aplicar ? hecho : futuro);
 
   r.grupos.forEach((g, i) => {
-    const detalle = [g.tonersMovidos && `${g.tonersMovidos} tóner movido${g.tonersMovidos > 1 ? 's' : ''}`, g.tonersRepetidos && `${g.tonersRepetidos} repetido${g.tonersRepetidos > 1 ? 's' : ''}`]
+    const detalle = [g.tonersMovidos && `${g.tonersMovidos} tóner movido${g.tonersMovidos > 1 ? 's' : ''}`, g.tonersRepetidos && `${g.tonersRepetidos} ya lo tenía`]
       .filter(Boolean)
       .join(', ');
     console.log(`  ${String(i + 1).padStart(3)}. ${g.marca} «${g.queda}» ← ${g.sobran.map((s) => `«${s}»`).join(', ')}${detalle ? `  (${detalle})` : ''}`);

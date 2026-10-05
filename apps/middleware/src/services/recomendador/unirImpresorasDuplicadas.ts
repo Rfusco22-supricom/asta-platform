@@ -29,9 +29,13 @@ import { claveDelCatalogo, esLaDelCatalogo, esLaMisma } from './impresoraExisten
  * L1110» mejor que «L1110». Las demás:
  *
  *   · sus tóners pasan a la que se queda. Si la que se queda ya tenía ese tóner,
- *     la fila sobra y se borra; antes, si la otra ya estaba revisada y esta no,
- *     se queda la revisión. Dos revisiones distintas del mismo tóner son un
- *     conflicto, y el grupo no se toca;
+ *     la fila de la otra se queda donde está, con la impresora desactivada:
+ *     aquí no se borran filas, y el usuario de la aplicación ni siquiera tiene
+ *     DELETE sobre `cartridge_printer_models`. No estorba: el panel, la
+ *     cobertura y el kiosco solo miran impresoras activas. Antes, si la otra ya
+ *     estaba revisada y esta no, la que se queda hereda la revisión. Dos
+ *     revisiones distintas del mismo tóner son un conflicto, y el grupo no se
+ *     toca;
  *   · sus alias pasan a la que se queda, y su nombre se añade como alias: el
  *     cliente que teclea «L1110» la sigue encontrando, y los importadores la
  *     reconocen por él (ver `buscarImpresora`);
@@ -120,7 +124,7 @@ export interface GrupoUnido {
   queda: string;
   sobran: string[];
   tonersMovidos: number;
-  /** Filas que la que se queda ya tenía: se borran las de la otra. */
+  /** Tóners que la que se queda ya tenía: la fila de la otra se queda con ella, desactivada. */
   tonersRepetidos: number;
   alias: number;
 }
@@ -190,7 +194,6 @@ export async function unirEn(tx: Prisma.TransactionClient, donde: Prisma.Printer
         });
         deLaQueQueda.set(f.cartridgeId, f.status);
       }
-      await tx.cartridgePrinterModel.delete({ where: { cartridgeId_printerModelId: { cartridgeId: f.cartridgeId, printerModelId: f.printerModelId } } });
       g.tonersRepetidos++;
     }
 
