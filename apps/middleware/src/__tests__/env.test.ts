@@ -136,3 +136,21 @@ describe('#48 · WEB_APP_ORIGIN', () => {
     expect(envSchema.parse(entorno).WEB_APP_ORIGIN).toBe('https://panel.example');
   });
 });
+
+describe('#52 · TRUSTED_PROXIES', () => {
+  const leer = (valor?: string) => {
+    const entorno: Record<string, string> = { ...entornoCompleto(), ...(valor !== undefined ? { TRUSTED_PROXIES: valor } : {}) };
+    return envSchema.parse(entorno).TRUSTED_PROXIES;
+  };
+
+  it('un número de saltos llega como número: el texto "1" Express lo lee como una IP', () => {
+    expect(leer('1')).toBe(1);
+    expect(leer(' 2 ')).toBe(2);
+  });
+
+  it('lo demás llega tal cual', () => {
+    expect(leer()).toBe('loopback');
+    expect(leer('loopback, uniquelocal')).toBe('loopback, uniquelocal');
+    expect(leer('10.11.0.0/16')).toBe('10.11.0.0/16');
+  });
+});

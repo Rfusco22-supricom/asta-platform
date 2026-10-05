@@ -89,8 +89,16 @@ export const envSchema = z.object({
    *
    * Valores de Express: 'loopback', 'linklocal', 'uniquelocal', una lista de
    * IPs/CIDR separada por comas, o un número de saltos.
+   *
+   * El número tiene que llegar a Express como NÚMERO. De `process.env` todo
+   * llega como texto, y Express lee el texto "1" como la dirección IP «1»: no
+   * confía en nadie y no avisa. Era lo que pedía `docs/06` y en producción no
+   * hacía nada.
    */
-  TRUSTED_PROXIES: z.string().default('loopback'),
+  TRUSTED_PROXIES: z
+    .string()
+    .default('loopback')
+    .transform((v): string | number => (/^\s*\d+\s*$/.test(v) ? Number(v) : v)),
 }).superRefine((e, ctx) => {
   // Poner el mismo valor en las dos es el error típico al copiar de un sitio a
   // otro durante la rotación: parecería que se rotó y no se rotó nada.

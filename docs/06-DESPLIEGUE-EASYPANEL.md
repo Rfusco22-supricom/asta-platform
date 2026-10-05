@@ -176,9 +176,24 @@ TRUSTED_PROXIES=2   # si además hay un CDN
 llama. Para un sistema cuyo registro de auditoría es media defensa (#44), eso es
 peor que no tener el dato.
 
-Para comprobar que quedó bien: entrar al panel y mirar `/cuenta/sesiones`. Si sale
-tu IP real, está bien; si sale una `10.x` o `172.x`, el número de saltos está
-corto.
+Hasta el 2026-10-05 el número **no funcionaba**: de `process.env` llega como
+texto, y Express lee el texto `"1"` como la dirección IP «1», así que no confiaba
+en nadie y no avisaba. Ahora `env.ts` lo convierte en número.
+
+Para comprobar que quedó bien:
+
+- Mira `/cuenta/sesiones` en el panel. Si sale tu IP real, está bien. Si sale una
+  `10.x` o una `172.x`, falta algún salto.
+- O, desde fuera, pide sin key `https://asta-middleware.larlxe.easypanel.host/api/v1/public/recommender/printers?q=x`.
+  El enlace `docs` del 401 tiene que empezar por **`https://`**. Si sale `http://`,
+  el middleware no se está fiando del proxy, y tampoco ve la IP real de quien
+  llama. El límite de 401 por IP (`rateLimitPublico`) contaría entonces a todos
+  los clientes como uno solo.
+
+**Dominio público:** el de `middleware` tiene que apuntar al puerto **3001**
+(`http://asta_middleware:3001/`). Con el 80 que pone EasyPanel por defecto, la API
+responde 502 «Service is not reachable» desde fuera, aunque el panel funcione,
+porque el panel le habla por la red interna. Estuvo así hasta el 2026-10-05.
 
 ---
 
