@@ -152,6 +152,53 @@ Las del T544 ya no son filas aparte: desde el #173, el «L3110» del nombre y el
 «EcoTank L3110» del fabricante son la misma impresora, así que la fila del
 fabricante es la que queda y trae su URL.
 
+## Lo que Canon no publica, y hay que preguntar en el mostrador
+
+Después del top 20, el hueco que más pesa es de **Canon**, y no se puede cerrar
+leyendo: lo intenté por las cuatro vías oficiales y ninguna lo dice.
+
+| Cartucho | Ventas 12 m | El producto que lo lleva |
+|---|---:|---|
+| **T06** | 33.273 | ASTA TONER CANON T06 NEGRO SIN CHIP |
+| **T10** | 15.270 | CANON TONER T10 NEGRO |
+| **PG-145** (el no-XL) | 15.217 | CANON CARTUCHO DE TINTA PG-145 - NEGRO |
+| **GPR-58** | 15.000 | CANON GPR-58 - TAMBOR DE IMAGEN |
+| **067H** | 10.732 | CANON TONER 067 H NEGRO, ALTO RENDIMIENTO |
+| **BH-1 / CH-1** | 7.615 | CANON KIT DE CABEZAL BH-1 NEGRO + CABEZAL CH-1 |
+
+Son **97.107** al año, más que los cinco cartuchos de HP que sí se pudieron
+cargar (#182).
+
+### Por qué no se puede sacar de la web
+
+Probado el 2026-10-05, una por una:
+
+- La **ficha de la impresora en Canon Latinoamérica** no nombra su consumible.
+  Comprobado en la imageRUNNER 1643i, en la PIXMA MG2510 y en la LBP6030w: la
+  palabra «T06» o «PG-145» no aparece en ninguna.
+- La **página del cartucho en Canon USA** existe para los de consumo —de ahí
+  salió el 125— pero **no para estos**: `/shop/p/toner-t06` da 404, y el buscador
+  de la tienda también.
+- El **buscador de Suministros y Accesorios** de Canon Latinoamérica no
+  autocompleta ninguno de estos modelos.
+- La ficha de la **imageRUNNER 1643i en Canon USA** está retirada
+  («discontinued»).
+
+Queda el camino de los **folletos y fichas técnicas en PDF** de Canon, que sí los
+nombran. Eso ya no es leer una página: hay que descargar el PDF, y eso lo tiene
+que hacer una persona.
+
+### Lo que hace falta, y es de un minuto por cartucho
+
+**Qué impresora usa cada uno.** Lo sabe cualquiera del mostrador, y las
+impresoras están en el catálogo: la 1643, la DX 529iF, las imageCLASS MF, la
+MAXIFY GX5010, la PIXMA TS3610. Se añade en el panel, en **Compatibilidades →
+Impresoras**, con el código del cartucho ya escrito en el formulario.
+
+Lo que **no** hay que hacer es adivinarlo desde aquí. Una compatibilidad
+inventada es exactamente el fallo que este proyecto decidió no cometer, y para
+estos seis no hay fuente que la respalde.
+
 ## Cuándo parar
 
 Cuando la pantalla de cobertura marque **100 % del top 20**. A partir de ahí, lo
