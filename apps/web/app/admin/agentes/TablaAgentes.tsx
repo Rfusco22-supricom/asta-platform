@@ -171,7 +171,7 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
                     </div>
                   </td>
 
-                  <td className={pct >= 50 ? 'num debt' : 'num'}>
+                  <td className="num">
                     {moneyCompact(a.porCobrar)}
                     {/* El saldo es de las facturas con ASTA enteras: como % de lo
                         vendido en ASTA mezclaría las dos cosas. */}

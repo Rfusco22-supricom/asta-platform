@@ -160,6 +160,9 @@ GRANT SELECT, INSERT, UPDATE ON asta.product_cartridges       TO 'asta_app'@'loc
 -- compatibilidades. La aplicación solo la lee; se edita desde phpMyAdmin con
 -- otro usuario.
 GRANT SELECT ON asta.compatibilidad_productos TO 'asta_app'@'localhost';
+-- Las ventas de Smartbit, el sistema de antes de Odoo: copiadas a mano en
+-- phpMyAdmin, son historia. La aplicación solo las lee.
+GRANT SELECT ON asta.ventas_smartbit TO 'asta_app'@'localhost';
 
 -- Contador de intentos del personal que entra con Odoo (#85). Se lee y se
 -- actualiza en cada login; nunca se borra una fila.
@@ -322,6 +325,7 @@ GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_order_requests       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.alert_states             TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.impulsa_acciones         TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.ventas_smartbit          TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 

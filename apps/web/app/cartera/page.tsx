@@ -82,7 +82,7 @@ export default async function CarteraPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Mi cartera"
-      descripcion={`${meta.clientes} clientes asignados · solo ASTA, sin IVA y neto de devoluciones · en vivo desde Odoo`}
+      descripcion={`${meta.clientes} clientes asignados · solo ASTA, sin IVA y neto de devoluciones · Odoo y, antes de abril de 2026, Smartbit`}
     >
       <section className="stats">
         <div className="stat">

@@ -60,7 +60,8 @@ export interface Reporte {
   serieMensual: Array<{ periodo: string; monto: number; facturas: number }>;
 
   topClientes: Array<{
-    partnerId: number;
+    /** null: cliente de Smartbit sin ficha en Odoo (ver `reporteAsta.service`). */
+    partnerId: number | null;
     nombre: string;
     facturado: number;
     facturas: number;

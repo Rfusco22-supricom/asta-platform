@@ -20,20 +20,20 @@ const MIGRACIONES_BASE = ['0_init', '20260914120000_api_logs_pk_compuesta', '202
 const modelo = (fuente: string, nombre: string) => fuente.match(new RegExp(`^model ${nombre} \\{[\\s\\S]*?^\\}`, 'm'))?.[0];
 
 describe('docs/09 · linea-base.prisma', () => {
-  it('declara exactamente las tablas de las tres migraciones, más compatibilidad_productos', () => {
+  it('declara exactamente las tablas de las tres migraciones, más las creadas en phpMyAdmin', () => {
     const creadas = MIGRACIONES_BASE.flatMap((m) =>
       [...leer(`prisma/migrations/${m}/migration.sql`).matchAll(/CREATE TABLE `(\w+)`/g)].map((x) => x[1]),
     );
     const declaradas = [...lineaBase.matchAll(/@@map\("(\w+)"\)/g)].map((x) => x[1]);
 
-    expect(declaradas.sort()).toEqual([...creadas, 'compatibilidad_productos'].sort());
+    expect(declaradas.sort()).toEqual([...creadas, 'compatibilidad_productos', 'ventas_smartbit'].sort());
   });
 
-  it('el modelo de compatibilidad_productos es el mismo que en schema.prisma', () => {
+  it.each(['CompatibilidadProducto', 'VentaSmartbit'])('el modelo %s es el mismo que en schema.prisma', (nombre) => {
     // La guía pide ajustarlo en los dos si producción tiene otros tipos: si solo
     // se toca uno, el paso 1 da una deriva que no existe.
-    const enBase = modelo(lineaBase, 'CompatibilidadProducto');
+    const enBase = modelo(lineaBase, nombre);
     expect(enBase).toBeDefined();
-    expect(enBase).toBe(modelo(schema, 'CompatibilidadProducto'));
+    expect(enBase).toBe(modelo(schema, nombre));
   });
 });

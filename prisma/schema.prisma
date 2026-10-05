@@ -1015,6 +1015,44 @@ model CompatibilidadProducto {
   @@map("compatibilidad_productos")
 }
 
+/// Las ventas de Smartbit, el sistema de antes de Odoo: hasta el 31-mar-2026.
+///
+/// Igual que `compatibilidad_productos`, la tabla se creó a mano en producción
+/// (phpMyAdmin, 5-oct-2026, copiada de `supricom_panel.ventas_smartbit`). Está
+/// aquí para que la línea base de docs/09 no la vea como deriva —sin el modelo,
+/// `prisma migrate diff` propone `DROP TABLE ventas_smartbit`— y para leerla con
+/// tipos.
+///
+/// Es FUENTE: la aplicación solo la lee (`services/smartbit.service.ts`). Una
+/// fila es una línea de venta; `venta` va sin IVA y las devoluciones vienen en
+/// negativo. No trae número de factura ni saldo.
+model VentaSmartbit {
+  id             BigInt    @id @default(autoincrement())
+  companyId      Int       @map("company_id")
+  fecha          DateTime  @db.Date
+  idSucursal     Int?      @map("id_sucursal")
+  sucursal       String?   @db.VarChar(120)
+  /// El vendedor que hizo la venta, por nombre (no hay id).
+  vendedor       String?   @db.VarChar(150)
+  /// El RIF del cliente.
+  codigoCliente  String?   @map("codigo_cliente") @db.VarChar(60)
+  cliente        String?   @db.VarChar(255)
+  /// La referencia interna del producto, la misma que `default_code` en Odoo.
+  codigoArticulo String?   @map("codigo_articulo") @db.VarChar(80)
+  articulo       String?   @db.VarChar(255)
+  linea          String?   @db.VarChar(120)
+  marca          String?   @db.VarChar(120)
+  venta          Decimal   @default(0.00) @db.Decimal(16, 2)
+  unidades       Decimal   @default(0.0000) @db.Decimal(16, 4)
+  costo          Decimal?  @db.Decimal(16, 4)
+  importadoEn    DateTime? @default(now()) @map("importado_en") @db.Timestamp(0)
+
+  @@index([companyId, fecha], map: "idx_company_fecha")
+  @@index([codigoArticulo], map: "idx_articulo")
+  @@index([marca], map: "idx_marca")
+  @@map("ventas_smartbit")
+}
+
 /// Qué alertas de operación se avisaron y cuándo (#46).
 ///
 /// El comprobador corre cada pocos minutos. Sin memoria, una alerta que dura

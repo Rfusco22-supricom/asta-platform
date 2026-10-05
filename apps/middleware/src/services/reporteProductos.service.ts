@@ -2,7 +2,9 @@ import type { CategoriaDelReporte, ClienteDelReporteProductos, ReporteProductos 
 import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { MARCA_ASTA, categoriasEnCompetencia } from './asta.service.js';
-import { NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
+import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
+import { idsDeCartera } from './partners.service.js';
+import { smartbit, ventasDeClientes, type VentaSmartbit } from './smartbit.service.js';
 import { LINEA_ASTA } from './ventasAsta.service.js';
 import type { RangoPedido } from './rango.js';
 
@@ -15,6 +17,10 @@ import type { RangoPedido } from './rango.js';
  * marcas —sus tests lo prueban con las dos—, pero lo que le llega ya es ASTA,
  * así que `montoAsta` coincide con `monto`. Lo que se compra de otras marcas
  * vive en «Oportunidades ASTA».
+ *
+ * Con la historia de Smartbit de los clientes de la cartera (`smartbit.service`),
+ * lo de antes del 1-abr-2026, convertida en grupos como los de Odoo. Solo los
+ * productos que están en Odoo: sin ficha no hay categoría donde ponerlos.
  *
  * ── Un `read_group` y una lectura ────────────────────────────────────────────
  *
@@ -221,6 +227,29 @@ export function agregarReporte(
   };
 }
 
+/**
+ * Las ventas de Smartbit como grupos de `read_group`: una devolución (venta
+ * negativa) como nota de crédito, con la cantidad en positivo, que es como la
+ * da Odoo y como la resta `agregarReporte`.
+ */
+export function gruposSmartbit(porCliente: Map<number, VentaSmartbit[]>, rango: { desde: string; hasta: string }): GrupoLinea[] {
+  const grupos: GrupoLinea[] = [];
+  for (const [partnerId, ventas] of porCliente) {
+    for (const v of ventas) {
+      if (!v.productId || v.fecha < rango.desde || v.fecha > rango.hasta) continue;
+      const devolucion = v.venta < 0;
+      grupos.push({
+        product_id: [v.productId, v.sku ? `[${v.sku}] ${v.articulo}` : v.articulo],
+        partner_id: [partnerId, v.cliente],
+        move_type: devolucion ? NOTA_DE_CREDITO : FACTURA,
+        balance: -v.venta,
+        quantity: devolucion ? -v.unidades : v.unidades,
+      });
+    }
+  }
+  return grupos;
+}
+
 export async function reporteProductos(odooUserId: number, rango: RangoPedido, ahora = new Date()): Promise<ReporteProductos> {
   const clave = `${odooUserId}:${rango.desde}:${rango.hasta}`;
   const enCache = cache.get(clave);
@@ -242,10 +271,15 @@ export async function reporteProductos(odooUserId: number, rango: RangoPedido, a
     LINEA_ASTA,
   ];
 
-  const [grupos, competencia] = await Promise.all([
+  const [gruposOdoo, competencia, sb, cartera] = await Promise.all([
     readGroup<GrupoLinea>('account.move.line', dominio, ['balance:sum', 'quantity:sum'], ['product_id', 'partner_id', 'move_type']),
     categoriasEnCompetencia(),
+    smartbit(),
+    idsDeCartera(odooUserId),
   ]);
+  // Detrás de los de Odoo, para que el nombre del producto y del cliente sea
+  // el de Odoo cuando está en los dos.
+  const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sb, cartera), rango)];
 
   const ids = [...new Set(grupos.map((g) => (g.product_id ? g.product_id[0] : 0)).filter(Boolean))];
   // Los archivados también: se vendieron en el periodo aunque hoy no se vendan.

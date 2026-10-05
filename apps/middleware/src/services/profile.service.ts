@@ -1,6 +1,7 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { listarNotas, type Nota } from './notes.service.js';
 import { FACTURA, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { compras, ventasSmartbitDeCliente } from './smartbit.service.js';
 import { FACTURA_CON_ASTA, LINEA_ASTA } from './ventasAsta.service.js';
 
 /**
@@ -11,7 +12,10 @@ import { FACTURA_CON_ASTA, LINEA_ASTA } from './ventasAsta.service.js';
  *
  * ── De dónde sale cada cosa ──────────────────────────────────────────────────
  *
- * La recencia y el top de productos se leen de Odoo en vivo. Las notas del
+ * La recencia y el top de productos se leen de Odoo en vivo, más la historia
+ * de Smartbit del cliente (`smartbit.service`), lo de antes del 1-abr-2026: un
+ * producto de Smartbit que no está en Odoo cuenta en el monto y en los
+ * distintos, pero no sale en el top, que enlaza a productos de Odoo. Las notas del
  * vendedor salen de MySQL (`client_notes`): son datos operativos del panel, no
  * del ERP.
  *
@@ -137,7 +141,7 @@ export async function getClientProfile(
     LINEA_ASTA,
   ];
 
-  const [grupos, ultimas, notas] = await Promise.all([
+  const [grupos, ultimas, notas, ventasSb] = await Promise.all([
     readGroup<LineGroup>(
       'account.move.line',
       lineasBase,
@@ -162,30 +166,46 @@ export async function getClientProfile(
     // En paralelo con los dos RPC a Odoo: son sistemas distintos y esperar uno
     // para empezar el otro no tiene sentido.
     listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
+    ventasSmartbitDeCliente(partnerId),
   ]);
 
   const nombreProducto = new Map<number, string>();
   for (const g of grupos) if (g.product_id) nombreProducto.set(g.product_id[0], g.product_id[1]);
 
-  const netos = [
-    ...plegarPorTipo(grupos, (g) => (g.product_id ? g.product_id[0] : null), ['quantity', 'price_subtotal'], {
-      firmar: true,
-    }),
-  ];
-  netos.sort((a, b) => b[1].sumas.price_subtotal - a[1].sumas.price_subtotal);
-
-  const topProductos: TopProducto[] = netos.slice(0, limiteTop).map(([id, { sumas }]) => {
+  // Por producto: los de Odoo por su id; los de Smartbit que no están en Odoo,
+  // por su referencia.
+  const porProducto = new Map<string, { productId: number | null; sku: string | null; nombre: string; cantidad: number; monto: number }>();
+  for (const [id, { sumas }] of plegarPorTipo(grupos, (g) => (g.product_id ? g.product_id[0] : null), ['quantity', 'price_subtotal'], {
+    firmar: true,
+  })) {
     const { sku, nombre } = partirNombre(nombreProducto.get(id) ?? '');
-    return {
-      productId: id,
-      nombre,
-      sku,
-      cantidad: Math.round(sumas.quantity * 100) / 100,
-      monto: Math.round(sumas.price_subtotal * 100) / 100,
-    };
-  });
+    porProducto.set(`p${id}`, { productId: id, sku, nombre, cantidad: sumas.quantity, monto: sumas.price_subtotal });
+  }
+  for (const v of ventasSb) {
+    const clave = v.productId ? `p${v.productId}` : `s${v.sku ?? v.articulo}`;
+    const p = porProducto.get(clave) ?? { productId: v.productId, sku: v.sku, nombre: v.articulo, cantidad: 0, monto: 0 };
+    p.cantidad += v.unidades;
+    p.monto += v.venta;
+    porProducto.set(clave, p);
+  }
+  const netos = [...porProducto.values()].sort((a, b) => b.monto - a.monto);
 
-  const ultimaCompra = ultimas[0]?.invoice_date || null;
+  const topProductos: TopProducto[] = netos
+    .filter((p): p is typeof p & { productId: number } => p.productId !== null)
+    .slice(0, limiteTop)
+    .map((p) => ({
+      productId: p.productId,
+      nombre: p.nombre,
+      sku: p.sku,
+      cantidad: Math.round(p.cantidad * 100) / 100,
+      monto: Math.round(p.monto * 100) / 100,
+    }));
+
+  // La más reciente de las dos; en la práctica, la de Odoo si la hay, porque
+  // Smartbit acaba donde Odoo empieza.
+  const ultimaSb = compras(ventasSb).reduce<string | null>((u, c) => (!u || c.fecha > u ? c.fecha : u), null);
+  const ultimaOdoo = ultimas[0]?.invoice_date || null;
+  const ultimaCompra = ultimaOdoo && (!ultimaSb || ultimaOdoo >= ultimaSb) ? ultimaOdoo : ultimaSb;
   let diasSinComprar: number | null = null;
 
   if (ultimaCompra) {
@@ -211,7 +231,7 @@ export async function getClientProfile(
     umbrales: { atencion: UMBRAL_ATENCION_DIAS, inactivo: UMBRAL_INACTIVO_DIAS },
     topProductos,
     productosDistintos: netos.length,
-    montoEnProductos: Math.round(netos.reduce((s, [, p]) => s + p.sumas.price_subtotal, 0) * 100) / 100,
+    montoEnProductos: Math.round(netos.reduce((s, p) => s + p.monto, 0) * 100) / 100,
     notas,
     notasDisponibles: true,
   };

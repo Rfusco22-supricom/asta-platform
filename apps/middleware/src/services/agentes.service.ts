@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
+import { compras, smartbit, ventasDeClientes } from './smartbit.service.js';
 import { totalesAstaDeCartera } from './ventasAsta.service.js';
 import { authEnv } from '../config/authEnv.js';
 
@@ -107,7 +108,7 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
 
   const uids = [...porUsuario.keys()];
 
-  const [facturacion, usuarios, cuentas] = await Promise.all([
+  const [facturacion, usuarios, cuentas, sb] = await Promise.all([
     // Solo ASTA, como «Mi cartera» de cada vendedor (`ventasAsta.service`):
     // de toda la empresa en dos consultas, y se reparte por cartera abajo.
     totalesAstaDeCartera(null),
@@ -136,7 +137,22 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
         credentials: { select: { userId: true } },
       },
     }),
+
+    smartbit(),
   ]);
+
+  // Smartbit, lo de antes del 1-abr-2026 (`smartbit.service`): lo vendido y
+  // las compras, por el vendedor que las hizo; «con compra», por la historia
+  // de cada cliente de la cartera, como en «Mi cartera».
+  const sbDe = new Map<number, { facturado: number; facturas: number }>();
+  for (const v of sb.ventas) {
+    if (v.vendedorId === null) continue;
+    const t = sbDe.get(v.vendedorId) ?? { facturado: 0, facturas: 0 };
+    t.facturado += v.venta;
+    sbDe.set(v.vendedorId, t);
+  }
+  for (const c of compras(sb.ventas)) if (c.vendedorId !== null) sbDe.get(c.vendedorId)!.facturas++;
+  const conHistoria = new Set(ventasDeClientes(sb, partners.map((p) => p.id)).keys());
 
   const infoOdoo = new Map(usuarios.map((u) => [u.id, u]));
   const infoCuenta = new Map(cuentas.map((c) => [c.odooUserId!, c]));
@@ -152,14 +168,16 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
 
     for (const id of v.partners) {
       const f = facturacion.get(id);
+      // «Con compra» es haber facturado, no tener saldo: un cliente que paga al
+      // contado cuenta igual que uno que debe.
+      if ((f && f.facturas > 0) || conHistoria.has(id)) conCompra++;
       if (!f) continue;
       facturado += f.total;
       porCobrar += f.porCobrar;
       facturas += f.facturas;
-      // «Con compra» es haber facturado, no tener saldo: un cliente que paga al
-      // contado cuenta igual que uno que debe.
-      if (f.facturas > 0) conCompra++;
     }
+    facturado += sbDe.get(uid)?.facturado ?? 0;
+    facturas += sbDe.get(uid)?.facturas ?? 0;
 
     return {
       odooUserId: uid,

@@ -113,11 +113,17 @@ export async function getPortfolio(
     }
 
     // Solo ASTA (ver `ventasAsta.service`): lo vendido de la marca, sin IVA, y
-    // el saldo de las facturas que la llevan. En paralelo con la cartera: los
-    // totales se acotan solos al vendedor, no necesitan la lista de ids.
+    // el saldo de las facturas que la llevan, más la historia de Smartbit de
+    // cada cliente (`smartbit.service`), que necesita los ids: se le pasa la
+    // promesa, y Odoo empieza sin esperarla.
+    const pendientes = getPartnersBySalesperson(identity.odooUserId);
     const [clientes, totales] = await Promise.all([
-      getPartnersBySalesperson(identity.odooUserId),
-      totalesAstaDeCartera(identity.odooUserId, query.data),
+      pendientes,
+      totalesAstaDeCartera(
+        identity.odooUserId,
+        query.data,
+        pendientes.then((cs) => cs.map((c) => c.id)),
+      ),
     ]);
 
     const filas = clientes.map((cliente) => {
