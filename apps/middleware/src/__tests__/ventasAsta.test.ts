@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { idsDeCartera } from '../services/partners.service.js';
 import { LINEAS_ASTA, resumenAstaDeCliente, totalesAstaDeCartera } from '../services/ventasAsta.service.js';
+import { reporteAstaDeLaEmpresa, reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 
 /**
  * El panel del vendedor cuenta solo ASTA (`ventasAsta.service`).
@@ -83,4 +84,23 @@ describe('ventas ASTA · la cartera y la ficha dicen lo mismo', () => {
     expect(ficha.porCobrar).toBeCloseTo(enCartera.porCobrar, 1);
     expect(ficha.ultimaFactura).not.toBeNull();
   });
+});
+
+describe('ventas ASTA · la empresa es la suma de las carteras', () => {
+  const RANGO = { desde: '2026-07-01', hasta: '2026-09-30' };
+
+  it('lo de un vendedor en la vista de empresa es lo mismo que en su cartera', async () => {
+    const [empresa, deA] = await Promise.all([totalesAstaDeCartera(null), totalesAstaDeCartera(A)]);
+    for (const [id, t] of deA) expect(empresa.get(id)?.total, `cliente ${id}`).toBeCloseTo(t.total, 1);
+  });
+
+  it('el reporte de la empresa: «por vendedor» suma el total, y la fila de A es su reporte', async () => {
+    const [empresa, deA] = await Promise.all([reporteAstaDeLaEmpresa(RANGO), reporteAstaDelVendedor(A, RANGO)]);
+    const filas = empresa.porVendedor ?? [];
+    expect(filas.reduce((s, f) => s + f.facturado, 0)).toBeCloseTo(empresa.totales.facturado, 0);
+    expect(filas.reduce((s, f) => s + f.facturas, 0)).toBe(empresa.totales.facturas);
+    const filaA = filas.find((f) => f.odooUserId === A);
+    expect(filaA?.facturado ?? 0).toBeCloseTo(deA.totales.facturado, 0);
+    expect(deA.porVendedor).toBeNull();
+  }, 120_000);
 });

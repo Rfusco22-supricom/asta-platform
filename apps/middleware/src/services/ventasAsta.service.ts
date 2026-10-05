@@ -72,14 +72,15 @@ export interface TotalAsta {
 }
 
 /**
- * Lo de ASTA de cada cliente de la cartera, en dos `read_group` en paralelo.
+ * Lo de ASTA de cada cliente, en dos `read_group` en paralelo: de la cartera de
+ * un vendedor, o de toda la empresa con `null` (la vista de administración).
  * Los clientes sin ASTA no salen: el llamante los rellena a cero.
  */
-export async function totalesAstaDeCartera(odooUserId: number, query: Pick<InvoicingQuery, 'desde' | 'hasta'> = {}): Promise<Map<number, TotalAsta>> {
+export async function totalesAstaDeCartera(odooUserId: number | null, query: Pick<InvoicingQuery, 'desde' | 'hasta'> = {}): Promise<Map<number, TotalAsta>> {
   const [lineas, facturas] = await Promise.all([
     readGroup<{ partner_id: [number, string] | false; balance: number }>(
       'account.move.line',
-      [...LINEAS_ASTA, ...carteraDesdeLinea(odooUserId), ...rangoLinea(query)],
+      [...LINEAS_ASTA, ...(odooUserId === null ? [] : carteraDesdeLinea(odooUserId)), ...rangoLinea(query)],
       ['balance:sum'],
       ['partner_id'],
     ),
@@ -89,7 +90,7 @@ export async function totalesAstaDeCartera(odooUserId: number, query: Pick<Invoi
         ['state', '=', 'posted'],
         ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
         FACTURA_CON_ASTA,
-        ...carteraDesdeFactura(odooUserId),
+        ...(odooUserId === null ? [] : carteraDesdeFactura(odooUserId)),
         ...rangoLinea(query),
       ],
       ['amount_residual_signed:sum'],

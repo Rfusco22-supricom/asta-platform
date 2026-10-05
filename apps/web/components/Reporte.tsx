@@ -203,12 +203,13 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
           {datos.porVendedor && datos.porVendedor.length > 0 && (
             <section className="panel">
               <h2>Por vendedor</h2>
+              {soloAsta && <p className="panel-nota">Por el comercial asignado a cada cliente: la fila de cada vendedor es su cartera.</p>}
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
                       <th>Vendedor</th>
-                      <th className="num">Facturado</th>
+                      <th className="num">{t.columna}</th>
                       <th className="num">Por cobrar</th>
                       <th className="num">Facturas</th>
                     </tr>

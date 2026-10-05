@@ -70,13 +70,12 @@ export default async function AgentesPage() {
   }
 
   const { filas, totales } = datos;
-  const pctDeuda = totales.facturado > 0 ? (totales.porCobrar / totales.facturado) * 100 : 0;
 
   return (
     <Marco
       usuario={sesion.usuario}
       titulo="Vendedores"
-      descripcion={`${totales.agentes} personas con cartera asignada en Odoo · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
+      descripcion={`${totales.agentes} personas con cartera asignada en Odoo · solo ASTA · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
     >
       <section className="stats">
         <Metrica
@@ -85,15 +84,14 @@ export default async function AgentesPage() {
           nota="clientes asignados"
         />
         <Metrica
-          etiqueta="Facturado"
+          etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota="histórico, facturas contabilizadas"
+          nota="histórico, sin IVA, neto de devoluciones"
         />
         <Metrica
           etiqueta="Por cobrar"
           valor={moneyCompact(totales.porCobrar)}
-          nota={`${pctDeuda.toFixed(0)} % de lo facturado`}
-          tono={pctDeuda >= 30 ? 'mal' : undefined}
+          nota="en las facturas con ASTA"
         />
         <Metrica
           etiqueta="Sin acceso al panel"
