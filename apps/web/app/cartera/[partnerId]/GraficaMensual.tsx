@@ -23,7 +23,7 @@ export function GraficaMensual({ puntos }: { puntos: MonthlyPoint[] }) {
   if (puntos.length === 0) {
     return (
       <div className="empty" style={{ padding: '32px 20px' }}>
-        Sin facturación en el periodo seleccionado.
+        Sin ventas de ASTA en el periodo seleccionado.
       </div>
     );
   }

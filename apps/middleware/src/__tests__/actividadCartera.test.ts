@@ -101,6 +101,20 @@ describe('clasificación de la cartera', () => {
     expect(de(f, 2).tendencia).toBeNull();
     expect(de(f, 3).tendencia).toBe(-100);
   });
+
+  it('sin una base mínima en los tres meses anteriores no hay tendencia: 1,57 → 715 no es «+45.596 %»', () => {
+    const f = caso(
+      {},
+      {
+        1: { '2026-04': 1.57, '2026-07': 715 }, // la del panel de producción
+        2: { '2026-04': 49, '2026-07': 100 }, // justo por debajo de la base
+        3: { '2026-04': 50, '2026-07': 100 }, // justo en la base
+      },
+    );
+    expect(de(f, 1).tendencia).toBeNull();
+    expect(de(f, 2).tendencia).toBeNull();
+    expect(de(f, 3).tendencia).toBe(100);
+  });
 });
 
 /** Dos vendedores reales con cartera, descubiertos de la instancia. */

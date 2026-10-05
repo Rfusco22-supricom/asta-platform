@@ -1,30 +1,35 @@
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente } from '@asta/shared-types';
 import { readGroup, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
-import { FACTURA, TIPO_FACTURADO } from './criterioFacturacion.js';
+import { FACTURA } from './criterioFacturacion.js';
 import { idsDeCartera } from './partners.service.js';
 import { UMBRAL_ATENCION_DIAS, UMBRAL_INACTIVO_DIAS, clasificarRecencia } from './profile.service.js';
 import { mesDelGrupo, mesesDe } from './reportes.service.js';
+import { LINEAS_ASTA, carteraDesdeLinea } from './ventasAsta.service.js';
 
 /**
  * Cómo está la cartera de un vendedor, cliente a cliente (ver el contrato en
  * `@asta/shared-types`, `cartera.ts`).
  *
- * ── Qué se lee de Odoo ───────────────────────────────────────────────────────
+ * ── Qué se lee de Odoo: solo ASTA ────────────────────────────────────────────
  *
- * Dos `read_group` sobre `account.move`, en paralelo, para TODA la cartera:
+ * Dos `read_group` sobre las LÍNEAS ASTA de factura (`ventasAsta.service`), en
+ * paralelo, para TODA la cartera:
  *
- *   · la primera y la última factura de cada cliente, de todo su historial;
- *   · lo facturado mes a mes en los últimos doce, neto de devoluciones.
+ *   · la primera y la última factura con ASTA de cada cliente;
+ *   · lo vendido de ASTA mes a mes en los últimos doce, sin IVA y neto de
+ *     devoluciones.
  *
- * Agrupados por `commercial_partner_id`, como el resto de la cartera: una
- * sucursal cuenta como su matriz.
+ * Así el estado es «cuánto hace que no compra ASTA», y la clase y la tendencia
+ * hablan de la marca, no de portátiles e impresoras (decisión del 5-oct-2026).
+ * Agrupados por el cliente de la línea, que es el comercial: una sucursal
+ * cuenta como su matriz.
  *
  * ── Lo que cuesta, y la caché ────────────────────────────────────────────────
  *
- * Medido el 2-oct-2026 contra producción: 4,7 s para la cartera más grande (796
- * clientes) y 1,8 s para una de 397. Por eso se guarda DIEZ MINUTOS por
- * vendedor. Lo que cambia en ese tiempo —una factura nueva— no mueve a nadie de
+ * Con el filtro por comercial de la línea, ~1,4 s por consulta en producción
+ * (medido el 5-oct-2026); antes, con la lista de ids, 4,7 s para la cartera
+ * más grande. Aun así se guarda DIEZ MINUTOS por vendedor. Lo que cambia en ese tiempo —una factura nueva— no mueve a nadie de
  * estado ni de clase, y volver a la cartera desde una ficha no repite la espera.
  *
  * La clave es el `odooUserId` del token: dos vendedores nunca comparten
@@ -37,6 +42,15 @@ export const DIAS_CLIENTE_NUEVO = 90;
 /** Cortes de la clasificación ABC sobre lo facturado en doce meses. */
 export const CORTE_A = 0.8;
 export const CORTE_B = 0.95;
+
+/**
+ * Por debajo de esto en los tres meses anteriores no se calcula tendencia.
+ *
+ * Un cliente que pasa de 1,57 a 715 «sube un 45.596 %», que es verdad y no
+ * dice nada: no había base. Con ASTA los importes son de decenas, así que la
+ * base mínima es baja, pero tiene que existir.
+ */
+export const BASE_MINIMA_TENDENCIA = 50;
 
 const MS_DIA = 86_400_000;
 
@@ -99,7 +113,7 @@ export function clasificarCartera({ ids, fechas, porMes, meses, hoy }: EntradaCl
     const completos = serie.slice(0, -1);
     const ultimos3 = completos.slice(-3).reduce((a, b) => a + b, 0);
     const anteriores3 = completos.slice(-6, -3).reduce((a, b) => a + b, 0);
-    const tendencia = anteriores3 > 0 ? Math.round(((ultimos3 - anteriores3) / anteriores3) * 100) : null;
+    const tendencia = anteriores3 >= BASE_MINIMA_TENDENCIA ? Math.round(((ultimos3 - anteriores3) / anteriores3) * 100) : null;
 
     return {
       partnerId,
@@ -150,41 +164,42 @@ export async function actividadDeCartera(odooUserId: number, ahora = new Date())
 
   // Odoo trata `in []` como «ninguno», pero ni se le pregunta.
   if (ids.length > 0) {
-    const base: OdooDomain = [
-      ['commercial_partner_id', 'in', ids],
-      ['state', '=', 'posted'],
-    ];
+    const base: OdooDomain = [...LINEAS_ASTA, ...carteraDesdeLinea(odooUserId)];
 
     const [gruposFechas, gruposMes] = await Promise.all([
       // Solo facturas: una nota de crédito no es una compra.
-      readGroup<{ commercial_partner_id: [number, string] | false; primera: string | false; ultima: string | false }>(
-        'account.move',
-        [...base, ['move_type', '=', FACTURA]],
+      readGroup<{ partner_id: [number, string] | false; primera: string | false; ultima: string | false }>(
+        'account.move.line',
+        [...base, ['move_id.move_type', '=', FACTURA]],
         ['primera:min(invoice_date)', 'ultima:max(invoice_date)'],
-        ['commercial_partner_id'],
+        ['partner_id'],
       ),
-      // Facturas y notas de crédito: `amount_total_signed` ya trae el signo,
-      // así que la suma del mes es neta de devoluciones (#26).
-      readGroup<{ commercial_partner_id: [number, string] | false; amount_total_signed: number; __domain?: unknown }>(
-        'account.move',
-        [...base, TIPO_FACTURADO, ['invoice_date', '>=', desde], ['invoice_date', '<=', hoy]],
-        ['amount_total_signed:sum'],
-        ['commercial_partner_id', 'invoice_date:month'],
+      // Facturas y notas de crédito: `-balance` ya trae el signo, así que la
+      // suma del mes es neta de devoluciones (#26), y va sin IVA.
+      readGroup<{ partner_id: [number, string] | false; balance: number; __domain?: unknown }>(
+        'account.move.line',
+        [...base, ['invoice_date', '>=', desde], ['invoice_date', '<=', hoy]],
+        ['balance:sum'],
+        ['partner_id', 'invoice_date:month'],
       ),
     ]);
 
+    // Solo los de la cartera: el filtro por comercial ya es el mismo conjunto,
+    // pero así ni por error entra una fila que no está en `ids`.
+    const deLaCartera = new Set(ids);
+
     fechas = new Map(
       gruposFechas
-        .filter((g) => g.commercial_partner_id && g.primera && g.ultima)
-        .map((g) => [(g.commercial_partner_id as [number, string])[0], { primera: g.primera as string, ultima: g.ultima as string }]),
+        .filter((g) => g.partner_id && deLaCartera.has(g.partner_id[0]) && g.primera && g.ultima)
+        .map((g) => [(g.partner_id as [number, string])[0], { primera: g.primera as string, ultima: g.ultima as string }]),
     );
 
     for (const g of gruposMes) {
       const mes = mesDelGrupo(g);
-      if (!g.commercial_partner_id || !mes) continue;
-      const id = g.commercial_partner_id[0];
+      if (!g.partner_id || !mes || !deLaCartera.has(g.partner_id[0])) continue;
+      const id = g.partner_id[0];
       const delCliente = porMes.get(id) ?? new Map<string, number>();
-      delCliente.set(mes, (delCliente.get(mes) ?? 0) + g.amount_total_signed);
+      delCliente.set(mes, (delCliente.get(mes) ?? 0) - g.balance);
       porMes.set(id, delCliente);
     }
   }

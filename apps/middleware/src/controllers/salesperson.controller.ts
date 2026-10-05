@@ -1,9 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import {
-  getPartnerInvoicingSummary,
-  getInvoicingTotalsByPartner,
-} from '../services/invoicing.service.js';
+import { resumenAstaDeCliente, totalesAstaDeCartera } from '../services/ventasAsta.service.js';
 import { getPartnersBySalesperson } from '../services/partners.service.js';
 import { getClientProfile } from '../services/profile.service.js';
 import { borrarNota, crearNota } from '../services/notes.service.js';
@@ -60,7 +57,8 @@ export async function getClientInvoicing(
     // que se salta la comprobación de cartera porque no tiene una.
     const partner = req.partnerAutorizado ?? null;
 
-    const resumen = await getPartnerInvoicingSummary(partnerId, query.data);
+    // Solo ASTA: el panel del vendedor es de la marca (ver `ventasAsta.service`).
+    const resumen = await resumenAstaDeCliente(partnerId, query.data);
 
     res.json({
       data: {
@@ -70,8 +68,8 @@ export async function getClientInvoicing(
         facturacion: resumen,
       },
       meta: {
-        fuente: 'odoo:account.move',
-        criterio: 'facturas contabilizadas, netas de notas de crédito',
+        fuente: 'odoo:account.move.line',
+        criterio: 'solo líneas ASTA, sin IVA, netas de notas de crédito; por cobrar = saldo de las facturas con ASTA',
         consultadoEn: new Date().toISOString(),
       },
     });
@@ -83,8 +81,8 @@ export async function getClientInvoicing(
 /**
  * GET /api/v1/salesperson/portfolio
  *
- * Cartera del vendedor con el facturado de cada cliente, para la tabla principal
- * de su dashboard. Cuesta 2 RPC en total, no 2 por cliente.
+ * Cartera del vendedor con lo vendido en ASTA a cada cliente, para la tabla
+ * principal de su dashboard. Cuesta 3 RPC en paralelo, no 3 por cliente.
  */
 export async function getPortfolio(
   req: Request,
@@ -114,11 +112,13 @@ export async function getPortfolio(
       return;
     }
 
-    const clientes = await getPartnersBySalesperson(identity.odooUserId);
-    const totales = await getInvoicingTotalsByPartner(
-      clientes.map((c) => c.id),
-      query.data,
-    );
+    // Solo ASTA (ver `ventasAsta.service`): lo vendido de la marca, sin IVA, y
+    // el saldo de las facturas que la llevan. En paralelo con la cartera: los
+    // totales se acotan solos al vendedor, no necesitan la lista de ids.
+    const [clientes, totales] = await Promise.all([
+      getPartnersBySalesperson(identity.odooUserId),
+      totalesAstaDeCartera(identity.odooUserId, query.data),
+    ]);
 
     const filas = clientes.map((cliente) => {
       const t = totales.get(cliente.id) ?? { total: 0, porCobrar: 0, facturas: 0 };

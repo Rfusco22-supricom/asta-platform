@@ -11,7 +11,7 @@ import { autorizar } from '../middleware/autorizar.js';
 import { actividadDeCartera } from '../services/actividadCartera.service.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
-import { reporte } from '../services/reportes.service.js';
+import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { z } from 'zod';
@@ -158,7 +158,8 @@ salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req
     }
 
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
-    res.json(await reporte({ ...rango, soloDelVendedor: odooUserId }));
+    // Solo ASTA (ver `ventasAsta.service`); el de administración no cambia.
+    res.json(await reporteAstaDelVendedor(odooUserId, rango));
   } catch (error) {
     next(error);
   }

@@ -59,10 +59,10 @@ export default async function ReportesCarteraPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Reportes"
-      descripcion={`Tu cartera · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
+      descripcion={`Tu cartera · solo ASTA, sin IVA · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
     >
       <PestanasReportes actual="resumen" periodo={datos.periodo} />
-      <VistaReporte datos={datos} base="/reportes" />
+      <VistaReporte datos={datos} base="/reportes" soloAsta />
     </Marco>
   );
 }

@@ -10,10 +10,10 @@ import { Notas } from './Notas';
  */
 
 const RECENCIA_TEXTO: Record<ClientProfile['estadoRecencia'], string> = {
-  activo: 'Comprando con regularidad',
-  atencion: 'Lleva tiempo sin comprar',
-  inactivo: 'Inactivo',
-  sin_compras: 'Nunca ha comprado',
+  activo: 'Compra ASTA con regularidad',
+  atencion: 'Lleva tiempo sin comprar ASTA',
+  inactivo: 'Ya no compra ASTA',
+  sin_compras: 'Nunca ha comprado ASTA',
 };
 
 export function Perfil({ perfil }: { perfil: ClientProfile }) {
@@ -30,11 +30,11 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
             <span className="punto" />
             {dias === null
               ? RECENCIA_TEXTO.sin_compras
-              : `${dias} ${dias === 1 ? 'día' : 'días'} sin comprar`}
+              : `${dias} ${dias === 1 ? 'día' : 'días'} sin comprar ASTA`}
           </span>
           <span className="recencia-nota">
             {RECENCIA_TEXTO[estado]}
-            {perfil.ultimaCompra && ` · última compra el ${fecha(perfil.ultimaCompra)}`}
+            {perfil.ultimaCompra && ` · última compra de ASTA el ${fecha(perfil.ultimaCompra)}`}
           </span>
         </div>
 
@@ -47,11 +47,11 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
       </section>
 
       <section className="panel">
-        <h2>Qué compra</h2>
+        <h2>Qué compra de ASTA</h2>
 
         {perfil.topProductos.length === 0 ? (
           <div className="empty" style={{ padding: '28px 20px' }}>
-            Sin líneas de producto facturadas.
+            Todavía no ha comprado productos ASTA.
           </div>
         ) : (
           <>
@@ -61,7 +61,7 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
                   <tr>
                     <th>Producto</th>
                     <th className="num">Cantidad</th>
-                    <th className="num">Facturado</th>
+                    <th className="num">Vendido</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -90,12 +90,9 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
             </div>
 
             <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
-              Top {perfil.topProductos.length} de {perfil.productosDistintos} productos
-              distintos · {money(perfil.montoEnProductos)} en líneas de producto.
-              {' '}
-              {/* La diferencia con el total facturado desconcierta si no se explica. */}
-              Estos importes son subtotales <strong>sin impuestos</strong>, por lo que no
-              cuadran con el total facturado de arriba.
+              Top {perfil.topProductos.length} de {perfil.productosDistintos} productos ASTA
+              distintos · {money(perfil.montoEnProductos)} <strong>sin impuestos</strong>, de todo su
+              historial: si arriba hay un periodo elegido, las cifras no tienen por qué cuadrar.
             </p>
           </>
         )}

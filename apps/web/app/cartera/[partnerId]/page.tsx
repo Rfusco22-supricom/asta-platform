@@ -109,7 +109,9 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
   const { cliente, facturacion: f } = datos;
   const nombre = cliente.nombre ?? `Cliente ${partnerId}`;
-  const pctCobrado = f.totalFacturado > 0 ? (f.cobrado / f.totalFacturado) * 100 : 0;
+  // Sobre las facturas con ASTA enteras: `cobrado` y `porCobrar` son de la
+  // factura, no de su parte ASTA (ver `ventasAsta.service`).
+  const pctCobrado = f.cobrado + f.porCobrar > 0 ? (f.cobrado / (f.cobrado + f.porCobrar)) * 100 : 0;
   const hayFiltro = Boolean(desde || hasta);
 
   return (
@@ -224,10 +226,10 @@ export default async function FichaCliente({ params, searchParams }: Props) {
       <section className="stats">
         <div className="stat">
           {/* El criterio, escrito donde se lee el número (#26). */}
-          <div className="stat-label">Total facturado, neto de devoluciones</div>
+          <div className="stat-label">Vendido en ASTA, sin IVA</div>
           <div className="stat-value">{money(f.totalFacturado)}</div>
           <div className="stat-sub">
-            {f.numeroFacturas} {f.numeroFacturas === 1 ? 'factura' : 'facturas'}
+            {f.numeroFacturas} {f.numeroFacturas === 1 ? 'factura' : 'facturas'} con ASTA · neto de devoluciones
           </div>
         </div>
         <div className="stat">
@@ -235,22 +237,22 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <div className="stat-value" style={{ color: f.porCobrar > 0 ? 'var(--danger)' : undefined }}>
             {money(f.porCobrar)}
           </div>
-          <div className="stat-sub">{pctCobrado.toFixed(0)} % cobrado</div>
+          <div className="stat-sub">{pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA</div>
         </div>
         <div className="stat">
           <div className="stat-label">Ticket promedio</div>
           <div className="stat-value small">{money(f.ticketPromedio)}</div>
-          <div className="stat-sub">por factura</div>
+          <div className="stat-sub">de ASTA por factura</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Última factura</div>
+          <div className="stat-label">Última compra de ASTA</div>
           <div className="stat-value small">
             {f.ultimaFactura ? money(f.ultimaFactura.monto) : '—'}
           </div>
           <div className="stat-sub">
             {f.ultimaFactura
               ? `${f.ultimaFactura.folio} · ${fecha(f.ultimaFactura.fecha)}`
-              : 'sin facturas'}
+              : 'nunca ha comprado ASTA'}
           </div>
         </div>
       </section>
@@ -259,17 +261,17 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
       {/* ── Serie mensual ─────────────────────────────────────────────────── */}
       <section className="panel">
-        <h2>Evolución mensual</h2>
+        <h2>ASTA mes a mes</h2>
         <GraficaMensual puntos={f.serieMensual ?? []} />
       </section>
 
       {/* ── Estado de pago ────────────────────────────────────────────────── */}
       <section className="panel">
-        <h2>Estado de cobro</h2>
+        <h2>Estado de cobro de las facturas con ASTA</h2>
 
         {f.desglosePorEstadoDePago.length === 0 ? (
           <div className="empty" style={{ padding: '28px 20px' }}>
-            Sin facturas en el periodo.
+            Sin facturas con ASTA en el periodo.
           </div>
         ) : (
           <>
@@ -292,7 +294,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
                 <thead>
                   <tr>
                     <th>Estado</th>
-                    <th className="num">Facturado</th>
+                    <th className="num">ASTA</th>
                     <th className="num">Saldo</th>
                     <th className="num">Facturas</th>
                   </tr>

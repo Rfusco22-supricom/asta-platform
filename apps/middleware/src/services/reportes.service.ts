@@ -164,7 +164,7 @@ export function mesDelGrupo(grupo: { __domain?: unknown }): string | null {
 }
 
 /** Los partners de la cartera de un comercial. */
-async function carteraDe(odooUserId: number): Promise<number[]> {
+export async function carteraDe(odooUserId: number): Promise<number[]> {
   const filas = await searchRead<{ id: number }>(
     'res.partner',
     [
@@ -194,7 +194,7 @@ function vacio(opciones: OpcionesReporte, t0: number): Reporte {
 }
 
 /** Lo facturado de una lista de productos en el periodo, como un único total. */
-async function totalDeProductos(
+export async function totalDeProductos(
   productos: number[],
   rango: RangoFechas,
   cartera: number[] | null,

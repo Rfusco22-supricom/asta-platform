@@ -6,10 +6,11 @@ import type { CategoriaDelReporte, ClienteDelReporteProductos, ProductoDelReport
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
- * El reporte por producto, desde los dos lados.
+ * El reporte de productos ASTA, desde los dos lados. Solo ASTA (ver
+ * `reporteProductos.service`): lo de otras marcas está en «Oportunidades ASTA».
  *
- *   · Por categoría: cada categoría con su parte ASTA; al abrirla, sus
- *     productos; al abrir un producto, quién lo compra.
+ *   · Por categoría: cada categoría con lo vendido; al abrirla, sus productos;
+ *     al abrir un producto, quién lo compra.
  *   · Por cliente: cuánto compra cada uno y en qué categorías; al abrirlo, sus
  *     productos.
  *
@@ -26,8 +27,6 @@ function sinAcentos(t: string): string {
   return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-const TITULO_SIN_COMPETENCIA = 'No compra en categorías donde ASTA tiene producto';
-const TITULO_DEVOLUCIONES = 'En este periodo devolvió más de lo que compró en esas categorías: no hay cuota que calcular';
 
 function pct(parte: number, total: number): number {
   return total > 0 ? Math.max(0, Math.min(100, Math.round((parte / total) * 100))) : 0;
@@ -84,7 +83,7 @@ export function VistaProductos({ categorias, clientes }: { categorias: Categoria
         <input
           className="input"
           type="search"
-          placeholder={vista === 'categorias' ? 'Buscar producto, referencia o marca…' : 'Buscar cliente…'}
+          placeholder={vista === 'categorias' ? 'Buscar producto o referencia…' : 'Buscar cliente…'}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           aria-label="Buscar en el reporte"
@@ -105,18 +104,6 @@ export function VistaProductos({ categorias, clientes }: { categorias: Categoria
         <ListaClientes clientes={clientesVisibles} productosDe={productosDe} busqueda={busqueda} />
       )}
     </div>
-  );
-}
-
-function BarraAsta({ monto, montoAsta }: { monto: number; montoAsta: number }) {
-  const p = pct(montoAsta, monto);
-  return (
-    <span className="rp-asta" title={`ASTA: ${money(montoAsta)} de ${money(monto)}`}>
-      <span className="rp-asta-barra">
-        <span style={{ width: `${p}%` }} />
-      </span>
-      <span className={p === 0 ? 'rp-asta-texto cero' : 'rp-asta-texto'}>{p} % ASTA</span>
-    </span>
   );
 }
 
@@ -141,7 +128,6 @@ function Categoria({ c, max, abiertaDeEntrada }: { c: CategoriaDelReporte; max: 
         <span className="rp-peso" aria-hidden="true">
           <span style={{ width: `${pct(c.monto, max)}%` }} />
         </span>
-        {c.enCompetencia ? <BarraAsta monto={c.monto} montoAsta={c.montoAsta} /> : <span className="rp-sin-asta">ASTA no fabrica</span>}
         <span className="rp-monto">{moneyCompact(c.monto)}</span>
       </button>
 
@@ -151,7 +137,6 @@ function Categoria({ c, max, abiertaDeEntrada }: { c: CategoriaDelReporte; max: 
             <thead>
               <tr>
                 <th>Producto</th>
-                <th>Marca</th>
                 <th className="num">Cantidad</th>
                 <th className="num">Vendido</th>
                 <th className="num">Clientes</th>
@@ -188,14 +173,13 @@ function Producto({ p }: { p: ProductoDelReporte }) {
             </span>
           </button>
         </td>
-        <td>{p.esAsta ? <span className="tag-asta">ASTA</span> : <span className="rp-marca">{p.marca ?? '—'}</span>}</td>
         <td className="num">{cantidad(p.cantidad)}</td>
         <td className="num">{money(p.monto)}</td>
         <td className="num">{p.clientes.length}</td>
       </tr>
       {abierto && (
         <tr className="rp-quien">
-          <td colSpan={5}>
+          <td colSpan={4}>
             <ul>
               {p.clientes.map((cl) => (
                 <li key={cl.partnerId}>
@@ -231,8 +215,7 @@ function ListaClientes({
         <thead>
           <tr>
             <th>Cliente</th>
-            <th>En qué compra</th>
-            <th>ASTA</th>
+            <th>En qué categorías</th>
             <th className="num">Productos</th>
             <th className="num">Vendido</th>
           </tr>
@@ -295,34 +278,18 @@ function ClienteFila({
             ))}
           </span>
         </td>
-        <td>
-          {/* Sobre lo que compra donde ASTA compite, como la tarjeta de arriba. */}
-          {c.montoEnCompetencia > 0 ? (
-            <BarraAsta monto={c.montoEnCompetencia} montoAsta={c.montoAsta} />
-          ) : (
-            // Cero y negativo NO son lo mismo, y el negativo existe: el periodo
-            // incluye notas de crédito, así que un cliente que devolvió más de
-            // lo que compró en esas categorías cierra por debajo de cero. Medido
-            // en la cartera 423: cuatro clientes, uno con −1.087,86. Decirle a
-            // ese vendedor «no compra aquí» es falso —compra, y bastante—, así
-            // que cada caso lleva su explicación.
-            <span className="rp-sin-asta" title={c.montoEnCompetencia < 0 ? TITULO_DEVOLUCIONES : TITULO_SIN_COMPETENCIA}>
-              {c.montoEnCompetencia < 0 ? 'devoluciones' : '—'}
-            </span>
-          )}
-        </td>
         <td className="num">{c.productosDistintos}</td>
         <td className="num">{money(c.monto)}</td>
       </tr>
       {abierto && (
         <tr className="rp-quien">
-          <td colSpan={5}>
+          <td colSpan={4}>
             <div className="rp-cliente-detalle">
               <ul>
                 {suyos.map((p) => (
                   <li key={p.productId}>
                     <span>
-                      {p.esAsta && <span className="tag-asta">ASTA</span>} {p.sku && <span className="rp-sku">{p.sku}</span>}
+                      {p.sku && <span className="rp-sku">{p.sku}</span>}
                       {p.nombre}
                     </span>
                     <span>{cantidad(p.suyo.cantidad)} u.</span>

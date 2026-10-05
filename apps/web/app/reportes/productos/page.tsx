@@ -7,12 +7,11 @@ import { money, moneyCompact } from '@/lib/formato';
 import { VistaProductos } from './VistaProductos';
 
 /**
- * Qué compran los clientes de la PROPIA cartera, por categoría y producto.
+ * Qué productos ASTA compran los clientes de la PROPIA cartera.
  *
  * El recorte a la cartera lo hace el endpoint con el `odooUserId` del token;
  * aquí no se pide un alcance ni se filtra nada después. Los importes van sin
- * impuestos (ver `reporteProductos.ts` en shared-types): por eso no cuadran con
- * el «Facturado» del resumen, que es el total de las facturas con IVA.
+ * impuestos, como el resumen (los dos son solo ASTA).
  */
 
 export const dynamic = 'force-dynamic';
@@ -45,35 +44,25 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
   }
 
   const { totales, periodo } = datos;
-  // Sobre lo vendido donde ASTA compite, como en «Oportunidades ASTA»: frente a
-  // portátiles e impresoras, que ASTA no fabrica, la cuota no dice nada.
-  const cuotaAsta = totales.montoEnCompetencia > 0 ? Math.round((totales.montoAsta / totales.montoEnCompetencia) * 1000) / 10 : 0;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Reportes" descripcion={`Tu cartera · ${periodo.desde} a ${periodo.hasta} · importes sin IVA`}>
+    <Marco usuario={sesion.usuario} titulo="Reportes" descripcion={`Tu cartera · productos ASTA, sin IVA · ${periodo.desde} a ${periodo.hasta}`}>
       <PestanasReportes actual="productos" periodo={periodo} />
       <Periodos base="/reportes/productos" periodo={periodo} />
 
       <section className="stats">
         <div className="stat">
-          <div className="stat-label">Vendido</div>
+          <div className="stat-label">Vendido en ASTA</div>
           <div className="stat-value">{moneyCompact(totales.monto)}</div>
           <div className="stat-sub">{money(totales.monto)} sin IVA</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Cuota ASTA</div>
-          <div className="stat-value">{cuotaAsta.toLocaleString('es')} %</div>
-          <div className="stat-sub">
-            {moneyCompact(totales.montoAsta)} de {moneyCompact(totales.montoEnCompetencia)} donde ASTA tiene producto
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Clientes que compraron</div>
+          <div className="stat-label">Clientes que compraron ASTA</div>
           <div className="stat-value">{totales.clientes}</div>
           <div className="stat-sub">en el periodo</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Productos distintos</div>
+          <div className="stat-label">Productos ASTA distintos</div>
           <div className="stat-value">{totales.productos}</div>
           <div className="stat-sub">en {datos.categorias.length} categorías</div>
         </div>
