@@ -97,7 +97,7 @@ node -e "fetch('http://asta-middleware:3001/health').then(r=>r.json()).then(j=>c
 |---|---|
 | 1 · deriva contra `linea-base.prisma` | `-- This is an empty migration.` |
 | 2 · marcar las tres de la línea base | tres «marked as applied» |
-| 3 · `migrate status`, luego `migrate deploy` | pendientes solo las posteriores; se aplican las **nueve** de la tabla de docs/09 |
+| 3 · `migrate status`, luego `migrate deploy` | pendientes solo las posteriores; se aplican las **diez** de la tabla de docs/09 |
 | 4 · deriva contra `schema.prisma` | `-- This is an empty migration.` |
 
 - **Si el paso 1 de docs/09 saca algo:** PARAR. Pegar la salida y revisarla

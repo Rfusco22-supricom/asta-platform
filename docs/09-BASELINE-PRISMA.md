@@ -163,7 +163,7 @@ aparece `0_init` como pendiente, el paso 2 no quedó completo: **no seguir**.
 DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
 ```
 
-Aplica lo que haya en la imagen después de la línea base. Al 2-oct-2026, en
+Aplica lo que haya en la imagen después de la línea base. Al 5-oct-2026, en
 `main`:
 
 | Migración | Qué hace |
@@ -177,6 +177,7 @@ Aplica lo que haya en la imagen después de la línea base. Al 2-oct-2026, en
 | `20261001140000_alert_states` | Memoria de las alertas de operación (#46) |
 | `20261001200000_api_order_requests` | Claves de idempotencia de `POST /orders` (#33) |
 | `20261001210000_impresoras_catalogo_odoo` | Marca las impresoras que Supricom vende (#40) |
+| `20261005120000_impulsa_acciones` | Lo que el vendedor hizo con cada sugerencia de «Impulsa» (#40) |
 
 ## Paso 4 · Confirmar que no queda deriva
 
@@ -230,6 +231,7 @@ GRANT SELECT                 ON Asta.compatibilidad_productos TO 'asta_app'@'<ho
 GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.alert_states             TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.api_order_requests       TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.impulsa_acciones         TO 'asta_app'@'<host>';
 
 -- Esta tabla ya existía, pero la telemetría del recomendador (#43) completa sus
 -- filas: UPDATE solo en estas tres columnas (#150). Sin él, el clic del kiosco
@@ -246,6 +248,7 @@ GRANT SELECT ON Asta.compatibilidad_productos TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.alert_states             TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.api_order_requests       TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.impulsa_acciones         TO 'asta_lectura'@'<host>';
 ```
 
 Son las mismas que `004_usuarios.sql` concede para esas tablas, sin DELETE en

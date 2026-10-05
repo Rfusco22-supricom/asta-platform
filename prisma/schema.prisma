@@ -110,6 +110,13 @@ enum ApiOrderRequestState {
   FALLIDO
 }
 
+/// Lo que el vendedor hizo con una sugerencia de «Impulsa» (ver `ImpulsaAccion`).
+enum ImpulsaEstado {
+  ACTIVA
+  HECHA
+  POSPUESTA
+}
+
 enum CompatibilityStatus {
   PROPUESTA
   VALIDADA
@@ -204,6 +211,7 @@ model AppUser {
   auditLogs               AuditLog[]              @relation("AuditActor")
   recommendationEvents    RecommendationEvent[]
   clientNotes             ClientNote[]
+  impulsaAcciones         ImpulsaAccion[]
   tierMapUpdates          TierPricelistMap[]
   reviewedCompatibilities CartridgePrinterModel[] @relation("CompatibilityReviewer")
   proposedCompatibilities CartridgePrinterModel[] @relation("CompatibilityProposer")
@@ -666,6 +674,43 @@ model ClientNote {
   @@index([odooPartnerId, createdAt], map: "ix_client_notes_partner")
   @@index([authorId], map: "ix_client_notes_author")
   @@map("client_notes")
+}
+
+/// Qué hizo el vendedor con una sugerencia de «Impulsa a tus clientes» (#40).
+///
+/// Las sugerencias no se guardan: se calculan de Odoo cada vez
+/// (`services/impulsa/pasaleAAsta.service.ts`). Aquí solo queda lo que el
+/// vendedor decidió sobre una de ellas, para no repetírsela:
+///
+///   · HECHA: no vuelve a salir hasta que el cliente compre otra vez el
+///     original (`firma` guarda la fecha de la última compra al marcarla);
+///   · POSPUESTA: no sale hasta `hasta`;
+///   · ACTIVA: «deshacer». Se reescribe la fila en vez de borrarla: el usuario
+///     de la aplicación no tiene DELETE (#44).
+///
+/// Una fila por vendedor, cliente, tipo de sugerencia y clave (el producto
+/// original, en «Pásale a ASTA»).
+model ImpulsaAccion {
+  id String @id @default(uuid()) @db.Char(36)
+
+  userId String  @map("user_id") @db.Char(36)
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_impulsa_acciones_user")
+
+  odooPartnerId Int    @map("odoo_partner_id") @db.UnsignedInt
+  tipo          String @db.VarChar(32)
+  clave         String @db.VarChar(64)
+
+  estado ImpulsaEstado
+  /// Hasta cuándo no sale, si está pospuesta.
+  hasta  DateTime?     @db.Date
+  /// La fecha de la última compra del original cuando se marcó como hecha.
+  firma  String?       @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@unique([userId, odooPartnerId, tipo, clave], map: "uq_impulsa_acciones")
+  @@map("impulsa_acciones")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

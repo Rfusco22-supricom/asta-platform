@@ -9,13 +9,14 @@ import {
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { actividadDeCartera } from '../services/actividadCartera.service.js';
+import { marcarSugerencia, sugerenciasPasale } from '../services/impulsa/pasaleAAsta.service.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { z } from 'zod';
-import { nuevaCompatibilidadSchema } from '@asta/shared-types';
+import { marcarImpulsaSchema, nuevaCompatibilidadSchema } from '@asta/shared-types';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
@@ -36,6 +37,55 @@ export const salespersonRouter = Router();
 salespersonRouter.use(authJwt());
 
 salespersonRouter.get('/portfolio', autorizar('cartera.ver'), getPortfolio);
+
+/**
+ * «Impulsa a tus clientes» (#40): las sugerencias de la PROPIA cartera.
+ *
+ * La cartera sale del `odooUserId` del token; lo que el vendedor marcó, de su
+ * `appUserId`. Ninguno de los dos es un parámetro.
+ */
+salespersonRouter.get('/impulsa', autorizar('impulsa.ver'), async (req, res, next) => {
+  try {
+    const { odooUserId, appUserId } = req.identity;
+    if (odooUserId === null) {
+      res.status(409).json({
+        error: { code: 'CONFLICT', message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.' },
+      });
+      return;
+    }
+    res.json(await sugerenciasPasale(odooUserId, appUserId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Marcar una sugerencia como hecha, pospuesta o activa («deshacer»).
+ *
+ * `impulsa.marcar` es de ámbito partner-propio: `autorizar` ya comprobó que el
+ * cliente es de quien marca. El servicio comprueba además que la sugerencia
+ * exista hoy para ese cliente.
+ */
+salespersonRouter.post('/clients/:partnerId/impulsa', autorizar('impulsa.marcar'), async (req, res, next) => {
+  try {
+    const { odooUserId, appUserId } = req.identity;
+    if (odooUserId === null) {
+      res.status(409).json({
+        error: { code: 'CONFLICT', message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.' },
+      });
+      return;
+    }
+    const cuerpo = marcarImpulsaSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    await marcarSugerencia(odooUserId, appUserId, Number(req.params.partnerId), cuerpo.data);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * Estado, clase ABC y tendencia de cada cliente de la PROPIA cartera.

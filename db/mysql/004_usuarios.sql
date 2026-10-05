@@ -167,6 +167,9 @@ GRANT SELECT, INSERT, UPDATE ON asta.staff_login_guards TO 'asta_app'@'localhost
 -- Memoria de las alertas (#46): el comprobador recuerda qué avisó para no repetirlo.
 -- UPDATE para marcar una alerta como resuelta; sin DELETE, como el resto.
 GRANT SELECT, INSERT, UPDATE ON asta.alert_states TO 'asta_app'@'localhost';
+-- «Impulsa a tus clientes» (#40): lo que el vendedor hizo con cada sugerencia.
+-- UPDATE para posponer o deshacer; sin DELETE: «deshacer» reescribe la fila.
+GRANT SELECT, INSERT, UPDATE ON asta.impulsa_acciones TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
 -- Las bitácoras: se escriben y se leen. NO se modifican.
@@ -318,6 +321,7 @@ GRANT SELECT ON asta.compatibilidad_productos TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.staff_login_guards       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_order_requests       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.alert_states             TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.impulsa_acciones         TO 'asta_lectura'@'localhost';
 
 FLUSH PRIVILEGES;
 
