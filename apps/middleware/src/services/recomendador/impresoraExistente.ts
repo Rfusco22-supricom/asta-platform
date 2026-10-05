@@ -71,6 +71,15 @@ export function esLaMisma(uno: string, otro: string): boolean {
  */
 export async function buscarImpresora(tx: Prisma.TransactionClient, brandId: number, nameNormalized: string): Promise<PrinterModel | null> {
   const exacta = await tx.printerModel.findUnique({ where: { brandId_nameNormalized: { brandId, nameNormalized } } });
+  if (exacta?.isActive === false) {
+    // Desactivada al unirla con otra (`unirImpresorasDuplicadas`): su nombre es
+    // ahora un alias de la que se quedó, y lo que se importe va a esa. Sin
+    // alias, la retiró alguien a propósito, y se devuelve tal cual, como antes.
+    const unida = await tx.printerModel.findMany({
+      where: { brandId, isActive: true, aliases: { some: { aliasNormalized: nameNormalized, isActive: true } } },
+    });
+    return unida.length === 1 ? unida[0]! : exacta;
+  }
   if (exacta) return exacta;
 
   const deLaMarca = await tx.printerModel.findMany({ where: { brandId }, include: { brand: { select: { name: true } } } });
