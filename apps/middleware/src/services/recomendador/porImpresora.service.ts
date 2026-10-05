@@ -1,4 +1,5 @@
 import type {
+  LoteFabricante,
   CartuchoElegible,
   EstadoRevision,
   GuardarToners,
@@ -303,4 +304,52 @@ export async function guardarTonersDeImpresora(printerModelId: number, datos: Gu
     cartuchosNuevos: r.cartuchosNuevos,
     detalle: { validados: r.validados, rechazados: r.rechazados, creados: r.creados },
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// En lote: lo que viene de las listas oficiales del fabricante
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pendiente de una lista oficial, en una impresora que el kiosco puede enseñar.
+ * `brandId` acota a una marca: solo lo usan los tests, para no tocar lo de verdad.
+ */
+function delFabricante(brandId?: number) {
+  return { source: 'FABRICANTE', status: 'PROPUESTA', printerModel: { isActive: true, ...(brandId ? { brandId } : {}) } } as const;
+}
+
+/** Cuánto hay pendiente de las listas oficiales, y de dónde sale. */
+export async function resumenLoteFabricante(brandId?: number): Promise<LoteFabricante> {
+  const filas = await prisma.cartridgePrinterModel.findMany({
+    where: delFabricante(brandId),
+    select: { cartridgeId: true, printerModelId: true, sourceRef: true },
+  });
+  return {
+    propuestas: filas.length,
+    impresoras: new Set(filas.map((f) => f.printerModelId)).size,
+    cartuchos: new Set(filas.map((f) => f.cartridgeId)).size,
+    fuentes: [...new Set(filas.map((f) => f.sourceRef).filter((x): x is string => Boolean(x)))].sort(),
+  };
+}
+
+/**
+ * Valida de una vez lo pendiente de las listas oficiales.
+ *
+ * `esperadas` es lo que la persona vio antes de confirmar. Si la base ya no
+ * dice lo mismo, no se valida nada: lo que se aprobó fue esa cifra, no otra.
+ * Lo rechazado no se toca, y lo de otras fuentes (el nombre del producto, un
+ * vendedor) sigue pasando por revisión una a una.
+ */
+export async function validarLoteFabricante(esperadas: number, revisorId: string, brandId?: number): Promise<{ validadas: number }> {
+  const r = await prisma.$transaction(async (tx) => {
+    const ahora = await tx.cartridgePrinterModel.count({ where: delFabricante(brandId) });
+    if (ahora !== esperadas) throw new RevisionDesactualizada([{ esperadas, ahora }]);
+    const { count } = await tx.cartridgePrinterModel.updateMany({
+      where: delFabricante(brandId),
+      data: { status: 'VALIDADA', reviewedBy: revisorId, reviewedAt: new Date() },
+    });
+    return { validadas: count };
+  });
+  invalidarCatalogoImpresoras();
+  return r;
 }

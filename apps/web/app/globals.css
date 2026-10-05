@@ -2669,3 +2669,26 @@ tr:hover .mini-serie .mes-lleno { fill: var(--primario-oscuro); }
 .kio-pasos { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13.5px; color: var(--text-2); }
 .kio-pasos code { font-family: var(--mono); font-size: 12.5px; color: var(--text); }
 .kio-token-pie { display: flex; justify-content: flex-end; }
+
+/* ── Compatibilidades: validar en lote lo de las listas oficiales ─────────── */
+.lote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  border: 1px solid color-mix(in srgb, var(--pi-ok) 35%, var(--border));
+  border-radius: var(--radius-card);
+  background: var(--pi-ok-suave);
+}
+.lote-texto { flex: 1 1 420px; min-width: 0; display: grid; gap: 4px; }
+.lote-texto h2 { margin: 0; font-size: 15.5px; font-weight: 650; }
+.lote-texto h2 strong { color: var(--pi-ok); font-variant-numeric: tabular-nums; }
+.lote-texto p { margin: 0; font-size: 13.5px; color: var(--text-2); max-width: 80ch; }
+.lote-sitios { font-family: var(--mono); font-size: 12.5px; }
+.lote-mensaje.ok { color: var(--pi-ok); font-weight: 600; }
+.lote-mensaje.error { color: var(--danger); font-weight: 600; }
+.lote-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.lote-pregunta { font-size: 13.5px; font-weight: 600; }

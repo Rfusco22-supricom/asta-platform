@@ -460,3 +460,34 @@ export const guardarTonersRespuestaSchema = z.object({
 });
 
 export type GuardarTonersRespuesta = z.infer<typeof guardarTonersRespuestaSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Validar en lote lo que viene de las listas oficiales del fabricante
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lo pendiente que sale de una lista OFICIAL del fabricante (`source =
+ * FABRICANTE`): la tabla de compatibilidades que publican HP, Canon, Epson…
+ * con su página de origen. Es lo más fiable que hay, y revisarlo una a una
+ * retrasaba todo lo demás.
+ */
+export const loteFabricanteSchema = z.object({
+  /** Propuestas pendientes de listas oficiales, en impresoras activas. */
+  propuestas: z.number().int().nonnegative(),
+  impresoras: z.number().int().nonnegative(),
+  cartuchos: z.number().int().nonnegative(),
+  /** Las páginas de origen, para enseñar de dónde sale. */
+  fuentes: z.array(z.string()),
+});
+
+export type LoteFabricante = z.infer<typeof loteFabricanteSchema>;
+
+export const loteFabricanteRespuestaSchema = z.object({ data: loteFabricanteSchema });
+
+/**
+ * `esperadas` es el número que se vio en pantalla: si la base ya no coincide
+ * —un importador añadió, otro revisó—, 409 y no se valida nada.
+ */
+export const validarLoteFabricanteSchema = z.object({ esperadas: z.number().int().positive().max(100_000) });
+
+export const validarLoteFabricanteRespuestaSchema = z.object({ data: z.object({ validadas: z.number().int().nonnegative() }) });

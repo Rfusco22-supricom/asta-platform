@@ -15,6 +15,7 @@ import { emitirAccessToken } from '../auth/jwt.js';
 import { caducaEnDias, hashSecreto } from '../auth/tokens.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 import { vaciarCachesRevision } from '../services/recomendador/revision.service.js';
+import { resumenLoteFabricante, validarLoteFabricante } from '../services/recomendador/porImpresora.service.js';
 
 /**
  * «Impresora | Tóners compatibles»: la pestaña Impresoras vista desde la impresora.
@@ -207,5 +208,42 @@ describe('Por impresora · guardar', () => {
     const [i] = (await pedir<PorImpresoraRespuesta>('GET', `/admin/compatibilidades/por-impresora?vista=todas&q=zzjet502`, 'admin')).body.data;
     const r = await pedir('PUT', `/admin/compatibilidades/por-impresora/${id}`, 'admin', { vistos: vistos(i!), compatibles: [4_000_000_000], nuevos: [] });
     expect(r.status).toBe(400);
+  });
+});
+
+describe('En lote: lo de las listas oficiales del fabricante', () => {
+  let impresoraLote = 0;
+  beforeAll(async () => {
+    impresoraLote = (await prisma.printerModel.create({ data: { brandId: marcaId, name: 'ZZJet 600', nameNormalized: 'zzjet600' } })).id;
+    const fila = (cartridgeId: number, source: 'FABRICANTE' | 'PARSEO', status: 'PROPUESTA' | 'RECHAZADA') =>
+      prisma.cartridgePrinterModel.create({ data: { cartridgeId, printerModelId: impresoraLote, source, sourceRef: source === 'FABRICANTE' ? 'https://ejemplo.test/lista' : null, status } });
+    await fila(toner['ZZT-1']!, 'FABRICANTE', 'PROPUESTA');
+    await fila(toner['ZZT-2']!, 'FABRICANTE', 'PROPUESTA');
+    // De otra fuente: no entra en el lote.
+    await fila(toner['ZZT-3']!, 'PARSEO', 'PROPUESTA');
+    // Rechazado: se queda rechazado.
+    await fila(toner['ZZT-4']!, 'FABRICANTE', 'RECHAZADA');
+  });
+
+  it('el resumen cuenta solo lo pendiente de listas oficiales', async () => {
+    expect(await resumenLoteFabricante(marcaId)).toEqual({ propuestas: 2, impresoras: 1, cartuchos: 2, fuentes: ['https://ejemplo.test/lista'] });
+  });
+
+  it('un vendedor no lo ve ni lo aplica: 403', async () => {
+    expect((await pedir('GET', '/admin/compatibilidades/lote-fabricante', 'vendedor')).status).toBe(403);
+  });
+
+  it('con otra cifra que la vista, 409 y no se valida nada', async () => {
+    const admin = await prisma.appUser.findFirstOrThrow({ where: { email: 'test.porimp.admin@porimpresora.local' } });
+    await expect(validarLoteFabricante(3, admin.id, marcaId)).rejects.toThrow();
+    expect((await resumenLoteFabricante(marcaId)).propuestas).toBe(2);
+  });
+
+  it('valida lo oficial y deja lo demás como estaba', async () => {
+    const admin = await prisma.appUser.findFirstOrThrow({ where: { email: 'test.porimp.admin@porimpresora.local' } });
+    expect(await validarLoteFabricante(2, admin.id, marcaId)).toEqual({ validadas: 2 });
+    expect(await estados(impresoraLote)).toEqual({ 'ZZT-1': 'VALIDADA', 'ZZT-2': 'VALIDADA', 'ZZT-3': 'PROPUESTA', 'ZZT-4': 'RECHAZADA' });
+    const fila = await prisma.cartridgePrinterModel.findFirstOrThrow({ where: { printerModelId: impresoraLote, cartridgeId: toner['ZZT-1']! } });
+    expect([fila.reviewedBy, fila.reviewedAt !== null]).toEqual([admin.id, true]);
   });
 });
