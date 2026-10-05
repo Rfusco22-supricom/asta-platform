@@ -28,6 +28,8 @@ let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
 let idTelemetriaInicial = 0n;
+/** El dueño de la key: puede ser un cliente que ya existía, y entonces no está en `usuariosCreados`. */
+let usuarioDelEjemplo: string | undefined;
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 let key = '';
@@ -50,7 +52,8 @@ const fixture: { comprobado: boolean; marcaCreada?: number; impresoraCreada?: nu
 beforeAll(async () => {
   const ultimo = await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
   idBitacoraInicial = ultimo?.id ?? 0n;
-  // Desde #43 el recomendador escribe recommendation_events: se borra lo de este test.
+  // Desde #43 el recomendador escribe recommendation_events: se borra lo de este
+  // test. La cota es por si el usuario ya existía: lo suyo de antes no se toca.
   idTelemetriaInicial = (await prisma.recommendationEvent.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }))?.id ?? 0n;
 
   const app = createApp();
@@ -85,6 +88,7 @@ beforeAll(async () => {
     });
     usuariosCreados.push(usuario.id);
   }
+  usuarioDelEjemplo = usuario.id;
   const k = await issueApiKey({ userId: usuario.id, name: 'ejemplos docs', scopes: ['INVOICES_READ', 'INVENTORY_READ', 'RECOMMENDER_READ', 'PRICING_READ', 'ORDERS_READ'], rateLimitPerMinute: 1000 });
   keysCreadas.push(k.id);
   key = k.plaintext;
@@ -174,7 +178,11 @@ afterAll(async () => {
     }
   }
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
-  await prisma.recommendationEvent.deleteMany({ where: { id: { gt: idTelemetriaInicial } } });
+  // Solo las del usuario del ejemplo: por id a secas se llevaba también las de
+  // otra batería contra la misma base. La tabla no guarda la key, así que si el
+  // usuario ya existía, lo que distingue lo de este test es la cota. Y antes de
+  // borrar el usuario: la FK pone user_id a NULL y ya no se sabría de quién eran.
+  if (usuarioDelEjemplo) await prisma.recommendationEvent.deleteMany({ where: { userId: usuarioDelEjemplo, id: { gt: idTelemetriaInicial } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   await new Promise<void>((resolve) => server?.close(() => resolve()));

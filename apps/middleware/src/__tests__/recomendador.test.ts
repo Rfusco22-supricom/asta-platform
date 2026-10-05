@@ -45,7 +45,6 @@ const CODIGOS = ['zzrec1', 'zzrec2', 'zzrec3', 'zzrec4'];
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
-let idTelemetriaInicial = 0n;
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 let key = '';
@@ -68,8 +67,6 @@ beforeAll(async () => {
 
   const ultimo = await prisma.apiRequestLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
   idBitacoraInicial = ultimo?.id ?? 0n;
-  // Desde #43 el recomendador escribe recommendation_events: se borra lo de este test.
-  idTelemetriaInicial = (await prisma.recommendationEvent.findFirst({ orderBy: { id: 'desc' }, select: { id: true } }))?.id ?? 0n;
 
   const app = createApp();
   await new Promise<void>((resolve) => {
@@ -168,7 +165,10 @@ afterAll(async () => {
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
-    await prisma.recommendationEvent.deleteMany({ where: { id: { gt: idTelemetriaInicial } } });
+    // Telemetría (#43): solo la de sus usuarios. Por id se llevaba también la de
+    // otra batería contra la misma base. Y antes de borrarlos: la FK pone user_id
+    // a NULL y las filas quedarían sin forma de saber que eran de este test.
+    await prisma.recommendationEvent.deleteMany({ where: { userId: { in: usuariosCreados } } });
     await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
     await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });
   }
