@@ -5,14 +5,15 @@ Del proyecto a una tablet en el mostrador. Issue #40.
 El simulador no sirve para la tienda: hay que firmar la app con una cuenta de
 Apple e instalarla en el equipo. Esta guía es para quien tiene esa cuenta.
 
-> **Dos cosas hay que resolver antes, y ninguna se arregla desde el código.**
-> Están comprobadas, con fecha, en «Lo que falta» al final. En resumen:
+> **Falta una cosa que no se arregla desde el código.** Está comprobada, con
+> fecha, en «Lo que falta» al final:
 >
 > 1. **Este Mac no tiene ninguna identidad de firma** (`security find-identity -v
 >    -p codesigning` → *0 valid identities found*). Sin una cuenta de Apple en
 >    Xcode no se puede instalar en ningún iPad.
-> 2. **El middleware no responde desde fuera**: su dominio público da **502**. La
->    tablet no tendría a quién preguntar.
+>
+> El middleware ya responde desde fuera desde el 2026-10-05:
+> `https://asta-middleware.larlxe.easypanel.host`.
 
 ---
 
@@ -41,7 +42,7 @@ TestFlight.**
 2. La API key y la URL del middleware, en `apps/ios/Config/Kiosco.xcconfig`:
 
    ```
-   ASTA_API_BASE = https:/$()/middleware-de-produccion
+   ASTA_API_BASE = https:/$()/asta-middleware.larlxe.easypanel.host
    ASTA_API_KEY = la-de-esta-tienda
    ```
 
@@ -120,31 +121,29 @@ En la tablet, sin preguntarle a nadie:
 
 ---
 
-## Lo que falta, comprobado el 2026-10-02
+## Lo que falta, comprobado el 2026-10-02 (actualizado el 2026-10-05)
 
 **1. La firma.** En este Mac, `security find-identity -v -p codesigning`
 devuelve *0 valid identities found*: nadie ha iniciado sesión con una cuenta de
 Apple en Xcode. Es el paso 1 de arriba y **solo lo puede hacer una persona con
 esa cuenta**; no se automatiza desde aquí.
 
-**2. El middleware no está publicado.**
+**2. ~~El middleware no está publicado.~~ Resuelto el 2026-10-05.** El dominio
+apuntaba al puerto 80 y el middleware escucha en el 3001. Ahora:
 
 ```
-curl -o /dev/null -w '%{http_code}' https://asta-middleware.larlxe.easypanel.host/health   → 502
+curl -o /dev/null -w '%{http_code}' https://asta-middleware.larlxe.easypanel.host/health   → 200
 ```
 
-Hoy solo está expuesto el panel. Mientras el middleware no responda desde
-internet, **una tablet en una tienda no tiene a quién preguntar**: el kiosco
-arrancaría en rojo y solo serviría lo que tuviera en caché, que al principio es
-nada. Hay que arreglarlo en el dominio del servicio `middleware` en EasyPanel
-(ver `06-DESPLIEGUE-EASYPANEL.md`), y eso necesita el panel de EasyPanel.
+Ver `06-DESPLIEGUE-EASYPANEL.md`: el puerto del dominio y `TRUSTED_PROXIES`.
 
-**3. Y aunque se arregle: en producción no hay compatibilidades validadas.** Las
+**3. En producción todavía no hay compatibilidades validadas.** Las
 tablas de impresoras están cargadas, pero sin cadenas validadas
 (impresora → cartucho → producto) el kiosco contestará «pregunta en el
 mostrador» a casi todo. La pantalla de cobertura del panel dice cuánto falta, y
 el orden está en `09-BASELINE-PRISMA.md`: los tres importadores y después la
 revisión.
 
-En otras palabras: **la app está lista antes que los datos.** Para una prueba en
-una tablet con el middleware de desarrollo, el punto 2 de esta guía basta hoy.
+En otras palabras: **la app está lista antes que los datos.** Se validan en el panel, en
+Compatibilidades → Impresoras (una impresora por fila, con sus tóners) y
+Productos.
