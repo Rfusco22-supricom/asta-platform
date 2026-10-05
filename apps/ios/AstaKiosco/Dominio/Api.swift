@@ -48,12 +48,23 @@ struct TransporteURLSession: Transporte {
 struct ConfigApi: Sendable {
     let base: String
     let apiKey: String
+    /// La versión de la app, para que el panel diga qué tablet se quedó atrás.
+    var version: String = ""
+
+    /// Dónde pregunta la tablet. Con un token de tablet (`asta_kio_…`, dado de
+    /// alta en el panel, en Kioscos), por las rutas del kiosco: existencias del
+    /// almacén de la tienda. Con una API key de cliente, por la API pública,
+    /// como antes: así una tablet ya configurada sigue funcionando.
+    var prefijo: String {
+        apiKey.hasPrefix("asta_kio_") ? "/api/v1/kiosk" : "/api/v1/public"
+    }
 
     /// La de `Info.plist`, que sale del xcconfig de la tablet.
     static func delBundle(_ bundle: Bundle = .main) -> ConfigApi {
         ConfigApi(
             base: (bundle.object(forInfoDictionaryKey: "AstaApiBase") as? String) ?? "",
-            apiKey: (bundle.object(forInfoDictionaryKey: "AstaApiKey") as? String) ?? ""
+            apiKey: (bundle.object(forInfoDictionaryKey: "AstaApiKey") as? String) ?? "",
+            version: (bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? ""
         )
     }
 }
@@ -89,6 +100,7 @@ struct ClienteApi: Sendable {
         var peticion = URLRequest(url: url, timeoutInterval: 15)
         peticion.httpMethod = metodo
         peticion.setValue(config.apiKey, forHTTPHeaderField: "X-API-Key")
+        if !config.version.isEmpty { peticion.setValue(config.version, forHTTPHeaderField: "X-App-Version") }
         if let cuerpo {
             peticion.httpBody = cuerpo
             peticion.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -115,7 +127,7 @@ struct ClienteApi: Sendable {
 
     func buscarImpresoras(_ q: String) async -> Resultado<Busqueda> {
         let consulta = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&=+?#"))) ?? ""
-        let r: Resultado<RespuestaBusqueda> = await pedir("/api/v1/public/recommender/printers?q=\(consulta)&limit=12")
+        let r: Resultado<RespuestaBusqueda> = await pedir("\(config.prefijo)/recommender/printers?q=\(consulta)&limit=12")
         switch r {
         case let .ok(b): return .ok(Busqueda(impresoras: b.data, sugerencias: b.sugerencias, busquedaId: b.meta.busquedaId))
         case let .fallo(m): return .fallo(m)
@@ -124,7 +136,7 @@ struct ClienteApi: Sendable {
 
     func compatiblesDe(_ impresoraId: Int, busquedaId: String?) async -> Resultado<[ProductoCompatible]> {
         let q = busquedaId.flatMap { $0.addingPercentEncoding(withAllowedCharacters: .alphanumerics) }.map { "?busquedaId=\($0)" } ?? ""
-        let r: Resultado<RespuestaCompatibles> = await pedir("/api/v1/public/recommender/printers/\(impresoraId)/compatible\(q)")
+        let r: Resultado<RespuestaCompatibles> = await pedir("\(config.prefijo)/recommender/printers/\(impresoraId)/compatible\(q)")
         switch r {
         case let .ok(c): return .ok(c.data)
         case let .fallo(m): return .fallo(m)
@@ -144,6 +156,6 @@ struct ClienteApi: Sendable {
     /// telemetría falle no puede estropear lo que el cliente está haciendo.
     func registrarClic(busquedaId: String?, productId: Int) {
         guard let busquedaId, let cuerpo = try? JSONEncoder().encode(["productId": productId]) else { return }
-        Task { let _: Resultado<Vacio> = await pedir("/api/v1/public/recommender/busquedas/\(busquedaId)/clic", metodo: "POST", cuerpo: cuerpo) }
+        Task { let _: Resultado<Vacio> = await pedir("\(config.prefijo)/recommender/busquedas/\(busquedaId)/clic", metodo: "POST", cuerpo: cuerpo) }
     }
 }

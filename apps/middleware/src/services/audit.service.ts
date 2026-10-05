@@ -57,6 +57,12 @@ export type AuditAction =
   /// Un alias equivocado manda al cliente al tóner de otra impresora, así que
   /// tiene que constar quién lo puso.
   | 'alias.anadido'
+  /// Tablets del kiosco (#120): quién dio de alta una, le renovó el token o la
+  /// cortó. Un token de tablet abre el recomendador de una tienda.
+  | 'kiosco.registrado'
+  | 'kiosco.token_renovado'
+  | 'kiosco.activado'
+  | 'kiosco.desactivado'
   | 'user.invitado'
   | 'user.invitacion_aceptada'
   /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin

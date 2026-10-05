@@ -14,7 +14,8 @@ import {
   publicOrderListQuerySchema,
 } from '@asta/shared-types';
 import { buscarImpresoras, compatiblesDe } from '../services/recomendador/recomendador.service.js';
-import { leerBusquedaId, registrarBusqueda, registrarClic, registrarConsulta } from '../services/recomendador/telemetria.service.js';
+import { leerBusquedaId, registrarBusqueda, registrarClic, registrarConsulta, type Quien } from '../services/recomendador/telemetria.service.js';
+import type { KioscoAutenticado } from '../services/kioscos.service.js';
 import {
   getPartnerInvoice,
   invoiceExists,
@@ -60,6 +61,21 @@ function usuarioDelToken(req: Request): string {
   const id = req.identity?.appUserId;
   if (!id) throw new Error('identity.appUserId ausente: la ruta no pasó por authApiKey()');
   return id;
+}
+
+/**
+ * El recomendador tiene dos puertas: la API key de un cliente
+ * (`/api/v1/public`) y el token de una tablet (`/api/v1/kiosk`, #120). La
+ * tablet la deja `authKiosco` en `res.locals.kiosco`; con ella no hay usuario
+ * ni cliente, y las existencias son las del almacén de la tienda.
+ */
+function kioscoDe(res: Response): KioscoAutenticado | undefined {
+  return res.locals.kiosco as KioscoAutenticado | undefined;
+}
+
+function quienPide(req: Request, res: Response): Quien {
+  const k = kioscoDe(res);
+  return k ? { deviceId: k.deviceId } : { userId: usuarioDelToken(req) };
 }
 
 const idFacturaSchema = z.object({ id: z.coerce.number().int().positive() });
@@ -480,7 +496,7 @@ export async function buscarImpresorasHandler(
     // La consulta CRUDA, antes de validar: `query.data.q` es la misma, pero así
     // queda claro que no se normaliza nada (#43).
     const busquedaId = await registrarBusqueda(
-      { userId: usuarioDelToken(req), consulta: String(req.query.q), coincidencias: impresoras.map((i) => i.id) },
+      { ...quienPide(req, res), consulta: String(req.query.q), coincidencias: impresoras.map((i) => i.id) },
       req.log,
     );
     res.json({ data: impresoras, sugerencias, meta: { busquedaId } });
@@ -514,17 +530,20 @@ export async function compatiblesHandler(
       return;
     }
 
-    const partnerId = partnerDelToken(req);
-    const almacen = await almacenDelCliente(partnerId);
+    let almacen = kioscoDe(res)?.almacen ?? null;
     if (!almacen) {
-      req.log?.warn({ partnerId }, 'recomendador: el cliente no tiene compañía o su compañía no tiene almacén');
-      throw new InventarioNoDisponible(partnerId);
+      const partnerId = partnerDelToken(req);
+      almacen = await almacenDelCliente(partnerId);
+      if (!almacen) {
+        req.log?.warn({ partnerId }, 'recomendador: el cliente no tiene compañía o su compañía no tiene almacén');
+        throw new InventarioNoDisponible(partnerId);
+      }
     }
 
     const r = await compatiblesDe(params.data.printerId, almacen, query.data.soloDisponibles);
     await registrarConsulta(
       {
-        userId: usuarioDelToken(req),
+        ...quienPide(req, res),
         busquedaId: query.data.busquedaId ? leerBusquedaId(query.data.busquedaId) : null,
         printerId: params.data.printerId,
         items: r.items,
@@ -563,7 +582,7 @@ export async function clicRecomendadorHandler(
       return;
     }
     const registrado = await registrarClic({
-      userId: usuarioDelToken(req),
+      ...quienPide(req, res),
       busquedaId: leerBusquedaId(params.data.busquedaId)!,
       productId: cuerpo.data.productId,
     });

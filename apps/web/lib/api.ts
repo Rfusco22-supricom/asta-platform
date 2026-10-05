@@ -24,6 +24,10 @@ import {
   type RevisionRespuesta,
   porImpresoraRespuestaSchema,
   type PorImpresoraRespuesta,
+  kioscosRespuestaSchema,
+  type KioscosRespuesta,
+  almacenesKioscoRespuestaSchema,
+  type AlmacenKiosco,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
   estadisticasRecomendadorRespuestaSchema,
@@ -525,6 +529,17 @@ export async function getPorImpresora(
   if (filtro.pagina && filtro.pagina > 1) qs.set('pagina', String(filtro.pagina));
   const sufijo = qs.size ? `?${qs.toString()}` : '';
   return request(`/api/v1/admin/compatibilidades/por-impresora${sufijo}`, porImpresoraRespuestaSchema, accessToken);
+}
+
+/** Las tablets del kiosco dadas de alta (#120). */
+export async function getKioscos(accessToken: string): Promise<KioscosRespuesta> {
+  return request('/api/v1/admin/kioscos', kioscosRespuestaSchema, accessToken);
+}
+
+/** Los almacenes de Odoo, para elegir de cuál es una tablet. */
+export async function getAlmacenesKiosco(accessToken: string): Promise<AlmacenKiosco[]> {
+  const r = await request('/api/v1/admin/kioscos/almacenes', almacenesKioscoRespuestaSchema, accessToken);
+  return r.data;
 }
 
 /** Qué buscan los clientes en el recomendador y dónde se pierden ventas (#43). */

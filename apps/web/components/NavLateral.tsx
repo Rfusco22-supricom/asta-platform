@@ -119,6 +119,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M15 7h6v6" />
         </svg>
       );
+    case 'tablet':
+      // Una tablet en su soporte: el kiosco de la tienda.
+      return (
+        <svg {...comun}>
+          <rect x="5" y="3" width="14" height="15" rx="2" />
+          <path d="M11 15h2M9 21h6M12 18v3" />
+        </svg>
+      );
     case 'sesiones':
       return (
         <svg {...comun}>

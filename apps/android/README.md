@@ -25,11 +25,11 @@ cd apps/android
    ```properties
    sdk.dir=/ruta/al/Android/sdk
    asta.apiBase=https://el-middleware
-   asta.apiKey=asta_live_…
+   asta.apiKey=asta_kio_…
    ```
 
-   La key es la de la tienda, con el permiso `RECOMMENDER_READ` **y ninguno
-   más**. Se crea en el panel, en «Mis API keys». Sin `asta.apiBase`, la app
+   La credencial es el **token de la tablet** (`asta_kio_…`): se da de alta en el panel, en **Kioscos** → «Registrar una tablet», eligiendo el almacén de la tienda, y sale una sola vez. Solo abre el recomendador (`/api/v1/kiosk`), y
+   las existencias son las de ese almacén. Sin `asta.apiBase`, la app
    apunta a `http://10.0.2.2:3001`, que es el `localhost` de la máquina
    anfitriona visto desde el emulador.
 2. **Bloquear la tablet.** La app ya va en horizontal, a pantalla completa con

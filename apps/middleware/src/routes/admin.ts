@@ -14,7 +14,9 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
+  cambioKioscoSchema,
   guardarTonersSchema,
+  nuevoKioscoSchema,
   nuevaCompatibilidadSchema,
   nuevoAliasSchema,
   porImpresoraQuerySchema,
@@ -35,6 +37,7 @@ import {
 import { buscarImpresorasPanel } from '../services/recomendador/recomendador.service.js';
 import { coberturaDelTop } from '../services/recomendador/cobertura.service.js';
 import { buscarCartuchos, guardarTonersDeImpresora, listarPorImpresora } from '../services/recomendador/porImpresora.service.js';
+import { almacenesDeOdoo, cambiarKiosco, listarKioscos, nuevoTokenKiosco, registrarKiosco } from '../services/kioscos.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -557,6 +560,92 @@ adminRouter.post('/compatibilidades/alias', autorizar('admin.compatibilidades.re
 adminRouter.get('/compatibilidades/cobertura', autorizar('admin.compatibilidades.revisar'), async (_req, res, next) => {
   try {
     res.json({ data: await coberturaDelTop() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tablets del kiosco (#40, #120)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const idKiosco = z.uuid();
+
+/** Las tablets dadas de alta, activas primero. */
+adminRouter.get('/kioscos', autorizar('admin.kioscos.gestionar'), async (_req, res, next) => {
+  try {
+    const { kioscos, odooDisponible } = await listarKioscos();
+    res.json({ data: kioscos, meta: { odooDisponible } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Los almacenes de Odoo, para elegir de cuál es la tablet. */
+adminRouter.get('/kioscos/almacenes', autorizar('admin.kioscos.gestionar'), async (_req, res, next) => {
+  try {
+    res.json({ data: await almacenesDeOdoo() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Da de alta una tablet. El token en claro sale aquí y no se vuelve a ver. */
+adminRouter.post('/kioscos', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const cuerpo = nuevoKioscoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await registrarKiosco(cuerpo.data);
+    recordAudit({
+      action: 'kiosco.registrado',
+      ...auditContext(req),
+      targetType: 'kiosk_devices',
+      targetId: r.kiosco.id,
+      metadata: { nombre: r.kiosco.nombre, tienda: r.kiosco.tienda, odooWarehouseId: r.kiosco.odooWarehouseId },
+    });
+    res.status(201).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Un token nuevo para la tablet: el anterior deja de valer en el acto. */
+adminRouter.post('/kioscos/:id/token', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const id = idKiosco.safeParse(req.params.id);
+    if (!id.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Tablet no válida.' } });
+      return;
+    }
+    const r = await nuevoTokenKiosco(id.data);
+    recordAudit({ action: 'kiosco.token_renovado', ...auditContext(req), targetType: 'kiosk_devices', targetId: id.data, metadata: {} });
+    res.json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Activar o desactivar una tablet. Desactivada, su token deja de entrar. */
+adminRouter.patch('/kioscos/:id', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const id = idKiosco.safeParse(req.params.id);
+    const cuerpo = cambioKioscoSchema.safeParse(req.body);
+    if (!id.success || !cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Tablet o cambio no válido.' } });
+      return;
+    }
+    const kiosco = await cambiarKiosco(id.data, cuerpo.data.activo);
+    recordAudit({
+      action: cuerpo.data.activo ? 'kiosco.activado' : 'kiosco.desactivado',
+      ...auditContext(req),
+      targetType: 'kiosk_devices',
+      targetId: id.data,
+      metadata: {},
+    });
+    res.json({ data: kiosco });
   } catch (error) {
     next(error);
   }

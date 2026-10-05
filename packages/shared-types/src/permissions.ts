@@ -55,6 +55,7 @@ export const accionSchema = z.enum([
   'admin.reportes.ver',
   'reportes.propios.ver',
   'admin.compatibilidades.revisar',
+  'admin.kioscos.gestionar',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
   'admin.duplicados.ver',
@@ -180,6 +181,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver las estadísticas de los agentes de venta',
+  },
+  'admin.kioscos.gestionar': {
+    // Un token de tablet abre el recomendador de una tienda y fija de qué
+    // almacén salen las existencias. Darlo de alta o cortarlo es de administración.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Dar de alta, desactivar y renovar el token de las tablets del kiosco',
   },
   'admin.compatibilidades.revisar': {
     // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).

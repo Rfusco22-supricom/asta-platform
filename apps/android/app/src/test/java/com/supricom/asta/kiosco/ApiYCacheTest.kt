@@ -52,6 +52,16 @@ class ApiYCacheTest {
         assertEquals("http://kiosco.test/api/v1/public/recommender/printers?q=HL%202350&limit=12", vista!!.url)
     }
 
+    /** #120 · Con un token de tablet, por las rutas del kiosco, y con la versión. */
+    @Test fun conTokenDeTabletVaPorElKiosco() = runTest {
+        var vista: Peticion? = null
+        val token = "asta_kio_" + "A".repeat(43)
+        ClienteApi("http://kiosco.test", token, { vista = it; Respuesta(200, busquedaJson) }, "1.2.0").buscarImpresoras("m404")
+        assertEquals("http://kiosco.test/api/v1/kiosk/recommender/printers?q=m404&limit=12", vista!!.url)
+        assertEquals(token, vista!!.cabeceras["X-API-Key"])
+        assertEquals("1.2.0", vista!!.cabeceras["X-App-Version"])
+    }
+
     @Test fun cadaFalloSeDistingue() = runTest {
         assertEquals(Resultado.Fallo(MotivoFallo.RED), api(sinRed).buscarImpresoras("x"))
         assertEquals(Resultado.Fallo(MotivoFallo.PERMISO), api(responde(401)).buscarImpresoras("x"))

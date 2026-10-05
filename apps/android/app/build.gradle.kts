@@ -7,7 +7,7 @@ plugins {
 }
 
 // La URL del middleware y la API key de la tienda, de `local.properties`, que no
-// se versiona (ver README). La key lleva el permiso RECOMMENDER_READ y nada más.
+// se versiona (ver README). La credencial es el token de la tablet (panel → Kioscos).
 val local = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }

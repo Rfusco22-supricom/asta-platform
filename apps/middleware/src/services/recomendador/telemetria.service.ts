@@ -48,6 +48,17 @@ const MAX_CONSULTA = 200;
 
 type Log = { warn: (obj: object, msg: string) => void } | undefined;
 
+/**
+ * Quién pide: un usuario (API key de cliente) o una tablet (`kiosk_devices`).
+ * Una tablet no tiene usuario: atiende a quien entre por la puerta.
+ */
+export type Quien = { userId: string; deviceId?: undefined } | { deviceId: string; userId?: undefined };
+
+/** El dueño de la fila: la columna que toca, y solo esa. */
+function dueno(q: Quien): { userId: string } | { deviceId: string } {
+  return q.deviceId !== undefined ? { deviceId: q.deviceId } : { userId: q.userId! };
+}
+
 /** `busquedaId` viaja como texto: es un BIGINT, y en JSON un número así pierde precisión. */
 export function leerBusquedaId(valor: unknown): bigint | null {
   if (typeof valor !== 'string' || !/^[1-9]\d{0,18}$/.test(valor)) return null;
@@ -56,13 +67,13 @@ export function leerBusquedaId(valor: unknown): bigint | null {
 
 /** Crea la fila de una búsqueda. Devuelve su id, o `null` si no se pudo escribir. */
 export async function registrarBusqueda(
-  datos: { userId: string; consulta: string; coincidencias: number[] },
+  datos: Quien & { consulta: string; coincidencias: number[] },
   log?: Log,
 ): Promise<string | null> {
   try {
     const fila = await prisma.recommendationEvent.create({
       data: {
-        userId: datos.userId,
+        ...dueno(datos),
         // CRUDA: los errores de tipeo son el dato. Solo se recorta a la columna.
         searchQuery: datos.consulta.slice(0, MAX_CONSULTA),
         resultsCount: Math.min(datos.coincidencias.length, 65_535),
@@ -95,7 +106,7 @@ export function hayQuiebre(items: PublicCompatibleItem[]): boolean {
  * no se afirma quiebre ni ausencia de quiebre: se deja lo que hubiera.
  */
 export async function registrarConsulta(
-  datos: { userId: string; busquedaId: bigint | null; printerId: number; items: PublicCompatibleItem[]; soloDisponibles: boolean },
+  datos: Quien & { busquedaId: bigint | null; printerId: number; items: PublicCompatibleItem[]; soloDisponibles: boolean },
   log?: Log,
   ahora = new Date(),
 ): Promise<void> {
@@ -103,7 +114,7 @@ export async function registrarConsulta(
   try {
     if (datos.busquedaId !== null) {
       const { count } = await prisma.recommendationEvent.updateMany({
-        where: { id: datos.busquedaId, userId: datos.userId, searchQuery: { not: '' }, createdAt: { gte: new Date(ahora.getTime() - VENTANA_MS) } },
+        where: { id: datos.busquedaId, ...dueno(datos), searchQuery: { not: '' }, createdAt: { gte: new Date(ahora.getTime() - VENTANA_MS) } },
         data: { matchedPrinterId: datos.printerId, ...(quiebre === undefined ? {} : { wasOutOfStock: quiebre }) },
       });
       if (count === 1) return;
@@ -111,7 +122,7 @@ export async function registrarConsulta(
       log?.warn({ busquedaId: datos.busquedaId.toString() }, 'telemetría: busquedaId no válido para esta key; se registra como consulta directa');
     }
     await prisma.recommendationEvent.create({
-      data: { userId: datos.userId, searchQuery: '', matchedPrinterId: datos.printerId, wasOutOfStock: quiebre ?? false },
+      data: { ...dueno(datos), searchQuery: '', matchedPrinterId: datos.printerId, wasOutOfStock: quiebre ?? false },
     });
   } catch (error) {
     log?.warn({ err: String(error) }, 'telemetría: no se pudo registrar la consulta de compatibles');
@@ -123,11 +134,11 @@ export async function registrarConsulta(
  * caducó: el controlador responde lo mismo en los tres casos.
  */
 export async function registrarClic(
-  datos: { userId: string; busquedaId: bigint; productId: number },
+  datos: Quien & { busquedaId: bigint; productId: number },
   ahora = new Date(),
 ): Promise<boolean> {
   const { count } = await prisma.recommendationEvent.updateMany({
-    where: { id: datos.busquedaId, userId: datos.userId, createdAt: { gte: new Date(ahora.getTime() - VENTANA_MS) } },
+    where: { id: datos.busquedaId, ...dueno(datos), createdAt: { gte: new Date(ahora.getTime() - VENTANA_MS) } },
     data: { clickedProductId: datos.productId },
   });
   return count === 1;
