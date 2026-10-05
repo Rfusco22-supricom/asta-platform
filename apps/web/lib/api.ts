@@ -26,6 +26,8 @@ import {
   type PorImpresoraRespuesta,
   loteFabricanteRespuestaSchema,
   type LoteFabricante,
+  loteAstaRespuestaSchema,
+  type LoteAstaRespuesta,
   kioscosRespuestaSchema,
   type KioscosRespuesta,
   almacenesKioscoRespuestaSchema,
@@ -537,6 +539,11 @@ export async function getPorImpresora(
 export async function getLoteFabricante(accessToken: string): Promise<LoteFabricante> {
   const r = await request('/api/v1/admin/compatibilidades/lote-fabricante', loteFabricanteRespuestaSchema, accessToken);
   return r.data;
+}
+
+/** Los casos claros del tramo producto → cartucho: ASTA con el código exacto en el nombre. */
+export async function getLoteAsta(accessToken: string): Promise<LoteAstaRespuesta> {
+  return request('/api/v1/admin/compatibilidades/productos/lote-asta', loteAstaRespuestaSchema, accessToken);
 }
 
 /** Las tablets del kiosco dadas de alta (#120). */
