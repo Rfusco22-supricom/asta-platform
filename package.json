@@ -21,6 +21,7 @@
     "cartuchos:validar": "tsx apps/middleware/src/cli/validar-propuestas.ts",
     "impresoras:importar": "tsx apps/middleware/src/cli/importar-impresoras.ts",
     "impresoras-catalogo:importar": "tsx apps/middleware/src/cli/importar-impresoras-catalogo.ts",
+    "impresoras:unir": "tsx apps/middleware/src/cli/unir-impresoras-duplicadas.ts",
     "listas:importar": "tsx apps/middleware/src/cli/importar-listas-fabricante.ts",
     "compatibilidades:cargar-csv": "tsx scripts/cargar-compatibilidad-csv.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
