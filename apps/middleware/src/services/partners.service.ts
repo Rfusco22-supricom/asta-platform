@@ -4,6 +4,7 @@ import { isUnmappedPricelist, tierFromPricelist, type MapaTiers } from '../confi
 import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * Clientes y cartera de vendedores.
@@ -78,11 +79,11 @@ function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, mapa: Mapa
 
   return {
     id: row.id,
-    nombre: nombrePartner(row),
+    nombre: limpiarEspacios(nombrePartner(row)),
     email: limpiar(row.email),
     telefono: limpiar(row.phone),
     vendedorOdooUserId: row.user_id ? row.user_id[0] : null,
-    vendedorNombre: row.user_id ? row.user_id[1] : null,
+    vendedorNombre: row.user_id ? nombrePersona(row.user_id[1]) : null,
     commercialPartnerId: row.commercial_partner_id ? row.commercial_partner_id[0] : row.id,
     pricelistId,
     /** Nombre de la tarifa, que es lo más parecido a un "tier" que hay hoy en Odoo. */

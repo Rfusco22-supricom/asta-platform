@@ -2,6 +2,7 @@ import { searchRead, readGroup } from '../odoo/client.js';
 import { normalizarNombre, normalizarRif, rifUtilizable } from './duplicados.js';
 import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * Otros registros de Odoo que son el MISMO cliente (issue #50).
@@ -156,11 +157,11 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
       const f = facturacion.get(c.id);
       return {
         partnerId: c.id,
-        nombre: nombrePartner(c),
+        nombre: limpiarEspacios(nombrePartner(c)),
         motivo,
         facturado: Math.round((f?.monto ?? 0) * 100) / 100,
         facturas: f?.facturas ?? 0,
-        vendedorNombre: c.user_id ? c.user_id[1] : null,
+        vendedorNombre: c.user_id ? nombrePersona(c.user_id[1]) : null,
       };
     })
     /*

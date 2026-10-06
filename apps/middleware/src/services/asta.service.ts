@@ -1,6 +1,7 @@
 import { searchRead, readGroup } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * Cuota de la marca ASTA frente a la competencia, cliente a cliente.
@@ -312,9 +313,9 @@ export async function oportunidadesAsta(
 
     return {
       partnerId: id,
-      nombre: ficha.get(id)?.name ?? `partner ${id}`,
+      nombre: limpiarEspacios(ficha.get(id)?.name || `partner ${id}`),
       vendedorOdooUserId: v ? v[0] : null,
-      vendedorNombre: v ? v[1] : null,
+      vendedorNombre: v ? nombrePersona(v[1]) : null,
       asta: Math.round(a * 100) / 100,
       competencia: Math.round(c * 100) / 100,
       cuota: a + c > 0 ? Math.round((a / (a + c)) * 1000) / 10 : 0,
