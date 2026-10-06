@@ -127,6 +127,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M11 15h2M9 21h6M12 18v3" />
         </svg>
       );
+    case 'calidad':
+      // Una hoja de comprobaciones con su visto bueno.
+      return (
+        <svg {...comun}>
+          <rect x="5" y="4" width="14" height="17" rx="2" />
+          <path d="M9 4V2.8h6V4M9 12.5l2 2 4-4" />
+        </svg>
+      );
     case 'sesiones':
       return (
         <svg {...comun}>

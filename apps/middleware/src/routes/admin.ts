@@ -11,6 +11,7 @@ import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
+import { calidadDeDatos } from '../services/calidadDatos.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -252,6 +253,22 @@ adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, n
 adminRouter.get('/duplicados', autorizar('admin.duplicados.ver'), async (_req, res, next) => {
   try {
     const { generadoEn, duracionMs, desdeCache, ...informe } = await informeDeDuplicados();
+    res.json({ data: informe, meta: { generadoEn, duracionMs, desdeCache } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Qué datos de Odoo están mal y dónde se arreglan.
+ *
+ * Cache de diez minutos en el servicio, como duplicados. `?fresco=1` la salta:
+ * es el botón de quien acaba de corregir algo en Odoo y quiere verlo salir de la
+ * lista sin esperar.
+ */
+adminRouter.get('/calidad-datos', autorizar('admin.calidad.ver'), async (req, res, next) => {
+  try {
+    const { generadoEn, duracionMs, desdeCache, ...informe } = await calidadDeDatos({ fresco: req.query.fresco === '1' });
     res.json({ data: informe, meta: { generadoEn, duracionMs, desdeCache } });
   } catch (error) {
     next(error);

@@ -2699,3 +2699,162 @@ tr:hover .mini-serie .mes-lleno { fill: var(--primario-oscuro); }
 .lote-lista td { padding: 7px 10px; border-top: 1px solid var(--border); vertical-align: top; }
 .lote-lista td:first-child { white-space: nowrap; }
 .lote-marca, .lote-sku { color: var(--text-3); font-size: 12px; }
+
+/* ── Calidad de datos ─────────────────────────────────────────────────────── */
+/*
+ * Una tarjeta por comprobación, con el color de su gravedad en el canto
+ * izquierdo: se lee de arriba abajo como una lista de tareas, de lo que mueve
+ * dinero a lo cosmético. `app/admin/calidad/page.tsx`.
+ */
+.cd-alta  { --cd-color: var(--danger);  --cd-suave: var(--danger-soft); }
+.cd-media { --cd-color: var(--warning); --cd-suave: var(--warning-soft); }
+.cd-baja  { --cd-color: var(--text-3);  --cd-suave: var(--surface-2); }
+
+.cd-resumen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 22px;
+}
+.cd-resumen-item {
+  display: flex;
+  gap: 12px;
+  padding: 15px 17px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-card);
+  min-width: 0;
+}
+.cd-punto {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--cd-color);
+  box-shadow: 0 0 0 4px var(--cd-suave);
+}
+.cd-resumen-titulo { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.cd-resumen-cifra { font-size: 19px; font-weight: 640; letter-spacing: -0.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.cd-releer { align-self: center; white-space: nowrap; }
+.btn.cd-releer:hover { text-decoration: none; }
+
+.cd-lista { display: flex; flex-direction: column; gap: 12px; }
+
+.cd-revision {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cd-color, var(--positive));
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-card);
+  min-width: 0;
+}
+.cd-revision > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+  flex-wrap: wrap;
+}
+.cd-revision > summary::-webkit-details-marker { display: none; }
+.cd-revision > summary:hover .cd-titulo { color: var(--primario); }
+.cd-revision > summary:focus-visible { outline: 2px solid var(--primario); outline-offset: -2px; border-radius: var(--radius-card); }
+
+.cd-gravedad {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--cd-color);
+  background: var(--cd-suave);
+  white-space: nowrap;
+}
+.cd-titulo { font-size: 14.5px; font-weight: 620; letter-spacing: -0.01em; }
+.cd-cuenta { margin-left: auto; color: var(--text-2); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cd-cuenta strong { color: var(--text); font-size: 15px; }
+.cd-monto {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.cd-chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.6px solid var(--text-3);
+  border-bottom: 1.6px solid var(--text-3);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform .15s ease;
+}
+.cd-revision[open] .cd-chevron { transform: rotate(225deg) translate(-2px, -2px); }
+
+.cd-cuerpo { padding: 2px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.cd-explica {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 14px 28px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+.cd-explica p { margin: 0; font-size: 13.5px; color: var(--text-2); max-width: 62ch; }
+.cd-explica .stat-sub { margin-top: 6px; }
+.cd-rotulo { font-size: 11px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+
+/* El camino de menús de Odoo, como migas: cada paso en su cápsula. */
+.cd-ruta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.cd-ruta li {
+  font-size: 12.5px;
+  font-weight: 550;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.cd-ruta li + li { position: relative; margin-left: 14px; }
+.cd-ruta li + li::before { content: '›'; position: absolute; left: -12px; color: var(--text-3); font-weight: 400; }
+.cd-ruta li:last-child { color: var(--primario); border-color: color-mix(in srgb, var(--primario) 40%, var(--border)); }
+
+.cd-tabla { box-shadow: none; max-height: 460px; overflow: auto; }
+.cd-tabla thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.cd-nombre { font-weight: 560; }
+.cd-detalle { color: var(--text-2); }
+.cd-compania { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.cd-mas { margin: 0; }
+
+.cd-ok {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  color: var(--text-2);
+}
+.cd-check {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 14%, transparent);
+}
+
+@media (max-width: 880px) {
+  .cd-resumen { grid-template-columns: 1fr; }
+  .cd-releer { justify-self: start; }
+  .cd-explica { grid-template-columns: 1fr; }
+  .cd-cuenta { margin-left: 0; }
+}

@@ -42,6 +42,8 @@ import {
   type CoberturaTop,
   informeDuplicadosRespuestaSchema,
   type InformeDuplicados,
+  calidadDatosRespuestaSchema,
+  type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
   type Agente,
@@ -502,6 +504,20 @@ export async function getDuplicadosInforme(
   accessToken: string,
 ): Promise<InformeDuplicados & { generadoEn: string; desdeCache: boolean }> {
   const r = await request('/api/v1/admin/duplicados', informeDuplicadosRespuestaSchema, accessToken);
+  return { ...r.data, generadoEn: r.meta.generadoEn, desdeCache: r.meta.desdeCache };
+}
+
+/**
+ * Qué datos de Odoo están mal y dónde se arreglan.
+ *
+ * `fresco` salta la cache de diez minutos del middleware: es lo que pide quien
+ * acaba de corregir algo en Odoo.
+ */
+export async function getCalidadDatos(
+  accessToken: string,
+  fresco = false,
+): Promise<CalidadDatos & { generadoEn: string; desdeCache: boolean }> {
+  const r = await request(`/api/v1/admin/calidad-datos${fresco ? '?fresco=1' : ''}`, calidadDatosRespuestaSchema, accessToken);
   return { ...r.data, generadoEn: r.meta.generadoEn, desdeCache: r.meta.desdeCache };
 }
 
