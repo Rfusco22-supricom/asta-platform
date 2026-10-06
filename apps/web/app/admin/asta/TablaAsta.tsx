@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { OportunidadAsta } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
@@ -122,8 +123,10 @@ export function TablaAsta({
             {visibles.slice(0, 200).map((o) => (
               <tr key={o.partnerId}>
                 <td>
-                  <div className="cliente-nombre">{o.nombre}</div>
-                  <div className="cliente-contacto">partner {o.partnerId}</div>
+                  <Link href={`/cartera/${o.partnerId}`} className="cliente-nombre enlace-ficha">
+                    {o.nombre}
+                  </Link>
+                  <div className="cliente-contacto">Odoo #{o.partnerId}</div>
                 </td>
 
                 {conVendedor && (

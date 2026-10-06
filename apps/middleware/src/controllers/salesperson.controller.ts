@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { resumenAstaDeCliente, totalesAstaDeCartera } from '../services/ventasAsta.service.js';
-import { getPartnersBySalesperson } from '../services/partners.service.js';
+import { getPartner, getPartnersBySalesperson } from '../services/partners.service.js';
 import { getClientProfile } from '../services/profile.service.js';
 import { borrarNota, crearNota } from '../services/notes.service.js';
 
@@ -54,11 +54,13 @@ export async function getClientInvoicing(
 
     const { partnerId } = params.data;
     // Ya verificado por `autorizar('cliente.ver')`. Es null solo para SUPERADMIN,
-    // que se salta la comprobación de cartera porque no tiene una.
-    const partner = req.partnerAutorizado ?? null;
-
+    // que se salta la comprobación de cartera porque no tiene una: entonces se
+    // lee aquí, o la ficha le saldría como «Cliente 53088» en vez de con su nombre.
     // Solo ASTA: el panel del vendedor es de la marca (ver `ventasAsta.service`).
-    const resumen = await resumenAstaDeCliente(partnerId, query.data);
+    const [partner, resumen] = await Promise.all([
+      req.partnerAutorizado ?? getPartner(partnerId),
+      resumenAstaDeCliente(partnerId, query.data),
+    ]);
 
     res.json({
       data: {
