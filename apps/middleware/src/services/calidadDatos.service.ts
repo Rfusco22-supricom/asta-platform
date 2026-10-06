@@ -14,7 +14,7 @@ import { problemaRif, problemasNombreVendedor, tieneEspaciosDeMas } from './cali
  * El panel enseña lo que hay en Odoo, y lo que hay está mal en sitios concretos
  * que nadie ve porque no rompen nada a la vista: medido el 6-oct-2026, 52
  * clientes con compras en el año no tienen vendedor —no salen en ninguna
- * cartera—, 57 son de dos vendedores archivados y 48 facturas no tienen vendedor
+ * cartera—, 57 son de vendedores archivados y 48 facturas no tienen vendedor
  * —no cuentan en ningún reporte—.
  *
  * El panel no los arregla: escribir en Odoo no es su papel, y cada uno de estos

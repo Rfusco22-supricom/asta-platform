@@ -36,18 +36,18 @@ describe('problemaRif', () => {
 
 describe('nombres', () => {
   it('espacios de más', () => {
-    expect(tieneEspaciosDeMas('TONER PANAMA  S A')).toBe(true);
-    expect(tieneEspaciosDeMas('ONETECH ')).toBe(true);
-    expect(tieneEspaciosDeMas(' ONETECH')).toBe(true);
-    expect(tieneEspaciosDeMas('ONETECH, C.A.')).toBe(false);
+    expect(tieneEspaciosDeMas('TONERES DEMO  S A')).toBe(true);
+    expect(tieneEspaciosDeMas('OFITEC ')).toBe(true);
+    expect(tieneEspaciosDeMas(' OFITEC')).toBe(true);
+    expect(tieneEspaciosDeMas('OFITEC, C.A.')).toBe(false);
   });
 
   it('nombre de vendedor', () => {
-    expect(problemasNombreVendedor('Jose Lopez')).toEqual([]);
-    expect(problemasNombreVendedor('Aaron Jaramillo (v)')).toEqual(['lleva «(v)» al final']);
-    expect(problemasNombreVendedor('Susana Hernandez (V)')).toEqual(['lleva «(v)» al final']);
-    expect(problemasNombreVendedor('EMILI BRICEÑO.')).toEqual(['termina en un signo de puntuación', 'está todo en mayúsculas']);
-    expect(problemasNombreVendedor('DANIELA  SUAREZ')).toEqual(['tiene espacios de más', 'está todo en mayúsculas']);
+    expect(problemasNombreVendedor('Ana Pérez')).toEqual([]);
+    expect(problemasNombreVendedor('Luis Mora (v)')).toEqual(['lleva «(v)» al final']);
+    expect(problemasNombreVendedor('Rosa Díaz (V)')).toEqual(['lleva «(v)» al final']);
+    expect(problemasNombreVendedor('CARLA PEÑA.')).toEqual(['termina en un signo de puntuación', 'está todo en mayúsculas']);
+    expect(problemasNombreVendedor('MARTA  RUIZ')).toEqual(['tiene espacios de más', 'está todo en mayúsculas']);
     expect(problemasNombreVendedor('Asistente de Ventas CCS')).toEqual(['es un puesto, no una persona']);
   });
 });

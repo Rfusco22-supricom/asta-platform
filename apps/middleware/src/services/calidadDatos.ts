@@ -60,8 +60,8 @@ export function tieneEspaciosDeMas(nombre: string): boolean {
  * ¿Qué tiene mal el nombre de un vendedor tal como está en Odoo?
  *
  * Ese nombre sale en el panel, en los reportes y en las facturas impresas. Hoy
- * conviven «DANIEL ESPINOZA», «Jose Lopez», «Aaron Jaramillo (v)» y
- * «EMILI BRICEÑO.»: cada uno lo escribió quien creó el usuario.
+ * conviven nombres en mayúsculas, con «(v)» al final o con un punto detrás:
+ * cada uno lo escribió quien creó el usuario.
  */
 export function problemasNombreVendedor(nombre: string): string[] {
   const problemas: string[] = [];
