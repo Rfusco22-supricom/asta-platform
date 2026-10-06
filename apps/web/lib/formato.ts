@@ -20,6 +20,19 @@ export function money(n: number): string {
   return dinero.format(n);
 }
 
+const entero = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 });
+
+/**
+ * Para las columnas de una tabla: sin decimales y siempre igual.
+ *
+ * `moneyCompact` en una columna mezcla «28,3 k» con «8.109,80» según la fila, y
+ * así no se comparan de un vistazo. Aquí «28.312» y «8.110»: alineadas a la
+ * derecha, el número más largo es el mayor. El exacto, en el `title`.
+ */
+export function moneyEntero(n: number): string {
+  return entero.format(n);
+}
+
 /** Para las tarjetas de resumen, donde el total exacto no aporta. */
 export function moneyCompact(n: number): string {
   return Math.abs(n) >= 10_000 ? compacto.format(n) : dinero.format(n);

@@ -187,7 +187,7 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
       </div>
 
       <div className="table-wrap">
-        <table className="tabla-cartera">
+        <table className="tabla-cartera tabla-tarjetas">
           <thead>
             <tr>
               <th className="sortable" onClick={() => ordenarPor('nombre')}>
@@ -220,7 +220,7 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
               const cargando = res === null;
               return (
                 <tr key={f.id} className="linked">
-                  <td>
+                  <td className="c-cliente">
                     {/* El enlace envuelve el contenido y no la fila: un <a> no
                         puede contener <td>, y con onClick se perdería abrir en
                         pestaña nueva con ctrl+clic. */}
@@ -229,14 +229,14 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                       {(f.email || f.telefono) && <div className="cliente-contacto">{[f.email, f.telefono].filter(Boolean).join(' · ')}</div>}
                     </Link>
                   </td>
-                  <td className="col-clase">{cargando ? <Hueco ancho={22} /> : a?.clase ? <span className={`clase clase-${a.clase}`}>{a.clase}</span> : <span className="zero">—</span>}</td>
-                  <td>{cargando ? <Hueco ancho={86} /> : a ? <Estado a={a} /> : <span className="zero">—</span>}</td>
+                  <td className="col-clase c-clase" data-etiqueta="Clase">{cargando ? <Hueco ancho={22} /> : a?.clase ? <span className={`clase clase-${a.clase}`}>{a.clase}</span> : <span className="zero">—</span>}</td>
+                  <td className="c-estado" data-etiqueta="Estado">{cargando ? <Hueco ancho={86} /> : a ? <Estado a={a} /> : <span className="zero">—</span>}</td>
                   {conNivel && (
-                    <td className="col-nivel">
+                    <td className="col-nivel c-nivel" data-etiqueta="Nivel">
                       {f.esCliente ? <span className={`tag ${TIER_CLASS[f.tierDerivado] ?? 'bronce'}`}>{f.tierDerivado}</span> : <span className="zero">—</span>}
                     </td>
                   )}
-                  <td className="num col-serie">
+                  <td className="num col-serie c-12m" data-etiqueta="Últimos 12 meses">
                     {cargando ? (
                       <Hueco ancho={130} />
                     ) : a && datos ? (
@@ -248,9 +248,9 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                       <span className="zero">—</span>
                     )}
                   </td>
-                  <td className="num">{cargando ? <Hueco ancho={48} /> : <Tendencia valor={a?.tendencia ?? null} />}</td>
-                  <td className={`num ${f.totalFacturado === 0 ? 'zero' : ''}`}>{f.totalFacturado === 0 ? '—' : money(f.totalFacturado)}</td>
-                  <td className={`num ${f.porCobrar > 0 ? 'debt' : 'zero'}`}>{f.porCobrar === 0 ? '—' : money(f.porCobrar)}</td>
+                  <td className="num c-tendencia" data-etiqueta="Tendencia">{cargando ? <Hueco ancho={48} /> : <Tendencia valor={a?.tendencia ?? null} />}</td>
+                  <td className={`num c-historico ${f.totalFacturado === 0 ? 'zero' : ''}`} data-etiqueta="Histórico">{f.totalFacturado === 0 ? '—' : money(f.totalFacturado)}</td>
+                  <td className={`num c-cobrar ${f.porCobrar > 0 ? 'debt' : 'zero'}`} data-etiqueta="Por cobrar">{f.porCobrar === 0 ? '—' : money(f.porCobrar)}</td>
                 </tr>
               );
             })}

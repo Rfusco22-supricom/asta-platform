@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { OportunidadAsta } from '@asta/shared-types';
-import { money, moneyCompact } from '@/lib/formato';
+import { money, moneyEntero } from '@/lib/formato';
 
 /**
  * Lista de oportunidades: quién compra consumibles de otra marca y cuánto.
@@ -109,7 +109,7 @@ export function TablaAsta({
       </div>
 
       <div className="table-wrap">
-        <table>
+        <table className="tabla-tarjetas tabla-oportunidades">
           <thead>
             <tr>
               <th>Cliente</th>
@@ -122,7 +122,7 @@ export function TablaAsta({
           <tbody>
             {visibles.slice(0, 200).map((o) => (
               <tr key={o.partnerId}>
-                <td>
+                <td className="c-cliente">
                   <Link href={`/cartera/${o.partnerId}`} className="cliente-nombre enlace-ficha">
                     {o.nombre}
                   </Link>
@@ -130,20 +130,20 @@ export function TablaAsta({
                 </td>
 
                 {conVendedor && (
-                  <td style={{ fontSize: 13 }}>
+                  <td className="c-vendedor" data-etiqueta="Vendedor" style={{ fontSize: 13 }}>
                     {o.vendedorNombre ?? <span style={{ color: 'var(--text-3)' }}>sin asignar</span>}
                   </td>
                 )}
 
-                <td className="num" title={money(o.competencia)}>
-                  {moneyCompact(o.competencia)}
+                <td className="num c-competencia" data-etiqueta="Competencia" title={money(o.competencia)}>
+                  {moneyEntero(o.competencia)}
                 </td>
 
-                <td className={o.asta === 0 ? 'num zero' : 'num'} title={money(o.asta)}>
-                  {o.asta === 0 ? '—' : moneyCompact(o.asta)}
+                <td className={`num c-asta${o.asta === 0 ? ' zero' : ''}`} data-etiqueta="En ASTA" title={money(o.asta)}>
+                  {o.asta === 0 ? '—' : moneyEntero(o.asta)}
                 </td>
 
-                <td className="num">
+                <td className="num c-cuota" data-etiqueta="Cuota">
                   <Cuota pct={o.cuota} />
                 </td>
               </tr>
