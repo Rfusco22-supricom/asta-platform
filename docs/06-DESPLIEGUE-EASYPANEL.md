@@ -66,6 +66,8 @@ del servidor, así que el problema de #12 no vuelve por cambiar de motor.
 - el particionado de `003_partitioning.sql` (#47), cuya sintaxis difiere;
 - el simulacro de restauración (`pnpm backup:verificar`), que nunca ha corrido
   contra este motor (#48). Hasta que lo haga, no hay respaldo en el que confiar.
+  Cómo se programan las copias fuera del servidor y cómo se ensaya la
+  restauración en producción: `db/backup/README.md`, «En producción».
 
 ---
 
