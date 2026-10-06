@@ -418,6 +418,558 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
     fuentes: ['https://www.usa.canon.com/shop/p/125-black-toner-cartridge'],
     consultado: '2026-10-02',
   },
+
+  // ── El tercer tramo: impresoras que vende Supricom y no tenían tóner ───────
+  //
+  // Medido el 2026-10-06: de las impresoras del catálogo de Odoo, 81 de marcas
+  // de las que vendemos consumibles no tenían ninguno. Se buscó cada una en la
+  // web oficial de su fabricante y solo entra lo que se pudo leer allí, con el
+  // código de un consumible que vendemos. Las impresoras van con el nombre EXACTO
+  // de nuestro catálogo («L4260», «MF272DW»), para que enlacen con la que se
+  // vende y no creen otra; las que no vendemos pero salen en la misma página, con
+  // el nombre del fabricante.
+  //
+  // Fuera, a propósito: las de tinta de Brother (solo vendemos su tóner), la
+  // «HL-L2750DW» (no existe en Brother: ¿MFC-L2750DW?), la HP 9730 (según el
+  // país, 937 o 938), la «M227FNDW» (HP no tiene ese modelo), la PIXMA TS3610
+  // (sin página oficial con sus cartuchos), la SELPHY y las Epson cuyos
+  // consumibles no vendemos (T534, T524, T574, cintas, XD3).
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-760'],
+    impresoras: ['HL-L2350DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn760',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-730'],
+    impresoras: ['HL-L2350DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn730',
+    ],
+    consultado: '2026-10-06',
+  },
+  // La HL-L2379DW no sale en las páginas del tóner: su lista de consumibles está en soporte.
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-760', 'TN-730'],
+    impresoras: ['HL-L2379DW'],
+    fuentes: [
+      'https://support.brother.com/g/b/colist.aspx?c=us&lang=en&prod=hll2379dw_us&cao=tn',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-820'],
+    impresoras: ['MFC-L5700DW', 'MFC-L5705DW', 'MFC-L5900DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn820',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-850'],
+    impresoras: ['MFC-L5700DW', 'MFC-L5705DW', 'MFC-L5900DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn850',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['DR-820'],
+    impresoras: ['MFC-L5700DW', 'MFC-L5705DW', 'MFC-L5900DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/dr820',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-920XL'],
+    impresoras: ['HL-L5215DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn920xl',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Brother',
+    cartuchos: ['TN-920UXXL'],
+    impresoras: ['HL-L5215DW'],
+    fuentes: [
+      'https://www.brother-usa.com/products/tn920uxxl',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T504'],
+    impresoras: ['L4260', 'EcoTank L4360', 'EcoTank L6270', 'EcoTank L6370', 'EcoTank L14150', 'EcoTank L4160', 'EcoTank L6191'],
+    fuentes: [
+      'https://epson.com.co/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-504/i/T504',
+      'https://epson.com.mx/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T504/i/T504220-AL',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T554'],
+    impresoras: ['L8180'],
+    fuentes: [
+      'https://epson.com.co/Para-el-hogar/Tintas/Epson-T554/i/T554',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T555'],
+    impresoras: ['L8180'],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Tintas-Epson-T555/i/T555120-AL',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T49M'],
+    impresoras: ['SureColor F170', 'SureColor F570'],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T49M/i/T49M120',
+      'https://epson.com/For-Home/Ink/Epson-T49M-Ink-Bottles/i/T49M',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T49H'],
+    impresoras: ['SureColor T3170X'],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T49H/i/T49H100',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T40W'],
+    impresoras: ['SureColor T3170', 'T3170M', 'T5170', 'SureColor T5170M'],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Tintas-Epson-UltraChrome-XD2-de-Alta-Capacidad/i/T40W120',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T11A'],
+    impresoras: ['WorkForce Pro C5390'],
+    fuentes: [
+      'https://epson.com.ar/Para-el-hogar/Tintas/Tintas-T11A/i/T11A',
+      'https://epson.com.br/Para-casa/Tintas/Tintas-T11A/i/T11A',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['105A', 'W1105A'],
+    impresoras: ['135W', '137FNW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laser-135w-4zb83a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncion-hp-laser-137fnw-4zb84a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['150A', 'W1500A'],
+    impresoras: ['LaserJet M111W', 'M141W'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-m111w-7md68a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-m141w-7md74a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['151A', 'W1510A'],
+    impresoras: ['LaserJet MFP 4103DW', 'LaserJet MFP 4103FDW', 'LaserJet Pro 4003DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-mfp-4103fdw-2z629a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-mfp-4103dw-2z627a.html',
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-4003dw-2z610a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['151X', 'W1510X'],
+    impresoras: ['LaserJet MFP 4103DW', 'LaserJet MFP 4103FDW', 'LaserJet Pro 4003DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-mfp-4103fdw-2z629a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-mfp-4103dw-2z627a.html',
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-4003dw-2z610a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['145A', 'W1450A'],
+    impresoras: ['LaserJet Pro 3003DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-3003dw-3g654a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['145X', 'W1450X'],
+    impresoras: ['LaserJet Pro 3003DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-3003dw-3g654a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['30A', 'CF230A'],
+    impresoras: ['LaserJet Pro M203DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-m203dw-g3q47a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['30X', 'CF230X'],
+    impresoras: ['LaserJet Pro M203DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-m203dw-g3q47a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  // El tambor de la M203dw.
+  {
+    marca: 'HP',
+    cartuchos: ['32A', 'CF232A'],
+    impresoras: ['LaserJet Pro M203DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-hp-laserjet-pro-m203dw-g3q47a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  // Los cuatro colores del 414A y del 414X; la página dice «solo para América».
+  {
+    marca: 'HP',
+    cartuchos: ['414A', 'W2020A', 'W2021A', 'W2022A', 'W2023A'],
+    impresoras: ['LaserJet Pro M479DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-m479dw-w1a77a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['414X', 'W2020X', 'W2021X', 'W2022X', 'W2023X'],
+    impresoras: ['LaserJet Pro M479DW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-pro-m479dw-w1a77a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['136A', 'W1360A'],
+    impresoras: ['LaserJet MFP M236SDW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-laserjet-m236sdw-9yg09a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['222A', 'W2220A', 'W2221A', 'W2222A', 'W2223A'],
+    impresoras: ['Color LaserJet Pro MFP M3303FDW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/hp-color-laserjet-pro-mfp-3303fdw-499m8a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  // Cada Smart Tank lista sus botellas en su propia ficha: una fuente por impresora.
+  {
+    marca: 'HP',
+    cartuchos: ['GT53'],
+    impresoras: ['Smart Tank 519', 'Smart Tank 520', 'Smart Tank 523', 'Smart Tank 530', 'Smart Tank 580', 'Smart Tank 581', 'Smart Tank 583', 'Smart Tank 720', 'Smart Tank 750', 'Smart Tank 790'],
+    fuentes: [
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-519-3yw73a.html',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-520-1f3w2a.html',
+      'https://www.hp.com/mx-es/shop/impresora-todo-en-uno-hp-smart-tank-523-4a8s2a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-530-4sb24a.html',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-580-tinta-continua-color-wi-fi-smart-app-escaner-1f3y2a.html',
+      'https://www.hp.com/py-es/products/printers/product-details/product-specifications/2101280821',
+      'https://www.hp.com/ec-es/products/printers/product-details/product-specifications/2101280824',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncion-hp-smart-tank-720-6uu46a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-750-6uu47a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-790-4wf66a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['GT52'],
+    impresoras: ['Smart Tank 519', 'Smart Tank 520', 'Smart Tank 523', 'Smart Tank 530', 'Smart Tank 580', 'Smart Tank 581', 'Smart Tank 583', 'Smart Tank 720', 'Smart Tank 750', 'Smart Tank 790'],
+    fuentes: [
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-519-3yw73a.html',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-520-1f3w2a.html',
+      'https://www.hp.com/mx-es/shop/impresora-todo-en-uno-hp-smart-tank-523-4a8s2a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-530-4sb24a.html',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncional-hp-smart-tank-580-tinta-continua-color-wi-fi-smart-app-escaner-1f3y2a.html',
+      'https://www.hp.com/py-es/products/printers/product-details/product-specifications/2101280821',
+      'https://www.hp.com/ec-es/products/printers/product-details/product-specifications/2101280824',
+      'https://www.hp.com/cl-es/shop/impresora-multifuncion-hp-smart-tank-720-6uu46a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-750-6uu47a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-790-4wf66a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  // «415» del catálogo: la Ink Tank Wireless 415.
+  {
+    marca: 'HP',
+    cartuchos: ['GT51', 'GT52'],
+    impresoras: ['415'],
+    fuentes: [
+      'https://www.hp.com/ec-es/products/printers/product-details/product-specifications/22324256',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['GT51'],
+    impresoras: ['Smart Tank 530', 'Smart Tank 750'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-530-4sb24a.html',
+      'https://www.hp.com/mx-es/shop/impresora-multifuncional-hp-smart-tank-750-6uu47a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['667', '667XL'],
+    impresoras: ['DeskJet Ink Advantage 2375'],
+    fuentes: [
+      'https://www.hp.com/py-es/products/printers/product-details/product-specifications/33691578',
+    ],
+    consultado: '2026-10-06',
+  },
+  // «2975» del catálogo: la DeskJet Ink Advantage 2975.
+  {
+    marca: 'HP',
+    cartuchos: ['668', '668XL'],
+    impresoras: ['2975'],
+    fuentes: [
+      'https://www.hp.com/uy-es/products/printers/product-details/product-specifications/2102771898',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['712'],
+    impresoras: ['DesignJet T210', 'DesignJet T250', 'DesignJet T650'],
+    fuentes: [
+      'https://www.hp.com/gb-en/shop/products/supplies/hp-712-80-ml-black-designjet-ink-cartridge-3ed71a',
+      'https://www.hp.com/sa-en/products/ink-toner/product-details/34386185',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['738'],
+    impresoras: ['DesignJet T850'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-tinta-designjet-hp-738-de-130-ml-negro-498n4a.html',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['051H'],
+    impresoras: ['imageCLASS MF264DW', 'MF267DW II'],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/051-black-toner-cartridge-high-capacity',
+      'https://shop.canon.ca/en_ca/p/051-black-toner-cartridge-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  // El 051 que vendemos es el TAMBOR; el tóner es el 051H.
+  {
+    marca: 'Canon',
+    cartuchos: ['051'],
+    impresoras: ['imageCLASS MF264DW', 'MF267DW II'],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/051-black-drum-cartridge',
+      'https://www.canon.cl/productos/toner/drum-cartridge-051',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['071H'],
+    impresoras: ['MF272DW', 'imageCLASS MF273DW'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/p/071-noir-toner-cartridge-high-capacity',
+      'https://www.usa.canon.com/shop/p/071-black-toner-cartridge-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['070', '070H'],
+    impresoras: ['MF462DW', 'imageCLASS MF465DW'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/p/070-black-toner-cartridge',
+      'https://www.usa.canon.com/shop/p/070-black-toner-cartridge-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  // La página de Canadá del 070 no nombra la MF465dw II; la de la impresora, sí.
+  {
+    marca: 'Canon',
+    cartuchos: ['070', '070H'],
+    impresoras: ['MF465DW II'],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/imageclass-mf465dw-ii-all-in-one-wireless-duplex-laser-printer',
+      'https://www.usa.canon.com/shop/p/070-black-toner-cartridge',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['057', '057H'],
+    impresoras: ['MF455DW'],
+    fuentes: [
+      'https://www.canon.ca/en/product?name=imageCLASS_MF455dw',
+      'https://shop.canon.ca/en_ca/p/057-black-toner-cartridge',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['067', '067H'],
+    impresoras: ['MF656CDW'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/p/067-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/067-toner-cartridge-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['075', '075H'],
+    impresoras: ['MF663CDW', 'MF665CDW'],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/toner-075',
+      'https://www.usa.canon.com/shop/p/toner-075-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['055', '055H'],
+    impresoras: ['LBP664CDW'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/p/055-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/055-toner-cartridge-high-capacity',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['126'],
+    impresoras: ['imageCLASS LBP6230DW'],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/126-black-toner-cartridge',
+    ],
+    consultado: '2026-10-06',
+  },
+  // Toda la familia 1643 (1643P, i, i II, iF, iF II y las imageCLASS X) usa el T06: por eso entran también los nombres del catálogo que no dicen cuál es.
+  {
+    marca: 'Canon',
+    cartuchos: ['T06'],
+    impresoras: ['1643I II', 'IR1643I II', 'IR1643I', 'IF 1643F', 'IR 1643IF II', 'MF1643'],
+    fuentes: [
+      'https://www.canon.cl/productos/toner/toner-t06-black',
+      'https://www.usa.canon.com/shop/p/imageclass-x-mf1643i-ii',
+      'https://www.usa.canon.com/shop/p/imageclass-x-mf1643if-ii',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['T08'],
+    impresoras: ['imageCLASS X MF1238 II'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/imageclass-x-mf1238-ii',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['T10'],
+    impresoras: ['imageCLASS X MF1538C'],
+    fuentes: [
+      'https://www.canon.ca/en/product?name=Colour_imageCLASS_X_MF1538C',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['T03'],
+    impresoras: ['DX 529IF'],
+    fuentes: [
+      'https://www.canon.ca/en/product?name=imageRUNNER_ADVANCE_DX_529iF',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['GPR-66'],
+    impresoras: ['imageRUNNER C3326I'],
+    fuentes: [
+      'https://www.canon.ca/dam/Brochures/BICG/EN/imageRUNNER-C3326i-Brochure-ENG.pdf',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['PFI-050'],
+    impresoras: ['imagePROGRAF TC-20', 'TC-21M'],
+    fuentes: [
+      'https://shop.canon.ca/en_ca/p/pfi-050-bk-pigment-black-ink-tank',
+      'https://shop.canon.ca/en_ca/p/pfi-050-c-pigment-cyan-ink-tank',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['PFI-030', 'PFI-031'],
+    impresoras: ['TM-340'],
+    fuentes: [
+      'https://lfp.canon.ca/product/imageprograf-tm-340/',
+    ],
+    consultado: '2026-10-06',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['PG-44', 'CL-54XL'],
+    impresoras: ['PIXMA E4210'],
+    fuentes: [
+      'https://www.cla.canon.com/es/p/pixma-e4210',
+    ],
+    consultado: '2026-10-06',
+  },
 ];
 
 /**
