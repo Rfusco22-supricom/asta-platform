@@ -542,8 +542,8 @@ export async function getLoteFabricante(accessToken: string): Promise<LoteFabric
 }
 
 /** Los casos claros del tramo producto → cartucho: ASTA con el código exacto en el nombre. */
-export async function getLoteAsta(accessToken: string): Promise<LoteAstaRespuesta> {
-  return request('/api/v1/admin/compatibilidades/productos/lote-asta', loteAstaRespuestaSchema, accessToken);
+export async function getLoteAsta(accessToken: string, tipo: 'ASTA' | 'ORIGINAL' = 'ASTA'): Promise<LoteAstaRespuesta> {
+  return request(`/api/v1/admin/compatibilidades/productos/lote-asta?tipo=${tipo}`, loteAstaRespuestaSchema, accessToken);
 }
 
 /** Las tablets del kiosco dadas de alta (#120). */

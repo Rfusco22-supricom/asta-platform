@@ -22,6 +22,16 @@ const NOMBRES = new Map<number, { nombre: string; sku: string | null; activo: bo
   [3_900_000_005, { nombre: 'HP TONER ZZ958A ORIGINAL', sku: 'ZZ958A', activo: true }],
   // Retirado de la venta.
   [3_900_000_006, { nombre: 'ASTA TONER ZZ958A', sku: 'A-ZZ958A-OLD', activo: false }],
+  // ── Originales ──
+  [3_900_000_101, { nombre: 'ZZ_LOTEASTA TONER ZZ958A NEGRO ORIGINAL', sku: 'ZZ958A', activo: true }],
+  // Un kit no ES el cartucho: lo contiene.
+  [3_900_000_102, { nombre: 'ZZ_LOTEASTA TONER KIT ZZ145XL + PAPEL', sku: 'KZZ145', activo: true }],
+  // Dos candidatos pendientes: no se elige.
+  [3_900_000_103, { nombre: 'ZZ_LOTEASTA TONER ZZ958A / ZZ145XL', sku: 'DZZ', activo: true }],
+  // Sin la marca en el nombre.
+  [3_900_000_104, { nombre: 'TONER GENERICO ZZ958A', sku: 'GZZ958A', activo: true }],
+  // El nombre dice tinta y el cartucho es tóner.
+  [3_900_000_105, { nombre: 'ZZ_LOTEASTA TINTA ZZ958A', sku: 'TZZ958A', activo: true }],
 ]);
 
 vi.mock('../services/recomendador/revision.service.js', async (original) => {
@@ -32,7 +42,7 @@ vi.mock('../services/recomendador/revision.service.js', async (original) => {
   };
 });
 
-const { nombreTraeCodigo, paresAstaClaros, validarLoteAsta } = await import('../services/recomendador/loteAsta.service.js');
+const { nombreTraeCodigo, paresAstaClaros, paresClaros, validarLoteAsta } = await import('../services/recomendador/loteAsta.service.js');
 
 describe('nombreTraeCodigo', () => {
   it.each([
@@ -51,6 +61,13 @@ describe('nombreTraeCodigo', () => {
     // Sin cifras no se arriesga.
     ['ASTA TONER NEGRO', 'NEGRO'],
   ])('«%s» NO trae %s', (nombre, codigo) => expect(nombreTraeCodigo(nombre, codigo)).toBe(false));
+
+  it('con sufijo de color: GI-16Y es GI-16, CRG-054BK es el 054; 054H no', () => {
+    expect(nombreTraeCodigo('ASTA TINTA CANON GI-16Y', 'GI-16', { sufijoColor: true })).toBe(true);
+    expect(nombreTraeCodigo('ASTA TONER CF500A NEGRO/CRG-054BK', '054', { sufijoColor: true })).toBe(true);
+    expect(nombreTraeCodigo('ASTA TONER CANON 054H', '054', { sufijoColor: true })).toBe(false);
+    expect(nombreTraeCodigo('ASTA TINTA CANON GI-16Y', 'GI-16')).toBe(false);
+  });
 });
 
 describe('Lote ASTA, contra MySQL', () => {
@@ -77,6 +94,12 @@ describe('Lote ASTA, contra MySQL', () => {
     await fila(3_900_000_004, 'ZZ958A');
     await fila(3_900_000_005, 'ZZ958A', 'ORIGINAL');
     await fila(3_900_000_006, 'ZZ958A');
+    await fila(3_900_000_101, 'ZZ958A', 'ORIGINAL');
+    await fila(3_900_000_102, 'ZZ145XL', 'ORIGINAL');
+    await fila(3_900_000_103, 'ZZ958A', 'ORIGINAL');
+    await fila(3_900_000_103, 'ZZ145XL', 'ORIGINAL');
+    await fila(3_900_000_104, 'ZZ958A', 'ORIGINAL');
+    await fila(3_900_000_105, 'ZZ958A', 'ORIGINAL');
   });
 
   afterAll(async () => {
@@ -89,6 +112,18 @@ describe('Lote ASTA, contra MySQL', () => {
   });
 
   const nuestros = async () => ((await paresAstaClaros()) ?? []).filter((p) => p.marca === MARCA);
+  const originales = async () => ((await paresClaros('ORIGINAL')) ?? []).filter((p) => p.marca === MARCA);
+
+  it('originales: solo el de marca, código, un candidato, sin kit y del mismo tipo', async () => {
+    expect((await originales()).map((p) => p.templateId)).toEqual([3_900_000_101]);
+  });
+
+  it('un original no se valida por el lote ASTA, ni al revés', async () => {
+    await expect(validarLoteAsta([{ templateId: 3_900_000_101, cartridgeId: cartucho.ZZ958A! }], revisor, 'ASTA')).rejects.toThrow(/caso claro/);
+    await expect(validarLoteAsta([{ templateId: 3_900_000_001, cartridgeId: cartucho.ZZ958A! }], revisor, 'ORIGINAL')).rejects.toThrow(/caso claro/);
+    expect(await validarLoteAsta([{ templateId: 3_900_000_101, cartridgeId: cartucho.ZZ958A! }], revisor, 'ORIGINAL')).toEqual({ validadas: 1 });
+    expect(await originales()).toEqual([]);
+  });
 
   it('solo salen los casos claros', async () => {
     expect((await nuestros()).map((p) => [p.templateId, p.codigo])).toEqual([
@@ -117,6 +152,6 @@ describe('Lote ASTA, contra MySQL', () => {
     const fila = await prisma.productCartridge.findFirstOrThrow({ where: { odooProductTmplId: 3_900_000_001, cartridgeId: cartucho.ZZ958A! } });
     expect([fila.status, fila.reviewedBy]).toEqual(['VALIDADA', revisor]);
     // Lo que no era claro sigue pendiente.
-    expect(await prisma.productCartridge.count({ where: { cartridgeId: cartucho.ZZ958A!, status: 'PROPUESTA' } })).toBe(4);
+    expect(await prisma.productCartridge.count({ where: { cartridgeId: cartucho.ZZ958A!, status: 'PROPUESTA', relation: 'COMPATIBLE' } })).toBe(3);
   });
 });

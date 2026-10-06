@@ -1,11 +1,26 @@
 import type { ErrorCode, ParAstaClaro } from '@asta/shared-types';
 import { prisma } from '../../config/prisma.js';
 import { esAstaDeVerdad, esComponente } from '../impulsa/equivalentesAsta.js';
+import { tipoDeCartucho } from './importarPropuestas.js';
 import { RevisionDesactualizada, RevisionInvalida, plantillasSiOdooResponde } from './revision.service.js';
 import { invalidarCatalogoImpresoras } from './recomendador.service.js';
 
 /**
  * Los casos claros del tramo producto → cartucho, para validarlos de una vez.
+ *
+ * Hay dos tipos de lote, con sus reglas:
+ *
+ *   · ASTA (la de abajo): lo que el kiosco ofrece.
+ *   · ORIGINAL: el cartucho del fabricante que vende Supricom, «CANON CARTUCHO
+ *     DE TINTA PG-145 XL» → PG-145XL. No cambia lo que recomienda el kiosco (solo
+ *     ofrece ASTA), pero son los productos que más se venden: sin ellos la
+ *     cobertura del top no sube. Además de lo común, la MARCA del cartucho está
+ *     en el nombre, es la ÚNICA propuesta pendiente del producto y no es un kit
+ *     ni un combo («KIT MAXI … + PH-S»): eso no ES el cartucho, lo contiene.
+ *
+ * Común a los dos: el tipo que dice el nombre (tóner, tinta, tambor) es el del
+ * cartucho. «CANON TONER GPR-53 MAGENTA» contra un GPR-53 dado de alta como
+ * tambor no es un caso claro.
  *
  * El kiosco solo ofrece ASTA, y para recomendar un tóner necesita los dos tramos
  * validados. El de impresora → cartucho se valida en lote desde las listas
@@ -35,44 +50,77 @@ export class LoteSinOdoo extends Error {
   }
 }
 
-/** ¿Está el código, entero y como palabra, en el nombre? */
-export function nombreTraeCodigo(nombre: string, codigo: string): boolean {
+/**
+ * ¿Está el código, entero y como palabra, en el nombre?
+ *
+ * Con `sufijoColor`, se admite el color pegado detrás: «GI-16Y» es GI-16 en
+ * amarillo, «CRG-054BK» es el 054 negro. Solo BK, K, C, M e Y: «CF500A» no es
+ * «CF500», ni «054H» (alto rendimiento) es el 054.
+ */
+export function nombreTraeCodigo(nombre: string, codigo: string, opciones: { sufijoColor?: boolean } = {}): boolean {
   const limpio = codigo.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (limpio.length < 3 || !/\d/.test(limpio)) return false;
   const patron = limpio
     .split('')
     .map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('[\\s.\\-_/]?');
-  return new RegExp(`(?<![A-Z0-9])${patron}(?![A-Z0-9])`).test(nombre.toUpperCase());
+  const sufijo = opciones.sufijoColor ? '(?:BK|K|C|M|Y)?' : '';
+  return new RegExp(`(?<![A-Z0-9])${patron}${sufijo}(?![A-Z0-9])`).test(nombre.toUpperCase());
 }
 
-/** Los casos claros pendientes. `null` si Odoo no respondió: sin nombres no se sabe qué es ASTA. */
-export async function paresAstaClaros(): Promise<ParAstaClaro[] | null> {
+export type TipoLote = 'ASTA' | 'ORIGINAL';
+
+/** Los casos claros pendientes de un tipo. `null` si Odoo no respondió: sin nombres no se sabe qué es ASTA. */
+export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null> {
   const filas = await prisma.productCartridge.findMany({
-    where: { status: 'PROPUESTA', relation: 'COMPATIBLE' },
-    select: { odooProductTmplId: true, cartridgeId: true, cartridge: { select: { code: true, brand: { select: { name: true } } } } },
+    where: { status: 'PROPUESTA', relation: tipo === 'ASTA' ? 'COMPATIBLE' : 'ORIGINAL' },
+    select: {
+      odooProductTmplId: true,
+      cartridgeId: true,
+      cartridge: { select: { code: true, kind: true, brand: { select: { name: true } } } },
+    },
   });
   if (filas.length === 0) return [];
   const plantillas = await plantillasSiOdooResponde([...new Set(filas.map((f) => f.odooProductTmplId))]);
   if (!plantillas) return null;
 
+  // Pendientes por producto: un ORIGINAL con dos candidatos no es un caso claro.
+  const pendientes = new Map<number, number>();
+  for (const f of filas) pendientes.set(f.odooProductTmplId, (pendientes.get(f.odooProductTmplId) ?? 0) + 1);
+
   const claros: ParAstaClaro[] = [];
   for (const f of filas) {
     const p = plantillas.get(f.odooProductTmplId);
-    if (!p || !p.activo) continue;
-    if (!esAstaDeVerdad({ name: p.nombre, default_code: p.sku ?? false }) || esComponente(p.nombre)) continue;
-    if (!nombreTraeCodigo(p.nombre, f.cartridge.code)) continue;
+    if (!p || !p.activo || esComponente(p.nombre)) continue;
+    if (tipoDeCartucho(p.nombre) !== f.cartridge.kind) continue;
+    const asta = esAstaDeVerdad({ name: p.nombre, default_code: p.sku ?? false });
+    if (tipo === 'ASTA') {
+      if (!asta || !nombreTraeCodigo(p.nombre, f.cartridge.code, { sufijoColor: true })) continue;
+    } else {
+      if (asta || !nombreTraeCodigo(p.nombre, f.cartridge.code)) continue;
+      if (!new RegExp(`(?<![A-Z])${f.cartridge.brand.name.toUpperCase()}(?![A-Z])`).test(p.nombre.toUpperCase())) continue;
+      if (pendientes.get(f.odooProductTmplId) !== 1 || /\bKIT\b|\+/i.test(p.nombre)) continue;
+    }
     claros.push({ templateId: f.odooProductTmplId, nombre: p.nombre, sku: p.sku, cartridgeId: f.cartridgeId, marca: f.cartridge.brand.name, codigo: f.cartridge.code });
   }
   return claros.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.codigo.localeCompare(b.codigo));
+}
+
+/** Compatibilidad con la primera versión: el lote ASTA. */
+export function paresAstaClaros(): Promise<ParAstaClaro[] | null> {
+  return paresClaros('ASTA');
 }
 
 /**
  * Valida los pares pedidos, que tienen que ser casos claros pendientes AHORA.
  * Todo o nada: uno que ya no lo sea, y no se valida ninguno.
  */
-export async function validarLoteAsta(pares: Array<{ templateId: number; cartridgeId: number }>, revisorId: string): Promise<{ validadas: number }> {
-  const claros = await paresAstaClaros();
+export async function validarLoteAsta(
+  pares: Array<{ templateId: number; cartridgeId: number }>,
+  revisorId: string,
+  tipo: TipoLote = 'ASTA',
+): Promise<{ validadas: number }> {
+  const claros = await paresClaros(tipo);
   if (claros === null) throw new LoteSinOdoo();
   const clave = (p: { templateId: number; cartridgeId: number }) => `${p.templateId}:${p.cartridgeId}`;
   const permitidos = new Set(claros.map(clave));

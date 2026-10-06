@@ -4,6 +4,21 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ParAstaClaro } from '@asta/shared-types';
 
+const TEXTOS = {
+  ASTA: {
+    titulo: 'Productos ASTA con el código exacto en el nombre',
+    explica: (productos: number) =>
+      `${productos.toLocaleString('es-VE')} productos ASTA a la venta cuyo nombre trae el código del cartucho tal cual, como «ASTA TONER CF258A CON CHIP» → CF258A, o con el color pegado («GI-16Y» → GI-16). Sin polvo ni chips sueltos. Es lo que ofrece el kiosco.`,
+    columna: 'Producto ASTA de Odoo',
+  },
+  ORIGINAL: {
+    titulo: 'Originales de marca con su código en el nombre',
+    explica: (productos: number) =>
+      `${productos.toLocaleString('es-VE')} productos originales a la venta cuyo nombre trae la marca y el código del cartucho, como «CANON CARTUCHO DE TINTA PG-145 XL» → PG-145XL. Sin kits ni combos, y solo si es su único candidato. No cambia lo que recomienda el kiosco, pero son lo que más se vende: suben la cobertura.`,
+    columna: 'Producto original de Odoo',
+  },
+} as const;
+
 /**
  * Validar de una vez los casos claros del tramo producto → cartucho: productos
  * ASTA a la venta, que no son polvo ni chip, con el código exacto del cartucho
@@ -14,7 +29,8 @@ import type { ParAstaClaro } from '@asta/shared-types';
  * comprobar cada par al aplicar. Lo demás sigue en la revisión de abajo.
  */
 
-export function LoteAsta({ pares }: { pares: ParAstaClaro[] }) {
+export function LoteAsta({ tipo, pares }: { tipo: 'ASTA' | 'ORIGINAL'; pares: ParAstaClaro[] }) {
+  const t = TEXTOS[tipo];
   const router = useRouter();
   const [abierta, setAbierta] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -29,7 +45,7 @@ export function LoteAsta({ pares }: { pares: ParAstaClaro[] }) {
       const res = await fetch('/api/compatibilidades/lote-asta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pares: pares.map(({ templateId, cartridgeId }) => ({ templateId, cartridgeId })) }),
+        body: JSON.stringify({ tipo, pares: pares.map(({ templateId, cartridgeId }) => ({ templateId, cartridgeId })) }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -48,14 +64,13 @@ export function LoteAsta({ pares }: { pares: ParAstaClaro[] }) {
   }
 
   return (
-    <section className="lote" aria-labelledby="lote-asta-titulo">
+    <section className="lote" aria-labelledby={`lote-${tipo}-titulo`}>
       <div className="lote-texto">
-        <h2 id="lote-asta-titulo">
-          Productos ASTA con el código exacto en el nombre: <strong>{pares.length.toLocaleString('es-VE')}</strong> sin revisar
+        <h2 id={`lote-${tipo}-titulo`}>
+          {t.titulo}: <strong>{pares.length.toLocaleString('es-VE')}</strong> sin revisar
         </h2>
         <p>
-          {productos.toLocaleString('es-VE')} productos ASTA a la venta cuyo nombre trae el código del cartucho tal cual, como «ASTA TONER CF258A CON CHIP» →
-          CF258A. Sin polvo ni chips sueltos. Revisa la lista y, si está bien, valídalos todos de una vez.
+          {t.explica(productos)} Revisa la lista y, si está bien, valídalos todos de una vez.
         </p>
         <button type="button" className="btn-link lote-ver" aria-expanded={abierta} onClick={() => setAbierta((a) => !a)}>
           {abierta ? 'Ocultar la lista' : `Ver la lista (${pares.length})`}
@@ -66,7 +81,7 @@ export function LoteAsta({ pares }: { pares: ParAstaClaro[] }) {
               <thead>
                 <tr>
                   <th>Cartucho</th>
-                  <th>Producto ASTA de Odoo</th>
+                  <th>{t.columna}</th>
                 </tr>
               </thead>
               <tbody>

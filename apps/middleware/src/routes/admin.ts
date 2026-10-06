@@ -14,6 +14,7 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
+  tipoLoteSchema,
   validarLoteAstaSchema,
   validarLoteFabricanteSchema,
   cambioKioscoSchema,
@@ -45,7 +46,7 @@ import {
   resumenLoteFabricante,
   validarLoteFabricante,
 } from '../services/recomendador/porImpresora.service.js';
-import { paresAstaClaros, validarLoteAsta } from '../services/recomendador/loteAsta.service.js';
+import { paresClaros, validarLoteAsta } from '../services/recomendador/loteAsta.service.js';
 import { almacenesDeOdoo, cambiarKiosco, listarKioscos, nuevoTokenKiosco, registrarKiosco } from '../services/kioscos.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
@@ -430,10 +431,15 @@ adminRouter.post('/compatibilidades/impresoras/revision', autorizar('admin.compa
   }
 });
 
-/** Los casos claros del tramo producto → cartucho: productos ASTA con el código exacto en el nombre. */
-adminRouter.get('/compatibilidades/productos/lote-asta', autorizar('admin.compatibilidades.revisar'), async (_req, res, next) => {
+/**
+ * Los casos claros del tramo producto → cartucho. `?tipo=ASTA` (por defecto):
+ * productos ASTA con el código exacto en el nombre. `?tipo=ORIGINAL`: el
+ * cartucho del fabricante, con su marca y su código en el nombre.
+ */
+adminRouter.get('/compatibilidades/productos/lote-asta', autorizar('admin.compatibilidades.revisar'), async (req, res, next) => {
   try {
-    const pares = await paresAstaClaros();
+    const tipo = tipoLoteSchema.catch('ASTA').parse(req.query.tipo ?? 'ASTA');
+    const pares = await paresClaros(tipo);
     res.json({ data: pares ?? [], meta: { odooDisponible: pares !== null } });
   } catch (error) {
     next(error);
@@ -448,13 +454,13 @@ adminRouter.post('/compatibilidades/productos/lote-asta', autorizar('admin.compa
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
       return;
     }
-    const r = await validarLoteAsta(cuerpo.data.pares, req.identity.appUserId);
+    const r = await validarLoteAsta(cuerpo.data.pares, req.identity.appUserId, cuerpo.data.tipo);
     recordAudit({
       action: 'compatibilidad.revisada',
       ...auditContext(req),
       targetType: 'product_cartridges',
       targetId: null,
-      metadata: { lote: 'ASTA_CODIGO_EN_NOMBRE', decision: 'VALIDADA', validadas: r.validadas, pares: cuerpo.data.pares.slice(0, 500) },
+      metadata: { lote: cuerpo.data.tipo === 'ASTA' ? 'ASTA_CODIGO_EN_NOMBRE' : 'ORIGINAL_MARCA_Y_CODIGO', decision: 'VALIDADA', validadas: r.validadas, pares: cuerpo.data.pares.slice(0, 500) },
     });
     res.json({ data: r });
   } catch (error) {

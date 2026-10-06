@@ -48,10 +48,12 @@ export default async function CompatibilidadesPage({
   let datos;
   let cobertura;
   // El aviso del lote no puede tumbar la página: sin él, se revisa una a una como antes.
-  const lote = await getLoteAsta(sesion.accessToken).catch((e) => {
-    if (esRedireccion(e)) throw e;
-    return null;
-  });
+  const sinRomper = <T,>(p: Promise<T>) =>
+    p.catch((e) => {
+      if (esRedireccion(e)) throw e;
+      return null;
+    });
+  const [lote, loteOriginales] = await Promise.all([sinRomper(getLoteAsta(sesion.accessToken, 'ASTA')), sinRomper(getLoteAsta(sesion.accessToken, 'ORIGINAL'))]);
   try {
     // En paralelo: las dos leen ventas de Odoo, y la cache es la misma.
     [datos, cobertura] = await Promise.all([
@@ -95,7 +97,8 @@ export default async function CompatibilidadesPage({
 
       <Cobertura datos={cobertura} />
 
-      {lote && lote.data.length > 0 && <LoteAsta pares={lote.data} />}
+      {lote && lote.data.length > 0 && <LoteAsta tipo="ASTA" pares={lote.data} />}
+      {loteOriginales && loteOriginales.data.length > 0 && <LoteAsta tipo="ORIGINAL" pares={loteOriginales.data} />}
 
       <section className="stats">
         <div className="stat">
