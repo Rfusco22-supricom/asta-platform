@@ -4,6 +4,7 @@ import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
 import { tierFromPricelist } from '../config/tiers.js';
 import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
+import { nombrePartner } from '../utils/nombrePartner.js';
 
 /**
  * Reconciliación Odoo ↔ middleware (issue #19).
@@ -71,7 +72,7 @@ export interface Reconciliacion {
 
 interface PartnerOdoo {
   id: number;
-  name: string;
+  name: string | false;
   email: string | false;
   /** Leída desde la compañía del cliente, no junto al resto: ver `tarifas.service.ts`. */
   tarifa: TarifaLeida;
@@ -148,7 +149,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
     if (yaEnMuestra < MUESTRA) {
       sinCuenta.push({
         odooPartnerId: p.id,
-        nombre: p.name.trim(),
+        nombre: nombrePartner(p),
         email: crudo.trim() || null,
         motivo,
         detalle,
@@ -172,7 +173,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
     const u = porPartnerId.get(p.id);
     if (!u) continue;
 
-    const nombreOdoo = p.name.trim();
+    const nombreOdoo = nombrePartner(p);
     if (nombreOdoo !== u.fullName) {
       desalineados.push({
         odooPartnerId: p.id,
@@ -314,7 +315,7 @@ export async function resincronizarUno(
   const pricelistId = idTarifa(tarifa);
   const datos = {
     email,
-    fullName: p.name.trim(),
+    fullName: nombrePartner(p),
     phone: p.phone ? String(p.phone).trim() || null : null,
     odooPricelistId: pricelistId,
     odooPricelistName: nombreTarifa(tarifa),

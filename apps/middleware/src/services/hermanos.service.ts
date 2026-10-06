@@ -1,6 +1,7 @@
 import { searchRead, readGroup } from '../odoo/client.js';
 import { normalizarNombre, normalizarRif, rifUtilizable } from './duplicados.js';
 import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
+import { nombrePartner } from '../utils/nombrePartner.js';
 
 /**
  * Otros registros de Odoo que son el MISMO cliente (issue #50).
@@ -57,7 +58,7 @@ export interface Hermanos {
 
 interface FilaPartner {
   id: number;
-  name: string;
+  name: string | false;
   vat: string | false;
   user_id: [number, string] | false;
   company_id: [number, string] | false;
@@ -105,8 +106,9 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
      * espacios—, así que un `ilike` traería casi aciertos y se dejaría los que
      * solo difieren en un acento, que son la mitad de los casos reales.
      */
-    const nombre = normalizarNombre(yo.name);
-    if (!nombre) return { esteRegistro: 0, total: 0, hermanos: [] };
+    // Sin nombre no hay con qué comparar: una ficha sin nombre no tiene hermanos por nombre.
+    const nombre = yo.name ? normalizarNombre(yo.name) : '';
+    if (!nombre || !yo.name) return { esteRegistro: 0, total: 0, hermanos: [] };
 
     candidatos = await searchRead<FilaPartner>(
       'res.partner',
@@ -119,7 +121,7 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
       ],
       ['id', 'name', 'vat', 'user_id', 'company_id'],
     );
-    candidatos = candidatos.filter((c) => normalizarNombre(c.name) === nombre);
+    candidatos = candidatos.filter((c) => c.name && normalizarNombre(c.name) === nombre);
   }
 
   const motivo: 'rif' | 'nombre' = rifUtilizable(rif) ? 'rif' : 'nombre';
@@ -154,7 +156,7 @@ export async function hermanosDe(partnerId: number): Promise<Hermanos> {
       const f = facturacion.get(c.id);
       return {
         partnerId: c.id,
-        nombre: c.name.trim(),
+        nombre: nombrePartner(c),
         motivo,
         facturado: Math.round((f?.monto ?? 0) * 100) / 100,
         facturas: f?.facturas ?? 0,
