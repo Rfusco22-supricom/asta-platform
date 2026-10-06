@@ -520,7 +520,12 @@ export const loteAstaRespuestaSchema = z.object({
 
 export type LoteAstaRespuesta = z.infer<typeof loteAstaRespuestaSchema>;
 
+/** ASTA: lo que ofrece el kiosco. ORIGINAL: el cartucho del fabricante, con su marca en el nombre. */
+export const tipoLoteSchema = z.enum(['ASTA', 'ORIGINAL']);
+export type TipoLote = z.infer<typeof tipoLoteSchema>;
+
 export const validarLoteAstaSchema = z.object({
+  tipo: tipoLoteSchema.default('ASTA'),
   pares: z
     .array(z.object({ templateId: odooIdSchema.max(4_294_967_295), cartridgeId: z.number().int().positive().max(4_294_967_295) }))
     .min(1)
