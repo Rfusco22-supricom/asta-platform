@@ -15,8 +15,19 @@ import { invalidarCatalogoImpresoras } from './recomendador.service.js';
  *     DE TINTA PG-145 XL» → PG-145XL. No cambia lo que recomienda el kiosco (solo
  *     ofrece ASTA), pero son los productos que más se venden: sin ellos la
  *     cobertura del top no sube. Además de lo común, la MARCA del cartucho está
- *     en el nombre, es la ÚNICA propuesta pendiente del producto y no es un kit
- *     ni un combo («KIT MAXI … + PH-S»): eso no ES el cartucho, lo contiene.
+ *     en el nombre, no es un kit ni un combo («KIT MAXI … + PH-S»): eso no ES el
+ *     cartucho, lo contiene. Y dos reglas propias, medidas sobre el top de ventas:
+ *
+ *       – El código puede estar en la REFERENCIA en vez de en el nombre. En un
+ *         original la referencia es el número de pieza del fabricante: «CF258A»
+ *         es ese tóner, y «T544120-AL» es la botella T544 de Epson (544 + color
+ *         + región). Así entran «EPSON L1110, L3110, L3150, L5190 BLACK», que
+ *         nombra las impresoras en vez del cartucho.
+ *       – Si tiene varios candidatos pendientes, tienen que ser el MISMO cartucho
+ *         con dos nombres: «HP TONER 105A» lleva 105A y W1105A, el número
+ *         comercial y el de pieza. Se sabe que son el mismo porque la lista del
+ *         fabricante les da exactamente las mismas impresoras. Si no tienen
+ *         impresoras de lista, o difieren en una, no es un caso claro.
  *
  * Común a los dos: el tipo que dice el nombre (tóner, tinta, tambor) es el del
  * cartucho. «CANON TONER GPR-53 MAGENTA» contra un GPR-53 dado de alta como
@@ -70,6 +81,38 @@ export function nombreTraeCodigo(nombre: string, codigo: string, opciones: { suf
 
 export type TipoLote = 'ASTA' | 'ORIGINAL';
 
+/**
+ * ¿Es la referencia el número de pieza de este cartucho?
+ *
+ * Igual al código («CF258A», «W1105A»), o la pieza de Epson: el código de la
+ * serie seguido de tres cifras (color y presentación) y quizá la región,
+ * «T544120-AL» para el T544.
+ */
+export function referenciaEsCodigo(sku: string | null, codigo: string): boolean {
+  if (!sku) return false;
+  const ref = sku.toUpperCase().replace(/\s+/g, '');
+  const cod = codigo.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cod.length < 4 || !/\d/.test(cod)) return false;
+  if (ref.replace(/[^A-Z0-9]/g, '') === cod) return true;
+  return /^T\d{2}[0-9A-Z]$/.test(cod) && new RegExp(`^${cod}\\d{3}(?:-[A-Z0-9]+)?$`).test(ref);
+}
+
+/**
+ * Las impresoras que la lista del fabricante da a cada cartucho, como una clave
+ * comparable: dos cartuchos con la misma clave no vacía son el mismo cartucho
+ * con dos nombres.
+ */
+async function impresorasDeLista(cartuchos: number[]): Promise<Map<number, string>> {
+  if (cartuchos.length === 0) return new Map();
+  const filas = await prisma.cartridgePrinterModel.findMany({
+    where: { cartridgeId: { in: cartuchos }, source: 'FABRICANTE', status: { not: 'RECHAZADA' } },
+    select: { cartridgeId: true, printerModelId: true },
+  });
+  const por = new Map<number, number[]>();
+  for (const f of filas) por.set(f.cartridgeId, [...(por.get(f.cartridgeId) ?? []), f.printerModelId]);
+  return new Map([...por].map(([id, impresoras]) => [id, [...new Set(impresoras)].sort((a, b) => a - b).join(',')]));
+}
+
 /** Los casos claros pendientes de un tipo. `null` si Odoo no respondió: sin nombres no se sabe qué es ASTA. */
 export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null> {
   const filas = await prisma.productCartridge.findMany({
@@ -84,9 +127,18 @@ export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null
   const plantillas = await plantillasSiOdooResponde([...new Set(filas.map((f) => f.odooProductTmplId))]);
   if (!plantillas) return null;
 
-  // Pendientes por producto: un ORIGINAL con dos candidatos no es un caso claro.
-  const pendientes = new Map<number, number>();
-  for (const f of filas) pendientes.set(f.odooProductTmplId, (pendientes.get(f.odooProductTmplId) ?? 0) + 1);
+  // Candidatos pendientes por producto. Un ORIGINAL con varios solo es claro si
+  // son el mismo cartucho: misma marca y mismas impresoras en la lista oficial.
+  const candidatos = new Map<number, typeof filas>();
+  for (const f of filas) candidatos.set(f.odooProductTmplId, [...(candidatos.get(f.odooProductTmplId) ?? []), f]);
+  const conVarios = [...candidatos.values()].filter((c) => c.length > 1).flat();
+  const lista = tipo === 'ORIGINAL' ? await impresorasDeLista([...new Set(conVarios.map((f) => f.cartridgeId))]) : new Map<number, string>();
+  const unSoloCartucho = (templateId: number): boolean => {
+    const c = candidatos.get(templateId) ?? [];
+    if (c.length === 1) return true;
+    const claves = new Set(c.map((f) => `${f.cartridge.brand.name}|${lista.get(f.cartridgeId) ?? ''}`));
+    return claves.size === 1 && (lista.get(c[0]!.cartridgeId) ?? '') !== '';
+  };
 
   const claros: ParAstaClaro[] = [];
   for (const f of filas) {
@@ -97,9 +149,10 @@ export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null
     if (tipo === 'ASTA') {
       if (!asta || !nombreTraeCodigo(p.nombre, f.cartridge.code, { sufijoColor: true })) continue;
     } else {
-      if (asta || !nombreTraeCodigo(p.nombre, f.cartridge.code)) continue;
+      if (asta) continue;
+      if (!nombreTraeCodigo(p.nombre, f.cartridge.code) && !referenciaEsCodigo(p.sku, f.cartridge.code)) continue;
       if (!new RegExp(`(?<![A-Z])${f.cartridge.brand.name.toUpperCase()}(?![A-Z])`).test(p.nombre.toUpperCase())) continue;
-      if (pendientes.get(f.odooProductTmplId) !== 1 || /\bKIT\b|\+/i.test(p.nombre)) continue;
+      if (!unSoloCartucho(f.odooProductTmplId) || /\bKIT\b|\+/i.test(p.nombre)) continue;
     }
     claros.push({ templateId: f.odooProductTmplId, nombre: p.nombre, sku: p.sku, cartridgeId: f.cartridgeId, marca: f.cartridge.brand.name, codigo: f.cartridge.code });
   }
