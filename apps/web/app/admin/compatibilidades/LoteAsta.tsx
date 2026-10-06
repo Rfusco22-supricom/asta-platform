@@ -12,9 +12,9 @@ const TEXTOS = {
     columna: 'Producto ASTA de Odoo',
   },
   ORIGINAL: {
-    titulo: 'Originales de marca con su código en el nombre',
+    titulo: 'Originales de marca con su código',
     explica: (productos: number) =>
-      `${productos.toLocaleString('es-VE')} productos originales a la venta cuyo nombre trae la marca y el código del cartucho, como «CANON CARTUCHO DE TINTA PG-145 XL» → PG-145XL. Sin kits ni combos, y solo si es su único candidato. No cambia lo que recomienda el kiosco, pero son lo que más se vende: suben la cobertura.`,
+      `${productos.toLocaleString('es-VE')} productos originales a la venta con la marca en el nombre y el código del cartucho en el nombre o en la referencia del fabricante, como «CANON CARTUCHO DE TINTA PG-145 XL» → PG-145XL o «EPSON L3110 BLACK» con referencia T544120-AL → T544. Si salen dos códigos, son el mismo cartucho con dos nombres («HP 105A» y W1105A, con las mismas impresoras en la lista de HP). Sin kits ni combos. No cambia lo que recomienda el kiosco, pero son lo que más se vende: suben la cobertura.`,
     columna: 'Producto original de Odoo',
   },
 } as const;
