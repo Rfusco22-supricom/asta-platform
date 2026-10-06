@@ -54,11 +54,23 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },
+      ],
+    },
+    {
+      titulo: 'Kiosco',
+      secciones: [
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
         { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
         { href: '/admin/kioscos', titulo: 'Kioscos', icono: 'tablet' },
-        { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
+      ],
+    },
+    {
+      // Lo que se arregla en Odoo, no en el panel.
+      titulo: 'Datos de Odoo',
+      secciones: [
+        { href: '/admin/calidad', titulo: 'Calidad de datos', icono: 'calidad', corto: 'Calidad' },
         { href: '/admin/duplicados', titulo: 'Duplicados', icono: 'duplicados' },
+        { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
       ],
     },
     MI_CUENTA,

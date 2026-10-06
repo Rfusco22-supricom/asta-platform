@@ -59,6 +59,7 @@ export const accionSchema = z.enum([
   'compatibilidades.proponer',
   'admin.recomendador.ver',
   'admin.duplicados.ver',
+  'admin.calidad.ver',
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
@@ -226,6 +227,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver el informe de clientes duplicados y qué fusiones faltan',
+  },
+  'admin.calidad.ver': {
+    // La instancia entera, como el informe de duplicados: nombres, facturación y
+    // cartera de cada cliente. Solo el SUPERADMIN, por la misma razón.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver qué datos de Odoo están mal y dónde se arreglan',
   },
   'admin.reconciliacion.ver': {
     roles: ['SUPERADMIN'],

@@ -21,6 +21,7 @@ export * from './partners.js';
 export * from './cartera.js';
 export * from './impulsa.js';
 export * from './duplicados.js';
+export * from './calidadDatos.js';
 export * from './agentes.js';
 export * from './asta.js';
 export * from './reportes.js';

@@ -44,6 +44,7 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'admin.kioscos.gestionar',
     'admin.recomendador.ver',
     'admin.duplicados.ver',
+    'admin.calidad.ver',
     'catalogo.leer',
   ],
   VENDEDOR: [
