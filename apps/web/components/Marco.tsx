@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { clearSession } from '@/lib/session';
 import { ambitoDe, navegacionDe } from '@/lib/navegacion';
 import { NavInferior, NavLateral } from './NavLateral';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 import { MenuUsuario } from './MenuUsuario';
 
 /**
@@ -58,6 +59,9 @@ export function Marco({
   children: React.ReactNode;
 }) {
   const grupos = navegacionDe(usuario.role);
+  // El vendedor es una persona y su nombre viene de Odoo tal cual («MARTA  RUIZ (v)»).
+  // El de un cliente es una razón social: solo se le quitan los espacios de más.
+  const nombreVisible = usuario.role === 'VENDEDOR' ? nombrePersona(usuario.nombre) : limpiarEspacios(usuario.nombre);
 
   return (
     <div className="app">
@@ -115,9 +119,9 @@ export function Marco({
           <div className="cabecera-acciones">
             {acciones}
             <MenuUsuario
-              nombre={usuario.nombre}
+              nombre={nombreVisible}
               rol={usuario.role}
-              iniciales={iniciales(usuario.nombre)}
+              iniciales={iniciales(nombreVisible)}
               salir={salir}
             />
           </div>

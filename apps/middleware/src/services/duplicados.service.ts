@@ -3,6 +3,7 @@ import { readGroup, searchRead } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { agrupar, gruposParaCubrir, resumir, type Registro } from './duplicados.js';
 import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * El informe de fusiones pendientes, leído de Odoo (#50).
@@ -101,7 +102,7 @@ export async function registrosDeOdoo(): Promise<Registro[]> {
       companiaId: p.company_id ? p.company_id[0] : null,
       compania: p.company_id ? p.company_id[1] : null,
       vendedorId: p.user_id ? p.user_id[0] : null,
-      vendedor: p.user_id ? p.user_id[1] : null,
+      vendedor: p.user_id ? nombrePersona(p.user_id[1]) : null,
       facturas: f?.facturas ?? 0,
       monto: f?.monto ?? 0,
     };
@@ -134,7 +135,7 @@ export async function informeDeDuplicados(): Promise<
         vendedores: g.vendedores,
         registros: g.registros.map((reg) => ({
           partnerId: reg.id,
-          nombre: reg.nombre.trim(),
+          nombre: limpiarEspacios(reg.nombre),
           rif: reg.rif,
           facturado: redondear(reg.monto),
           facturas: reg.facturas,

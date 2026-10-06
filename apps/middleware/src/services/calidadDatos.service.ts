@@ -5,6 +5,7 @@ import { CacheTtl } from '../utils/cacheTtl.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
 import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 import { problemaRif, problemasNombreVendedor, tieneEspaciosDeMas } from './calidadDatos.js';
+import { nombrePersona } from '@asta/shared-types';
 
 /**
  * Calidad de los datos que llegan de Odoo.
@@ -158,7 +159,7 @@ export async function calidadDeDatos({ fresco = false } = {}): Promise<
     nombre: nombrePartner(p).trim(),
     detalle,
     compania: nombreDe(p.company_id),
-    vendedor: nombreDe(p.user_id),
+    vendedor: p.user_id ? nombrePersona(p.user_id[1]) : null,
     facturado: facturado.get(p.id) ?? 0,
   });
 

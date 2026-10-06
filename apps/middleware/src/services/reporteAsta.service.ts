@@ -4,6 +4,7 @@ import { FACTURA, NOTA_DE_CREDITO } from './criterioFacturacion.js';
 import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, type Reporte } from './reportes.service.js';
 import { compras, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
 import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea } from './ventasAsta.service.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * El reporte SOLO ASTA (ver `ventasAsta.service`), de la cartera de un vendedor
@@ -104,7 +105,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
   for (const g of lineasPorCliente) {
     if (!g.partner_id) continue;
     const [id, nombre] = g.partner_id;
-    porCliente.set(`p${id}`, { partnerId: id, nombre: nombre.trim(), facturado: -g.balance, facturas: facturasDe.get(id) ?? 0 });
+    porCliente.set(`p${id}`, { partnerId: id, nombre: limpiarEspacios(nombre), facturado: -g.balance, facturas: facturasDe.get(id) ?? 0 });
   }
   const claveCliente = (v: VentaSmartbit) => (v.partnerId ? `p${v.partnerId}` : `r${v.rif ?? v.cliente}`);
   const filaSb = (v: VentaSmartbit) => {
@@ -181,13 +182,13 @@ async function porVendedorDeLaEmpresa(
   };
   const deCliente = (id: number) => {
     const u = comercial.get(id) ?? null;
-    return u ? fila(u[0], u[1].trim()) : fila(null, 'Sin comercial asignado');
+    return u ? fila(u[0], nombrePersona(u[1])) : fila(null, 'Sin comercial asignado');
   };
   for (const g of lineasPorCliente) if (g.partner_id) deCliente(g.partner_id[0]).facturado -= g.balance;
   for (const [id, saldo] of saldoDe) deCliente(id).porCobrar += saldo;
   for (const [id, n] of facturasDe) deCliente(id).facturas += n;
 
-  const deVendedor = (v: VentaSmartbit) => fila(v.vendedorId, v.vendedor || 'Sin vendedor');
+  const deVendedor = (v: VentaSmartbit) => fila(v.vendedorId, v.vendedor ? nombrePersona(v.vendedor) : 'Sin vendedor');
   for (const v of ventasSb) deVendedor(v).facturado += v.venta;
   for (const c of comprasSb) deVendedor(c).facturas++;
 

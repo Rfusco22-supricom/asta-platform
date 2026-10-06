@@ -3,6 +3,7 @@ import { searchRead } from '../odoo/client.js';
 import { compras, smartbit, ventasDeClientes } from './smartbit.service.js';
 import { totalesAstaDeCartera } from './ventasAsta.service.js';
 import { authEnv } from '../config/authEnv.js';
+import { nombrePersona } from '@asta/shared-types';
 
 /**
  * Estadísticas de los agentes de venta, para el panel de administración.
@@ -181,7 +182,7 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
 
     return {
       odooUserId: uid,
-      nombre: (u?.name ?? v.nombre).trim(),
+      nombre: nombrePersona(u?.name ?? v.nombre),
       login: u?.login ?? '',
       activoEnOdoo: u?.active ?? false,
       clientes: v.partners.length,

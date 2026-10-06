@@ -1,6 +1,7 @@
 import { searchRead, readGroup, type OdooDomain } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
 import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
  * Reportes de facturación por periodo.
@@ -323,7 +324,7 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
   );
   const clientes = [...plegadoClientes].map(([id, { sumas, facturas: n }]) => ({
     partnerId: id,
-    nombre: (nombreCliente.get(id) ?? '').trim(),
+    nombre: limpiarEspacios(nombreCliente.get(id) ?? ''),
     facturado: redondear(sumas.amount_total_signed),
     facturas: n,
   }));
@@ -339,7 +340,7 @@ export async function reporte(opciones: OpcionesReporte): Promise<Reporte> {
 
   const nombreVendedor = new Map<number, string>();
   for (const g of porVendedor) {
-    if (g.invoice_user_id) nombreVendedor.set(g.invoice_user_id[0], g.invoice_user_id[1]);
+    if (g.invoice_user_id) nombreVendedor.set(g.invoice_user_id[0], nombrePersona(g.invoice_user_id[1]));
   }
 
   const [asta, competencia] = await Promise.all([
