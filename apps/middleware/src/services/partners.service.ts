@@ -3,6 +3,7 @@ import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { isUnmappedPricelist, tierFromPricelist, type MapaTiers } from '../config/tiers.js';
 import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
+import { nombrePartner } from '../utils/nombrePartner.js';
 
 /**
  * Clientes y cartera de vendedores.
@@ -15,7 +16,7 @@ import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas
 
 interface PartnerRow {
   id: number;
-  name: string;
+  name: string | false;
   email: string | false;
   phone: string | false;
   /** Vendedor asignado: [res.users.id, nombre] o false. */
@@ -77,7 +78,7 @@ function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, mapa: Mapa
 
   return {
     id: row.id,
-    nombre: row.name.trim(),
+    nombre: nombrePartner(row),
     email: limpiar(row.email),
     telefono: limpiar(row.phone),
     vendedorOdooUserId: row.user_id ? row.user_id[0] : null,

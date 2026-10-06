@@ -6,6 +6,7 @@ import { tierFromPricelist, type MapaTiers } from '../config/tiers.js';
 import { cargarMapaTiers } from './tiers.service.js';
 import { recordAudit } from './audit.service.js';
 import { idTarifa, leerTarifas, nombreTarifa } from './tarifas.service.js';
+import { nombrePartner } from '../utils/nombrePartner.js';
 
 /**
  * Sincronización res.partner → app_users (issue #15).
@@ -70,7 +71,7 @@ export interface ResumenSync {
 
 interface PartnerRow {
   id: number;
-  name: string;
+  name: string | false;
   email: string | false;
   phone: string | false;
   write_date: string;
@@ -246,7 +247,7 @@ export async function sincronizarPartners(
           maxWriteDate = f.write_date;
         }
 
-        const nombre = f.name.trim();
+        const nombre = nombrePartner(f);
 
         if (!f.email) {
           resumen.omitidosSinEmail++;
@@ -368,7 +369,7 @@ export async function sincronizarPartners(
         const detalle = error instanceof Error ? error.message.slice(0, 200) : String(error);
         resumen.incidencias.push({
           odooPartnerId: f.id,
-          nombre: f.name,
+          nombre: nombrePartner(f),
           motivo: 'FALLIDO',
           detalle,
         });
