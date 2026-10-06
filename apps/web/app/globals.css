@@ -2945,3 +2945,51 @@ a.enlace-ficha:hover { color: var(--primario); }
 
 /* La ficha ya lleva el nombre en la cabecera: aquí solo la miga y la tarifa. */
 .ficha-cabeza { padding-top: 0; }
+
+/* ── Tablas en tarjetas, en el móvil ──────────────────────────────────────── */
+/*
+ * Mi cartera y Oportunidades ASTA son tablas anchas, y en un teléfono lo que
+ * importa —cuánto compra, cuánto debe— quedaba fuera, a la derecha, detrás de un
+ * desplazamiento lateral que nadie hace. En estrecho cada fila pasa a ser una
+ * tarjeta: el cliente arriba y sus cifras debajo, cada una con su rótulo
+ * (`data-etiqueta`). En ancho no cambia nada.
+ */
+@media (max-width: 640px) {
+  .table-wrap:has(> .tabla-tarjetas) { overflow: visible; background: none; border: 0; box-shadow: none; }
+  .tabla-tarjetas thead { display: none; }
+  .tabla-tarjetas, .tabla-tarjetas tbody { display: block; }
+  .tabla-tarjetas tbody { display: flex; flex-direction: column; gap: 10px; }
+  .tabla-tarjetas tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--sombra-card);
+  }
+  .tabla-tarjetas td { display: block; padding: 0; border: 0; text-align: left; min-width: 0; }
+  .tabla-tarjetas td.num { text-align: left; }
+  .tabla-tarjetas td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .tabla-tarjetas .c-cliente { grid-column: 1 / -1; }
+  .tabla-tarjetas .serie-celda { justify-content: flex-start; }
+
+  /* Mi cartera: lo que se mira primero, arriba. */
+  .tabla-cartera.tabla-tarjetas .col-clase { width: auto; text-align: left; }
+  .tabla-tarjetas .c-cliente .row-link { padding: 0; }
+
+  /* Oportunidades: las tres cifras en una fila; la cuota, con su barra, a la izquierda. */
+  .tabla-oportunidades tr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tabla-oportunidades .c-vendedor { grid-column: 1 / -1; }
+  .tabla-oportunidades .c-cuota > * { justify-content: flex-start; }
+}
