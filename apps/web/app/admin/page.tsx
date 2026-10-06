@@ -1,286 +1,342 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getReconciliacion, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import {
+  esRedireccion,
+  getAgentes,
+  getCalidadDatos,
+  getCoberturaTop,
+  getDuplicadosInforme,
+  getEstadisticasRecomendador,
+  getKioscos,
+  getLoteAsta,
+  getLoteFabricante,
+  getPorImpresora,
+  getSinAcceso,
+} from '@/lib/api';
+import { moneyCompact } from '@/lib/formato';
 
 /**
- * Panel del administrador: reconciliación Odoo ↔ middleware (issue #19).
+ * Inicio del administrador: lo que hay pendiente, sección por sección.
  *
- * Contesta de un vistazo lo que nadie mira por separado: cuántos clientes de
- * Odoo NO tienen cuenta y por qué, y cuántos la tienen pero no pueden entrar.
+ * ── Por qué una portada y no la primera sección ──────────────────────────────
+ *
+ * Cada sección sabe lo suyo —cuántos tóners faltan por validar, cuántos datos
+ * de Odoo están mal, si una tablet dejó de conectarse—, pero para enterarse había
+ * que entrar en las nueve. La portada pregunta a todas y enseña una tarjeta por
+ * pendiente, con el enlace al sitio donde se resuelve.
+ *
+ * ── Cada tarjeta por su cuenta ───────────────────────────────────────────────
+ *
+ * Unas tardan milisegundos (MySQL) y otras segundos (Odoo). Cada tarjeta es su
+ * propio componente con `Suspense`: la página sale enseguida y cada cifra llega
+ * cuando llega. Si una falla, dice «no se pudo leer» en su sitio y las demás
+ * siguen; una portada que se cae entera porque Odoo tarda no sirve de portada.
  */
 
 export const dynamic = 'force-dynamic';
 
-interface Fila {
-  motivo: string;
-  total: number;
+type Estado = 'ok' | 'pendiente' | 'alerta';
+
+const n = (x: number) => x.toLocaleString('es-VE');
+
+function Tarjeta({
+  titulo,
+  estado,
+  cifra,
+  detalle,
+  href,
+  accion,
+  progreso,
+}: {
+  titulo: string;
+  estado: Estado;
+  cifra: string;
+  detalle: React.ReactNode;
+  href: string;
+  accion: string;
+  /** 0–100, para las que miden un avance. */
+  progreso?: number;
+}) {
+  return (
+    <Link href={href} className={`ini-tarjeta ini-${estado}`}>
+      <div className="ini-cabeza">
+        <span className="ini-punto" aria-hidden="true" />
+        <span className="ini-titulo">{titulo}</span>
+        <span className="sr-only">
+          {estado === 'ok' ? '(al día)' : estado === 'alerta' ? '(urgente)' : '(pendiente)'}
+        </span>
+      </div>
+      <div className="ini-cifra">{cifra}</div>
+      {progreso !== undefined && (
+        <div className="ini-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progreso)}>
+          <span style={{ width: `${Math.max(0, Math.min(100, progreso))}%` }} />
+        </div>
+      )}
+      <div className="ini-detalle">{detalle}</div>
+      <span className="ini-accion">{accion} →</span>
+    </Link>
+  );
 }
 
-/** Una cifra que puede ser buena o mala según el número. */
-function Metrica({
-  etiqueta,
-  valor,
-  nota,
-  tono = 'neutro',
-}: {
-  etiqueta: string;
-  valor: number | string;
-  nota?: string;
-  tono?: 'neutro' | 'bien' | 'atencion' | 'mal';
-}) {
-  const color =
-    tono === 'mal'
-      ? 'var(--danger)'
-      : tono === 'atencion'
-        ? 'var(--warning)'
-        : tono === 'bien'
-          ? 'var(--positive)'
-          : undefined;
+function Cargando({ titulo }: { titulo: string }) {
   return (
-    <div className="stat">
-      <div className="stat-label">{etiqueta}</div>
-      <div className="stat-value" style={{ color }}>
-        {typeof valor === 'number' ? valor.toLocaleString('es-VE') : valor}
+    <div className="ini-tarjeta ini-cargando" aria-busy="true">
+      <div className="ini-cabeza">
+        <span className="ini-punto" aria-hidden="true" />
+        <span className="ini-titulo">{titulo}</span>
       </div>
-      {nota && <div className="stat-sub">{nota}</div>}
+      <div className="ini-esqueleto" />
+      <div className="ini-esqueleto corto" />
     </div>
   );
 }
 
-export default async function AdminPage() {
-  const sesion = await requireSession();
+function SinDatos({ titulo, href }: { titulo: string; href: string }) {
+  return (
+    <Tarjeta titulo={titulo} estado="pendiente" cifra="—" detalle="No se pudo leer ahora. Dentro de la sección se ve el motivo." href={href} accion="Abrir" />
+  );
+}
 
-  let r;
+/** Ejecuta la lectura y, si falla, pinta la tarjeta vacía. Un login caducado sí se propaga. */
+async function intentar<T>(leer: () => Promise<T>): Promise<T | null> {
   try {
-    r = await getReconciliacion(sesion.accessToken);
+    return await leer();
   } catch (error) {
-    // `redirect()` funciona lanzando: si no se relanza, el catch se la traga y
-    // el usuario ve "no se pudo cargar" en vez de ir al login.
     if (esRedireccion(error)) throw error;
-    const esPermiso = error instanceof ApiError && error.status === 403;
-    return (
-      <Marco usuario={sesion.usuario} titulo="Reconciliación con Odoo">
-        <div className="notice error">
-          <h2>
-            {esPermiso
-              ? 'Esta sección es solo para administradores'
-              : 'No se pudo generar el informe'}
-          </h2>
-          <p>
-            {error instanceof ContractError || error instanceof ApiError
-              ? error.message
-              : 'Error inesperado.'}
-          </p>
-        </div>
-      </Marco>
-    );
+    return null;
   }
+}
 
-  const rec = r as unknown as {
-    odoo: { clientesActivos: number };
-    middleware: { usuarios: number; clientes: number; staff: number };
-    sinCuenta: {
-      total: number;
-      porMotivo: Record<string, number>;
-      muestra: Array<{
-        odooPartnerId: number;
-        nombre: string;
-        email: string | null;
-        motivo: string;
-        detalle?: string;
-      }>;
-    };
-    sinCredenciales: {
-      total: number;
-      muestra: Array<{ email: string; nombre: string }>;
-    };
-    huerfanos: { total: number };
-    desalineados: {
-      total: number;
-      muestra: Array<{
-        odooPartnerId: number;
-        nombre: string;
-        campo: string;
-        enOdoo: string | null;
-        enMiddleware: string | null;
-      }>;
-    };
-    nuncaSincronizados: {
-      total: number;
-      muestra: Array<{ email: string; role: string }>;
-    };
-    duracionMs: number;
-    generadoEn: string;
-  };
+// ── Kiosco ───────────────────────────────────────────────────────────────────
 
-  const ETIQUETA: Record<string, string> = {
-    SIN_EMAIL: 'No tienen correo en Odoo',
-    EMAIL_INVALIDO: 'Correo mal escrito en Odoo',
-    EMAIL_COMPARTIDO: 'Comparten correo con otro cliente',
-    DESCONOCIDO: 'Sin motivo claro — revisar',
-  };
+async function ImpresorasListas({ token }: { token: string }) {
+  const r = await intentar(() => getPorImpresora(token, { vista: 'listas' }));
+  const href = '/admin/compatibilidades/impresoras?vista=listas';
+  if (!r) return <SinDatos titulo="Impresoras listas" href={href} />;
+  const { listas, todas } = r.meta.porVista;
+  const pct = todas ? (listas / todas) * 100 : 0;
+  return (
+    <Tarjeta
+      titulo="Impresoras listas"
+      estado={listas === 0 ? 'alerta' : pct < 50 ? 'pendiente' : 'ok'}
+      cifra={`${n(listas)} de ${n(todas)}`}
+      progreso={pct}
+      detalle={listas === 0 ? 'Ninguna tiene un tóner validado: el kiosco manda a todos al mostrador.' : 'Con al menos un tóner validado.'}
+      href={href}
+      accion="Ver impresoras"
+    />
+  );
+}
 
-  const motivos: Fila[] = Object.entries(rec.sinCuenta.porMotivo)
-    .filter(([, v]) => v > 0)
-    .map(([motivo, total]) => ({ motivo, total }))
-    .sort((a, b) => b.total - a.total);
+async function PorValidar({ token }: { token: string }) {
+  const [fab, asta, orig] = await Promise.all([
+    intentar(() => getLoteFabricante(token)),
+    intentar(() => getLoteAsta(token, 'ASTA')),
+    intentar(() => getLoteAsta(token, 'ORIGINAL')),
+  ]);
+  const href = '/admin/compatibilidades/impresoras';
+  if (!fab && !asta && !orig) return <SinDatos titulo="Listo para validar" href={href} />;
+  const f = fab?.propuestas ?? 0;
+  const a = asta?.data.length ?? 0;
+  const o = orig?.data.length ?? 0;
+  const total = f + a + o;
+  return (
+    <Tarjeta
+      titulo="Listo para validar"
+      estado={total === 0 ? 'ok' : 'alerta'}
+      cifra={total === 0 ? 'Nada' : n(total)}
+      detalle={
+        total === 0 ? (
+          'No queda ningún caso claro pendiente.'
+        ) : (
+          <>
+            Casos claros que se validan con un clic: {n(f)} de listas oficiales, {n(a)} productos ASTA y {n(o)} originales.
+          </>
+        )
+      }
+      href={f > 0 ? href : '/admin/compatibilidades'}
+      accion={f > 0 ? 'Validar impresoras' : 'Validar productos'}
+    />
+  );
+}
+
+async function Cobertura({ token }: { token: string }) {
+  const r = await intentar(() => getCoberturaTop(token));
+  const href = '/admin/compatibilidades';
+  if (!r || !r.odooDisponible) return <SinDatos titulo="Cobertura del top" href={href} />;
+  const { completos, top, porcentaje, tramo } = r.totales;
+  return (
+    <Tarjeta
+      titulo="Cobertura del top"
+      estado={tramo === 'procede' ? 'ok' : tramo === 'con_respaldo' ? 'pendiente' : 'alerta'}
+      cifra={`${porcentaje} %`}
+      progreso={porcentaje}
+      detalle={`${n(completos)} de los ${n(top)} productos más vendidos se pueden recomendar. El objetivo es pasar del 85 %.`}
+      href={href}
+      accion="Ver cobertura"
+    />
+  );
+}
+
+async function Tablets({ token }: { token: string }) {
+  const r = await intentar(() => getKioscos(token));
+  const href = '/admin/kioscos';
+  if (!r) return <SinDatos titulo="Tablets" href={href} />;
+  const activas = r.data.filter((k) => k.activo);
+  const dia = Date.now() - 24 * 60 * 60_000;
+  const calladas = activas.filter((k) => !k.ultimaConexion || new Date(k.ultimaConexion).getTime() < dia);
+  return (
+    <Tarjeta
+      titulo="Tablets"
+      estado={activas.length === 0 ? 'pendiente' : calladas.length > 0 ? 'alerta' : 'ok'}
+      cifra={activas.length === 0 ? 'Ninguna' : `${n(activas.length - calladas.length)} de ${n(activas.length)}`}
+      detalle={
+        activas.length === 0
+          ? 'No hay ninguna tablet dada de alta.'
+          : calladas.length === 0
+            ? 'Todas se han conectado en las últimas 24 horas.'
+            : `Sin conectarse en 24 horas: ${calladas.map((k) => k.nombre).join(', ')}.`
+      }
+      href={href}
+      accion="Ver kioscos"
+    />
+  );
+}
+
+async function SinResultado({ token }: { token: string }) {
+  const hasta = new Date();
+  const desde = new Date(hasta.getTime() - 30 * 24 * 60 * 60_000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const r = await intentar(() => getEstadisticasRecomendador(token, { desde: iso(desde), hasta: iso(hasta) }));
+  const href = '/admin/recomendador';
+  if (!r) return <SinDatos titulo="Sin resultado" href={href} />;
+  const { busquedas, sinResultado } = r.totales;
+  return (
+    <Tarjeta
+      titulo="Sin resultado"
+      estado={sinResultado === 0 ? 'ok' : 'pendiente'}
+      cifra={n(sinResultado)}
+      detalle={
+        busquedas === 0
+          ? 'Nadie ha buscado en el kiosco en los últimos 30 días.'
+          : `Búsquedas del kiosco que no encontraron impresora: ${n(sinResultado)} de ${n(busquedas)} en 30 días. Cada una es un alias que falta o una impresora que no está.`
+      }
+      href={href}
+      accion="Añadir alias"
+    />
+  );
+}
+
+// ── Datos de Odoo ────────────────────────────────────────────────────────────
+
+async function Calidad({ token }: { token: string }) {
+  const r = await intentar(() => getCalidadDatos(token));
+  const href = '/admin/calidad';
+  if (!r) return <SinDatos titulo="Calidad de datos" href={href} />;
+  const de = (g: string) => r.revisiones.filter((x) => x.gravedad === g).reduce((s, x) => s + x.total, 0);
+  const alta = de('alta');
+  const media = de('media');
+  return (
+    <Tarjeta
+      titulo="Calidad de datos"
+      estado={alta > 0 ? 'alerta' : media > 0 ? 'pendiente' : 'ok'}
+      cifra={alta + media === 0 ? 'Al día' : n(alta + media)}
+      detalle={
+        alta + media === 0
+          ? 'Nada que mueva dinero ni rompa nada.'
+          : `${n(alta)} mueven dinero (clientes o facturas sin vendedor) y ${n(media)} rompen algo (RIF, correos).`
+      }
+      href={href}
+      accion="Corregir en Odoo"
+    />
+  );
+}
+
+async function Duplicados({ token }: { token: string }) {
+  const r = await intentar(() => getDuplicadosInforme(token));
+  const href = '/admin/duplicados';
+  if (!r) return <SinDatos titulo="Clientes duplicados" href={href} />;
+  const { partidos, montoPartido } = r.resumen;
+  const noventa = r.fusionesPara.find((f) => f.porcentaje === 90);
+  return (
+    <Tarjeta
+      titulo="Clientes duplicados"
+      estado={partidos === 0 ? 'ok' : 'pendiente'}
+      cifra={partidos === 0 ? 'Ninguno' : `${n(partidos)} fusiones`}
+      detalle={
+        partidos === 0
+          ? 'Ningún cliente tiene la facturación repartida.'
+          : `${moneyCompact(montoPartido)} repartidos entre fichas.${noventa && noventa.fusiones > 0 ? ` Con ${n(noventa.fusiones)} se arregla el 90 %.` : ''}`
+      }
+      href={href}
+      accion="Ver por dónde empezar"
+    />
+  );
+}
+
+async function Accesos({ token }: { token: string }) {
+  const [sin, agentes] = await Promise.all([intentar(() => getSinAcceso(token, 1)), intentar(() => getAgentes(token))]);
+  const href = '/admin/usuarios';
+  if (!sin && !agentes) return <SinDatos titulo="Sin acceso" href={href} />;
+  const vendedores = agentes?.totales.sinAcceso ?? 0;
+  const clientes = sin?.total ?? 0;
+  return (
+    <Tarjeta
+      titulo="Sin acceso"
+      estado={vendedores > 0 ? 'alerta' : clientes > 0 ? 'pendiente' : 'ok'}
+      cifra={vendedores > 0 ? `${n(vendedores)} vendedores` : n(clientes)}
+      detalle={
+        vendedores > 0
+          ? `Trabajan hoy y no pueden ver su cartera. Además, ${n(clientes)} cuentas de cliente esperan su invitación.`
+          : `${n(clientes)} cuentas de cliente esperan su invitación.`
+      }
+      href={vendedores > 0 ? '/admin/agentes' : href}
+      accion="Invitar"
+    />
+  );
+}
+
+function Grupo({ titulo, nota, children }: { titulo: string; nota: string; children: React.ReactNode }) {
+  return (
+    <section className="ini-grupo" aria-label={titulo}>
+      <div className="ini-grupo-cabeza">
+        <h2>{titulo}</h2>
+        <p>{nota}</p>
+      </div>
+      <div className="ini-rejilla">{children}</div>
+    </section>
+  );
+}
+
+export default async function InicioPage() {
+  const sesion = await requireSession();
+  const token = sesion.accessToken;
+
+  const conCarga = (titulo: string, tarjeta: React.ReactNode) => <Suspense fallback={<Cargando titulo={titulo} />}>{tarjeta}</Suspense>;
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Reconciliación con Odoo"
-      descripcion={`Generado en ${(rec.duracionMs / 1000).toFixed(1)} s · ${new Date(rec.generadoEn).toLocaleString('es-VE')}`}
-    >
-      <section className="stats">
-        <Metrica etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
-        <Metrica
-          etiqueta="Con cuenta"
-          valor={rec.middleware.clientes}
-          nota={`${((rec.middleware.clientes / rec.odoo.clientesActivos) * 100).toFixed(0)} % de los clientes`}
-          tono="bien"
-        />
-        <Metrica
-          etiqueta="Sin cuenta"
-          valor={rec.sinCuenta.total}
-          nota="no pueden usar el panel"
-          tono={rec.sinCuenta.total > 0 ? 'atencion' : 'bien'}
-        />
-        <Metrica
-          etiqueta="No pueden entrar"
-          valor={rec.sinCredenciales.total}
-          nota="tienen cuenta, les falta contraseña"
-          tono={rec.sinCredenciales.total > 0 ? 'mal' : 'bien'}
-        />
-      </section>
+    <Marco usuario={sesion.usuario} titulo="Inicio" descripcion="Lo que hay pendiente hoy, sección por sección. Cada tarjeta lleva a donde se resuelve.">
+      <div className="ini-leyenda" aria-hidden="true">
+        <span className="ini-alerta"><i /> Urgente</span>
+        <span className="ini-pendiente"><i /> Pendiente</span>
+        <span className="ini-ok"><i /> Al día</span>
+      </div>
 
-      <section className="panel">
-        <h2>Por qué {rec.sinCuenta.total} clientes no tienen cuenta</h2>
-        <div className="table-wrap" style={{ border: 0 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Motivo</th>
-                <th className="num">Clientes</th>
-                <th>Qué hacer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {motivos.map((m) => (
-                <tr key={m.motivo}>
-                  <td>{ETIQUETA[m.motivo] ?? m.motivo}</td>
-                  <td className="num">{m.total.toLocaleString('es-VE')}</td>
-                  <td style={{ color: 'var(--text-3)', fontSize: 12.5 }}>
-                    {m.motivo === 'SIN_EMAIL' && 'Añadir correo en Odoo, o dejarlos sin acceso'}
-                    {m.motivo === 'EMAIL_INVALIDO' && 'Corregir la dirección en Odoo'}
-                    {m.motivo === 'EMAIL_COMPARTIDO' &&
-                      'Suelen ser grupos de empresas. Hoy solo uno puede tener cuenta'}
-                    {m.motivo === 'DESCONOCIDO' && 'Revisar: debería haberse creado'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <Grupo titulo="Kiosco" nota="Lo que hace falta para que la tablet recomiende tóner ASTA.">
+        {conCarga('Listo para validar', <PorValidar token={token} />)}
+        {conCarga('Impresoras listas', <ImpresorasListas token={token} />)}
+        {conCarga('Cobertura del top', <Cobertura token={token} />)}
+        {conCarga('Tablets', <Tablets token={token} />)}
+        {conCarga('Sin resultado', <SinResultado token={token} />)}
+      </Grupo>
 
-      {rec.sinCuenta.muestra.filter((m) => m.motivo === 'EMAIL_INVALIDO').length > 0 && (
-        <section className="panel">
-          <h2>Correos mal escritos en Odoo</h2>
-          <p
-            style={{
-              marginTop: -6,
-              marginBottom: 12,
-              fontSize: 13,
-              color: 'var(--text-2)',
-            }}
-          >
-            Cada uno es un cliente que no puede entrar por una errata de captura.
-          </p>
-          <div className="table-wrap" style={{ border: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Lo que hay en Odoo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rec.sinCuenta.muestra
-                  .filter((m) => m.motivo === 'EMAIL_INVALIDO')
-                  .map((m) => (
-                    <tr key={m.odooPartnerId}>
-                      <td>
-                        <div className="cliente-nombre">{m.nombre}</div>
-                        <div className="sku">partner {m.odooPartnerId}</div>
-                      </td>
-                      <td>
-                        <code style={{ fontSize: 12 }}>{m.detalle ?? m.email}</code>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      <section className="stats">
-        <Metrica
-          etiqueta="Huérfanos"
-          valor={rec.huerfanos.total}
-          nota="su cliente ya no está en Odoo"
-          tono={rec.huerfanos.total > 0 ? 'atencion' : 'bien'}
-        />
-        <Metrica
-          etiqueta="Desalineados"
-          valor={rec.desalineados.total}
-          nota="datos distintos entre sistemas"
-          tono={rec.desalineados.total > 0 ? 'atencion' : 'bien'}
-        />
-        <Metrica
-          etiqueta="Nunca sincronizados"
-          valor={rec.nuncaSincronizados.total}
-          nota="creados a mano"
-        />
-      </section>
-
-      {rec.desalineados.total > 0 && (
-        <section className="panel">
-          <h2>Datos que no coinciden</h2>
-          <div className="table-wrap" style={{ border: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Campo</th>
-                  <th>En Odoo</th>
-                  <th>En el panel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rec.desalineados.muestra.map((d, i) => (
-                  <tr key={`${d.odooPartnerId}-${d.campo}-${i}`}>
-                    <td>{d.nombre}</td>
-                    <td>{d.campo}</td>
-                    <td>{d.enOdoo ?? '—'}</td>
-                    <td style={{ color: 'var(--danger)' }}>{d.enMiddleware ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      <section className="panel">
-        <h2>Cómo se arregla</h2>
-        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-2)' }}>
-          La sincronización corre sola cada 15 minutos. Para lanzarla a mano:{' '}
-          <code>pnpm sync:partners</code>. Los datos se corrigen <strong>en Odoo</strong>, nunca
-          aquí: este panel es un espejo, y editarlo a mano crearía dos verdades.
-        </p>
-      </section>
+      <Grupo titulo="Datos de Odoo" nota="Se arregla en Odoo; aquí solo se ve qué y dónde.">
+        {conCarga('Calidad de datos', <Calidad token={token} />)}
+        {conCarga('Clientes duplicados', <Duplicados token={token} />)}
+        {conCarga('Sin acceso', <Accesos token={token} />)}
+      </Grupo>
     </Marco>
   );
 }

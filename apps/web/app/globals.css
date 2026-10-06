@@ -2858,3 +2858,70 @@ tr:hover .mini-serie .mes-lleno { fill: var(--primario-oscuro); }
   .cd-explica { grid-template-columns: 1fr; }
   .cd-cuenta { margin-left: 0; }
 }
+
+/* ── Inicio del administrador ─────────────────────────────────────────────── */
+/*
+ * Una tarjeta por pendiente, toda ella un enlace: el punto dice si urge, la
+ * cifra cuánto, y abajo a dónde ir. `app/admin/page.tsx`.
+ */
+.ini-alerta    { --ini-color: var(--danger); }
+.ini-pendiente { --ini-color: var(--warning); }
+.ini-ok        { --ini-color: var(--positive); }
+.ini-cargando  { --ini-color: var(--border-strong); }
+
+.ini-leyenda { display: flex; gap: 16px; margin: -6px 0 18px; font-size: 12px; color: var(--text-3); }
+.ini-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.ini-leyenda i { width: 8px; height: 8px; border-radius: 50%; background: var(--ini-color); }
+
+.ini-grupo { margin-bottom: 28px; }
+.ini-grupo-cabeza { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ini-grupo-cabeza h2 { margin: 0; font-size: 12px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); }
+.ini-grupo-cabeza p { margin: 0; font-size: 13px; color: var(--text-3); }
+
+.ini-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+
+.ini-tarjeta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 18px 15px;
+  color: var(--text);
+  background: linear-gradient(170deg, var(--surface) 0%, var(--surface-2) 190%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--sombra-card);
+  overflow: hidden;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+/* El color de la tarjeta, como un filo arriba: se lee antes que el texto. */
+.ini-tarjeta::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--ini-color);
+  opacity: .85;
+}
+a.ini-tarjeta:hover { text-decoration: none; transform: translateY(-2px); border-color: color-mix(in srgb, var(--ini-color) 45%, var(--border)); box-shadow: 0 2px 4px rgba(17, 24, 39, .06), 0 14px 28px -14px rgba(17, 24, 39, .28); }
+a.ini-tarjeta:focus-visible { outline: 2px solid var(--primario); outline-offset: 2px; }
+
+.ini-cabeza { display: flex; align-items: center; gap: 8px; }
+.ini-punto { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ini-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ini-color) 18%, transparent); }
+.ini-titulo { font-size: 11.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.ini-cifra { font-size: 26px; font-weight: 660; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ini-detalle { font-size: 12.5px; color: var(--text-2); line-height: 1.45; flex: 1; }
+.ini-accion { font-size: 12.5px; font-weight: 600; color: var(--primario); margin-top: 2px; }
+a.ini-tarjeta:hover .ini-accion { text-decoration: underline; }
+
+.ini-barra { height: 5px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.ini-barra span { display: block; height: 100%; border-radius: inherit; background: var(--ini-color); }
+
+.ini-esqueleto { height: 26px; width: 60%; border-radius: 6px; background: var(--surface-2); animation: ini-latido 1.4s ease-in-out infinite; }
+.ini-esqueleto.corto { height: 12px; width: 85%; }
+@keyframes ini-latido { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .ini-esqueleto { animation: none; }
+  .ini-tarjeta { transition: none; }
+}

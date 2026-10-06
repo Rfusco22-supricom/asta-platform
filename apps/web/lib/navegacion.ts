@@ -50,7 +50,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     {
       titulo: null,
       secciones: [
-        { href: '/admin', titulo: 'Resumen', icono: 'resumen' },
+        { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },
@@ -70,6 +70,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       secciones: [
         { href: '/admin/calidad', titulo: 'Calidad de datos', icono: 'calidad', corto: 'Calidad' },
         { href: '/admin/duplicados', titulo: 'Duplicados', icono: 'duplicados' },
+        { href: '/admin/accesos', titulo: 'Accesos', icono: 'llave' },
         { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
       ],
     },
