@@ -75,6 +75,22 @@ function etiquetaMes(periodo: string): string {
  * ventas es justo lo que hay que ver, y omitirlo dibujaría una línea que sube
  * cuando en realidad no se vendió nada.
  */
+/**
+ * El importe con una barra detrás, proporcional al mayor de la tabla: se ve de
+ * un vistazo quién pesa cuánto sin tener que comparar cifras de seis dígitos.
+ */
+function Proporcion({ valor, maximo }: { valor: number; maximo: number }) {
+  const ancho = maximo > 0 ? Math.max(0, Math.min(100, (valor / maximo) * 100)) : 0;
+  return (
+    <span className="proporcion">
+      <span className="proporcion-barra" aria-hidden="true">
+        <span style={{ width: `${ancho}%` }} />
+      </span>
+      {money(valor)}
+    </span>
+  );
+}
+
 function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
   const maximo = Math.max(...puntos.map((p) => p.monto), 1);
 
@@ -113,6 +129,8 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
   const { totales, asta } = datos;
   const pctDeuda = totales.facturado > 0 ? (totales.porCobrar / totales.facturado) * 100 : 0;
   const hayAlgo = totales.facturas > 0;
+  const maxVendedor = Math.max(0, ...(datos.porVendedor ?? []).map((v) => v.facturado));
+  const maxCliente = Math.max(0, ...datos.topClientes.map((c) => c.facturado));
   const t = soloAsta
     ? {
         vacio: 'No hay ventas de ASTA en este periodo',
@@ -236,7 +254,9 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
                     {datos.porVendedor.map((v) => (
                       <tr key={v.odooUserId ?? v.nombre}>
                         <td>{v.nombre}</td>
-                        <td className="num">{money(v.facturado)}</td>
+                        <td className="num">
+                          <Proporcion valor={v.facturado} maximo={maxVendedor} />
+                        </td>
                         <td className="num">{money(v.porCobrar)}</td>
                         <td className="num">{v.facturas}</td>
                       </tr>
@@ -262,7 +282,9 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
                   {datos.topClientes.map((c) => (
                     <tr key={c.partnerId ?? c.nombre}>
                       <td>{c.partnerId ? <Link href={`/cartera/${c.partnerId}`}>{c.nombre}</Link> : c.nombre}</td>
-                      <td className="num">{money(c.facturado)}</td>
+                      <td className="num">
+                        <Proporcion valor={c.facturado} maximo={maxCliente} />
+                      </td>
                       <td className="num">{c.facturas}</td>
                     </tr>
                   ))}

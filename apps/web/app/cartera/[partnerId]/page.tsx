@@ -100,7 +100,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           </h2>
           <p>{error instanceof Error ? error.message : 'Error inesperado.'}</p>
           <p style={{ marginTop: 12 }}>
-            <Link href="/cartera">← Volver a mi cartera</Link>
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">← Volver a reportes</Link> : <Link href="/cartera">← Volver a mi cartera</Link>}
           </p>
         </div>
       </Marco>
@@ -116,11 +116,12 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre}>
-      <div className="page-head">
+      <div className="page-head ficha-cabeza">
+        {/* El administrador no tiene cartera: llega desde los reportes. */}
         <div className="crumb">
-          <Link href="/cartera">Mi cartera</Link> <span>/</span> {nombre}
+          {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
+          <span>/</span> {nombre}
         </div>
-        <h1>{nombre}</h1>
         <p>
           {cliente.tier ?? 'Sin tarifa asignada'}
           {ODOO_URL && (

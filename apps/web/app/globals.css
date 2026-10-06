@@ -2925,3 +2925,23 @@ a.ini-tarjeta:hover .ini-accion { text-decoration: underline; }
   .ini-esqueleto { animation: none; }
   .ini-tarjeta { transition: none; }
 }
+
+/* ── Reportes: proporción, gráfica y enlaces a la ficha ───────────────────── */
+/*
+ * La pista gris detrás de cada mes hacía que los meses sin ventas parecieran
+ * bloques llenos. Ahora es una línea base: lo vacío se ve vacío.
+ */
+.serie-pista { background: none; border-bottom: 1px solid var(--border-strong); border-radius: 0; }
+.serie-barra { border-radius: 6px 6px 2px 2px; }
+
+/* El importe con su barra detrás, proporcional al mayor de la tabla. */
+.proporcion { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; font-variant-numeric: tabular-nums; }
+.proporcion-barra { width: 90px; height: 6px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.proporcion-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--primario); opacity: .75; }
+@media (max-width: 880px) { .proporcion-barra { display: none; } }
+
+a.enlace-ficha { color: var(--text); display: inline-block; }
+a.enlace-ficha:hover { color: var(--primario); }
+
+/* La ficha ya lleva el nombre en la cabecera: aquí solo la miga y la tarifa. */
+.ficha-cabeza { padding-top: 0; }
