@@ -165,20 +165,92 @@ Con una copia por hora y 14 días son 336 ficheros. A los tamaños de hoy, unos
 70 MB comprimidos: asumible, pero hay que vigilarlo cuando crezcan los logs. El
 nombre lleva fecha y hora al segundo, así que dos copias no se pisan.
 
-### En producción: pendiente de decidir
+### En producción: los respaldos de EasyPanel, fuera del servidor
 
-MySQL corre como **servicio gestionado de EasyPanel**: no hay una máquina donde
-poner el cron de arriba, y el contenedor del middleware no trae `mysqldump`. Las
-dos opciones, sin decidir todavía (#48):
+**Decidido el 2026-10-06:** los respaldos programados del propio EasyPanel, con
+destino fuera del servidor. Ya existen, ya saben volcar MySQL y desde la v2.36
+llevan de serie Backblaze B2, Cloudflare R2, S3, Google Drive, Dropbox y SFTP
+(Ajustes → Proveedores de almacenamiento). Un contenedor con `respaldar.sh`
+sería un servicio más que mantener para hacer lo mismo.
 
-| | Respaldos de EasyPanel | Contenedor con `respaldar.sh` |
-|---|---|---|
-| Qué es | los respaldos programados del servicio MySQL, hacia un almacenamiento S3 | un servicio pequeño con el cliente de MySQL que ejecute estos scripts con cron |
-| A favor | no hay nada más que mantener | sabemos exactamente qué banderas lleva el volcado (`--routines`, `--events`…) |
-| En contra | no sabemos con qué banderas vuelca: hay que comprobar que una copia suya se restaura completa | un servicio más en EasyPanel |
+Lo que no sabemos de ellos —con qué banderas vuelcan— lo contesta el ensayo de
+restauración de abajo, no una suposición.
 
-Sea cual sea, **no hay respaldo en el que confiar hasta que el simulacro haya
-pasado contra MySQL 9**: nunca ha corrido contra ese motor.
+#### Lo que había el 2026-10-06
+
+En `dashboard` → `database` → Copias de seguridad, la copia de la base `Asta`
+estaba **habilitada pero sin programación** («Ejecución manual»), hacia «Local
+Disk». Había **una sola copia**: la manual del 1 de octubre, 218 kB. Es decir:
+cinco días sin respaldo, y el único que había vivía en el mismo disco que la
+base. Si se pierde el servidor, se pierden los dos.
+
+#### Montarlo (lo hace una persona: lleva claves)
+
+1. **Crear el almacenamiento.** Backblaze B2 es lo más directo: los primeros
+   10 GB son gratis y no pide tarjeta para empezar. (Cloudflare R2 también vale,
+   pero exige dar de alta un medio de pago aunque no se pase del gratuito.)
+   - Crear un *bucket* **privado**, por ejemplo `supricom-asta-copias`.
+   - Crear una *Application Key* **solo para ese bucket**, con lectura y
+     escritura. Guardar el `keyID` y la `applicationKey`: la segunda solo se ve
+     una vez.
+2. **Darlo de alta en EasyPanel.** Ajustes → Proveedores de almacenamiento →
+   Crear → Backblaze B2, con el bucket y la clave. Nombre: `B2 copias`.
+3. **Programar las copias de `Asta`.** `dashboard` → `database` → Copias de
+   seguridad:
+   - Editar la que hay: programación **Cada hora**, proveedor **B2 copias**,
+     ruta `asta/horaria`, retención **48** (dos días de copias horarias). Es el
+     RPO de 1 hora decidido arriba.
+   - Crear otra: programación **Todos los días a las 2:00**, proveedor
+     **B2 copias**, ruta `asta/diaria`, retención **30**. Las horarias cubren
+     el error de hace un rato; las diarias, el que se descubre a las tres
+     semanas.
+4. **Comprobarlo al día siguiente.** En «Registros de copias de seguridad» tiene
+   que haber una copia por hora con *Success*, y en el bucket de B2, los
+   ficheros `.sql.gz` en las dos rutas.
+
+A los tamaños de hoy (cientos de kB por copia) son unos pocos MB en total: muy
+lejos de los 10 GB gratuitos. Vigilar cuando crezca `api_request_logs`.
+
+#### El ensayo de restauración (sin tocar `Asta`)
+
+Nunca se restaura encima de `Asta` para probar. El ensayo va a una base aparte,
+en el mismo MySQL, y se borra al acabar. Desde **Bash** del servicio
+`dashboard/database` (el prompt es `bash-5.1#`):
+
+```bash
+# 1. Base desechable
+mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE asta_ensayo"
+
+# 2. Traer la copia de B2 y restaurarla en la base de ensayo. El enlace es el de
+#    descarga temporal que da la web de B2 (Browse Files → el fichero).
+wget -O /tmp/copia.sql.gz 'ENLACE_DE_DESCARGA_DE_B2'
+time (gunzip -c /tmp/copia.sql.gz | mysql -uroot -p"$MYSQL_ROOT_PASSWORD" asta_ensayo)
+
+# 3. Comparar con Asta: tablas, rutinas, migraciones y filas de lo que solo vive aquí
+for db in Asta asta_ensayo; do
+  echo "== $db"
+  mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "
+    SELECT 'tablas', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$db';
+    SELECT 'rutinas', COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA='$db';
+    SELECT 'migraciones', COUNT(*) FROM $db._prisma_migrations;
+    SELECT 'usuarios', COUNT(*) FROM $db.app_users;
+    SELECT 'notas', COUNT(*) FROM $db.client_notes;
+    SELECT 'compatibilidades', COUNT(*) FROM $db.cartridge_printer_models;"
+done
+
+# 4. Borrar la base de ensayo y la copia descargada
+mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE asta_ensayo"
+rm /tmp/copia.sql.gz
+```
+
+Las cifras de las dos bases tienen que coincidir, salvo lo escrito después de
+la hora de la copia. Si `rutinas` da menos en el ensayo, la copia de EasyPanel
+no lleva `--routines` y hay que saberlo **antes** del día malo. El `time` del
+paso 2 es la parte de base de datos del RTO: se apunta en la tabla de arriba.
+Si `wget` no está en la imagen de MySQL, el primer ensayo se hace acompañado y
+se anota aquí cómo se trajo el fichero.
+
+Repetirlo cada tres meses, y siempre después de cambiar algo de las copias.
 
 ### 3. El simulacro, de verdad y cada cierto tiempo
 
