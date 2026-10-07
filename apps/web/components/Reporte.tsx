@@ -59,9 +59,25 @@ const MESES = [
   'dic',
 ];
 
-function etiquetaMes(periodo: string): string {
+export function etiquetaMes(periodo: string): string {
   const [anio, mes] = periodo.split('-');
   return `${MESES[Number(mes) - 1] ?? mes} ${anio.slice(2)}`;
+}
+
+/**
+ * El importe con una barra detrás, proporcional al mayor de la tabla: se ve de
+ * un vistazo quién pesa cuánto sin tener que comparar cifras de seis dígitos.
+ */
+export function Proporcion({ valor, maximo }: { valor: number; maximo: number }) {
+  const ancho = maximo > 0 ? Math.max(0, Math.min(100, (valor / maximo) * 100)) : 0;
+  return (
+    <span className="proporcion">
+      <span className="proporcion-barra" aria-hidden="true">
+        <span style={{ width: `${ancho}%` }} />
+      </span>
+      {money(valor)}
+    </span>
+  );
 }
 
 /**
@@ -75,23 +91,7 @@ function etiquetaMes(periodo: string): string {
  * ventas es justo lo que hay que ver, y omitirlo dibujaría una línea que sube
  * cuando en realidad no se vendió nada.
  */
-/**
- * El importe con una barra detrás, proporcional al mayor de la tabla: se ve de
- * un vistazo quién pesa cuánto sin tener que comparar cifras de seis dígitos.
- */
-function Proporcion({ valor, maximo }: { valor: number; maximo: number }) {
-  const ancho = maximo > 0 ? Math.max(0, Math.min(100, (valor / maximo) * 100)) : 0;
-  return (
-    <span className="proporcion">
-      <span className="proporcion-barra" aria-hidden="true">
-        <span style={{ width: `${ancho}%` }} />
-      </span>
-      {money(valor)}
-    </span>
-  );
-}
-
-function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
+export function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
   const maximo = Math.max(...puntos.map((p) => p.monto), 1);
 
   return (

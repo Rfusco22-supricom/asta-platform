@@ -250,8 +250,13 @@ export function gruposSmartbit(porCliente: Map<number, VentaSmartbit[]>, rango: 
   return grupos;
 }
 
-export async function reporteProductos(odooUserId: number, rango: RangoPedido, ahora = new Date()): Promise<ReporteProductos> {
-  const clave = `${odooUserId}:${rango.desde}:${rango.hasta}`;
+/**
+ * @param odooUserId la cartera de ese vendedor; `null`, toda la empresa (el
+ *   inicio del administrador). El alcance lo decide la RUTA que llama, nunca
+ *   quien pide: la del vendedor pasa siempre el suyo.
+ */
+export async function reporteProductos(odooUserId: number | null, rango: RangoPedido, ahora = new Date()): Promise<ReporteProductos> {
+  const clave = `${odooUserId ?? 'empresa'}:${rango.desde}:${rango.hasta}`;
   const enCache = cache.get(clave);
   if (enCache) {
     const { generadoEn, ...resto } = enCache;
@@ -265,7 +270,7 @@ export async function reporteProductos(odooUserId: number, rango: RangoPedido, a
     ['invoice_date', '>=', rango.desde],
     ['invoice_date', '<=', rango.hasta],
     // La cartera (`dominioCartera`), dicha desde la línea: ver la cabecera.
-    ['partner_id.user_id', '=', odooUserId],
+    ...(odooUserId === null ? [] : [['partner_id.user_id', '=', odooUserId] as OdooDomain[number]]),
     ['partner_id.parent_id', '=', false],
     ['partner_id.active', '=', true],
     LINEA_ASTA,
@@ -275,11 +280,13 @@ export async function reporteProductos(odooUserId: number, rango: RangoPedido, a
     readGroup<GrupoLinea>('account.move.line', dominio, ['balance:sum', 'quantity:sum'], ['product_id', 'partner_id', 'move_type']),
     categoriasEnCompetencia(),
     smartbit(),
-    idsDeCartera(odooUserId),
+    odooUserId === null ? null : idsDeCartera(odooUserId),
   ]);
   // Detrás de los de Odoo, para que el nombre del producto y del cliente sea
   // el de Odoo cuando está en los dos.
-  const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sb, cartera), rango)];
+  // Toda la empresa: todos los clientes a los que Smartbit sabe atribuir una venta.
+  const clientes = cartera ?? [...sb.indice.porRif.values()].flat().map((c) => c.id);
+  const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sb, clientes), rango)];
 
   const ids = [...new Set(grupos.map((g) => (g.product_id ? g.product_id[0] : 0)).filter(Boolean))];
   // Los archivados también: se vendieron en el periodo aunque hoy no se vendan.

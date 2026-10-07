@@ -464,6 +464,12 @@ export const getReporteCartera = (
   rango?: { desde: string; hasta: string },
 ) => pedirReporte('/api/v1/salesperson/reportes', accessToken, rango);
 
+/** Los productos ASTA de toda la empresa, por categoría y producto: el inicio del administrador. */
+export async function getReporteProductosEmpresa(accessToken: string, rango?: { desde: string; hasta: string }) {
+  const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
+  return request(`/api/v1/admin/reportes/productos${qs}`, reporteProductosRespuestaSchema, accessToken);
+}
+
 /** Qué compran los clientes de la propia cartera, por categoría y producto. */
 export async function getReporteProductos(
   accessToken: string,
