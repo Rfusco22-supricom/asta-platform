@@ -72,7 +72,8 @@ export function colorDe(p: Pick<ProductoConsumible, 'name' | 'default_code'>): C
 export function esComponente(nombre: string): boolean {
   const n = nombre.toUpperCase();
   if (/\b(POLVO|POWDER|OPC|CILINDRO)\b|MATERIAL\s+POP|\bPOP\b/.test(n)) return true;
-  return /\bCHIP\b/.test(n) && !/\b(CON|NO|SIN)\s+CHIP\b/.test(n);
+  // «CON CHIP», «SIN CHIP», «NO CHIP» y «NUEVO CHIP» describen el tóner, no son un chip suelto.
+  return /\bCHIP\b/.test(n) && !/\b(CON|NO|SIN|NUEVO)\s+CHIP\b/.test(n);
 }
 
 /** Un producto de la marca 951 que es ASTA de verdad, y no un original revendido. */

@@ -41,6 +41,12 @@ const NOMBRES = new Map<number, { nombre: string; sku: string | null; activo: bo
   [3_900_000_203, { nombre: 'ZZ_LOTEORIG TONER LASERJET ORIGINAL', sku: 'ZW1099A', activo: true }],
   // Ni en el nombre ni en la referencia.
   [3_900_000_204, { nombre: 'ZZ_LOTEORIG TONER LASERJET ORIGINAL', sku: 'OTRA-COSA', activo: true }],
+  // El de pieza de un color tiene parte de las impresoras de la serie: es el mismo.
+  [3_900_000_205, { nombre: 'ZZ_LOTEORIG TONER 66A MAGENTA', sku: 'ZW1066M', activo: true }],
+  // El color pegado al código, en un original.
+  [3_900_000_206, { nombre: 'ZZ_LOTEORIG TINTA ZPF-050BK 70ML', sku: 'X50', activo: true }],
+  // El cartucho entró con tipo OTRO (desconocido): no contradice a «TONER».
+  [3_900_000_207, { nombre: 'ZZ_LOTEORIG TONER ZZ057 H NEGRO', sku: 'X57', activo: true }],
 ]);
 
 vi.mock('../services/recomendador/revision.service.js', async (original) => {
@@ -109,9 +115,11 @@ describe('Lote ORIGINAL ampliado, contra MySQL', () => {
   beforeAll(async () => {
     if (await prisma.printerBrand.count({ where: { name: MARCA } })) throw new Error(`Restos de ${MARCA}: límpialos a mano.`);
     marcaId = (await prisma.printerBrand.create({ data: { name: MARCA } })).id;
-    for (const c of ['77A', 'ZW1077A', '88A', 'ZW1088A', 'ZW1099A']) {
+    for (const c of ['77A', 'ZW1077A', '88A', 'ZW1088A', 'ZW1099A', '66A', 'ZW1066M']) {
       cartucho[c] = (await prisma.cartridge.create({ data: { brandId: marcaId, code: c, codeNormalized: c.toLowerCase(), kind: 'TONER' } })).id;
     }
+    cartucho['ZPF-050'] = (await prisma.cartridge.create({ data: { brandId: marcaId, code: 'ZPF-050', codeNormalized: 'zpf050', kind: 'TINTA' } })).id;
+    cartucho['ZZ057H'] = (await prisma.cartridge.create({ data: { brandId: marcaId, code: 'ZZ057H', codeNormalized: 'zz057h', kind: 'OTRO' } })).id;
     for (const n of ['ZZ IMPRESORA 1', 'ZZ IMPRESORA 2', 'ZZ IMPRESORA 3']) {
       impresora.push((await prisma.printerModel.create({ data: { brandId: marcaId, name: n, nameNormalized: n.toLowerCase().replace(/\s/g, '') } })).id);
     }
@@ -123,6 +131,8 @@ describe('Lote ORIGINAL ampliado, contra MySQL', () => {
     await lista('ZW1077A', [impresora[1]!, impresora[0]!]);
     await lista('88A', [impresora[0]!, impresora[1]!]);
     await lista('ZW1088A', [impresora[0]!, impresora[2]!]);
+    await lista('66A', [impresora[0]!, impresora[1]!, impresora[2]!]);
+    await lista('ZW1066M', [impresora[1]!]);
 
     const fila = (tmpl: number, codigo: string) =>
       prisma.productCartridge.create({ data: { odooProductTmplId: tmpl, cartridgeId: cartucho[codigo]!, relation: 'ORIGINAL', source: 'PARSEO', status: 'PROPUESTA' } });
@@ -132,6 +142,10 @@ describe('Lote ORIGINAL ampliado, contra MySQL', () => {
     await fila(3_900_000_202, 'ZW1088A');
     await fila(3_900_000_203, 'ZW1099A');
     await fila(3_900_000_204, 'ZW1099A');
+    await fila(3_900_000_205, '66A');
+    await fila(3_900_000_205, 'ZW1066M');
+    await fila(3_900_000_206, 'ZPF-050');
+    await fila(3_900_000_207, 'ZZ057H');
   });
 
   afterAll(async () => {
@@ -149,6 +163,20 @@ describe('Lote ORIGINAL ampliado, contra MySQL', () => {
     expect(pares).toContainEqual([3_900_000_201, '77A']);
     expect(pares).toContainEqual([3_900_000_201, 'ZW1077A']);
     expect(pares.filter(([t]) => t === 3_900_000_202)).toEqual([]);
+  });
+
+  it('el de pieza de un color, con parte de las impresoras de la serie, es el mismo cartucho', async () => {
+    const pares = await nuestros();
+    expect(pares).toContainEqual([3_900_000_205, '66A']);
+    expect(pares).toContainEqual([3_900_000_205, 'ZW1066M']);
+  });
+
+  it('en un original también vale el color pegado al código', async () => {
+    expect(await nuestros()).toContainEqual([3_900_000_206, 'ZPF-050']);
+  });
+
+  it('un cartucho de tipo desconocido (OTRO) no lo deja fuera', async () => {
+    expect(await nuestros()).toContainEqual([3_900_000_207, 'ZZ057H']);
   });
 
   it('el código en la referencia vale; si no está en ningún lado, no', async () => {

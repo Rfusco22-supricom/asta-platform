@@ -69,6 +69,8 @@ describe('piezas de la regla', () => {
     expect(esComponente('ASTA POLVO POWDER A CF217A')).toBe(true);
     expect(esComponente('ASTA TONER W2313A CON CHIP')).toBe(false);
     expect(esComponente('ASTA TONER W22022A(414A) NO CHIP Y')).toBe(false);
+    expect(esComponente('ASTA TONER SAMSUNG MLT-D111S NEGRO NUEVO CHIP')).toBe(false);
+    expect(esComponente('ASTA CHIP A-CRG.057H ORIGINAL RECYCLE CHIP')).toBe(true);
   });
 
   it('ASTA de verdad: por el nombre o por la referencia «A-»', () => {

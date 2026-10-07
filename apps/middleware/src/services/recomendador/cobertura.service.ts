@@ -29,7 +29,7 @@ const TAMANO_TOP = 20;
 
 const VACIA: CoberturaTop['totales'] = { top: 0, completos: 0, porcentaje: 0, tramo: 'pospuesta', importeTop: 0, importeCubierto: 0 };
 
-export async function coberturaDelTop(): Promise<CoberturaTop> {
+export async function coberturaDelTop(tamano = TAMANO_TOP): Promise<CoberturaTop> {
   // Sin ventas no hay top: con Odoo caído la cobertura sale vacía y lo dice, en
   // vez de tumbar la pestaña entera (#127).
   const ventas = await ventasSiOdooResponde();
@@ -37,7 +37,7 @@ export async function coberturaDelTop(): Promise<CoberturaTop> {
 
   const top = [...ventas.entries()]
     .sort((a, b) => b[1] - a[1])
-    .slice(0, TAMANO_TOP)
+    .slice(0, tamano)
     .map(([templateId, importe]) => ({ templateId, importe }));
 
   if (top.length === 0) {

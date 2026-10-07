@@ -26,8 +26,9 @@ import { invalidarCatalogoImpresoras } from './recomendador.service.js';
  *       – Si tiene varios candidatos pendientes, tienen que ser el MISMO cartucho
  *         con dos nombres: «HP TONER 105A» lleva 105A y W1105A, el número
  *         comercial y el de pieza. Se sabe que son el mismo porque la lista del
- *         fabricante les da exactamente las mismas impresoras. Si no tienen
- *         impresoras de lista, o difieren en una, no es un caso claro.
+ *         fabricante da a uno las mismas impresoras que al otro, o una parte de
+ *         ellas. Si no tienen impresoras de lista, o cada uno tiene alguna que
+ *         el otro no, no es un caso claro.
  *
  * Común a los dos: el tipo que dice el nombre (tóner, tinta, tambor) es el del
  * cartucho. «CANON TONER GPR-53 MAGENTA» contra un GPR-53 dado de alta como
@@ -97,21 +98,20 @@ export function referenciaEsCodigo(sku: string | null, codigo: string): boolean 
   return /^T\d{2}[0-9A-Z]$/.test(cod) && new RegExp(`^${cod}\\d{3}(?:-[A-Z0-9]+)?$`).test(ref);
 }
 
-/**
- * Las impresoras que la lista del fabricante da a cada cartucho, como una clave
- * comparable: dos cartuchos con la misma clave no vacía son el mismo cartucho
- * con dos nombres.
- */
-async function impresorasDeLista(cartuchos: number[]): Promise<Map<number, string>> {
+/** Las impresoras que la lista del fabricante da a cada cartucho. */
+async function impresorasDeLista(cartuchos: number[]): Promise<Map<number, Set<number>>> {
   if (cartuchos.length === 0) return new Map();
   const filas = await prisma.cartridgePrinterModel.findMany({
     where: { cartridgeId: { in: cartuchos }, source: 'FABRICANTE', status: { not: 'RECHAZADA' } },
     select: { cartridgeId: true, printerModelId: true },
   });
-  const por = new Map<number, number[]>();
-  for (const f of filas) por.set(f.cartridgeId, [...(por.get(f.cartridgeId) ?? []), f.printerModelId]);
-  return new Map([...por].map(([id, impresoras]) => [id, [...new Set(impresoras)].sort((a, b) => a - b).join(',')]));
+  const por = new Map<number, Set<number>>();
+  for (const f of filas) por.set(f.cartridgeId, (por.get(f.cartridgeId) ?? new Set()).add(f.printerModelId));
+  return por;
 }
+
+/** ¿Están todas las impresoras de `a` en `b`? */
+const contenida = (a: Set<number>, b: Set<number>) => [...a].every((x) => b.has(x));
 
 /** Los casos claros pendientes de un tipo. `null` si Odoo no respondió: sin nombres no se sabe qué es ASTA. */
 export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null> {
@@ -132,25 +132,36 @@ export async function paresClaros(tipo: TipoLote): Promise<ParAstaClaro[] | null
   const candidatos = new Map<number, typeof filas>();
   for (const f of filas) candidatos.set(f.odooProductTmplId, [...(candidatos.get(f.odooProductTmplId) ?? []), f]);
   const conVarios = [...candidatos.values()].filter((c) => c.length > 1).flat();
-  const lista = tipo === 'ORIGINAL' ? await impresorasDeLista([...new Set(conVarios.map((f) => f.cartridgeId))]) : new Map<number, string>();
+  const lista = tipo === 'ORIGINAL' ? await impresorasDeLista([...new Set(conVarios.map((f) => f.cartridgeId))]) : new Map<number, Set<number>>();
+  /*
+   * El mismo cartucho con dos nombres: misma marca, y las impresoras de uno
+   * dentro de las del otro. No hace falta que sean IGUALES: el 414A de la lista
+   * trae las cinco impresoras de la serie y el W2023A (su magenta) solo la que se
+   * leyó en la ficha de esa impresora. Dos cartuchos distintos no se contienen:
+   * cada uno tiene impresoras que el otro no.
+   */
   const unSoloCartucho = (templateId: number): boolean => {
     const c = candidatos.get(templateId) ?? [];
     if (c.length === 1) return true;
-    const claves = new Set(c.map((f) => `${f.cartridge.brand.name}|${lista.get(f.cartridgeId) ?? ''}`));
-    return claves.size === 1 && (lista.get(c[0]!.cartridgeId) ?? '') !== '';
+    if (new Set(c.map((f) => f.cartridge.brand.name)).size !== 1) return false;
+    const conjuntos = c.map((f) => lista.get(f.cartridgeId) ?? new Set<number>());
+    if (conjuntos.some((x) => x.size === 0)) return false;
+    return conjuntos.every((a, i) => conjuntos.every((b, j) => i === j || contenida(a, b) || contenida(b, a)));
   };
 
   const claros: ParAstaClaro[] = [];
   for (const f of filas) {
     const p = plantillas.get(f.odooProductTmplId);
     if (!p || !p.activo || esComponente(p.nombre)) continue;
-    if (tipoDeCartucho(p.nombre) !== f.cartridge.kind) continue;
+    // Un cartucho de tipo OTRO es uno del que no se sabe el tipo («057H» entró así): no contradice al nombre.
+    if (f.cartridge.kind !== 'OTRO' && tipoDeCartucho(p.nombre) !== f.cartridge.kind) continue;
     const asta = esAstaDeVerdad({ name: p.nombre, default_code: p.sku ?? false });
     if (tipo === 'ASTA') {
       if (!asta || !nombreTraeCodigo(p.nombre, f.cartridge.code, { sufijoColor: true })) continue;
     } else {
       if (asta) continue;
-      if (!nombreTraeCodigo(p.nombre, f.cartridge.code) && !referenciaEsCodigo(p.sku, f.cartridge.code)) continue;
+      // El color pegado vale también aquí: «PFI-050BK» es el PFI-050 negro, como en el lote ASTA.
+      if (!nombreTraeCodigo(p.nombre, f.cartridge.code, { sufijoColor: true }) && !referenciaEsCodigo(p.sku, f.cartridge.code)) continue;
       if (!new RegExp(`(?<![A-Z])${f.cartridge.brand.name.toUpperCase()}(?![A-Z])`).test(p.nombre.toUpperCase())) continue;
       if (!unSoloCartucho(f.odooProductTmplId) || /\bKIT\b|\+/i.test(p.nombre)) continue;
     }

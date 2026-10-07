@@ -970,6 +970,268 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
     ],
     consultado: '2026-10-06',
   },
+
+  // ── El cuarto tramo: los cartuchos del top 100 que no tenían impresoras ────
+  //
+  // Medido el 2026-10-07 sobre los 100 productos más vendidos: los que tenían su
+  // cartucho validado pero ninguna impresora. Las páginas LatAm de HP solo dan
+  // la SERIE de los láser («serie M402»): entra el nombre de la serie, que el
+  // buscador encuentra por su número, y los modelos concretos que nombra la
+  // tienda oficial de HP Canadá. Fuera: HP 105X (no existe en hp.com), el tambor
+  // GPR-58 (sin página oficial legible) y la M283fdw del 206A (fuera del texto
+  // de la serie).
+  // Los cuatro colores del 202A nombran las mismas series.
+  {
+    marca: 'HP',
+    cartuchos: ['202A', 'CF500A', 'CF501A', 'CF502A', 'CF503A'],
+    impresoras: [
+      'Color LaserJet Pro M254',
+      'Color LaserJet Pro MFP M280',
+      'Color LaserJet Pro M254dw',
+      'Color LaserJet Pro MFP M281fdw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-202a-negro-laserjet-original-cf500a.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-202a-cian-laserjet-original-cf501a.html',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-202a-black-original-laserjet-toner-cartridge-cf500a',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['206A', 'W2110A', 'W2111A', 'W2112A', 'W2113A'],
+    impresoras: [
+      'Color LaserJet Pro M255',
+      'Color LaserJet Pro MFP M282',
+      'Color LaserJet Pro M255dn',
+      'Color LaserJet Pro M255dw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-original-hp-206a-laserjet-negro-w2110a.html',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-206a-black-original-laserjet-toner-cartridge-w2110a',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['215A', 'W2310A', 'W2311A', 'W2312A', 'W2313A'],
+    impresoras: [
+      'Color LaserJet Pro M155',
+      'Color LaserJet Pro MFP M182',
+      'Color LaserJet Pro MFP M183',
+      'Color LaserJet Pro MFP M182nw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-215a-negro-laserjet-original-w2310a.html',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-215a-black-original-laserjet-toner-cartridge-w2310a',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['89A', 'CF289A'],
+    impresoras: [
+      'LaserJet Enterprise M507',
+      'LaserJet Enterprise MFP M528',
+      'LaserJet Enterprise M507dn',
+      'LaserJet Enterprise M507dng',
+      'LaserJet Enterprise M507n',
+      'LaserJet Enterprise M507x',
+      'LaserJet Enterprise MFP M528dn',
+      'LaserJet Enterprise MFP M528f',
+      'LaserJet Enterprise Flow MFP M528c',
+      'LaserJet Enterprise Flow MFP M528z',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-89a-negro-laserjet-original-cf289a.html',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-89a-black-original-laserjet-toner-cartridge-cf289a',
+    ],
+    consultado: '2026-10-07',
+  },
+  // El 26A y el 26X nombran las mismas impresoras.
+  {
+    marca: 'HP',
+    cartuchos: ['26A', 'CF226A', '26X', 'CF226X'],
+    impresoras: [
+      'LaserJet Pro M402',
+      'LaserJet Pro MFP M426',
+      'LaserJet Pro M402dn',
+      'LaserJet Pro M402dw',
+      'LaserJet Pro M402n',
+      'LaserJet Pro MFP M426fdn',
+      'LaserJet Pro MFP M426fdw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-26a-negro-laserjet-original-cf226a.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-26x-negro-alto-rendimiento-laserjet-original-cf226x.html',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-26a-black-original-laserjet-toner-cartridge-cf226a',
+    ],
+    consultado: '2026-10-07',
+  },
+  // Las ocho piezas (954 y 954XL, cuatro colores) traen la misma lista.
+  {
+    marca: 'HP',
+    cartuchos: ['954', '954XL'],
+    impresoras: [
+      'OfficeJet Pro 8210',
+      'OfficeJet Pro 8216',
+      'OfficeJet Pro 8218',
+      'OfficeJet Pro 7740',
+      'OfficeJet Pro 8710',
+      'OfficeJet Pro 8720',
+      'OfficeJet Pro 8730',
+      'OfficeJet Pro 8740',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-tinta-hp-954-cian-original-l0s50al.html',
+      'https://www.hp.com/cl-es/shop/cartucho-de-tinta-hp-954-negra-original-l0s59al.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-tinta-hp-954xl-negra-original-l0s71al.html',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['664', '664XL'],
+    impresoras: [
+      'DeskJet 1110',
+      'DeskJet 1115',
+      'DeskJet 2130',
+      'DeskJet 2135',
+      'DeskJet 3630',
+      'ENVY 4520',
+      'OfficeJet 3830',
+    ],
+    fuentes: [
+      'https://www.hp.com/cl-es/shop/cartucho-de-tinta-hp-664xl-negra-original-f6v31al.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-tinta-hp-664-negra-original-f6v29al.html',
+    ],
+    consultado: '2026-10-07',
+  },
+  // Con el nombre de HP, no el «9730» del catálogo: según el país la 9730 usa el 937, y la nuestra no está confirmada.
+  {
+    marca: 'HP',
+    cartuchos: ['938'],
+    impresoras: [
+      'OfficeJet Pro 9110',
+      'OfficeJet Pro 9120',
+      'OfficeJet Pro 9130',
+      'OfficeJet Pro 9720',
+      'OfficeJet Pro 9730',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-original-de-tinta-negra-hp-938-4s6x8pl.html',
+    ],
+    consultado: '2026-10-07',
+  },
+  // Canon solo publica la lista del 14x en Brasil: confirmada, quizá no completa.
+  {
+    marca: 'Canon',
+    cartuchos: ['PG-145', 'PG-145XL'],
+    impresoras: [
+      'PIXMA MG2410',
+      'PIXMA MG2510',
+      'PIXMA MG2910',
+      'PIXMA MG3010',
+      'PIXMA TS3110',
+    ],
+    fuentes: [
+      'https://www.canon.com.br/produtos/produtos-para-voce---impressoras---linha-de-cartuchos/cartucho-de-tinta-pg-145-bk',
+      'https://www.canon.com.br/produtos/produtos-para-voce---impressoras---linha-de-cartuchos/cartucho-de-tinta-pg-145-bk-xl',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['CL-146', 'CL-146XL'],
+    impresoras: [
+      'PIXMA MG2410',
+      'PIXMA MG2510',
+      'PIXMA MG2910',
+      'PIXMA MG3010',
+      'PIXMA TS3110',
+    ],
+    fuentes: [
+      'https://www.canon.com.br/produtos/produtos-para-voce---impressoras---linha-de-cartuchos/cartucho-de-tinta-cl-146-col',
+      'https://www.canon.com.br/produtos/produtos-para-voce---impressoras---linha-de-cartuchos/cartucho-de-tinta-cl-146-col-xl',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['PG-140XL', 'PG-140'],
+    impresoras: [
+      'PIXMA MG3110',
+      'PIXMA MG3210',
+      'PIXMA MG3510',
+      'PIXMA MG3610',
+      'PIXMA MX371',
+      'PIXMA MX391',
+      'PIXMA MX431',
+      'PIXMA MX471',
+    ],
+    fuentes: [
+      'https://www.canon.com.br/produtos/produtos-para-voce---impressoras---linha-de-cartuchos/cartucho-de-tinta-pg-140-bk-xl',
+      'https://www.canon.com.br/produtos/produtos-para-voce/impressoras/linha-de-cartuchos/cartucho-de-tinta-pg-140-bk',
+    ],
+    consultado: '2026-10-07',
+  },
+  // Samsung Corea («호환 기기», dispositivos compatibles) y la tienda de HP, que hoy vende los consumibles de Samsung.
+  {
+    marca: 'Samsung',
+    cartuchos: ['MLT-D111S'],
+    impresoras: [
+      'Xpress M2020',
+      'Xpress M2020W',
+      'Xpress M2022',
+      'Xpress M2022W',
+      'Xpress M2024',
+      'Xpress M2024W',
+      'Xpress M2026',
+      'Xpress M2026W',
+      'Xpress M2028',
+      'Xpress M2028W',
+      'Xpress M2070',
+      'Xpress M2070W',
+      'Xpress M2070F',
+      'Xpress M2070FW',
+      'Xpress M2074',
+      'Xpress M2074W',
+      'Xpress M2074F',
+      'Xpress M2074FW',
+      'Xpress M2078',
+      'Xpress M2078W',
+      'Xpress M2078F',
+      'Xpress M2078FW',
+      'Xpress M2060FH',
+    ],
+    fuentes: [
+      'https://www.samsung.com/sec/support/model/MLT-D111S/',
+      'https://www.hp.com/fr-fr/shop/products/supplies/mlt-d111s-cartouche-d-encre-noire-hp-authentique-su810a',
+    ],
+    consultado: '2026-10-07',
+  },
+  {
+    marca: 'Samsung',
+    cartuchos: ['MLT-D101S'],
+    impresoras: [
+      'ML-2164',
+      'ML-2164W',
+      'SCX-3400',
+      'SCX-3405',
+      'SCX-3401FH',
+      'SCX-3406',
+      'SCX-3406F',
+      'SCX-3406FH',
+      'SCX-3406HW',
+      'SF-760P',
+      'SF-765P',
+    ],
+    fuentes: [
+      'https://www.samsung.com/sec/support/model/MLT-D101S/',
+      'https://www.hp.com/fr-fr/shop/products/supplies/mlt-d101s-cartouche-d-encre-noire-hp-authentique-su696a',
+    ],
+    consultado: '2026-10-07',
+  },
 ];
 
 /**
