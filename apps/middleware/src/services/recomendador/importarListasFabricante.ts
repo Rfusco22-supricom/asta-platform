@@ -48,6 +48,8 @@ export interface ResumenListasFabricante {
   marcasNoEncontradas: string[];
   modelosCreados: number;
   compatibilidadesCreadas: number;
+  /** Ya estaban como propuesta de un parseo o una búsqueda: ahora consta la lista. */
+  compatibilidadesRespaldadas: number;
   compatibilidadesExistentes: number;
 }
 
@@ -65,6 +67,7 @@ async function importar(tx: Prisma.TransactionClient, listas: ListaFabricante[])
     marcasNoEncontradas: [],
     modelosCreados: 0,
     compatibilidadesCreadas: 0,
+    compatibilidadesRespaldadas: 0,
     compatibilidadesExistentes: 0,
   };
 
@@ -110,7 +113,23 @@ async function importar(tx: Prisma.TransactionClient, listas: ListaFabricante[])
           data: [{ cartridgeId, printerModelId: modelo.id, source: 'FABRICANTE', sourceRef, status: 'PROPUESTA' }],
           skipDuplicates: true,
         });
-        if (creada.count) r.compatibilidadesCreadas++;
+        if (creada.count) {
+          r.compatibilidadesCreadas++;
+          continue;
+        }
+        /*
+         * Ya existía. Si solo era una PROPUESTA deducida del nombre de un producto
+         * o de una búsqueda, la lista del fabricante es mejor prueba y tiene que
+         * constar: sin esto, «EPSON L1110, L3110… BLACK» había creado L1110↔T544
+         * por PARSEO, la lista oficial se saltaba la pareja por repetida y el lote
+         * de listas oficiales (#200) no la validaba nunca. Lo validado, lo
+         * rechazado y lo que escribió una persona (MANUAL) no se toca.
+         */
+        const respaldada = await tx.cartridgePrinterModel.updateMany({
+          where: { cartridgeId, printerModelId: modelo.id, status: 'PROPUESTA', source: { in: ['PARSEO', 'BUSQUEDA'] } },
+          data: { source: 'FABRICANTE', sourceRef },
+        });
+        if (respaldada.count) r.compatibilidadesRespaldadas++;
         else r.compatibilidadesExistentes++;
       }
     }
