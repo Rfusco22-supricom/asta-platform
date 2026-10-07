@@ -33,6 +33,7 @@ async function main(): Promise<void> {
   console.log(`  ${n(r.cartuchosEnlazados)}  cartuchos encontrados`);
   console.log(`  ${n(r.modelosCreados)}  modelos de impresora ${v('creados', 'se crearían')}`);
   console.log(`  ${n(r.compatibilidadesCreadas)}  compatibilidades ${v('creadas', 'se crearían')} como PROPUESTA`);
+  console.log(`  ${n(r.compatibilidadesRespaldadas)}  propuestas por parseo que ${v('pasan', 'pasarían')} a constar como de lista oficial`);
   console.log(`  ${n(r.compatibilidadesExistentes)}  ya existían (no se tocan)`);
 
   if (r.marcasNoEncontradas.length) {

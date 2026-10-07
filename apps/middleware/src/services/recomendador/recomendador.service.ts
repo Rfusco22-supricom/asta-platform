@@ -5,6 +5,7 @@ import { searchRead, type OdooDomain } from '../../odoo/client.js';
 import { CacheTtl } from '../../utils/cacheTtl.js';
 import { anotarCacheHit } from '../../utils/contextoPeticion.js';
 import { estadoDeStock, TTL_CACHE_INVENTARIO_MS, umbralStockBajo, type AlmacenCliente } from '../inventory.service.js';
+import { normalizarCodigoCartucho } from './normalizar.js';
 import { buscarModelos, type ModeloBuscable } from './buscarModelos.js';
 
 /**
@@ -48,6 +49,8 @@ interface FilaProducto {
  */
 export const TTL_CATALOGO_IMPRESORAS_MS = 5 * 60_000;
 const cacheCatalogo = new CacheTtl<ModeloBuscable[]>(TTL_CATALOGO_IMPRESORAS_MS, 2);
+/** Qué impresoras usan cada cartucho, por su código normalizado: la búsqueda por tóner. */
+const cachePorCartucho = new CacheTtl<Map<string, number[]>>(TTL_CATALOGO_IMPRESORAS_MS, 1);
 /** El mismo TTL que el inventario: la guía promete "hasta 60 s" para las existencias. */
 const cacheCompatibles = new CacheTtl<{ impresora: PublicPrinter; items: PublicCompatibleItem[]; sinCompatibilidadesCargadas: boolean }>(
   TTL_CACHE_INVENTARIO_MS,
@@ -63,11 +66,13 @@ const cacheCompatibles = new CacheTtl<{ impresora: PublicPrinter; items: PublicC
  */
 export function invalidarCatalogoImpresoras(): void {
   cacheCatalogo.vaciar();
+  cachePorCartucho.vaciar();
 }
 
 /** Solo para tests. */
 export function vaciarCachesRecomendador(): void {
   cacheCatalogo.vaciar();
+  cachePorCartucho.vaciar();
   cacheCompatibles.vaciar();
 }
 
@@ -150,10 +155,73 @@ async function catalogoDeImpresoras(soloPublicables = true): Promise<ModeloBusca
   return catalogo;
 }
 
+/**
+ * Las impresoras de cada cartucho, solo por compatibilidades VALIDADAS: lo mismo
+ * que el kiosco recomendaría después. Una propuesta sin revisar no lleva a nadie
+ * a una impresora.
+ */
+async function impresorasPorCartucho(): Promise<Map<string, number[]>> {
+  const enCache = cachePorCartucho.get('todo');
+  if (enCache) return enCache;
+  const filas = await prisma.cartridgePrinterModel.findMany({
+    where: { status: 'VALIDADA', printerModel: { isActive: true } },
+    select: { printerModelId: true, cartridge: { select: { codeNormalized: true } } },
+  });
+  const mapa = new Map<string, number[]>();
+  for (const f of filas) {
+    const ids = mapa.get(f.cartridge.codeNormalized) ?? [];
+    if (!ids.includes(f.printerModelId)) ids.push(f.printerModelId);
+    mapa.set(f.cartridge.codeNormalized, ids);
+  }
+  cachePorCartucho.set('todo', mapa);
+  return mapa;
+}
+
+/** Lo que acompaña a un código de cartucho y no es el código: «tóner HP 105A», «CRG 051H». */
+const RUIDO_DE_CARTUCHO = /\b(hp|canon|epson|brother|samsung|xerox|asta|t[oó]ner|tinta|cartucho|botella|crg|cartridge|original)\b/gi;
+
+/** El código de cartucho que podría ser la búsqueda, normalizado, o null si no lo parece. */
+export function codigoDeCartuchoBuscado(q: string): string | null {
+  const codigo = normalizarCodigoCartucho(q.replace(RUIDO_DE_CARTUCHO, ' '));
+  return codigo.length >= 3 && /\d/.test(codigo) ? codigo : null;
+}
+
+/**
+ * La búsqueda del kiosco.
+ *
+ * ── También por el código del tóner ──────────────────────────────────────────
+ *
+ * Mucha gente no sabe el modelo de su impresora pero trae el cartucho vacío en
+ * la mano: «105A», «T544», «TN-760». Si la búsqueda no es ninguna impresora y sí
+ * el código de un cartucho, se devuelven las impresoras donde sirve, para que el
+ * cliente reconozca la suya. Solo cuando el modelo no dio nada: «L3110» es una
+ * impresora antes que cualquier otra cosa. Y sin sugerencias: antes «105A» sugería
+ * la «Laser MFP 135a», que no tiene nada que ver.
+ */
 export async function buscarImpresoras(q: string, limit: number): Promise<{ impresoras: PublicPrinter[]; sugerencias: PublicPrinter[] }> {
-  const { coincidencias, sugerencias } = buscarModelos(q, await catalogoDeImpresoras());
+  const catalogo = await catalogoDeImpresoras();
+  const { coincidencias, sugerencias } = buscarModelos(q, catalogo);
   // Construidas campo a campo: la puntuación es interna.
   const aPublica = (c: { id: number; marca: string; nombre: string }): PublicPrinter => ({ id: c.id, marca: c.marca, nombre: c.nombre });
+
+  if (coincidencias.length === 0) {
+    const codigo = codigoDeCartuchoBuscado(q);
+    const porCartucho = await impresorasPorCartucho();
+    // «PG-145» es el PG-145XL para quien no sabe si el suyo es XL: el código exacto,
+    // o con su sufijo de tamaño. Nada más abierto: «64» no es el 640.
+    const ids = codigo
+      ? [...new Set(['', 'xl', 'xxl', 'h'].flatMap((sufijo) => porCartucho.get(codigo + sufijo) ?? []))]
+      : undefined;
+    if (ids?.length) {
+      const porId = new Map(catalogo.map((m) => [m.id, m]));
+      const impresoras = ids
+        .map((id) => porId.get(id))
+        .filter((m): m is ModeloBuscable => Boolean(m))
+        .sort((a, b) => a.marca.localeCompare(b.marca) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+      if (impresoras.length) return { impresoras: impresoras.slice(0, limit).map(aPublica), sugerencias: [] };
+    }
+  }
+
   return { impresoras: coincidencias.slice(0, limit).map(aPublica), sugerencias: sugerencias.slice(0, limit).map(aPublica) };
 }
 

@@ -121,6 +121,31 @@ describe('#56 · Repetir la importación', () => {
       sourceRef: 'revisado a mano',
     });
   });
+
+  it('una PROPUESTA de parseo pasa a constar como de la lista; una MANUAL, no', async () => {
+    // Lo que pasó con L1110↔T544: el nombre de un producto la propuso antes, y la
+    // lista oficial la saltaba por repetida, así que el lote de listas no la veía.
+    await importarListasFabricante([lista()], { aplicar: true });
+    const [m100, m200] = await Promise.all(
+      ['zzl100', 'zzl200'].map((nameNormalized) => prisma.printerModel.findFirstOrThrow({ where: { nameNormalized } })),
+    );
+    const clave = (printerModelId: number) => ({ cartridgeId_printerModelId: { cartridgeId: cartuchos[0], printerModelId } });
+    await prisma.cartridgePrinterModel.update({ where: clave(m100.id), data: { source: 'PARSEO', sourceRef: null } });
+    await prisma.cartridgePrinterModel.update({ where: clave(m200.id), data: { source: 'MANUAL', sourceRef: 'lo puso un vendedor' } });
+
+    const r = await importarListasFabricante([lista()], { aplicar: true });
+
+    expect(r).toMatchObject({ compatibilidadesCreadas: 0, compatibilidadesRespaldadas: 1, compatibilidadesExistentes: 3 });
+    expect(await prisma.cartridgePrinterModel.findUniqueOrThrow({ where: clave(m100.id) })).toMatchObject({
+      status: 'PROPUESTA',
+      source: 'FABRICANTE',
+      sourceRef: URL_OFICIAL,
+    });
+    expect(await prisma.cartridgePrinterModel.findUniqueOrThrow({ where: clave(m200.id) })).toMatchObject({
+      source: 'MANUAL',
+      sourceRef: 'lo puso un vendedor',
+    });
+  });
 });
 
 describe('#56 · El simulacro', () => {
