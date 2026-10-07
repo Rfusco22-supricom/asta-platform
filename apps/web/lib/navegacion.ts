@@ -51,6 +51,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       titulo: null,
       secciones: [
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
+        { href: '/admin/pendientes', titulo: 'Pendientes', icono: 'pendientes' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },

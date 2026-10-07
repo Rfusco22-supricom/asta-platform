@@ -8,6 +8,7 @@ import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS }
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
+import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
@@ -230,6 +231,21 @@ adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, n
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
     // Solo ASTA, como el panel del vendedor (decisión del 5-oct-2026).
     res.json(await reporteAstaDeLaEmpresa(rango));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Los productos ASTA más vendidos de TODA la empresa, para el inicio.
+ *
+ * El mismo cálculo que el del vendedor, sin la condición de cartera. Lleva el
+ * permiso de los reportes de la empresa: ver qué compra cada cliente de la
+ * instancia entera es cosa del administrador.
+ */
+adminRouter.get('/reportes/productos', autorizar('admin.reportes.ver'), async (req, res, next) => {
+  try {
+    res.json(await reporteProductos(null, rangoDeLaPeticion(req.query as Record<string, unknown>)));
   } catch (error) {
     next(error);
   }
