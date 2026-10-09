@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CargandoEnlace } from './CargandoEnlace';
 
 /**
  * «Resumen · Por producto», encima de los reportes del vendedor.
@@ -17,6 +18,7 @@ export function PestanasReportes({ actual, periodo }: { actual: 'resumen' | 'pro
       {pestanas.map((p) => (
         <Link key={p.clave} href={p.href} className={p.clave === actual ? 'activa' : undefined} aria-current={p.clave === actual ? 'page' : undefined}>
           {p.etiqueta}
+          <CargandoEnlace />
         </Link>
       ))}
     </nav>
