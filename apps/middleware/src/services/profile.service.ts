@@ -2,6 +2,7 @@ import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/clien
 import { listarNotas, type Nota } from './notes.service.js';
 import { FACTURA, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 import { compras, ventasSmartbitDeCliente } from './smartbit.service.js';
+import { dePantalla } from './pantallas.js';
 import { FACTURA_CON_ASTA, LINEA_ASTA } from './ventasAsta.service.js';
 
 /**
@@ -108,24 +109,8 @@ function partirNombre(display: string): { sku: string | null; nombre: string } {
   return m ? { sku: m[1], nombre: m[2] || display } : { sku: null, nombre: display };
 }
 
-/**
- * Perfil de un cliente. Cuesta 3 RPC, independientemente de su histórico.
- *
- * OJO con el `display_type`: en Odoo 17 las líneas de factura NO tienen
- * `display_type = false`. Los valores son 'product', 'cogs', 'tax',
- * 'payment_term', 'line_section'... Filtrar por `= false` devuelve cero filas,
- * y filtrar por `!= false` devuelve TODAS, incluidas las de coste e impuestos,
- * que duplicarían los importes. Hay que pedir `= 'product'` explícitamente.
- */
-export async function getClientProfile(
-  partnerId: number,
-  lectorId: string,
-  limiteTop = 5,
-): Promise<ClientProfile> {
-  if (!Number.isInteger(partnerId) || partnerId <= 0) {
-    throw new TypeError(`partnerId inválido: ${partnerId}`);
-  }
-
+/** Lo que el perfil lee de Odoo y de Smartbit: todo menos las notas. */
+async function leerPerfilDeOdoo(partnerId: number) {
   // Las sucursales cuentan como compras del mismo cliente.
   const familia = await executeKw<number[]>('res.partner', 'search', [
     [['id', 'child_of', partnerId]],
@@ -141,7 +126,7 @@ export async function getClientProfile(
     LINEA_ASTA,
   ];
 
-  const [grupos, ultimas, notas, ventasSb] = await Promise.all([
+  const [grupos, ultimas, ventasSb] = await Promise.all([
     readGroup<LineGroup>(
       'account.move.line',
       lineasBase,
@@ -163,10 +148,36 @@ export async function getClientProfile(
       ['invoice_date'],
       { limit: 1, order: 'invoice_date desc, id desc' },
     ),
-    // En paralelo con los dos RPC a Odoo: son sistemas distintos y esperar uno
-    // para empezar el otro no tiene sentido.
-    listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
     ventasSmartbitDeCliente(partnerId),
+  ]);
+  return { grupos, ultimas, ventasSb };
+}
+
+/**
+ * Perfil de un cliente. Cuesta 3 RPC, independientemente de su histórico.
+ *
+ * OJO con el `display_type`: en Odoo 17 las líneas de factura NO tienen
+ * `display_type = false`. Los valores son 'product', 'cogs', 'tax',
+ * 'payment_term', 'line_section'... Filtrar por `= false` devuelve cero filas,
+ * y filtrar por `!= false` devuelve TODAS, incluidas las de coste e impuestos,
+ * que duplicarían los importes. Hay que pedir `= 'product'` explícitamente.
+ */
+export async function getClientProfile(
+  partnerId: number,
+  lectorId: string,
+  limiteTop = 5,
+): Promise<ClientProfile> {
+  if (!Number.isInteger(partnerId) || partnerId <= 0) {
+    throw new TypeError(`partnerId inválido: ${partnerId}`);
+  }
+
+  // Lo de Odoo se guarda un rato (`pantallas.ts`); las notas no, que las
+  // escribe el propio vendedor y tiene que verlas al volver.
+  const [{ grupos, ultimas, ventasSb }, notas] = await Promise.all([
+    dePantalla(`cliente:${partnerId}:perfil`, () => leerPerfilDeOdoo(partnerId)),
+    // En paralelo con Odoo: son sistemas distintos y esperar uno para empezar
+    // el otro no tiene sentido.
+    listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
   ]);
 
   const nombreProducto = new Map<number, string>();

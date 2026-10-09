@@ -15,6 +15,7 @@ import { hermanosDe } from '../services/hermanos.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
+import { dePantalla } from '../services/pantallas.js';
 import { z } from 'zod';
 import { marcarImpulsaSchema, nuevaCompatibilidadSchema } from '@asta/shared-types';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
@@ -129,7 +130,8 @@ salespersonRouter.get(
   autorizar('cliente.perfil.ver'),
   async (req, res, next) => {
     try {
-      res.json({ data: await hermanosDe(Number(req.params.partnerId)) });
+      const partnerId = Number(req.params.partnerId);
+      res.json({ data: await dePantalla(`cliente:${partnerId}:duplicados`, () => hermanosDe(partnerId)) });
     } catch (error) {
       next(error);
     }
@@ -177,7 +179,8 @@ salespersonRouter.get('/asta', autorizar('asta.propias.ver'), async (req, res, n
       return;
     }
 
-    const r = await oportunidadesAsta({ soloDelVendedor: odooUserId });
+    // Se guarda un rato, por vendedor: ver `pantallas.ts`.
+    const r = await dePantalla(`vendedor:${odooUserId}:asta`, () => oportunidadesAsta({ soloDelVendedor: odooUserId }));
     res.json({
       data: r.oportunidades,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
@@ -208,8 +211,9 @@ salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req
     }
 
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
-    // Solo ASTA (ver `ventasAsta.service`); el de administración no cambia.
-    res.json(await reporteAstaDelVendedor(odooUserId, rango));
+    // Solo ASTA (ver `ventasAsta.service`). Se guarda un rato, por vendedor y
+    // periodo: ver `pantallas.ts`.
+    res.json(await dePantalla(`vendedor:${odooUserId}:reportes:${rango.desde}:${rango.hasta}`, () => reporteAstaDelVendedor(odooUserId, rango)));
   } catch (error) {
     next(error);
   }

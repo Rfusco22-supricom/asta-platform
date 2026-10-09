@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
-import { CacheTtl } from '../utils/cacheTtl.js';
+import { CacheConRefresco } from '../utils/cacheConRefresco.js';
 import { logger } from '../utils/logger.js';
 import { MARCA_ASTA } from './asta.service.js';
 
@@ -37,9 +37,12 @@ import { MARCA_ASTA } from './asta.service.js';
  * ── Lo que cuesta ────────────────────────────────────────────────────────────
  *
  * ~35.000 filas y tres lecturas de Odoo (clientes con RIF, usuarios, productos
- * ASTA), una vez por hora: la tabla es historia, ya no cambia. Si la tabla no
- * se puede leer —una base sin ella, o sin el GRANT— el panel sigue solo con
- * Odoo y se vuelve a intentar a los cinco minutos.
+ * ASTA), unos dos segundos. Se carga al arrancar el servidor (`server.ts`) y se
+ * renueva por detrás cada hora (`CacheConRefresco`): la tabla es historia y ya
+ * no cambia, lo que se mueve es Odoo —un cliente nuevo con un RIF de Smartbit—,
+ * y nadie espera por eso. Si la tabla no se puede leer —una base sin ella, o
+ * sin el GRANT— el panel sigue solo con Odoo y se vuelve a intentar en la
+ * siguiente petición.
  */
 
 /** Primer día que cuenta Odoo. De Smartbit se lee lo anterior. */
@@ -186,14 +189,15 @@ export interface Smartbit {
   indice: IndiceRif;
 }
 
-const cache = new CacheTtl<Smartbit>(60 * 60_000, 1);
-const cacheFallo = new CacheTtl<Smartbit>(5 * 60_000, 1);
+const cache = new CacheConRefresco<Smartbit>(60 * 60_000, 24 * 60 * 60_000, 1);
 
 /** Para los tests. */
 export function vaciarCacheSmartbit(): void {
   cache.vaciar();
-  cacheFallo.vaciar();
 }
+
+/** La tabla no se pudo leer: no es un error del panel, es que no hay Smartbit. */
+class SinTablaSmartbit extends Error {}
 
 const VACIO: Smartbit = { ventas: [], indice: { porRif: new Map(), porDigitos: new Map() } };
 
@@ -203,9 +207,16 @@ function numero(x: { toNumber(): number } | number): number {
 
 /** Las ventas ASTA de Smartbit, ya casadas con Odoo. */
 export async function smartbit(): Promise<Smartbit> {
-  const enCache = cache.get('') ?? cacheFallo.get('');
-  if (enCache) return enCache;
+  try {
+    return await cache.obtener('', leerSmartbit);
+  } catch (error) {
+    if (!(error instanceof SinTablaSmartbit)) throw error;
+    logger.warn({ err: error.cause }, 'No se pudo leer ventas_smartbit: el panel sigue solo con Odoo');
+    return VACIO;
+  }
+}
 
+async function leerSmartbit(): Promise<Smartbit> {
   let filas: FilaSmartbit[];
   try {
     filas = await prisma.ventaSmartbit.findMany({
@@ -213,9 +224,7 @@ export async function smartbit(): Promise<Smartbit> {
       select: { fecha: true, vendedor: true, codigoCliente: true, cliente: true, codigoArticulo: true, articulo: true, venta: true, unidades: true },
     });
   } catch (error) {
-    logger.warn({ err: error }, 'No se pudo leer ventas_smartbit: el panel sigue solo con Odoo');
-    cacheFallo.set('', VACIO);
-    return VACIO;
+    throw new SinTablaSmartbit('ventas_smartbit', { cause: error });
   }
 
   const [clientes, usuarios, productos] = await Promise.all([
@@ -261,9 +270,7 @@ export async function smartbit(): Promise<Smartbit> {
     };
   });
 
-  const resultado = { ventas, indice };
-  cache.set('', resultado);
-  return resultado;
+  return { ventas, indice };
 }
 
 export function enRango(v: Pick<VentaSmartbit, 'fecha'>, rango: { desde?: string; hasta?: string }): boolean {
