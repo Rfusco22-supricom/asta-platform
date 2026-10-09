@@ -96,7 +96,7 @@ export function Marco({
         */}
         <div className="lateral-pie">
           <strong>Datos en vivo</strong>
-          Facturación y cartera se leen de Odoo en cada carga.
+          Facturación y cartera se leen de Odoo y se renuevan cada minuto.
         </div>
       </aside>
 

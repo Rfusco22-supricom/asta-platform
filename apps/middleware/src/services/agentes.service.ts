@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { compras, smartbit, ventasDeClientes } from './smartbit.service.js';
 import { totalesAstaDeCartera } from './ventasAsta.service.js';
+import { dePantalla } from './pantallas.js';
 import { authEnv } from '../config/authEnv.js';
 import { nombrePersona } from '@asta/shared-types';
 
@@ -75,20 +76,54 @@ interface UsuarioOdoo {
   active: boolean;
 }
 
+/**
+ * Lo que sale de Odoo: quién tiene cartera, lo vendido y los usuarios. Es lo
+ * lento, y se guarda un rato (`pantallas.ts`); el acceso al panel no, que lo
+ * cambia el propio administrador y tiene que verse al volver.
+ */
+function leerOdoo() {
+  return dePantalla('admin:agentes', async () => {
+    // ── Quién tiene cartera ─────────────────────────────────────────────────
+    const partners = await searchRead<{ id: number; user_id: [number, string] | false }>(
+      'res.partner',
+      [
+        ['customer_rank', '>', 0],
+        ['user_id', '!=', false],
+        ['parent_id', '=', false],
+        ['active', '=', true],
+      ],
+      ['id', 'user_id'],
+    );
+    const uids = [...new Set(partners.flatMap((p) => (p.user_id ? [p.user_id[0]] : [])))];
+    if (uids.length === 0) return { partners, facturacion: new Map<number, never>(), usuarios: [] as UsuarioOdoo[] };
+
+    const [facturacion, usuarios] = await Promise.all([
+      // Solo ASTA, como «Mi cartera» de cada vendedor (`ventasAsta.service`):
+      // de toda la empresa en dos consultas, y se reparte por cartera abajo.
+      totalesAstaDeCartera(null),
+
+      /*
+       * Se piden también los INACTIVOS.
+       *
+       * Odoo añade `active = true` por su cuenta a todo dominio que no mencione
+       * ese campo, así que sin el `|` explícito los de baja no vendrían — y son
+       * justo los que hay que ver: un agente inactivo con cartera asignada
+       * significa que esos clientes no los está atendiendo nadie.
+       */
+      searchRead<UsuarioOdoo>(
+        'res.users',
+        ['|', ['active', '=', true], ['active', '=', false], ['id', 'in', uids]],
+        ['id', 'name', 'login', 'active'],
+      ),
+    ]);
+    return { partners, facturacion, usuarios };
+  });
+}
+
 export async function estadisticasAgentes(): Promise<ResumenAgentes> {
   const t0 = Date.now();
 
-  // ── Quién tiene cartera ───────────────────────────────────────────────────
-  const partners = await searchRead<{ id: number; user_id: [number, string] | false }>(
-    'res.partner',
-    [
-      ['customer_rank', '>', 0],
-      ['user_id', '!=', false],
-      ['parent_id', '=', false],
-      ['active', '=', true],
-    ],
-    ['id', 'user_id'],
-  );
+  const { partners, facturacion, usuarios } = await leerOdoo();
 
   const porUsuario = new Map<number, { nombre: string; partners: number[] }>();
   for (const p of partners) {
@@ -109,25 +144,7 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
 
   const uids = [...porUsuario.keys()];
 
-  const [facturacion, usuarios, cuentas, sb] = await Promise.all([
-    // Solo ASTA, como «Mi cartera» de cada vendedor (`ventasAsta.service`):
-    // de toda la empresa en dos consultas, y se reparte por cartera abajo.
-    totalesAstaDeCartera(null),
-
-    /*
-     * Se piden también los INACTIVOS.
-     *
-     * Odoo añade `active = true` por su cuenta a todo dominio que no mencione
-     * ese campo, así que sin el `|` explícito los de baja no vendrían — y son
-     * justo los que hay que ver: un agente inactivo con cartera asignada
-     * significa que esos clientes no los está atendiendo nadie.
-     */
-    searchRead<UsuarioOdoo>(
-      'res.users',
-      ['|', ['active', '=', true], ['active', '=', false], ['id', 'in', uids]],
-      ['id', 'name', 'login', 'active'],
-    ),
-
+  const [cuentas, sb] = await Promise.all([
     prisma.appUser.findMany({
       where: { odooUserId: { in: uids } },
       select: {

@@ -8,6 +8,7 @@ import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS }
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
+import { dePantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
@@ -188,7 +189,8 @@ adminRouter.post(
  */
 adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => {
   try {
-    const r = await oportunidadesAsta();
+    // Se guarda un rato: ver `pantallas.ts`.
+    const r = await dePantalla('admin:asta', () => oportunidadesAsta());
     res.json({
       data: r.oportunidades,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
@@ -229,8 +231,9 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
 adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, next) => {
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
-    // Solo ASTA, como el panel del vendedor (decisión del 5-oct-2026).
-    res.json(await reporteAstaDeLaEmpresa(rango));
+    // Solo ASTA, como el panel del vendedor (decisión del 5-oct-2026). Se
+    // guarda un rato por periodo: ver `pantallas.ts`.
+    res.json(await dePantalla(`admin:reportes:${rango.desde}:${rango.hasta}`, () => reporteAstaDeLaEmpresa(rango)));
   } catch (error) {
     next(error);
   }

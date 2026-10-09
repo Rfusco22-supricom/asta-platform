@@ -24,6 +24,7 @@ import { version } from './config/version.js';
 import { VigilanteCambios } from './services/vigilanteCambios.js';
 import { pasarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
 import { programarCada } from './services/programador.js';
+import { smartbit } from './services/smartbit.service.js';
 import { sincronizarPartners } from './services/sync.service.js';
 
 /**
@@ -260,6 +261,9 @@ if (
     console.log(`  vendedor  GET /api/v1/salesperson/portfolio`);
     console.log(`  vendedor  GET /api/v1/salesperson/clients/:partnerId/invoicing`);
     console.log(`  cliente   GET /api/v1/public/invoices · /invoices/:id   (API key)`);
+    // Smartbit tarda un par de segundos en cargarse: mejor ahora que en la
+    // primera pantalla que lo pida. Si falla, la pantalla lo vuelve a intentar.
+    smartbit().catch(() => undefined);
   });
 
   // Invalidación de caches por lo que cambia en Odoo (#34). Aquí y no en

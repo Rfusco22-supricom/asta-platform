@@ -4,6 +4,7 @@ import { resumenAstaDeCliente, totalesAstaDeCartera } from '../services/ventasAs
 import { getPartner, getPartnersBySalesperson } from '../services/partners.service.js';
 import { getClientProfile } from '../services/profile.service.js';
 import { borrarNota, crearNota } from '../services/notes.service.js';
+import { dePantalla } from '../services/pantallas.js';
 
 /**
  * Controlador del módulo de vendedores.
@@ -59,7 +60,8 @@ export async function getClientInvoicing(
     // Solo ASTA: el panel del vendedor es de la marca (ver `ventasAsta.service`).
     const [partner, resumen] = await Promise.all([
       req.partnerAutorizado ?? getPartner(partnerId),
-      resumenAstaDeCliente(partnerId, query.data),
+      // Se guarda un rato por cliente y filtro: ver `pantallas.ts`.
+      dePantalla(`cliente:${partnerId}:facturacion:${JSON.stringify(query.data)}`, () => resumenAstaDeCliente(partnerId, query.data)),
     ]);
 
     res.json({
@@ -117,16 +119,20 @@ export async function getPortfolio(
     // Solo ASTA (ver `ventasAsta.service`): lo vendido de la marca, sin IVA, y
     // el saldo de las facturas que la llevan, más la historia de Smartbit de
     // cada cliente (`smartbit.service`), que necesita los ids: se le pasa la
-    // promesa, y Odoo empieza sin esperarla.
-    const pendientes = getPartnersBySalesperson(identity.odooUserId);
-    const [clientes, totales] = await Promise.all([
-      pendientes,
-      totalesAstaDeCartera(
-        identity.odooUserId,
-        query.data,
-        pendientes.then((cs) => cs.map((c) => c.id)),
-      ),
-    ]);
+    // promesa, y Odoo empieza sin esperarla. Se guarda un rato, por vendedor y
+    // filtro: ver `pantallas.ts`.
+    const odooUserId = identity.odooUserId;
+    const [clientes, totales] = await dePantalla(`vendedor:${odooUserId}:cartera:${JSON.stringify(query.data)}`, () => {
+      const pendientes = getPartnersBySalesperson(odooUserId);
+      return Promise.all([
+        pendientes,
+        totalesAstaDeCartera(
+          odooUserId,
+          query.data,
+          pendientes.then((cs) => cs.map((c) => c.id)),
+        ),
+      ]);
+    });
 
     const filas = clientes.map((cliente) => {
       const t = totales.get(cliente.id) ?? { total: 0, porCobrar: 0, facturas: 0 };

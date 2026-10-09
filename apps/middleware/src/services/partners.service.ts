@@ -4,6 +4,7 @@ import { isUnmappedPricelist, tierFromPricelist, type MapaTiers } from '../confi
 import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
+import { dePantalla } from './pantallas.js';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
@@ -190,24 +191,44 @@ export class PartnerNotFound extends Error {
  * significa que un vendedor ve la facturación de un cliente que ya no es suyo, así
  * que se paga el RPC.
  *
+ * Pero solo el que decide: `user_id` y `commercial_partner_id`, en vivo, unos
+ * 150 ms. La ficha que se entrega (`getPartner`, con la tarifa: ~850 ms medido
+ * el 9-oct-2026) sí sale de `pantallas.ts`: el nombre y la tarifa de un cliente
+ * no dan acceso a nada, y se piden en paralelo, así que la decisión no espera.
+ *
  * La verificación sube por `commercial_partner_id`: si el vendedor tiene asignada
  * la matriz, puede ver también sus sucursales. Sin esta parte, un vendedor pierde
  * acceso a las sucursales de sus propios clientes; y al revés, sin ella alguien
  * podría colarse pidiendo una sucursal cuya matriz es de otro vendedor.
  */
+/** A quién pertenece un partner, leído en vivo. null si no existe (o está archivado). */
+async function leerPropiedad(partnerId: number): Promise<{ vendedor: number | null; matriz: number } | null> {
+  const [p] = await searchRead<{ user_id: [number, string] | false; commercial_partner_id: [number, string] | false }>(
+    'res.partner',
+    [['id', '=', partnerId]],
+    ['user_id', 'commercial_partner_id'],
+  );
+  if (!p) return null;
+  return { vendedor: p.user_id ? p.user_id[0] : null, matriz: p.commercial_partner_id ? p.commercial_partner_id[0] : partnerId };
+}
+
 export async function assertSalespersonOwnsPartner(
   odooUserId: number,
   partnerId: number,
 ): Promise<PartnerWithTier> {
-  const partner = await getPartner(partnerId);
+  const [propiedad, guardado] = await Promise.all([
+    leerPropiedad(partnerId),
+    dePantalla(`cliente:${partnerId}:partner`, () => getPartner(partnerId)),
+  ]);
+  if (!propiedad) throw new PartnerNotFound(partnerId);
+
+  const suyo =
+    propiedad.vendedor === odooUserId ||
+    (propiedad.matriz !== partnerId && (await leerPropiedad(propiedad.matriz))?.vendedor === odooUserId);
+  if (!suyo) throw new ForbiddenPartnerAccess(odooUserId, partnerId);
+
+  // Un cliente recién creado puede no estar todavía en lo guardado.
+  const partner = guardado ?? (await getPartner(partnerId));
   if (!partner) throw new PartnerNotFound(partnerId);
-
-  if (partner.vendedorOdooUserId === odooUserId) return partner;
-
-  if (partner.commercialPartnerId !== partner.id) {
-    const matriz = await getPartner(partner.commercialPartnerId);
-    if (matriz?.vendedorOdooUserId === odooUserId) return partner;
-  }
-
-  throw new ForbiddenPartnerAccess(odooUserId, partnerId);
+  return partner;
 }
