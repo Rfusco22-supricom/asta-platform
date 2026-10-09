@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { ClienteImpulsa, EstadoImpulsa, SugerenciaPasale } from '@asta/shared-types';
 import { fecha, money } from '@/lib/formato';
+import { CargandoEnlace } from '@/components/CargandoEnlace';
 
 /**
  * Las sugerencias de «Pásale a ASTA», cliente por cliente, con sus botones.
@@ -51,6 +52,7 @@ export function ListaImpulsa({ clientes }: { clientes: ClienteImpulsa[] }) {
               <header className="imp-cabecera">
                 <Link href={`/cartera/${c.partnerId}`} className="imp-nombre">
                   {c.nombre}
+                  <CargandoEnlace />
                 </Link>
                 {vista === 'pendientes' && c.enJuego > 0 && <span className="imp-enjuego">{money(c.enJuego)} en otras marcas</span>}
               </header>

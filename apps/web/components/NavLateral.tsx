@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { GrupoNav, Seccion } from '@/lib/navegacion';
+import { CargandoEnlace } from './CargandoEnlace';
 
 /**
  * El menú lateral.
@@ -195,6 +196,7 @@ export function NavLateral({ grupos }: { grupos: GrupoNav[] }) {
               >
                 <Icono nombre={s.icono} />
                 <span>{s.titulo}</span>
+                <CargandoEnlace />
               </Link>
             );
           })}
@@ -243,6 +245,7 @@ export function NavInferior({ grupos }: { grupos: GrupoNav[] }) {
       <Link key={s.href} href={s.href} className={activa ? 'pestana activa' : 'pestana'} aria-current={activa ? 'page' : undefined}>
         <span className="pestana-icono">
           <Icono nombre={s.icono} />
+          <CargandoEnlace />
         </span>
         <span className="pestana-texto">{s.corto ?? s.titulo}</span>
       </Link>
@@ -283,6 +286,7 @@ export function NavInferior({ grupos }: { grupos: GrupoNav[] }) {
                 <Link key={s.href} href={s.href} className={activa ? 'hoja-item activa' : 'hoja-item'} aria-current={activa ? 'page' : undefined} tabIndex={abierta ? 0 : -1}>
                   <Icono nombre={s.icono} />
                   <span>{s.titulo}</span>
+                  <CargandoEnlace />
                 </Link>
               );
             })}

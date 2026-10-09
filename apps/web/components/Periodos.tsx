@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CargandoEnlace } from './CargandoEnlace';
 
 /**
  * El selector de periodo, compartido por reportes y recomendador.
@@ -42,6 +43,7 @@ export function Periodos({ base, periodo }: { base: string; periodo: { desde: st
         return (
           <Link key={p.clave} href={`${base}?desde=${desde}&hasta=${hasta}`} className={`periodo${activo ? ' periodo--activo' : ''}`}>
             {p.etiqueta}
+            <CargandoEnlace />
           </Link>
         );
       })}

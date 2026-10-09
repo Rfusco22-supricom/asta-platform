@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente, PortfolioRow } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
+import { CargandoEnlace } from '@/components/CargandoEnlace';
 
 /**
  * Tabla de cartera, con lo que dice de cada cliente su actividad: si sigue
@@ -225,7 +226,10 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                         puede contener <td>, y con onClick se perdería abrir en
                         pestaña nueva con ctrl+clic. */}
                     <Link href={`/cartera/${f.id}`} className="row-link">
-                      <div className="cliente-nombre">{f.nombre}</div>
+                      <div className="cliente-nombre">
+                        {f.nombre}
+                        <CargandoEnlace />
+                      </div>
                       {(f.email || f.telefono) && <div className="cliente-contacto">{[f.email, f.telefono].filter(Boolean).join(' · ')}</div>}
                     </Link>
                   </td>
