@@ -5,6 +5,7 @@ import { CacheTtl } from '../../utils/cacheTtl.js';
 import { MARCA_ASTA } from '../asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from '../criterioFacturacion.js';
 import { carteraDesdeLinea } from '../ventasAsta.service.js';
+import { SIN_INTERCOMPANIA_LINEA } from '../intercompania.js';
 import { equivalentesAsta, type ProductoConsumible } from './equivalentesAsta.js';
 
 /**
@@ -249,6 +250,8 @@ async function calcular(odooUserId: number, hoy: string): Promise<{ clientes: Cl
       ['invoice_date', '<=', hoy],
       ['product_id.categ_id', 'child_of', CATEGORIA_CONSUMIBLES],
       ...carteraDesdeLinea(odooUserId),
+      // A una empresa del grupo no se le sugiere nada (`intercompania.ts`).
+      SIN_INTERCOMPANIA_LINEA,
     ],
     ['balance:sum', 'quantity:sum', 'ultima:max(invoice_date)', 'facturas:count_distinct(move_id)'],
     ['product_id', 'partner_id', 'move_type'],

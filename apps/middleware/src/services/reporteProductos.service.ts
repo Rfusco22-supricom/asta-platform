@@ -6,6 +6,7 @@ import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFactur
 import { idsDeCartera } from './partners.service.js';
 import { smartbit, ventasDeClientes, type VentaSmartbit } from './smartbit.service.js';
 import { LINEA_ASTA } from './ventasAsta.service.js';
+import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
 import type { RangoPedido } from './rango.js';
 
 /**
@@ -274,6 +275,7 @@ export async function reporteProductos(odooUserId: number | null, rango: RangoPe
     ['partner_id.parent_id', '=', false],
     ['partner_id.active', '=', true],
     LINEA_ASTA,
+    SIN_INTERCOMPANIA_LINEA,
   ];
 
   const [gruposOdoo, competencia, sb, cartera] = await Promise.all([

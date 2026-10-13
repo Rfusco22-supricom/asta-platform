@@ -4,6 +4,7 @@ import { FACTURA, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturac
 import { compras, ventasSmartbitDeCliente } from './smartbit.service.js';
 import { dePantalla } from './pantallas.js';
 import { FACTURA_CON_ASTA, LINEA_ASTA } from './ventasAsta.service.js';
+import { SIN_INTERCOMPANIA, SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
 
 /**
  * Perfilado del cliente (issue #24).
@@ -124,6 +125,8 @@ async function leerPerfilDeOdoo(partnerId: number) {
     ['product_id', '!=', false],
     // Solo ASTA: el panel del vendedor es de la marca (ver `ventasAsta.service`).
     LINEA_ASTA,
+    // Y sin intercompañía, como las cifras de la cartera (`intercompania.ts`).
+    SIN_INTERCOMPANIA_LINEA,
   ];
 
   const [grupos, ultimas, ventasSb] = await Promise.all([
@@ -144,6 +147,7 @@ async function leerPerfilDeOdoo(partnerId: number) {
         ['move_type', '=', FACTURA],
         ['state', '=', 'posted'],
         FACTURA_CON_ASTA,
+        SIN_INTERCOMPANIA,
       ],
       ['invoice_date'],
       { limit: 1, order: 'invoice_date desc, id desc' },

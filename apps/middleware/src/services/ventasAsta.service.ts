@@ -1,6 +1,7 @@
 import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { MARCA_ASTA } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
+import { SIN_INTERCOMPANIA, SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
 import type { InvoicingQuery, InvoicingSummary } from './invoicing.service.js';
 import { compras, enRango, smartbit, ventasDeClientes, ventasSmartbitDeCliente } from './smartbit.service.js';
 
@@ -12,6 +13,9 @@ import { compras, enRango, smartbit, ventasDeClientes, ventasSmartbitDeCliente }
  * Una factura con un portátil y un tóner ASTA suma el tóner. «La última compra»
  * es la última factura con ASTA; «por cobrar», el saldo entero de las facturas
  * que llevan algo de ASTA, porque Odoo no dice qué línea se pagó.
+ *
+ * Las ventas a empresas del grupo no cuentan (`intercompania.ts`): ni aquí ni
+ * en nada que parta de `LINEAS_ASTA`.
  *
  * Lo que el cliente compra de otras marcas no desaparece del panel: es la
  * materia de «Oportunidades ASTA» (`asta.service.ts`), que sigue mirándolo.
@@ -26,8 +30,14 @@ export const LINEA_ASTA: OdooDomain[number] = ['product_id.product_tmpl_id.spiff
 /** Una factura «con ASTA» lleva al menos una línea de la marca. */
 export const FACTURA_CON_ASTA: OdooDomain[number] = ['invoice_line_ids.product_id.product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA];
 
-/** Las líneas ASTA de facturas y notas de crédito contabilizadas. */
-export const LINEAS_ASTA: OdooDomain = [['display_type', '=', 'product'], ['parent_state', '=', 'posted'], TIPO_FACTURADO_LINEA, LINEA_ASTA];
+/** Las líneas ASTA de facturas y notas de crédito contabilizadas, sin intercompañía. */
+export const LINEAS_ASTA: OdooDomain = [
+  ['display_type', '=', 'product'],
+  ['parent_state', '=', 'posted'],
+  TIPO_FACTURADO_LINEA,
+  LINEA_ASTA,
+  SIN_INTERCOMPANIA_LINEA,
+];
 
 /**
  * La cartera de un vendedor dicha desde la LÍNEA de factura: las tres
@@ -100,6 +110,7 @@ export async function totalesAstaDeCartera(
         ['state', '=', 'posted'],
         ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
         FACTURA_CON_ASTA,
+        SIN_INTERCOMPANIA,
         ...(odooUserId === null ? [] : carteraDesdeFactura(odooUserId)),
         ...rangoLinea(query),
       ],
