@@ -2,8 +2,9 @@ import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { MARCA_ASTA } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
 import { SIN_INTERCOMPANIA, SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
+import { enSede } from './sede.js';
 import type { InvoicingQuery, InvoicingSummary } from './invoicing.service.js';
-import { compras, enRango, smartbit, ventasDeClientes, ventasSmartbitDeCliente } from './smartbit.service.js';
+import { compras, deSede, enRango, smartbit, ventasDeClientes, ventasSmartbitDeCliente } from './smartbit.service.js';
 
 /**
  * Lo que el panel del vendedor cuenta: ASTA, y solo ASTA (decisión del 2-oct-2026).
@@ -94,13 +95,14 @@ export interface TotalAsta {
  */
 export async function totalesAstaDeCartera(
   odooUserId: number | null,
-  query: Pick<InvoicingQuery, 'desde' | 'hasta'> = {},
+  query: Pick<InvoicingQuery, 'desde' | 'hasta'> & { sede?: number | null } = {},
   conSmartbit?: number[] | Promise<number[]>,
 ): Promise<Map<number, TotalAsta>> {
+  const sede = query.sede ?? null;
   const [lineas, facturas, sb] = await Promise.all([
     readGroup<{ partner_id: [number, string] | false; balance: number }>(
       'account.move.line',
-      [...LINEAS_ASTA, ...(odooUserId === null ? [] : carteraDesdeLinea(odooUserId)), ...rangoLinea(query)],
+      [...LINEAS_ASTA, ...(odooUserId === null ? [] : carteraDesdeLinea(odooUserId)), ...rangoLinea(query), ...enSede(sede)],
       ['balance:sum'],
       ['partner_id'],
     ),
@@ -113,6 +115,7 @@ export async function totalesAstaDeCartera(
         SIN_INTERCOMPANIA,
         ...(odooUserId === null ? [] : carteraDesdeFactura(odooUserId)),
         ...rangoLinea(query),
+        ...enSede(sede),
       ],
       ['amount_residual_signed:sum'],
       ['commercial_partner_id', 'move_type'],
@@ -135,7 +138,7 @@ export async function totalesAstaDeCartera(
   }
   if (sb) {
     for (const [id, ventas] of ventasDeClientes(...sb)) {
-      const delRango = ventas.filter((v) => enRango(v, query));
+      const delRango = ventas.filter((v) => enRango(v, query) && deSede(v, sede));
       if (delRango.length === 0) continue;
       const t = de(id);
       t.total += delRango.reduce((s, v) => s + v.venta, 0);

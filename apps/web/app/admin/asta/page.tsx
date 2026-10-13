@@ -1,6 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { getAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAsta } from './TablaAsta';
 
@@ -23,12 +25,13 @@ import { TablaAsta } from './TablaAsta';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AstaPage() {
+export default async function AstaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
+  const sede = sedeDeParams(await searchParams);
 
   let datos;
   try {
-    datos = await getAstaEmpresa(sesion.accessToken);
+    datos = await getAstaEmpresa(sesion.accessToken, sede);
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
@@ -54,8 +57,9 @@ export default async function AstaPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Marca ASTA"
-      descripcion={`Consumibles facturados a ${totales.clientes.toLocaleString('es-VE')} clientes, comparando ASTA con HP, Canon, Epson y Brother · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
+      descripcion={`${sede === null ? '' : `${nombreSede(sede)} · `}Consumibles facturados a ${totales.clientes.toLocaleString('es-VE')} clientes, comparando ASTA con HP, Canon, Epson y Brother · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
     >
+      <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
         <div className="stat">
           <div className="stat-label">CUOTA DE ASTA</div>

@@ -201,6 +201,7 @@ export async function totalDeProductos(
   productos: number[],
   rango: RangoFechas,
   cartera: number[] | null,
+  sede: number | null = null,
 ): Promise<number> {
   if (productos.length === 0) return 0;
 
@@ -221,6 +222,7 @@ export async function totalDeProductos(
       SIN_INTERCOMPANIA_LINEA,
     ];
     if (cartera) dominio.push(['partner_id', 'in', cartera]);
+    if (sede !== null) dominio.push(['company_id', '=', sede]);
 
     // Agrupado solo por `move_type`: el agregado del lote entero, que es lo único
     // que necesita el reporte, separado en facturas y notas de crédito porque

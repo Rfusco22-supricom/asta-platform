@@ -2,6 +2,8 @@ import { searchRead, readGroup } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
+import { enSede } from './sede.js';
+import type { SedeId } from '@asta/shared-types';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
@@ -177,6 +179,7 @@ async function gastoPorCliente(
   lado: 'asta' | 'otros',
   categorias: number[],
   filtroPartner: number[] | null,
+  sede: number | null,
 ): Promise<Map<number, number>> {
   const mapa = new Map<number, number>();
   if (categorias.length === 0) return mapa;
@@ -195,6 +198,7 @@ async function gastoPorCliente(
   // posterior. Traerse toda la empresa y filtrar en Node deja los datos de los
   // demás pasando por el proceso, que es donde acaban las fugas.
   if (filtroPartner) dominio.push(['partner_id', 'in', filtroPartner]);
+  dominio.push(...enSede(sede));
 
   // Con `move_type` en el groupby: `price_subtotal` viene en positivo también en
   // las notas de crédito, y las devoluciones tienen que restar (#26).
@@ -226,7 +230,7 @@ async function gastoPorCliente(
  * clientes de otro.
  */
 export async function oportunidadesAsta(
-  opciones: { soloDelVendedor?: number } = {},
+  opciones: { soloDelVendedor?: number; sede?: SedeId | null } = {},
 ): Promise<ResumenAsta> {
   const t0 = Date.now();
   const categorias = await categoriasEnCompetencia();
@@ -278,8 +282,8 @@ export async function oportunidadesAsta(
   }
 
   const [gastoAsta, gastoOtros] = await Promise.all([
-    gastoPorCliente('asta', categorias, filtroPartner),
-    gastoPorCliente('otros', categorias, filtroPartner),
+    gastoPorCliente('asta', categorias, filtroPartner, opciones.sede ?? null),
+    gastoPorCliente('otros', categorias, filtroPartner, opciones.sede ?? null),
   ]);
 
   const todos = new Set([...gastoAsta.keys(), ...gastoOtros.keys()]);

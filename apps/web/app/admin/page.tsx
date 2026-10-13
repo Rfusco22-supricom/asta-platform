@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
+import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
+import { nombreSede, type SedeId } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
 import { esRedireccion, getAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
@@ -129,8 +131,8 @@ function Ranking<T>({
   );
 }
 
-async function Ventas({ token, rango }: { token: string; rango: Rango }) {
-  const r = await intentar(() => getReporteEmpresa(token, rango));
+async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sede: SedeId | null }) {
+  const r = await intentar(() => getReporteEmpresa(token, rango, sede));
   if (!r) {
     return (
       <>
@@ -141,7 +143,7 @@ async function Ventas({ token, rango }: { token: string; rango: Rango }) {
   }
   const { totales, asta } = r;
   const mes = ultimoMes(r.serieMensual);
-  const reportes = `/admin/reportes?desde=${rango.desde}&hasta=${rango.hasta}`;
+  const reportes = urlCon('/admin/reportes', { periodo: rango, sede });
 
   return (
     <>
@@ -188,7 +190,7 @@ async function Ventas({ token, rango }: { token: string; rango: Rango }) {
         nombre={(v) => v.nombre}
         valor={(v) => v.facturado}
         pie={(v) => facturas(v.facturas)}
-        enlace={{ href: '/admin/agentes', texto: 'Todos los vendedores' }}
+        enlace={{ href: urlCon('/admin/agentes', { sede }), texto: 'Todos los vendedores' }}
       />
 
       <Ranking
@@ -221,8 +223,8 @@ function EsqueletoVentas() {
 
 // ── Productos ──────────────────────────────────────────────────────────────────
 
-async function Productos({ token, rango }: { token: string; rango: Rango }) {
-  const r = await intentar(() => getReporteProductosEmpresa(token, rango));
+async function Productos({ token, rango, sede }: { token: string; rango: Rango; sede: SedeId | null }) {
+  const r = await intentar(() => getReporteProductosEmpresa(token, rango, sede));
   if (!r) return <Fallo area="productos" titulo="Productos ASTA más vendidos" />;
   const productos = r.categorias
     .flatMap((c) => c.productos)
@@ -243,8 +245,8 @@ async function Productos({ token, rango }: { token: string; rango: Rango }) {
 
 // ── Oportunidad ────────────────────────────────────────────────────────────────
 
-async function Oportunidad({ token }: { token: string }) {
-  const r = await intentar(() => getAstaEmpresa(token));
+async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null }) {
+  const r = await intentar(() => getAstaEmpresa(token, sede));
   if (!r) return <Fallo area="oportunidad" titulo="Lo que queda por ganar" />;
   const { totales: t } = r;
   return (
@@ -263,7 +265,7 @@ async function Oportunidad({ token }: { token: string }) {
         <strong>{n(t.sinAsta)}</strong> clientes compran consumibles y nunca han probado ASTA
         <span>{moneyCompact(t.sinAstaImporte)} en otras marcas</span>
       </div>
-      <Link className="btn btn-inline dash-oport-btn" href="/admin/asta">
+      <Link className="btn btn-inline dash-oport-btn" href={urlCon('/admin/asta', { sede })}>
         Ver a quién ofrecerle ASTA
       </Link>
     </section>
@@ -272,22 +274,26 @@ async function Oportunidad({ token }: { token: string }) {
 
 export default async function InicioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
-  const rango = rangoDe(await searchParams) ?? fechasDe('12m');
+  const params = await searchParams;
+  const rango = rangoDe(params) ?? fechasDe('12m');
+  const sede = sedeDeParams(params);
   const token = sesion.accessToken;
+  const donde = sede === null ? 'ASTA en toda la empresa' : `ASTA en ${nombreSede(sede)}`;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Inicio" descripcion={`ASTA en toda la empresa · sin IVA · ${rango.desde} a ${rango.hasta}`}>
-      <Periodos base="/admin" periodo={rango} />
+    <Marco usuario={sesion.usuario} titulo="Inicio" descripcion={`${donde} · sin IVA · ${rango.desde} a ${rango.hasta}`}>
+      <Sedes base="/admin" sede={sede} periodo={rango} />
+      <Periodos base="/admin" periodo={rango} sede={sede} />
 
       <div className="dash">
         <Suspense fallback={<EsqueletoVentas />}>
-          <Ventas token={token} rango={rango} />
+          <Ventas token={token} rango={rango} sede={sede} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="oportunidad" alto={230} />}>
-          <Oportunidad token={token} />
+          <Oportunidad token={token} sede={sede} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="productos" alto={300} />}>
-          <Productos token={token} rango={rango} />
+          <Productos token={token} rango={rango} sede={sede} />
         </Suspense>
       </div>
     </Marco>

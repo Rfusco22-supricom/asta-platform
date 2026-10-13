@@ -27,6 +27,7 @@ export * from './agentes.js';
 export * from './asta.js';
 export * from './reportes.js';
 export * from './reporteProductos.js';
+export * from './sedes.js';
 export * from './invoicing.js';
 export * from './orders.js';
 export * from './catalog.js';

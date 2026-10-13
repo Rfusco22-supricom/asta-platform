@@ -1,7 +1,9 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { VistaReporte } from '@/components/Reporte';
+import { sedeDeParams } from '@/components/Sedes';
 import { getReporteEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { nombreSede } from '@asta/shared-types';
 
 /**
  * Reportes de facturación de toda la empresa.
@@ -27,11 +29,13 @@ export default async function ReportesAdminPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sesion = await requireSession();
-  const rango = rangoDe(await searchParams);
+  const params = await searchParams;
+  const rango = rangoDe(params);
+  const sede = sedeDeParams(params);
 
   let datos;
   try {
-    datos = await getReporteEmpresa(sesion.accessToken, rango);
+    datos = await getReporteEmpresa(sesion.accessToken, rango, sede);
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
@@ -55,9 +59,9 @@ export default async function ReportesAdminPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Reportes"
-      descripcion={`Toda la empresa · solo ASTA, sin IVA · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
+      descripcion={`${sede === null ? 'Toda la empresa' : nombreSede(sede)} · solo ASTA, sin IVA · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
     >
-      <VistaReporte datos={datos} base="/admin/reportes" soloAsta />
+      <VistaReporte datos={datos} base="/admin/reportes" soloAsta sede={sede} />
     </Marco>
   );
 }
