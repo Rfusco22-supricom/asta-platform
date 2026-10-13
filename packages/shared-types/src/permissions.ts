@@ -86,7 +86,7 @@ export interface Regla {
   descripcion: string;
 }
 
-const CLIENTES: readonly AppRole[] = ['BRONCE', 'PLATA', 'GOLD'];
+const CLIENTES: readonly AppRole[] = ['GENERAL', 'BRONCE', 'PLATA', 'GOLD', 'DIAMANTE'];
 const STAFF: readonly AppRole[] = ['SUPERADMIN', 'VENDEDOR'];
 
 export const MATRIZ: Readonly<Record<Accion, Regla>> = {

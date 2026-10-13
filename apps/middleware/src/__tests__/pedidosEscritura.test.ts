@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Server } from 'node:http';
-import { publicOrderDetailResponseSchema } from '@asta/shared-types';
+import { publicOrderDetailResponseSchema, isClientRole, clientTierSchema } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
@@ -119,7 +119,7 @@ async function prepararCliente(companyId: number, excluir: Set<number>, sufijo: 
   if (!tarifa?.tarifa || !almacen) throw new Error(`El cliente ${partnerId} no tiene tarifa o almacén.`);
 
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) throw new Error(`El partner ${partnerId} es staff.`);
+  if (usuario && !isClientRole(usuario.role)) throw new Error(`El partner ${partnerId} es staff.`);
   if (!usuario) {
     usuario = await prisma.appUser.create({
       data: { email: `test.pedidos.escritura.${sufijo}@pedidos.local`, fullName: `Cliente escritura ${sufijo}`, role: 'BRONCE', odooPartnerId: partnerId, isActive: true },
@@ -169,7 +169,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${dir.port}`;
 
   const staff = new Set(
-    (await prisma.appUser.findMany({ where: { role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
+    (await prisma.appUser.findMany({ where: { role: { notIn: clientTierSchema.options } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
   );
   A = await prepararCliente(7, staff, 'a');
   B = await prepararCliente(10, new Set([...staff, A.partnerId]), 'b');

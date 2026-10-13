@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { apiErrorSchema } from '@asta/shared-types';
+import { apiErrorSchema, clientTierSchema } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { searchRead } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
@@ -74,7 +74,7 @@ beforeAll(async () => {
     { limit: 3000, order: 'id desc' },
   );
   const ocupados = new Set(
-    (await prisma.appUser.findMany({ where: { role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
+    (await prisma.appUser.findMany({ where: { role: { notIn: clientTierSchema.options } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
   );
   const elegida = facturas.find((f) => f.invoice_pdf_report_id && f.commercial_partner_id && !ocupados.has(f.commercial_partner_id[0]));
   if (!elegida || !elegida.commercial_partner_id) throw new Error('No hay una factura con PDF para los ejemplos: el test no probaría nada.');

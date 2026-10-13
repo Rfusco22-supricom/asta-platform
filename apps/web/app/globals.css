@@ -252,6 +252,7 @@ tbody tr:hover { background: var(--surface-2); }
 .tag.bronce { color: var(--bronce); }
 .tag.plata  { color: var(--plata); }
 .tag.gold   { color: var(--gold); }
+.tag.diamante { color: var(--diamante); }
 .tag.prospecto { color: var(--text-3); font-weight: 500; }
 
 /* ── Estados ──────────────────────────────────────────────────────────────── */

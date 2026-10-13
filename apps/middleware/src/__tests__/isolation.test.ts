@@ -1,3 +1,4 @@
+import { clientTierSchema } from '@asta/shared-types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
 import type { AppRole } from '@asta/shared-types';
@@ -338,6 +339,8 @@ beforeAll(async () => {
   await prepararIdentidad('BRONCE', null, 990_004);
   await prepararIdentidad('PLATA', null, 990_005);
   await prepararIdentidad('GOLD', null, 990_006);
+  await prepararIdentidad('DIAMANTE', null, 990_007);
+  await prepararIdentidad('GENERAL', null, 990_008);
 }, 240_000);
 
 afterAll(async () => {
@@ -553,13 +556,13 @@ describe('#25 · Roles', () => {
     expect(r.status).toBe(200);
   });
 
-  it.each(['BRONCE', 'PLATA', 'GOLD'])('el rol %s no entra en la cartera', async (rol) => {
+  it.each(clientTierSchema.options)('el rol %s no entra en la cartera', async (rol) => {
     const r = await get('/api/v1/salesperson/portfolio', comoRol(fx.vendedorA, rol));
     expect(r.status).toBe(403);
     expect(r.body?.error?.code).toBe('ROLE_NOT_ALLOWED');
   });
 
-  it.each(['BRONCE', 'PLATA', 'GOLD'])('el rol %s no entra en una ficha', async (rol) => {
+  it.each(clientTierSchema.options)('el rol %s no entra en una ficha', async (rol) => {
     const r = await get(
       `/api/v1/salesperson/clients/${fx.clienteDeA}/invoicing`,
       comoRol(fx.vendedorA, rol),

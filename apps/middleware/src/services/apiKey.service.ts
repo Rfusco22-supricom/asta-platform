@@ -4,6 +4,7 @@ import type {
   ApiKeyEnv,
   ApiKeySummary,
   ApiKeyUsageRow,
+  AppRole,
   ErrorCode,
 } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
@@ -129,7 +130,7 @@ export type VerifyFailure =
 export interface VerifiedIdentity {
   apiKeyId: string;
   appUserId: string;
-  role: 'SUPERADMIN' | 'VENDEDOR' | 'BRONCE' | 'PLATA' | 'GOLD';
+  role: AppRole;
   odooPartnerId: number;
   odooUserId: number | null;
   odooPricelistId: number | null;

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { publicOrderDetailResponseSchema, publicOrderListResponseSchema, publicOrderSchema, publicOrderLineSchema } from '@asta/shared-types';
+import { publicOrderDetailResponseSchema, publicOrderListResponseSchema, publicOrderSchema, publicOrderLineSchema, isClientRole, clientTierSchema } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { executeKw, readGroup, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
@@ -90,7 +90,7 @@ async function todosLosPedidos(key: string, extra = ''): Promise<Array<{ id: num
 
 async function prepararCliente(partnerId: number, sufijo: string): Promise<Omit<Cliente, 'pedido'>> {
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
+  if (usuario && !isClientRole(usuario.role)) {
     throw new Error(`El partner ${partnerId} ya pertenece a un usuario con rol ${usuario.role}.`);
   }
   if (!usuario) {
@@ -126,7 +126,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${dir.port}`;
 
   const staff = new Set(
-    (await prisma.appUser.findMany({ where: { role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
+    (await prisma.appUser.findMany({ where: { role: { notIn: clientTierSchema.options } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
   );
 
   // Clientes RAÍZ, como en #36: si uno colgara del otro, el de arriba vería

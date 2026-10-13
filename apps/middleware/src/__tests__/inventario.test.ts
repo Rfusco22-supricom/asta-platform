@@ -3,7 +3,7 @@ import type { Server } from 'node:http';
 import { createApp } from '../server.js';
 import { executeKw, readGroup, searchRead } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
-import { apiErrorSchema } from '@asta/shared-types';
+import { apiErrorSchema, isClientRole, clientTierSchema } from '@asta/shared-types';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { estadoDeStock, vaciarCachesInventario } from '../services/inventory.service.js';
 
@@ -65,7 +65,7 @@ async function get(path: string, key?: string) {
 
 async function crearUsuarioConKey(partnerId: number, sufijo: string, scopes: Array<'INVENTORY_READ' | 'PRICING_READ'> = ['INVENTORY_READ']) {
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
+  if (usuario && !isClientRole(usuario.role)) {
     throw new Error(`El partner ${partnerId} ya pertenece a un usuario con rol ${usuario.role}.`);
   }
   if (!usuario) {
@@ -143,7 +143,7 @@ async function clienteDe(companyId: number): Promise<number> {
     ['commercial_partner_id', 'company_id'],
   );
   const ocupados = new Set(
-    (await prisma.appUser.findMany({ where: { odooPartnerId: { in: ids }, role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } } })).map((u) => u.odooPartnerId),
+    (await prisma.appUser.findMany({ where: { odooPartnerId: { in: ids }, role: { notIn: clientTierSchema.options } } })).map((u) => u.odooPartnerId),
   );
   const elegido = partners.find(
     (p) => (!p.commercial_partner_id || p.commercial_partner_id[0] === p.id) && p.company_id && p.company_id[0] === companyId && !ocupados.has(p.id),

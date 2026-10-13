@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { apiErrorSchema } from '@asta/shared-types';
+import { apiErrorSchema, isClientRole, clientTierSchema } from '@asta/shared-types';
 import type { Server } from 'node:http';
 import { createApp } from '../server.js';
 import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
@@ -113,7 +113,7 @@ function conFirmaAlterada(url: string): string {
 
 async function prepararUsuario(partnerId: number, sufijo: string) {
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
+  if (usuario && !isClientRole(usuario.role)) {
     throw new Error(`El partner ${partnerId} ya pertenece a un usuario con rol ${usuario.role}.`);
   }
   if (!usuario) {
@@ -161,7 +161,7 @@ async function descubrir(
     (await searchRead<{ id: number; name: string }>('ir.attachment', [['id', 'in', idsAdj]], ['name'])).map((a) => [a.id, a.name]),
   );
   const ocupados = new Set(
-    (await prisma.appUser.findMany({ where: { role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } }, select: { odooPartnerId: true } }))
+    (await prisma.appUser.findMany({ where: { role: { notIn: clientTierSchema.options } }, select: { odooPartnerId: true } }))
       .map((u) => u.odooPartnerId),
   );
   for (const f of facturas) {

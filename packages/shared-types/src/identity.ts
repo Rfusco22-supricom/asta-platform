@@ -10,21 +10,25 @@ import { odooIdSchema } from './common.js';
 // Roles
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const appRoleSchema = z.enum(['SUPERADMIN', 'VENDEDOR', 'BRONCE', 'PLATA', 'GOLD']);
+export const appRoleSchema = z.enum(['SUPERADMIN', 'VENDEDOR', 'BRONCE', 'PLATA', 'GOLD', 'DIAMANTE', 'GENERAL']);
 export type AppRole = z.infer<typeof appRoleSchema>;
 
-/** Los tres roles que son en realidad niveles de cliente. */
-export const clientTierSchema = z.enum(['BRONCE', 'PLATA', 'GOLD']);
+/**
+ * Los roles que son en realidad niveles de cliente: la categoría de ASTA del
+ * cliente (#131, `categoriasAsta.ts`). GOLD es «Oro»: el valor técnico se
+ * quedó en inglés para no reescribir las cuentas que ya existían.
+ */
+export const clientTierSchema = z.enum(['BRONCE', 'PLATA', 'GOLD', 'DIAMANTE', 'GENERAL']);
 export type ClientTier = z.infer<typeof clientTierSchema>;
 
-const CLIENT_ROLES = new Set<AppRole>(['BRONCE', 'PLATA', 'GOLD']);
+const CLIENT_ROLES = new Set<AppRole>(['BRONCE', 'PLATA', 'GOLD', 'DIAMANTE', 'GENERAL']);
 
 /**
- * BRONCE, PLATA y GOLD son *tiers* del mismo rol funcional: cliente. Se
- * distinguen para resolver la tarifa, no para dar permisos distintos.
+ * Los niveles son *tiers* del mismo rol funcional: cliente. Dicen cuánto compra
+ * de ASTA, no dan permisos distintos.
  *
- * Úsalo siempre en vez de enumerar los tres a mano. Cuando aparezca un cuarto
- * nivel (PLATINO, lo que sea), solo hay que tocarlo aquí.
+ * Úsalo siempre en vez de enumerarlos a mano: así entraron DIAMANTE y GENERAL
+ * tocando solo esta lista.
  */
 export function isClientRole(role: AppRole): role is ClientTier {
   return CLIENT_ROLES.has(role);
@@ -40,7 +44,9 @@ export const ROLE_LABEL: Record<AppRole, string> = {
   VENDEDOR: 'Vendedor',
   BRONCE: 'Bronce',
   PLATA: 'Plata',
-  GOLD: 'Gold',
+  GOLD: 'Oro',
+  DIAMANTE: 'Diamante',
+  GENERAL: 'Cliente general',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
