@@ -23,6 +23,7 @@ export * from './impulsa.js';
 export * from './duplicados.js';
 export * from './calidadDatos.js';
 export * from './nombres.js';
+export * from './categoriasAsta.js';
 export * from './agentes.js';
 export * from './asta.js';
 export * from './reportes.js';

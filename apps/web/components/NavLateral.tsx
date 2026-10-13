@@ -128,6 +128,14 @@ function Icono({ nombre }: { nombre: string }) {
           <path d="M11 15h2M9 21h6M12 18v3" />
         </svg>
       );
+    case 'categorias':
+      // Una medalla: la categoría del cliente.
+      return (
+        <svg {...comun}>
+          <circle cx="12" cy="14.5" r="5.5" />
+          <path d="M8.5 9.8 6 3h4l2 4.5L14 3h4l-2.5 6.8M12 12.3l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.2z" />
+        </svg>
+      );
     case 'pendientes':
       // Una campana: lo que está esperando a alguien.
       return (
