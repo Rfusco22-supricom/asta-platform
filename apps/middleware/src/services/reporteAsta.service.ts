@@ -2,10 +2,11 @@ import { readGroup, searchRead } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO } from './criterioFacturacion.js';
 import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, type Reporte } from './reportes.service.js';
-import { compras, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
+import { enSede } from './sede.js';
+import { compras, deSede, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
 import { SIN_INTERCOMPANIA } from './intercompania.js';
 import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea } from './ventasAsta.service.js';
-import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
+import { limpiarEspacios, nombrePersona, type SedeId } from '@asta/shared-types';
 
 /**
  * El reporte SOLO ASTA (ver `ventasAsta.service`), de la cartera de un vendedor
@@ -31,14 +32,14 @@ import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
  * La cuota sigue siendo solo de Odoo: Smartbit trae ASTA, no la competencia, y
  * mezclarlas la inflaría.
  */
-async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promise<Reporte> {
+async function reporteAsta(odooUserId: number | null, rango: RangoFechas, sede: SedeId | null = null): Promise<Reporte> {
   const t0 = Date.now();
   const deLaEmpresa = odooUserId === null;
   const enRango = [
     ['invoice_date', '>=', rango.desde],
     ['invoice_date', '<=', rango.hasta],
   ] as const;
-  const lineas = [...LINEAS_ASTA, ...(deLaEmpresa ? [] : carteraDesdeLinea(odooUserId)), ...enRango];
+  const lineas = [...LINEAS_ASTA, ...(deLaEmpresa ? [] : carteraDesdeLinea(odooUserId)), ...enRango, ...enSede(sede)];
   const facturasAsta = [
     ['state', '=', 'posted'],
     ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
@@ -46,6 +47,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     SIN_INTERCOMPANIA,
     ...(deLaEmpresa ? [] : carteraDesdeFactura(odooUserId)),
     ...enRango,
+    ...enSede(sede),
   ];
 
   const [lineasPorMes, lineasPorCliente, facturasPorMes, facturasPorCliente, competencia, sb] = await Promise.all([
@@ -65,10 +67,10 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     ),
     // La competencia, como oportunidad: lo que se compró de otras marcas en las
     // categorías donde ASTA tiene producto.
-    (async () => totalDeProductos((await productosEnCompetencia()).otros, rango, deLaEmpresa ? null : await carteraDe(odooUserId)))(),
+    (async () => totalDeProductos((await productosEnCompetencia()).otros, rango, deLaEmpresa ? null : await carteraDe(odooUserId), sede))(),
     smartbit(),
   ]);
-  const ventasSb = sb.ventas.filter((v) => enRangoSb(v, rango) && (deLaEmpresa || v.vendedorId === odooUserId));
+  const ventasSb = sb.ventas.filter((v) => enRangoSb(v, rango) && deSede(v, sede) && (deLaEmpresa || v.vendedorId === odooUserId));
 
   const monto = new Map<string, number>();
   for (const g of lineasPorMes) {
@@ -205,9 +207,9 @@ export function reporteAstaDelVendedor(odooUserId: number, rango: RangoFechas): 
   return reporteAsta(odooUserId, rango);
 }
 
-/** El reporte de toda la empresa, solo ASTA: la vista de administración. */
-export function reporteAstaDeLaEmpresa(rango: RangoFechas): Promise<Reporte> {
-  return reporteAsta(null, rango);
+/** El reporte de toda la empresa o de una sede, solo ASTA: la vista de administración. */
+export function reporteAstaDeLaEmpresa(rango: RangoFechas, sede: SedeId | null = null): Promise<Reporte> {
+  return reporteAsta(null, rango, sede);
 }
 
 function redondear(n: number): number {

@@ -27,6 +27,7 @@ import { resumenAstaDeCliente, totalesAstaDeCartera } from '../services/ventasAs
 
 const venta = (v: Partial<VentaSmartbit>): VentaSmartbit => ({
   fecha: '2025-01-10',
+  companyId: 9,
   vendedorId: 1,
   vendedor: 'Ana',
   rif: 'J1',

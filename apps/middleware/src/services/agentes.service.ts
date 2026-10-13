@@ -1,10 +1,11 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
-import { compras, smartbit, ventasDeClientes } from './smartbit.service.js';
+import { compras, deSede, smartbit, ventasDeClientes } from './smartbit.service.js';
+import { claveSede } from './sede.js';
 import { totalesAstaDeCartera } from './ventasAsta.service.js';
 import { dePantalla } from './pantallas.js';
 import { authEnv } from '../config/authEnv.js';
-import { nombrePersona } from '@asta/shared-types';
+import { nombrePersona, type SedeId } from '@asta/shared-types';
 
 /**
  * Estadísticas de los agentes de venta, para el panel de administración.
@@ -81,8 +82,8 @@ interface UsuarioOdoo {
  * lento, y se guarda un rato (`pantallas.ts`); el acceso al panel no, que lo
  * cambia el propio administrador y tiene que verse al volver.
  */
-function leerOdoo() {
-  return dePantalla('admin:agentes', async () => {
+function leerOdoo(sede: SedeId | null) {
+  return dePantalla(`admin:agentes:${claveSede(sede)}`, async () => {
     // ── Quién tiene cartera ─────────────────────────────────────────────────
     const partners = await searchRead<{ id: number; user_id: [number, string] | false }>(
       'res.partner',
@@ -100,7 +101,7 @@ function leerOdoo() {
     const [facturacion, usuarios] = await Promise.all([
       // Solo ASTA, como «Mi cartera» de cada vendedor (`ventasAsta.service`):
       // de toda la empresa en dos consultas, y se reparte por cartera abajo.
-      totalesAstaDeCartera(null),
+      totalesAstaDeCartera(null, { sede }),
 
       /*
        * Se piden también los INACTIVOS.
@@ -120,10 +121,10 @@ function leerOdoo() {
   });
 }
 
-export async function estadisticasAgentes(): Promise<ResumenAgentes> {
+export async function estadisticasAgentes(sede: SedeId | null = null): Promise<ResumenAgentes> {
   const t0 = Date.now();
 
-  const { partners, facturacion, usuarios } = await leerOdoo();
+  const { partners, facturacion, usuarios } = await leerOdoo(sede);
 
   const porUsuario = new Map<number, { nombre: string; partners: number[] }>();
   for (const p of partners) {
@@ -156,7 +157,7 @@ export async function estadisticasAgentes(): Promise<ResumenAgentes> {
       },
     }),
 
-    smartbit(),
+    smartbit().then((todo) => (sede === null ? todo : { ...todo, ventas: todo.ventas.filter((v) => deSede(v, sede)) })),
   ]);
 
   // Smartbit, lo de antes del 1-abr-2026 (`smartbit.service`): lo vendido y

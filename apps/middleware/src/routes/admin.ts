@@ -11,6 +11,7 @@ import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
+import { claveSede, sedeDeLaPeticion } from '../services/sede.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
@@ -189,8 +190,9 @@ adminRouter.post(
  */
 adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => {
   try {
-    // Se guarda un rato: ver `pantallas.ts`.
-    const r = await dePantalla('admin:asta', () => oportunidadesAsta());
+    // Se guarda un rato, por sede: ver `pantallas.ts`.
+    const sede = sedeDeLaPeticion(req.query as Record<string, unknown>);
+    const r = await dePantalla(`admin:asta:${claveSede(sede)}`, () => oportunidadesAsta({ sede }));
     res.json({
       data: r.oportunidades,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
@@ -210,7 +212,7 @@ adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => 
  */
 adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, next) => {
   try {
-    const r = await estadisticasAgentes();
+    const r = await estadisticasAgentes(sedeDeLaPeticion(req.query as Record<string, unknown>));
     res.json({
       data: r.agentes,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
@@ -231,9 +233,12 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
 adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, next) => {
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    const sede = sedeDeLaPeticion(req.query as Record<string, unknown>);
     // Solo ASTA, como el panel del vendedor (decisión del 5-oct-2026). Se
-    // guarda un rato por periodo: ver `pantallas.ts`.
-    res.json(await dePantalla(`admin:reportes:${rango.desde}:${rango.hasta}`, () => reporteAstaDeLaEmpresa(rango)));
+    // guarda un rato por periodo y sede: ver `pantallas.ts`.
+    res.json(
+      await dePantalla(`admin:reportes:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () => reporteAstaDeLaEmpresa(rango, sede)),
+    );
   } catch (error) {
     next(error);
   }
@@ -248,7 +253,8 @@ adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, n
  */
 adminRouter.get('/reportes/productos', autorizar('admin.reportes.ver'), async (req, res, next) => {
   try {
-    res.json(await reporteProductos(null, rangoDeLaPeticion(req.query as Record<string, unknown>)));
+    const query = req.query as Record<string, unknown>;
+    res.json(await reporteProductos(null, rangoDeLaPeticion(query), sedeDeLaPeticion(query)));
   } catch (error) {
     next(error);
   }

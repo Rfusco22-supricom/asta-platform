@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Reporte } from '@/lib/api';
 import { Periodos } from '@/components/Periodos';
+import { Sedes } from '@/components/Sedes';
+import type { SedeId } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
@@ -125,7 +127,18 @@ export function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
  * Con `soloAsta` también entra Smartbit, lo de antes de abril de 2026: en una
  * compra de Smartbit (un cliente en un día) cuenta como factura.
  */
-export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte; base: string; soloAsta?: boolean }) {
+export function VistaReporte({
+  datos,
+  base,
+  soloAsta = false,
+  sede,
+}: {
+  datos: Reporte;
+  base: string;
+  soloAsta?: boolean;
+  /** Solo en la vista del administrador: pinta el selector de sede (ver `Sedes`). */
+  sede?: SedeId | null;
+}) {
   const { totales, asta } = datos;
   const pctDeuda = totales.facturado > 0 ? (totales.porCobrar / totales.facturado) * 100 : 0;
   const hayAlgo = totales.facturas > 0;
@@ -161,7 +174,8 @@ export function VistaReporte({ datos, base, soloAsta = false }: { datos: Reporte
 
   return (
     <>
-      <Periodos base={base} periodo={datos.periodo} />
+      {sede !== undefined && <Sedes base={base} sede={sede} periodo={datos.periodo} />}
+      <Periodos base={base} periodo={datos.periodo} sede={sede ?? null} />
 
       {!hayAlgo ? (
         <div className="notice">

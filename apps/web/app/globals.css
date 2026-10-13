@@ -1270,6 +1270,10 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   color: var(--text);
 }
 
+/* El selector de sede (`components/Sedes.tsx`) va encima del de periodo, con
+   los mismos chips: las dos filas se leen como un solo filtro. */
+.sedes { margin-bottom: 10px; }
+
 .periodo--activo,
 .periodo--activo:hover {
   background: var(--primario);

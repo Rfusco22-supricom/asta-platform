@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { getAgentes, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAgentes } from './TablaAgentes';
 
@@ -44,12 +46,13 @@ function Metrica({
   );
 }
 
-export default async function AgentesPage() {
+export default async function AgentesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
+  const sede = sedeDeParams(await searchParams);
 
   let datos;
   try {
-    datos = await getAgentes(sesion.accessToken);
+    datos = await getAgentes(sesion.accessToken, sede);
   } catch (error) {
     // `redirect()` funciona lanzando: si no se relanza, el catch se la traga.
     if (esRedireccion(error)) throw error;
@@ -75,8 +78,9 @@ export default async function AgentesPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Vendedores"
-      descripcion={`${totales.agentes} personas con cartera asignada en Odoo · solo ASTA · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
+      descripcion={`${totales.agentes} personas con cartera asignada en Odoo · solo ASTA${sede === null ? '' : `, vendido en ${nombreSede(sede)}`} · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
     >
+      <Sedes base="/admin/agentes" sede={sede} />
       <section className="stats">
         <Metrica
           etiqueta="Cartera total"

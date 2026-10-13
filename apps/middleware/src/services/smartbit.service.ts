@@ -52,6 +52,8 @@ export const CORTE_SMARTBIT = '2026-04-01';
 export interface VentaSmartbit {
   /** "AAAA-MM-DD". */
   fecha: string;
+  /** La compañía (sede) de la venta, con los mismos ids que en Odoo: ver `deSede`. */
+  companyId: number;
   /** El usuario de Odoo del vendedor, o null si su nombre no casa con ninguno. */
   vendedorId: number | null;
   /** El nombre tal como viene, sin espacios de más. */
@@ -175,6 +177,7 @@ export function clientesDelRif(rif: string | null, indice: IndiceRif): ClienteCo
 }
 
 interface FilaSmartbit {
+  companyId: number;
   fecha: Date;
   vendedor: string | null;
   codigoCliente: string | null;
@@ -222,7 +225,7 @@ async function leerSmartbit(): Promise<Smartbit> {
   try {
     filas = await prisma.ventaSmartbit.findMany({
       where: { marca: 'ASTA', fecha: { lt: new Date(`${CORTE_SMARTBIT}T00:00:00Z`) } },
-      select: { fecha: true, vendedor: true, codigoCliente: true, cliente: true, codigoArticulo: true, articulo: true, venta: true, unidades: true },
+      select: { companyId: true, fecha: true, vendedor: true, codigoCliente: true, cliente: true, codigoArticulo: true, articulo: true, venta: true, unidades: true },
     });
   } catch (error) {
     throw new SinTablaSmartbit('ventas_smartbit', { cause: error });
@@ -259,6 +262,7 @@ async function leerSmartbit(): Promise<Smartbit> {
     const vendedor = (f.vendedor ?? '').replace(/\s+/g, ' ').trim();
     return {
       fecha: f.fecha.toISOString().slice(0, 10),
+      companyId: f.companyId,
       vendedorId: usuarioDe.get(normalizarNombre(vendedor)) ?? null,
       vendedor,
       rif,
@@ -273,6 +277,14 @@ async function leerSmartbit(): Promise<Smartbit> {
   });
 
   return { ventas, indice };
+}
+
+/**
+ * Si una venta es de la sede pedida (`null`: todas). `company_id` de Smartbit
+ * usa los ids de compañía de Odoo (9 Valencia, 10 Caracas, 7 Panamá).
+ */
+export function deSede(v: Pick<VentaSmartbit, 'companyId'>, sede: number | null): boolean {
+  return sede === null || v.companyId === sede;
 }
 
 export function enRango(v: Pick<VentaSmartbit, 'fecha'>, rango: { desde?: string; hasta?: string }): boolean {

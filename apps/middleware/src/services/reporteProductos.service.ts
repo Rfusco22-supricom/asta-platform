@@ -4,9 +4,11 @@ import { CacheTtl } from '../utils/cacheTtl.js';
 import { MARCA_ASTA, categoriasEnCompetencia } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from './criterioFacturacion.js';
 import { idsDeCartera } from './partners.service.js';
-import { smartbit, ventasDeClientes, type VentaSmartbit } from './smartbit.service.js';
+import { deSede, smartbit, ventasDeClientes, type VentaSmartbit } from './smartbit.service.js';
 import { LINEA_ASTA } from './ventasAsta.service.js';
 import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
+import { claveSede, enSede } from './sede.js';
+import type { SedeId } from '@asta/shared-types';
 import type { RangoPedido } from './rango.js';
 
 /**
@@ -256,8 +258,13 @@ export function gruposSmartbit(porCliente: Map<number, VentaSmartbit[]>, rango: 
  *   inicio del administrador). El alcance lo decide la RUTA que llama, nunca
  *   quien pide: la del vendedor pasa siempre el suyo.
  */
-export async function reporteProductos(odooUserId: number | null, rango: RangoPedido, ahora = new Date()): Promise<ReporteProductos> {
-  const clave = `${odooUserId ?? 'empresa'}:${rango.desde}:${rango.hasta}`;
+export async function reporteProductos(
+  odooUserId: number | null,
+  rango: RangoPedido,
+  sede: SedeId | null = null,
+  ahora = new Date(),
+): Promise<ReporteProductos> {
+  const clave = `${odooUserId ?? 'empresa'}:${claveSede(sede)}:${rango.desde}:${rango.hasta}`;
   const enCache = cache.get(clave);
   if (enCache) {
     const { generadoEn, ...resto } = enCache;
@@ -276,6 +283,7 @@ export async function reporteProductos(odooUserId: number | null, rango: RangoPe
     ['partner_id.active', '=', true],
     LINEA_ASTA,
     SIN_INTERCOMPANIA_LINEA,
+    ...enSede(sede),
   ];
 
   const [gruposOdoo, competencia, sb, cartera] = await Promise.all([
@@ -288,7 +296,8 @@ export async function reporteProductos(odooUserId: number | null, rango: RangoPe
   // el de Odoo cuando está en los dos.
   // Toda la empresa: todos los clientes a los que Smartbit sabe atribuir una venta.
   const clientes = cartera ?? [...sb.indice.porRif.values()].flat().map((c) => c.id);
-  const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sb, clientes), rango)];
+  const sbDeSede = sede === null ? sb : { ...sb, ventas: sb.ventas.filter((v) => deSede(v, sede)) };
+  const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sbDeSede, clientes), rango)];
 
   const ids = [...new Set(grupos.map((g) => (g.product_id ? g.product_id[0] : 0)).filter(Boolean))];
   // Los archivados también: se vendieron en el periodo aunque hoy no se vendan.

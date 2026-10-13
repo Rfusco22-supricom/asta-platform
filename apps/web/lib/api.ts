@@ -395,8 +395,8 @@ export interface Agentes {
 }
 
 /** Estadísticas de los agentes de venta (#96). */
-export async function getAgentes(accessToken: string): Promise<Agentes> {
-  const r = await request('/api/v1/admin/agentes', agentesRespuestaSchema, accessToken);
+export async function getAgentes(accessToken: string, sede: number | null = null): Promise<Agentes> {
+  const r = await request(`/api/v1/admin/agentes${consulta(undefined, sede)}`, agentesRespuestaSchema, accessToken);
   const { generadoEn, duracionMs, ...totales } = r.meta;
   return { filas: r.data, totales, generadoEn, duracionMs };
 }
@@ -430,7 +430,8 @@ async function pedirAsta(ruta: string, accessToken: string): Promise<Asta> {
   return { filas: r.data, totales, generadoEn, duracionMs };
 }
 
-export const getAstaEmpresa = (accessToken: string) => pedirAsta('/api/v1/admin/asta', accessToken);
+export const getAstaEmpresa = (accessToken: string, sede: number | null = null) =>
+  pedirAsta(`/api/v1/admin/asta${consulta(undefined, sede)}`, accessToken);
 export const getAstaCartera = (accessToken: string) =>
   pedirAsta('/api/v1/salesperson/asta', accessToken);
 
@@ -445,19 +446,32 @@ export type Reporte = ReporteRespuesta;
  * `porVendedor: null` porque ni siquiera calcula ese corte, asi que no hay forma
  * de que la pantalla ensene de mas por un fallo de plantilla.
  */
+/** `?desde&hasta` si hay rango, y `sede` si no es «todas». */
+function consulta(rango?: { desde: string; hasta: string }, sede: number | null = null): string {
+  const qs = new URLSearchParams();
+  if (rango) {
+    qs.set('desde', rango.desde);
+    qs.set('hasta', rango.hasta);
+  }
+  if (sede !== null) qs.set('sede', String(sede));
+  const s = qs.toString();
+  return s ? `?${s}` : '';
+}
+
 async function pedirReporte(
   ruta: string,
   accessToken: string,
   rango?: { desde: string; hasta: string },
+  sede: number | null = null,
 ): Promise<Reporte> {
-  const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
-  return request(`${ruta}${qs}`, reporteRespuestaSchema, accessToken);
+  return request(`${ruta}${consulta(rango, sede)}`, reporteRespuestaSchema, accessToken);
 }
 
 export const getReporteEmpresa = (
   accessToken: string,
   rango?: { desde: string; hasta: string },
-) => pedirReporte('/api/v1/admin/reportes', accessToken, rango);
+  sede: number | null = null,
+) => pedirReporte('/api/v1/admin/reportes', accessToken, rango, sede);
 
 export const getReporteCartera = (
   accessToken: string,
@@ -465,9 +479,8 @@ export const getReporteCartera = (
 ) => pedirReporte('/api/v1/salesperson/reportes', accessToken, rango);
 
 /** Los productos ASTA de toda la empresa, por categoría y producto: el inicio del administrador. */
-export async function getReporteProductosEmpresa(accessToken: string, rango?: { desde: string; hasta: string }) {
-  const qs = rango ? `?desde=${rango.desde}&hasta=${rango.hasta}` : '';
-  return request(`/api/v1/admin/reportes/productos${qs}`, reporteProductosRespuestaSchema, accessToken);
+export async function getReporteProductosEmpresa(accessToken: string, rango?: { desde: string; hasta: string }, sede: number | null = null) {
+  return request(`/api/v1/admin/reportes/productos${consulta(rango, sede)}`, reporteProductosRespuestaSchema, accessToken);
 }
 
 /** Qué compran los clientes de la propia cartera, por categoría y producto. */

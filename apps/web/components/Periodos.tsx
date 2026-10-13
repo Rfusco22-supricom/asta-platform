@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import type { SedeId } from '@asta/shared-types';
 import { CargandoEnlace } from './CargandoEnlace';
+import { urlCon } from './Sedes';
 
 /**
  * El selector de periodo, compartido por reportes y recomendador.
@@ -34,14 +36,23 @@ export function fechasDe(preset: Preset, hoy = new Date()): { desde: string; has
   return { desde: iso(d), hasta };
 }
 
-export function Periodos({ base, periodo }: { base: string; periodo: { desde: string; hasta: string } }) {
+/** Con `sede`, los enlaces la conservan (ver `Sedes`). */
+export function Periodos({
+  base,
+  periodo,
+  sede = null,
+}: {
+  base: string;
+  periodo: { desde: string; hasta: string };
+  sede?: SedeId | null;
+}) {
   return (
     <div className="periodos">
       {PRESETS.map((p) => {
         const { desde, hasta } = fechasDe(p.clave);
         const activo = periodo.desde === desde && periodo.hasta === hasta;
         return (
-          <Link key={p.clave} href={`${base}?desde=${desde}&hasta=${hasta}`} className={`periodo${activo ? ' periodo--activo' : ''}`}>
+          <Link key={p.clave} href={urlCon(base, { periodo: { desde, hasta }, sede })} className={`periodo${activo ? ' periodo--activo' : ''}`}>
             {p.etiqueta}
             <CargandoEnlace />
           </Link>
