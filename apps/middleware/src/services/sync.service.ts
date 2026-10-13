@@ -1,8 +1,7 @@
-import type { AppRole } from '@asta/shared-types';
+import { clientTierSchema, type AppRole } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
-import { tierFromPricelist, type MapaTiers } from '../config/tiers.js';
 import { cargarMapaTiers } from './tiers.service.js';
 import { recordAudit } from './audit.service.js';
 import { idTarifa, leerTarifas, nombreTarifa } from './tarifas.service.js';
@@ -116,10 +115,16 @@ function restarSegundos(fechaOdoo: string, segundos: number): string {
   return new Date(t - segundos * 1000).toISOString().slice(0, 19).replace('T', ' ');
 }
 
-/** El rol sale de la tarifa: `x_client_tier` no existe en esta instancia (#3). */
-function rolDe(pricelistId: number | null, esStaff: boolean, mapa: MapaTiers): AppRole {
-  return esStaff ? 'VENDEDOR' : tierFromPricelist(pricelistId, mapa);
-}
+/**
+ * El nivel de una cuenta NUEVA (#131).
+ *
+ * El nivel ya no sale de la tarifa sino de la categoría de ASTA del cliente, que
+ * calcula y aplica `nivelesCliente.service` una vez al día: este sync solo mira
+ * los partners que cambiaron en Odoo, y la categoría cambia aunque nadie toque
+ * la ficha. Una cuenta nace en el nivel más bajo y la pasada de niveles la sube.
+ * A una cuenta que ya existe, el sync no le toca el nivel.
+ */
+const NIVEL_DE_CUENTA_NUEVA: AppRole = 'GENERAL';
 
 /**
  * ¿Hay que releer a todos porque cambió el mapeo tarifa → nivel? (#131)
@@ -302,7 +307,6 @@ export async function sincronizarPartners(
           email,
           fullName: nombre,
           phone: f.phone ? String(f.phone).trim() || null : null,
-          role: rolDe(pricelistId, false, mapa),
           odooPricelistId: pricelistId,
           odooPricelistName: nombreTarifa(tarifa),
           odooCommercialId: f.commercial_partner_id ? f.commercial_partner_id[0] : f.id,
@@ -319,31 +323,19 @@ export async function sincronizarPartners(
 
         if (!existente) {
           await prisma.appUser.create({
-            data: { ...datos, odooPartnerId: f.id, isActive: true },
+            data: { ...datos, role: NIVEL_DE_CUENTA_NUEVA, odooPartnerId: f.id, isActive: true },
           });
           resumen.creados++;
           continue;
         }
 
-        // NO se toca `role` si el usuario es staff: un vendedor o un SuperAdmin
-        // no puede degradarse a BRONCE porque Odoo diga que su partner tiene la
-        // tarifa por defecto. El rol de staff lo decide un humano, no el sync.
-        const usuarioCompleto = await prisma.appUser.findUnique({
-          where: { id: existente.id },
-          select: { role: true, odooUserId: true },
-        });
-        const esStaff =
-          usuarioCompleto?.role === 'SUPERADMIN' || usuarioCompleto?.role === 'VENDEDOR';
-
+        // El sync NO toca `role`: el de staff lo decide un humano, y el nivel de
+        // un cliente lo pone la pasada de niveles (ver `NIVEL_DE_CUENTA_NUEVA`).
         const cambios = { ...datos };
-        if (esStaff) {
-          cambios.role = usuarioCompleto!.role;
-        }
 
         const igual =
           existente.email === cambios.email &&
           existente.fullName === cambios.fullName &&
-          existente.role === cambios.role &&
           existente.odooPricelistId === cambios.odooPricelistId &&
           existente.phone === cambios.phone;
 
@@ -436,7 +428,7 @@ export async function sincronizarPartners(
  */
 export async function marcarHuerfanos(): Promise<{ revisados: number; huerfanos: number }> {
   const usuarios = await prisma.appUser.findMany({
-    where: { role: { in: ['BRONCE', 'PLATA', 'GOLD'] } },
+    where: { role: { in: clientTierSchema.options } },
     select: { id: true, odooPartnerId: true },
   });
   if (usuarios.length === 0) return { revisados: 0, huerfanos: 0 };

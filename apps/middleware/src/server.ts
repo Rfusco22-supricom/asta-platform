@@ -24,6 +24,7 @@ import { version } from './config/version.js';
 import { VigilanteCambios } from './services/vigilanteCambios.js';
 import { pasarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
 import { programarCada } from './services/programador.js';
+import { aplicarNiveles } from './services/nivelesCliente.service.js';
 import { smartbit } from './services/smartbit.service.js';
 import { sincronizarPartners } from './services/sync.service.js';
 
@@ -303,6 +304,22 @@ if (
     : null;
   if (sync) console.log(`  sync      cada ${Number(process.env.SYNC_CADA_MIN ?? 15)} min, desde este proceso`);
 
+  // El nivel de cada cliente es su categoría de ASTA (#131): una pasada al día,
+  // la primera a los cinco minutos de arrancar (después del primer sync, que
+  // crea las cuentas nuevas en GENERAL). `NIVELES_INTERNOS` manda, como arriba.
+  const niveles = encendido('NIVELES_INTERNOS')
+    ? programarCada(
+        'niveles',
+        async () => {
+          const r = await aplicarNiveles({ aplicar: true });
+          const reparto = Object.entries(r.porNivel).map(([k, v]) => `${k} ${v}`).join(' · ');
+          return `niveles: ${r.cuentas} cuentas · ${r.cambios} cambian · ${reparto}`;
+        },
+        { cadaMs: 24 * 60 * 60_000, primeraEnMs: 5 * 60_000 },
+      )
+    : null;
+  if (niveles) console.log('  niveles   cada día, desde este proceso (#131)');
+
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.on(signal, () => {
@@ -310,6 +327,7 @@ if (
       vigilante.detener();
       alertas?.parar();
       sync?.parar();
+      niveles?.parar();
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(1), 10_000).unref();
     });

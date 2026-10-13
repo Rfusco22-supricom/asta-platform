@@ -3,6 +3,15 @@ import type { ClientTier } from '@asta/shared-types';
 /**
  * Nivel comercial del cliente: de qué tarifa se deriva.
  *
+ * ── YA NO DECIDE EL NIVEL (#131, 2026-10-13) ─────────────────────────────────
+ *
+ * El nivel de una cuenta es ahora su categoría de ASTA, que pone a diario
+ * `services/nivelesCliente.service.ts`. Nadie llegó a decir qué tarifa era qué
+ * nivel (todos eran BRONCE), y Marketing propuso la escala por compra de ASTA.
+ * Lo de abajo se queda —y `tier_pricelist_map` con ello— porque el sync guarda
+ * la huella del mapeo; si un día el nivel vuelve a querer decir «precio», el
+ * sitio es este.
+ *
  * CONTEXTO (hallazgos de Fase 0, issue #3):
  *
  * `x_client_tier` no existe en esta instancia de Odoo — `res.partner` no tiene

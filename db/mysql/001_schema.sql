@@ -97,7 +97,7 @@ CREATE TABLE app_users (
   full_name               VARCHAR(255)  NOT NULL,
   phone                   VARCHAR(50)            DEFAULT NULL,
 
-  role                    ENUM('SUPERADMIN','VENDEDOR','BRONCE','PLATA','GOLD') NOT NULL,
+  role                    ENUM('SUPERADMIN','VENDEDOR','BRONCE','PLATA','GOLD','DIAMANTE','GENERAL') NOT NULL,
 
   -- ── Vínculo con Odoo ───────────────────────────────────────────────────────
   odoo_partner_id         INT UNSIGNED  NOT NULL,                  -- res.partner.id
@@ -262,7 +262,7 @@ CREATE TABLE auth_tokens (
 CREATE TABLE tier_pricelist_map (
   odoo_pricelist_id   INT UNSIGNED NOT NULL,
   pricelist_name      VARCHAR(255) NOT NULL,
-  tier                ENUM('BRONCE','PLATA','GOLD') NOT NULL,
+  tier                ENUM('BRONCE','PLATA','GOLD','DIAMANTE','GENERAL') NOT NULL,
   notes               VARCHAR(500) DEFAULT NULL,
 
   updated_by          CHAR(36)     DEFAULT NULL,

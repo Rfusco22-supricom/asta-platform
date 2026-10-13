@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ROLE_LABEL } from '@asta/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente, PortfolioRow } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
@@ -26,7 +27,7 @@ export type ResultadoActividad = { ok: true; actividad: ActividadCartera } | { o
 
 type Columna = 'nombre' | 'clase' | 'estado' | 'facturado12m' | 'tendencia' | 'totalFacturado' | 'porCobrar';
 
-const TIER_CLASS: Record<string, string> = { BRONCE: 'bronce', PLATA: 'plata', GOLD: 'gold' };
+const TIER_CLASS: Record<string, string> = { GENERAL: 'prospecto', BRONCE: 'bronce', PLATA: 'plata', GOLD: 'gold', DIAMANTE: 'diamante' };
 
 const ESTADOS: Array<{ valor: EstadoCliente; etiqueta: string; plural: string }> = [
   { valor: 'activo', etiqueta: 'Activo', plural: 'Activos' },
@@ -237,7 +238,7 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                   <td className="c-estado" data-etiqueta="Estado">{cargando ? <Hueco ancho={86} /> : a ? <Estado a={a} /> : <span className="zero">—</span>}</td>
                   {conNivel && (
                     <td className="col-nivel c-nivel" data-etiqueta="Nivel">
-                      {f.esCliente ? <span className={`tag ${TIER_CLASS[f.tierDerivado] ?? 'bronce'}`}>{f.tierDerivado}</span> : <span className="zero">—</span>}
+                      {f.esCliente ? <span className={`tag ${TIER_CLASS[f.tierDerivado] ?? 'bronce'}`}>{ROLE_LABEL[f.tierDerivado]}</span> : <span className="zero">—</span>}
                     </td>
                   )}
                   <td className="num col-serie c-12m" data-etiqueta="Últimos 12 meses">

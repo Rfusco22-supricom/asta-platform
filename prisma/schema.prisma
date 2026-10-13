@@ -48,22 +48,27 @@ datasource db {
 // ENUMS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Los 5 roles del sistema.
-/// BRONCE / PLATA / GOLD son *tiers* del mismo rol funcional (cliente): se
-/// distinguen para resolver la tarifa, no para dar permisos distintos. La lógica
-/// debe preguntar por `isClientRole(role)` y no enumerarlos a mano.
+/// Los roles del sistema.
+/// GENERAL / BRONCE / PLATA / GOLD / DIAMANTE son *niveles* del mismo rol
+/// funcional (cliente): la categoría de ASTA del cliente (#131), no permisos
+/// distintos. GOLD es «Oro». La lógica debe preguntar por `isClientRole(role)`
+/// y no enumerarlos a mano.
 enum AppRole {
   SUPERADMIN
   VENDEDOR
   BRONCE
   PLATA
   GOLD
+  DIAMANTE
+  GENERAL
 }
 
 enum ClientTier {
   BRONCE
   PLATA
   GOLD
+  DIAMANTE
+  GENERAL
 }
 
 /// Permisos granulares de una API Key. Ninguna key nace con todos.

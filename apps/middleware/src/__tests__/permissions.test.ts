@@ -62,6 +62,9 @@ const ESPERADO: Record<AppRole, Accion[]> = {
   BRONCE: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
   PLATA: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
   GOLD: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  // Los niveles nuevos de #131 son clientes como los demás: mismos permisos.
+  DIAMANTE: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  GENERAL: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
 };
 
 describe('#18 · La matriz completa, celda a celda', () => {
@@ -162,7 +165,7 @@ describe('#18 · Invariantes de la matriz', () => {
 
 describe('#18 · Helpers de rol', () => {
   it('isClientRole distingue clientes de staff', () => {
-    expect(ROLES.filter(isClientRole)).toEqual(['BRONCE', 'PLATA', 'GOLD']);
+    expect(ROLES.filter(isClientRole)).toEqual(['BRONCE', 'PLATA', 'GOLD', 'DIAMANTE', 'GENERAL']);
   });
 
   it('isStaffRole es exactamente el complemento', () => {

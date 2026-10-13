@@ -1,5 +1,6 @@
 'use client';
 
+import { ROLE_LABEL, type AppRole } from '@asta/shared-types';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -34,6 +35,8 @@ export function MenuUsuario({
   /** La acción de servidor que cierra la sesión. */
   salir: () => Promise<void>;
 }) {
+  // «Oro», «Cliente general»: no el valor técnico («gold», «general»).
+  const etiqueta = ROLE_LABEL[rol as AppRole] ?? rol.toLowerCase();
   const [abierto, setAbierto] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
 
@@ -69,7 +72,7 @@ export function MenuUsuario({
         </span>
         <span className="usuario-datos">
           <strong title={nombre}>{nombre}</strong>
-          <small>{rol.toLowerCase()}</small>
+          <small>{etiqueta}</small>
         </span>
         <svg
           width="14"
@@ -91,7 +94,7 @@ export function MenuUsuario({
         <div className="menu-desplegable" role="menu">
           <div className="menu-cabecera">
             <strong>{nombre}</strong>
-            <small>{rol.toLowerCase()}</small>
+            <small>{etiqueta}</small>
           </div>
 
           {/* Cerrar al navegar: si no, el menú sigue abierto en la página nueva. */}

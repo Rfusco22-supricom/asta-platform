@@ -1,8 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { normalizarEmail, esEmailPlausible } from '../auth/email.js';
-import { tierFromPricelist } from '../config/tiers.js';
-import { cargarMapaTiers } from './tiers.service.js';
+import { isClientRole } from '@asta/shared-types';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
 
@@ -86,7 +85,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
   // ── Lectura en bloque de los dos lados ─────────────────────────────────────
   // Se leen enteros y se comparan en memoria: son ~3000 filas por lado. Hacer
   // una consulta por partner serían 3000 RPC contra el ERP.
-  const [partners, usuarios, mapa] = await Promise.all([
+  const [partners, usuarios] = await Promise.all([
     leerTodosLosClientes(),
     prisma.appUser.findMany({
       select: {
@@ -100,7 +99,6 @@ export async function reconciliar(): Promise<Reconciliacion> {
         credentials: { select: { userId: true } },
       },
     }),
-    cargarMapaTiers(),
   ]);
 
   const porPartnerId = new Map(usuarios.map((u) => [u.odooPartnerId, u]));
@@ -164,7 +162,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
   // Solo clientes: un vendedor apunta a un partner interno que este informe no
   // lee, y marcarlo como huérfano sería un falso positivo.
   const huerfanos = usuarios.filter(
-    (u) => ['BRONCE', 'PLATA', 'GOLD'].includes(u.role) && !idsOdoo.has(u.odooPartnerId),
+    (u) => isClientRole(u.role) && !idsOdoo.has(u.odooPartnerId),
   );
 
   // ── 4. Desalineados ────────────────────────────────────────────────────────
@@ -195,20 +193,8 @@ export async function reconciliar(): Promise<Reconciliacion> {
       });
     }
 
-    // El rol de staff NO se compara: lo decide un humano, no Odoo. Marcarlo
-    // como desalineado llenaría el informe de ruido que nadie debe "corregir".
-    if (!['SUPERADMIN', 'VENDEDOR'].includes(u.role)) {
-      const rolEsperado = tierFromPricelist(plOdoo, mapa);
-      if (rolEsperado !== u.role) {
-        desalineados.push({
-          odooPartnerId: p.id,
-          nombre: nombreOdoo,
-          campo: 'rol',
-          enOdoo: rolEsperado,
-          enMiddleware: u.role,
-        });
-      }
-    }
+    // El nivel ya no se compara con Odoo: no sale de la tarifa sino de la
+    // categoría de ASTA, que pone `nivelesCliente.service` (#131).
   }
 
   // ── 5. Nunca sincronizados ─────────────────────────────────────────────────
@@ -219,7 +205,7 @@ export async function reconciliar(): Promise<Reconciliacion> {
     odoo: { clientesActivos: partners.length },
     middleware: {
       usuarios: usuarios.length,
-      clientes: usuarios.filter((u) => ['BRONCE', 'PLATA', 'GOLD'].includes(u.role)).length,
+      clientes: usuarios.filter((u) => isClientRole(u.role)).length,
       staff: usuarios.filter((u) => ['SUPERADMIN', 'VENDEDOR'].includes(u.role)).length,
     },
     sinCuenta: {
@@ -291,7 +277,7 @@ export async function resincronizarUno(
 
   const p = rows[0];
   if (!p) return { ok: false, mensaje: `El partner ${odooPartnerId} no existe en Odoo.` };
-  const [tarifas, mapa] = await Promise.all([leerTarifas([p.id]), cargarMapaTiers()]);
+  const tarifas = await leerTarifas([p.id]);
   const tarifa = tarifas.get(p.id);
 
   const crudo = p.email ? String(p.email) : '';
@@ -332,16 +318,14 @@ export async function resincronizarUno(
 
   if (!existente) {
     await prisma.appUser.create({
-      data: { ...datos, odooPartnerId, role: tierFromPricelist(pricelistId, mapa), isActive: true },
+      // Como en el sync: nace en el nivel más bajo y la pasada de niveles la sube.
+      data: { ...datos, odooPartnerId, role: 'GENERAL', isActive: true },
     });
     return { ok: true, mensaje: 'Cuenta creada.' };
   }
 
-  // El rol de staff no se toca, igual que en el sync masivo.
-  const esStaff = ['SUPERADMIN', 'VENDEDOR'].includes(existente.role);
-  await prisma.appUser.update({
-    where: { id: existente.id },
-    data: esStaff ? datos : { ...datos, role: tierFromPricelist(pricelistId, mapa) },
-  });
+  // El rol no se toca, igual que en el sync masivo: el de staff lo decide un
+  // humano y el nivel de un cliente, la pasada de niveles.
+  await prisma.appUser.update({ where: { id: existente.id }, data: datos });
   return { ok: true, mensaje: 'Cuenta actualizada.' };
 }

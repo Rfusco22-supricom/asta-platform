@@ -1,7 +1,6 @@
-import type { ClientTier, Partner } from '@asta/shared-types';
+import { isClientRole, type ClientTier, type Partner } from '@asta/shared-types';
+import { prisma } from '../config/prisma.js';
 import { searchRead, type OdooDomain } from '../odoo/client.js';
-import { isUnmappedPricelist, tierFromPricelist, type MapaTiers } from '../config/tiers.js';
-import { cargarMapaTiers } from './tiers.service.js';
 import { idTarifa, leerTarifas, nombreTarifa, type TarifaLeida } from './tarifas.service.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
 import { dePantalla } from './pantallas.js';
@@ -43,9 +42,11 @@ const PARTNER_FIELDS = [
 ] as const;
 
 export interface PartnerWithTier extends Partner {
+  /**
+   * El nivel del cliente (#131): su categoría de ASTA, la que la pasada de
+   * niveles guarda en su cuenta. Sin cuenta, el más bajo.
+   */
   tierDerivado: ClientTier;
-  /** true si su tarifa no está en el mapeo: configuración incompleta que hay que revisar. */
-  tarifaSinMapear: boolean;
   /**
    * false = prospecto: está asignado al vendedor pero nunca se le ha facturado.
    *
@@ -75,7 +76,7 @@ function limpiar(valor: string | false): string | null {
   return t.length > 0 ? t : null;
 }
 
-function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, mapa: MapaTiers): PartnerWithTier {
+function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, nivel: ClientTier): PartnerWithTier {
   const pricelistId = idTarifa(tarifa);
 
   return {
@@ -89,16 +90,20 @@ function mapPartner(row: PartnerRow, tarifa: TarifaLeida | undefined, mapa: Mapa
     pricelistId,
     /** Nombre de la tarifa, que es lo más parecido a un "tier" que hay hoy en Odoo. */
     tier: nombreTarifa(tarifa),
-    tierDerivado: tierFromPricelist(pricelistId, mapa),
-    tarifaSinMapear: isUnmappedPricelist(pricelistId, mapa),
+    tierDerivado: nivel,
     esCliente: (row.customer_rank ?? 0) > 0,
   };
 }
 
-/** Las filas con su tarifa, leída desde la compañía de cada cliente. */
+/** Las filas con su tarifa, leída desde la compañía de cada cliente, y su nivel. */
 async function conTarifas(rows: PartnerRow[]): Promise<PartnerWithTier[]> {
-  const [tarifas, mapa] = await Promise.all([leerTarifas(rows.map((r) => r.id)), cargarMapaTiers()]);
-  return rows.map((r) => mapPartner(r, tarifas.get(r.id), mapa));
+  const ids = rows.map((r) => r.id);
+  const [tarifas, cuentas] = await Promise.all([
+    leerTarifas(ids),
+    ids.length ? prisma.appUser.findMany({ where: { odooPartnerId: { in: ids } }, select: { odooPartnerId: true, role: true } }) : [],
+  ]);
+  const nivelDe = new Map(cuentas.flatMap((c) => (isClientRole(c.role) ? [[c.odooPartnerId, c.role] as const] : [])));
+  return rows.map((r) => mapPartner(r, tarifas.get(r.id), nivelDe.get(r.id) ?? 'GENERAL'));
 }
 
 export async function getPartner(partnerId: number): Promise<PartnerWithTier | null> {

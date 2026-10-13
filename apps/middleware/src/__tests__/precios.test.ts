@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Server } from 'node:http';
-import { publicPricingResponseSchema, type PublicPrice } from '@asta/shared-types';
+import { publicPricingResponseSchema, type PublicPrice, isClientRole, clientTierSchema } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { executeKw, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
@@ -157,7 +157,7 @@ async function clienteDe(companyId: number | false, excluir: Set<number>): Promi
 
 async function prepararCliente(partnerId: number, companyId: number, sufijo: string): Promise<Cliente> {
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
+  if (usuario && !isClientRole(usuario.role)) {
     throw new Error(`El partner ${partnerId} ya pertenece a un usuario con rol ${usuario.role}.`);
   }
   if (!usuario) {
@@ -214,7 +214,7 @@ beforeAll(async () => {
   vaciarCachesPrecios();
 
   const staff = new Set(
-    (await prisma.appUser.findMany({ where: { role: { notIn: ['BRONCE', 'PLATA', 'GOLD'] } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
+    (await prisma.appUser.findMany({ where: { role: { notIn: clientTierSchema.options } }, select: { odooPartnerId: true } })).map((u) => u.odooPartnerId),
   );
   A = await prepararCliente(await clienteDe(COMPANIA_A, staff), COMPANIA_A, 'a');
   B = await prepararCliente(await clienteDe(COMPANIA_B, staff), COMPANIA_B, 'b');

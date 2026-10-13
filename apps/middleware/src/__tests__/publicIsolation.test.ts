@@ -1,3 +1,4 @@
+import { isClientRole } from '@asta/shared-types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
 import { createApp } from '../server.js';
@@ -125,7 +126,7 @@ async function prepararCliente(partnerId: number, sufijo: string): Promise<Clien
   // odoo_partner_id es UNIQUE: si el sync de #15 ya creó la fila, se reutiliza y
   // al terminar solo se borran las keys, no el usuario.
   let usuario = await prisma.appUser.findUnique({ where: { odooPartnerId: partnerId } });
-  if (usuario && !['BRONCE', 'PLATA', 'GOLD'].includes(usuario.role)) {
+  if (usuario && !isClientRole(usuario.role)) {
     throw new Error(`El partner ${partnerId} ya pertenece a un usuario con rol ${usuario.role}.`);
   }
   if (!usuario) {

@@ -17,7 +17,7 @@
  * no hace nada ya gastó la confianza. Entran cuando existen.
  */
 
-export type Rol = 'SUPERADMIN' | 'VENDEDOR' | 'BRONCE' | 'PLATA' | 'GOLD';
+export type Rol = 'SUPERADMIN' | 'VENDEDOR' | 'BRONCE' | 'PLATA' | 'GOLD' | 'DIAMANTE' | 'GENERAL';
 
 export interface Seccion {
   href: string;
@@ -112,6 +112,12 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     return this.BRONCE;
   },
   get GOLD() {
+    return this.BRONCE;
+  },
+  get DIAMANTE() {
+    return this.BRONCE;
+  },
+  get GENERAL() {
     return this.BRONCE;
   },
 };
