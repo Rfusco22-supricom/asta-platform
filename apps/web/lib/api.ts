@@ -43,6 +43,8 @@ import {
   informeDuplicadosRespuestaSchema,
   type InformeDuplicados,
   calidadDatosRespuestaSchema,
+  categoriasAstaRespuestaSchema,
+  type CategoriasAsta,
   type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
@@ -477,6 +479,16 @@ export const getReporteCartera = (
   accessToken: string,
   rango?: { desde: string; hasta: string },
 ) => pedirReporte('/api/v1/salesperson/reportes', accessToken, rango);
+
+/** Las categorías de ASTA de todos los clientes y el avance hacia la meta (#131). */
+export async function getCategoriasAstaEmpresa(accessToken: string): Promise<CategoriasAsta> {
+  return (await request('/api/v1/admin/asta/categorias', categoriasAstaRespuestaSchema, accessToken)).data;
+}
+
+/** Las categorías de ASTA de los clientes de la propia cartera. */
+export async function getCategoriasAstaCartera(accessToken: string): Promise<CategoriasAsta> {
+  return (await request('/api/v1/salesperson/asta/categorias', categoriasAstaRespuestaSchema, accessToken)).data;
+}
 
 /** Los productos ASTA de toda la empresa, por categoría y producto: el inicio del administrador. */
 export async function getReporteProductosEmpresa(accessToken: string, rango?: { desde: string; hasta: string }, sede: number | null = null) {

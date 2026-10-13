@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { marcarImpulsaSchema, nuevaCompatibilidadSchema } from '@asta/shared-types';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
+import { categoriasAsta } from '../services/categoriasAsta.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
 /**
@@ -166,6 +167,37 @@ salespersonRouter.delete(
  * vendedor sin `res.users` asociado —dato mal sincronizado— recibe 403 en vez de
  * una consulta sin filtro, que en Odoo devolvería la empresa entera.
  */
+/**
+ * Las categorías de ASTA de los clientes de la PROPIA cartera (#131): en qué
+ * categoría está cada uno y cuánto le falta para subir. La cartera sale del
+ * token, como en `/asta`.
+ */
+salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
+      return;
+    }
+    const t0 = Date.now();
+    // Se calcula una vez para todos y se filtra: la categoría no depende de quién mira.
+    const todas = await dePantalla('admin:asta:categorias', () => categoriasAsta());
+    const clientes = todas.clientes.filter((c) => c.vendedorOdooUserId === odooUserId);
+    const data = {
+      ...todas,
+      compraMensual: Math.round(clientes.reduce((s, c) => s + c.compraMensual, 0) * 100) / 100,
+      porCategoria: todas.porCategoria.map((p) => {
+        const de = clientes.filter((c) => c.categoria === p.categoria);
+        return { ...p, clientes: de.length, compraMensual: Math.round(de.reduce((s, c) => s + c.compraMensual, 0) * 100) / 100 };
+      }),
+      clientes,
+    };
+    res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 salespersonRouter.get('/asta', autorizar('asta.propias.ver'), async (req, res, next) => {
   try {
     const odooUserId = req.identity.odooUserId;

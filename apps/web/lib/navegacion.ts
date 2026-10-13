@@ -55,6 +55,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },
+        { href: '/admin/categorias', titulo: 'Categorías ASTA', icono: 'categorias', corto: 'Categorías' },
       ],
     },
     {
@@ -92,6 +93,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           corto: 'Cartera',
         },
         { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca', corto: 'ASTA' },
+        { href: '/categorias', titulo: 'Categorías ASTA', icono: 'categorias', corto: 'Categorías' },
         { href: '/reportes', titulo: 'Reportes', icono: 'reportes', prefijo: true },
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],

@@ -6,7 +6,8 @@ import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import { nombreSede, type SedeId } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
-import { esRedireccion, getAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
+import { CaminoMeta } from '@/components/Categorias';
+import { esRedireccion, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
@@ -272,6 +273,19 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
   );
 }
 
+// ── Camino a la meta: las categorías de ASTA (#131) ────────────────────────────
+
+/** De toda la empresa siempre: la categoría es del cliente, no de la sede. */
+async function Meta({ token }: { token: string }) {
+  const r = await intentar(() => getCategoriasAstaEmpresa(token));
+  if (!r) return <Fallo area="meta" titulo="Camino a la meta" />;
+  return (
+    <div className="dash-meta">
+      <CaminoMeta datos={r} alcance="Toda la empresa" enlace={{ href: '/admin/categorias', texto: 'Clientes por categoría' }} />
+    </div>
+  );
+}
+
 export default async function InicioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
   const params = await searchParams;
@@ -288,6 +302,9 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
       <div className="dash">
         <Suspense fallback={<EsqueletoVentas />}>
           <Ventas token={token} rango={rango} sede={sede} />
+        </Suspense>
+        <Suspense fallback={<Esqueleto area="meta" alto={260} />}>
+          <Meta token={token} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="oportunidad" alto={230} />}>
           <Oportunidad token={token} sede={sede} />

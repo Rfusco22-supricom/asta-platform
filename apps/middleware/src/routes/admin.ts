@@ -15,6 +15,7 @@ import { claveSede, sedeDeLaPeticion } from '../services/sede.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
+import { categoriasAsta } from '../services/categoriasAsta.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -197,6 +198,22 @@ adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => 
       data: r.oportunidades,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * La categoría de ASTA de cada cliente y el avance hacia la meta (#131).
+ *
+ * De toda la empresa y sin sede: la categoría es del cliente, compre donde
+ * compre. Cuatro lecturas de Odoo; se guarda un rato como el resto de pantallas.
+ */
+adminRouter.get('/asta/categorias', autorizar('admin.asta.ver'), async (_req, res, next) => {
+  try {
+    const t0 = Date.now();
+    const data = await dePantalla('admin:asta:categorias', () => categoriasAsta());
+    res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
   }
