@@ -3,6 +3,7 @@ import { productosEnCompetencia } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO } from './criterioFacturacion.js';
 import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, type Reporte } from './reportes.service.js';
 import { compras, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
+import { SIN_INTERCOMPANIA } from './intercompania.js';
 import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea } from './ventasAsta.service.js';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
@@ -42,6 +43,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas): Promi
     ['state', '=', 'posted'],
     ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
     FACTURA_CON_ASTA,
+    SIN_INTERCOMPANIA,
     ...(deLaEmpresa ? [] : carteraDesdeFactura(odooUserId)),
     ...enRango,
   ];

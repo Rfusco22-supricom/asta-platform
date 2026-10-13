@@ -1,6 +1,7 @@
 import { searchRead, readGroup, type OdooDomain } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
 import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
@@ -216,6 +217,8 @@ export async function totalDeProductos(
       ['move_id.invoice_date', '>=', rango.desde],
       ['move_id.invoice_date', '<=', rango.hasta],
       ['product_id', 'in', productos.slice(i, i + LOTE)],
+      // Lo que una sede le vende a otra no es venta (`intercompania.ts`).
+      SIN_INTERCOMPANIA_LINEA,
     ];
     if (cartera) dominio.push(['partner_id', 'in', cartera]);
 

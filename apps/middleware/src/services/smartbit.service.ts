@@ -3,6 +3,7 @@ import { searchRead } from '../odoo/client.js';
 import { CacheConRefresco } from '../utils/cacheConRefresco.js';
 import { logger } from '../utils/logger.js';
 import { MARCA_ASTA } from './asta.service.js';
+import { esDelGrupo } from './intercompania.js';
 
 /**
  * Las ventas ASTA de Smartbit, el sistema de antes de Odoo.
@@ -249,7 +250,8 @@ async function leerSmartbit(): Promise<Smartbit> {
   const productoDe = new Map<string, number>();
   for (const p of productos) if (p.default_code) productoDe.set(p.default_code.trim().toUpperCase(), p.id);
 
-  const ventas = filas.map((f): VentaSmartbit => {
+  // Las ventas a empresas del grupo no cuentan, igual que en Odoo (`intercompania.ts`).
+  const ventas = filas.filter((f) => !esDelGrupo(f.cliente, f.codigoCliente)).map((f): VentaSmartbit => {
     const rif = normalizarRif(f.codigoCliente);
     const clave = rif ?? '';
     if (!clienteDe.has(clave)) clienteDe.set(clave, elegirCliente(clientesDelRif(rif, indice)));

@@ -1,6 +1,7 @@
 import { searchRead, readGroup } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
+import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
@@ -187,6 +188,8 @@ async function gastoPorCliente(
     ['product_id.categ_id', 'in', categorias],
     ['product_id.active', '=', true],
     ['product_id.product_tmpl_id.spiff_brand_id', lado === 'asta' ? '=' : '!=', MARCA_ASTA],
+    // Una empresa del grupo no es un cliente al que pasar a ASTA (`intercompania.ts`).
+    SIN_INTERCOMPANIA_LINEA,
   ];
   // Un vendedor solo ve lo suyo: el filtro va en el DOMINIO, no en un recorte
   // posterior. Traerse toda la empresa y filtrar en Node deja los datos de los
