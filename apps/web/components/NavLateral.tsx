@@ -22,10 +22,10 @@ import { CargandoEnlace } from './CargandoEnlace';
  * aprender otra API. Trazo de 1.5 y esquinas redondeadas, que es lo que hace que
  * un icono se lea a 16 px sin ensuciar.
  */
-function Icono({ nombre }: { nombre: string }) {
+export function Icono({ nombre }: { nombre: string }) {
   const comun = {
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
@@ -183,7 +183,12 @@ function estaActiva(ruta: string, href: string, prefijo?: boolean): boolean {
   return prefijo ? ruta === href || ruta.startsWith(`${href}/`) : ruta === href;
 }
 
-export function NavLateral({ grupos }: { grupos: GrupoNav[] }) {
+/**
+ * Plegado, el menú es solo iconos: el nombre de cada sección pasa a `title` (el
+ * globo del navegador al pasar por encima) y a `aria-label`, para que siga
+ * diciéndose aunque no se vea.
+ */
+export function NavLateral({ grupos, plegado = false }: { grupos: GrupoNav[]; plegado?: boolean }) {
   const ruta = usePathname();
 
   return (
@@ -201,9 +206,11 @@ export function NavLateral({ grupos }: { grupos: GrupoNav[] }) {
                 // Para quien navega con lector de pantalla: sin esto, «activa»
                 // es solo un color y no se anuncia.
                 aria-current={activa ? 'page' : undefined}
+                title={plegado ? s.titulo : undefined}
+                aria-label={plegado ? s.titulo : undefined}
               >
                 <Icono nombre={s.icono} />
-                <span>{s.titulo}</span>
+                <span className="nav-texto">{s.titulo}</span>
                 <CargandoEnlace />
               </Link>
             );

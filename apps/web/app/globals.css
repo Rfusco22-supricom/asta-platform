@@ -1,83 +1,190 @@
 /*
- * ASTA — hoja de estilos del panel.
+ * ASTA — hoja de estilos del panel. Identidad «Cristal» (octubre de 2026).
  *
- * Sin framework CSS a propósito: esto es una tabla de datos densa, no una
+ * Sin framework CSS a propósito: esto son tablas de datos densas, no una
  * landing. Tailwind añadiría un paso de build y 30 clases por fila para lo que
  * aquí son veinte reglas.
  *
- * Criterio de diseño: es la herramienta que un vendedor mira varias horas al
- * día. Densidad y legibilidad por encima de decoración. Nada se mueve solo,
- * nada parpadea, los números se alinean para poder compararlos de un vistazo.
+ * ── Criterio de diseño ───────────────────────────────────────────────────────
+ *
+ * Paneles de vidrio claro sobre un fondo con las luces de la marca: el cian del
+ * logo, un violeta y un rosa. La profundidad sale de tres cosas a la vez —la
+ * transparencia, la línea blanca de arriba que devuelve el brillo y una sombra
+ * larga y suave—, no de una sombra grande sola. Las cifras van en DM Mono para
+ * que se alineen columna con columna.
+ *
+ * Es la herramienta que un vendedor mira varias horas al día: el brillo y el
+ * movimiento se quedan en el marco, el acceso y el Inicio. Las tablas siguen
+ * siendo sobrias, y nada se mueve solo donde se trabaja.
+ *
+ * ── Los nombres de las variables no cambian ──────────────────────────────────
+ *
+ * `--bg`, `--surface`, `--text-2`, `--primario`… vienen del diseño anterior y
+ * los usan las cincuenta pantallas. Se les cambia el VALOR, no el nombre: así
+ * el rebranding llega a todas a la vez, también a las que no se han tocado una
+ * por una.
  */
 
 :root {
-  --bg: #f2f4f7;
+  --bg: #edf2f8;
   --surface: #ffffff;
-  --surface-2: #f7f8fa;
-  --border: #e6e8ec;
-  --border-strong: #cfd3da;
+  --surface-2: #f3f6fb;
+  --border: rgba(15, 34, 54, 0.09);
+  --border-strong: rgba(15, 34, 54, 0.17);
 
-  --text: #1a1a19;
-  --text-2: #5c5c58;
-  --text-3: #8a8a85;
+  --text: #0f2236;
+  --text-2: #44546a;
+  --text-3: #66768b;
 
-  --accent: #1c5d99;
-  --accent-soft: #eaf1f8;
+  --accent: #1270b5;
+  --accent-soft: rgba(39, 169, 241, 0.13);
 
-  --positive: #1d6f42;
-  --warning: #8a5a00;
-  --warning-soft: #fdf4e3;
-  --danger: #a32b2b;
-  --danger-soft: #fdeded;
+  --positive: #0e8a55;
+  --warning: #9a6200;
+  --warning-soft: #fff3dc;
+  --danger: #c8304f;
+  --danger-soft: #ffe9ee;
 
-  --bronce: #8a6842;
-  --plata: #61707d;
-  --gold: #9a7b1f;
+  --bronce: #a8642f;
+  --plata: #627386;
+  --gold: #a07400;
 
-  --radius: 6px;
-  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  /* El azul del logotipo y los dos tonos que lo acompañan en las luces. */
+  --cian: #27a9f1;
+  --violeta: #7c5cff;
+  --rosa: #ff5c93;
+  --degradado: linear-gradient(135deg, #27a9f1 0%, #4f86f7 52%, #7c5cff 100%);
+
+  /* Compatibilidad: así se llamaba el acento en el diseño anterior. */
+  --primario: #1a86d6;
+  --primario-claro: #27a9f1;
+  --primario-oscuro: #1066a8;
+  --primario-text: #ffffff;
+
+  /* El vidrio: relleno, borde, brillo de arriba y la sombra que lo despega. */
+  --vidrio: rgba(255, 255, 255, 0.64);
+  --vidrio-fuerte: rgba(255, 255, 255, 0.88);
+  --vidrio-borde: rgba(255, 255, 255, 0.92);
+  --vidrio-brillo: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --sombra-card: 0 1px 2px rgba(18, 52, 96, 0.05), 0 22px 48px -28px rgba(18, 52, 96, 0.34);
+  --sombra-flotante: 0 2px 6px rgba(18, 52, 96, 0.06), 0 30px 70px -28px rgba(18, 52, 96, 0.45);
+  --sombra-azul: 0 10px 24px -10px rgba(60, 110, 245, 0.65);
+
+  /* Las luces del fondo. */
+  --luz-1: rgba(39, 169, 241, 0.34);
+  --luz-2: rgba(124, 92, 255, 0.22);
+  --luz-3: rgba(255, 110, 170, 0.16);
+
+  --radius: 12px;
+  --radius-card: 22px;
+  --radius-pill: 999px;
+
+  --fuente: var(--fuente-sora), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: var(--fuente-mono), ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
+/*
+ * El modo oscuro, dos veces y con los mismos valores: una para quien tiene el
+ * sistema en oscuro y no eligió nada, y otra para quien lo eligió en el menú
+ * (`data-theme`, ver `lib/tema.ts`). Sin la segunda, el botón de «Oscuro» solo
+ * funcionaría en los equipos que ya están en oscuro.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #161614;
-    --surface: #1d1d1b;
-    --surface-2: #242422;
-    --border: #32322f;
-    --border-strong: #45453f;
-
-    --text: #eceae5;
-    --text-2: #a8a6a0;
-    --text-3: #78766f;
-
-    --accent: #7aa9d6;
-    --accent-soft: #1d2a36;
-
-    --positive: #6fb98a;
-    --warning: #d6b168;
-    --warning-soft: #2e2717;
-    --danger: #e08585;
-    --danger-soft: #341d1d;
-
-    --bronce: #c79b67;
-    --plata: #a3b3c0;
-    --gold: #d9b84a;
+    --bg: #070d18;
+    --surface: #111b2b;
+    --surface-2: #17233a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #e8f0fa;
+    --text-2: #a9b6c8;
+    --text-3: #7d8ca2;
+    --accent: #6cc6ff;
+    --accent-soft: rgba(92, 192, 255, 0.14);
+    --positive: #4fd69c;
+    --warning: #f2c14e;
+    --warning-soft: rgba(242, 193, 78, 0.12);
+    --danger: #ff7a93;
+    --danger-soft: rgba(255, 122, 147, 0.12);
+    --bronce: #e0a06a;
+    --plata: #b6c3d1;
+    --gold: #f2c14e;
+    --primario: #3fb0f3;
+    --primario-oscuro: #8fd2ff;
+    --vidrio: rgba(20, 32, 52, 0.58);
+    --vidrio-fuerte: rgba(24, 37, 58, 0.92);
+    --vidrio-borde: rgba(255, 255, 255, 0.08);
+    --vidrio-brillo: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 50px -26px rgba(0, 0, 0, 0.75);
+    --sombra-flotante: 0 2px 6px rgba(0, 0, 0, 0.3), 0 30px 70px -24px rgba(0, 0, 0, 0.85);
+    --luz-1: rgba(39, 169, 241, 0.2);
+    --luz-2: rgba(124, 92, 255, 0.2);
+    --luz-3: rgba(255, 92, 147, 0.09);
+    color-scheme: dark;
   }
 }
+:root[data-theme='dark'] {
+  --bg: #070d18;
+  --surface: #111b2b;
+  --surface-2: #17233a;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8f0fa;
+  --text-2: #a9b6c8;
+  --text-3: #7d8ca2;
+  --accent: #6cc6ff;
+  --accent-soft: rgba(92, 192, 255, 0.14);
+  --positive: #4fd69c;
+  --warning: #f2c14e;
+  --warning-soft: rgba(242, 193, 78, 0.12);
+  --danger: #ff7a93;
+  --danger-soft: rgba(255, 122, 147, 0.12);
+  --bronce: #e0a06a;
+  --plata: #b6c3d1;
+  --gold: #f2c14e;
+  --primario: #3fb0f3;
+  --primario-oscuro: #8fd2ff;
+  --vidrio: rgba(20, 32, 52, 0.58);
+  --vidrio-fuerte: rgba(24, 37, 58, 0.92);
+  --vidrio-borde: rgba(255, 255, 255, 0.08);
+  --vidrio-brillo: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 50px -26px rgba(0, 0, 0, 0.75);
+  --sombra-flotante: 0 2px 6px rgba(0, 0, 0, 0.3), 0 30px 70px -24px rgba(0, 0, 0, 0.85);
+  --luz-1: rgba(39, 169, 241, 0.2);
+  --luz-2: rgba(124, 92, 255, 0.2);
+  --luz-3: rgba(255, 92, 147, 0.09);
+  color-scheme: dark;
+}
+:root[data-theme='light'] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 14px/1.55 var(--fuente);
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * El fondo: tres luces difusas sobre el tono base, fijas al hacer scroll. Son
+ * degradados y no imágenes ni desenfoques: no pesan nada y no cuestan GPU.
+ */
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(48vw 40vw at 4% -8%, var(--luz-1), transparent 70%),
+    radial-gradient(42vw 36vw at 102% 2%, var(--luz-2), transparent 70%),
+    radial-gradient(50vw 40vw at 72% 110%, var(--luz-3), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+::selection { background: color-mix(in srgb, var(--cian) 30%, transparent); }
 
 /* ── Estructura ───────────────────────────────────────────────────────────── */
 
@@ -168,30 +275,42 @@ a:hover { text-decoration: underline; }
 .input, .select {
   font: inherit;
   font-size: 13.5px;
-  padding: 7px 10px;
+  padding: 9px 13px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--vidrio-fuerte);
   color: var(--text);
   min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.input:focus, .select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.input::placeholder { color: var(--text-3); }
+.input:hover, .select:hover { border-color: color-mix(in srgb, var(--cian) 40%, var(--border-strong)); }
+.input:focus, .select:focus { outline: none; border-color: var(--cian); box-shadow: 0 0 0 4px color-mix(in srgb, var(--cian) 18%, transparent); }
 .input { flex: 1 1 260px; max-width: 380px; }
 
-.segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+/* Grupo de opciones: una cápsula de vidrio y la elegida en tinta. */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 14px;
+  background: var(--vidrio);
+  box-shadow: var(--vidrio-brillo);
+}
 .segmented button {
   font: inherit;
   font-size: 13px;
   padding: 7px 13px;
   border: 0;
-  background: var(--surface);
+  border-radius: 10px;
+  background: transparent;
   color: var(--text-2);
   cursor: pointer;
-  border-right: 1px solid var(--border);
+  transition: background-color 0.15s, color 0.15s;
 }
-.segmented button:last-child { border-right: 0; }
-.segmented button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.segmented button:hover:not([aria-pressed='true']) { background: var(--surface-2); }
+.segmented button[aria-pressed='true'] { background: var(--text); color: var(--bg); font-weight: 600; }
+.segmented button:hover:not([aria-pressed='true']) { background: var(--vidrio-fuerte); color: var(--text); }
 
 .count { margin-left: auto; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
@@ -211,11 +330,11 @@ thead th {
   font-weight: 600;
   font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .08em;
   color: var(--text-3);
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
   position: sticky;
   top: 0;
   white-space: nowrap;
@@ -224,13 +343,14 @@ thead th.sortable { cursor: pointer; user-select: none; }
 thead th.sortable:hover { color: var(--text); }
 thead th .arrow { margin-left: 4px; opacity: .8; }
 
-tbody td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tbody tr:last-child td { border-bottom: 0; }
-tbody tr:hover { background: var(--surface-2); }
+tbody tr { transition: background-color 0.12s; }
+tbody tr:hover { background: color-mix(in srgb, var(--cian) 7%, transparent); }
 
 /* Los importes se alinean a la derecha y con cifras de ancho fijo: es lo que
    permite comparar dos filas sin leerlas. */
-.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.num { text-align: right; font-family: var(--mono); font-size: 0.95em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .num.zero { color: var(--text-3); }
 .num.debt { color: var(--danger); }
 
@@ -334,6 +454,7 @@ tbody tr:hover { background: var(--surface-2); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) { --accent-bar: #3d5f7d; --neutral: #6b6b64; }
 }
+:root[data-theme='dark'] { --accent-bar: #3d5f7d; --neutral: #6b6b64; }
 
 .crumb { font-size: 12.5px; color: var(--text-3); margin-bottom: 6px; }
 .crumb span { margin: 0 5px; }
@@ -750,228 +871,296 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MARCO: LATERAL OSCURO, PROFUNDIDAD Y DEGRADADOS
+   MARCO «CRISTAL»: LATERAL DE VIDRIO, CABECERA Y PALETA ⌘K
 
-   Dirección visual pedida sobre la referencia: lateral oscuro flotante, esquina
-   generosa, azul en degradado para lo activo y sensación de relieve.
+   `components/Marco.tsx`, `NavLateral.tsx`, `MenuUsuario.tsx` y `Paleta.tsx`.
 
-   El relieve se hace con TRES capas, no con una sombra grande: un degradado que
-   da la dirección de la luz, una línea clara de 1 px arriba —el borde que
-   devuelve el brillo— y una sombra corta y tintada del mismo color. Es lo que
-   distingue un botón con volumen de una mancha azul con sombra debajo.
+   El lateral es una lámina de vidrio que flota sobre las luces del fondo, con
+   los nombres de las secciones. Se pliega a una barra de iconos (el botón junto
+   al logo) y la elección se recuerda en una cookie, para que la página llegue
+   ya plegada y no dé un salto al cargar.
 
-   Lo que NO se ha copiado de la referencia: el fondo de página con color
-   saturado. Esto se mira horas y con tablas de ochocientas filas; un fondo azul
-   compite con los datos. La profundidad se queda; el ruido, fuera.
+   La sección activa lleva el degradado de la marca: es lo único saturado del
+   menú, y por eso se encuentra sin buscarlo.
    ══════════════════════════════════════════════════════════════════════════ */
 
-:root {
-  --lateral-1: #1b2233;
-  --lateral-2: #141a28;
-  --lateral-text: #98a2b8;
-  --lateral-text-fuerte: #ffffff;
-  --lateral-hover: rgba(255, 255, 255, 0.055);
-
-  /* El azul del propio logotipo, para que el acento y la marca sean el mismo. */
-  --primario: #1189dc;
-  --primario-claro: #35a5ee;
-  --primario-oscuro: #0c6fb4;
-  --primario-text: #ffffff;
-
-  --radius-card: 16px;
-  --radius-pill: 999px;
-
-  /* Sombras en dos pasos: el contacto y la difusión. Una sola sombra grande
-     hace que todo flote por igual y nada parezca apoyado. */
-  --sombra-card: 0 1px 2px rgba(17, 24, 39, 0.05), 0 8px 20px -12px rgba(17, 24, 39, 0.12);
-  --sombra-azul: 0 1px 2px rgba(12, 111, 180, 0.35), 0 8px 16px -6px rgba(17, 137, 220, 0.45);
-}
-
 .app {
+  --ancho-lateral: 256px;
   display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 18px;
+  grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+  gap: 24px;
   min-height: 100vh;
-  padding: 18px;
+  padding: 18px 24px 18px 18px;
+  transition: grid-template-columns 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
+.app[data-menu='plegado'] { --ancho-lateral: 84px; }
 
 /* ── Lateral ──────────────────────────────────────────────────────────────── */
 
 .lateral {
-  display: flex;
-  flex-direction: column;
-  /* 160 grados y no 180: la luz entra por arriba a la izquierda, igual que en
-     las tarjetas y en el botón activo. Si cada elemento se ilumina por su lado,
-     el relieve se deshace. */
-  background: linear-gradient(160deg, var(--lateral-1) 0%, var(--lateral-2) 62%);
-  border-radius: var(--radius-card);
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.16), 0 18px 36px -22px rgba(17, 24, 39, 0.5);
   position: sticky;
   top: 18px;
   height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 28px;
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
+  box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
   overflow: hidden;
 }
 
 .lateral-marca {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 22px 20px 24px;
-  /* Un velo del azul de marca en la esquina superior: da profundidad al panel
-     sin meter una imagen ni un borde más. */
-  background: radial-gradient(120% 90% at 0% 0%, rgba(17, 137, 220, 0.22), transparent 70%);
+  align-items: center;
+  gap: 10px;
+  padding: 22px 16px 18px 22px;
 }
 
 /*
  * Recorte del logotipo.
  *
- * El PNG mide 3881x3105 y la tinta va de (94, 652) a (3798, 2106): un 21 % de
- * margen transparente arriba y un 32 % abajo. Con `object-fit: contain` saldría
- * pequeño y descolgado hacia arriba, así que se escala y se desplaza para que
- * la caja contenga SOLO la tinta.
+ * El PNG mide 3881×3105 y la tinta va de (94, 652) a (3798, 2106): mucho margen
+ * transparente. Se escala y se desplaza para que la caja contenga SOLO la tinta.
  *
- * escala = 126 / 3881 = 0.032466
- *   izquierda   -94 x escala = -3.05 px
- *   arriba     -652 x escala = -21.2 px
- *   tinta      3704 x escala = 120 px  ·  1454 x escala = 47 px
+ *   ancho de tinta 96 px → escala 96 / 3704 = 0,025918
+ *   imagen 100,6 px · izquierda −94 × escala = −2,44 · arriba −652 × escala = −16,9
+ *   caja 96 × 37,7 px
  *
- * Si se cambia el fichero del logo, hay que volver a medir estas cuatro cifras.
+ * Plegado se queda solo la «a» (tinta de x 94 a 1160, de y 904 a 2106), a 30 px:
+ *   escala 30 / 1066 = 0,02814 · imagen 109,2 · izquierda −2,65 · arriba −25,4
+ *   caja 30 × 33,8 px
+ *
+ * Si se cambia el fichero del logo, hay que volver a medir estas cifras.
  */
 .marca-logo {
   display: block;
   position: relative;
-  width: 120px;
-  height: 47px;
+  flex: none;
+  width: 96px;
+  height: 37.7px;
   overflow: hidden;
 }
-
 .marca-logo img {
   position: absolute;
-  width: 126px;
+  width: 100.6px;
+  max-width: none;
   height: auto;
-  left: -3.05px;
-  top: -21.2px;
+  left: -2.44px;
+  top: -16.9px;
 }
 
 .marca-ambito {
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  color: var(--lateral-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
 }
+
+.plegar {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, transform 0.28s;
+}
+.plegar:hover { background: var(--vidrio-fuerte); color: var(--text); }
+.plegar:focus-visible { outline: 2px solid var(--cian); outline-offset: 1px; }
 
 /* ── Navegación ───────────────────────────────────────────────────────────── */
 
-.nav { flex: 1; overflow-y: auto; padding: 0 12px; }
+.nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px 12px 12px; scrollbar-width: thin; }
 
-.nav-grupo + .nav-grupo { margin-top: 22px; }
+.nav-grupo + .nav-grupo { margin-top: 18px; }
 
 .nav-titulo {
-  padding: 0 10px 8px;
+  padding: 0 12px 7px;
   font-size: 10.5px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(152, 162, 184, 0.7);
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  white-space: nowrap;
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 12px;
-  margin-bottom: 3px;
-  border-radius: 11px;
-  color: var(--lateral-text);
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+  border-radius: 14px;
+  color: var(--text-2);
   font-size: 13.5px;
   font-weight: 500;
-  border: 1px solid transparent;
+  white-space: nowrap;
   /* Solo color: desplazar el elemento al pasar por encima hace que el puntero
      persiga al botón, y este menú se usa cien veces al día. */
-  transition: background-color .14s ease, color .14s ease, border-color .14s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
+.nav-item:hover { background: var(--vidrio-fuerte); color: var(--text); text-decoration: none; }
+.nav-item:focus-visible { outline: 2px solid var(--cian); outline-offset: -2px; }
 
-.nav-item:hover {
-  background: var(--lateral-hover);
-  color: var(--lateral-text-fuerte);
-  text-decoration: none;
-}
-
-/* Las tres capas del relieve. Ver la nota de la cabecera. */
 .nav-item.activa {
-  background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    var(--sombra-azul);
-  color: var(--primario-text);
+  background: var(--degradado);
+  color: #fff;
   font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), var(--sombra-azul);
 }
+.nav-item svg { flex: none; width: 18px; height: 18px; }
+.nav-texto { overflow: hidden; text-overflow: ellipsis; }
 
-.nav-item svg { flex: none; opacity: .9; }
-.nav-item.activa svg { opacity: 1; }
-
-/* ── Pie del lateral ──────────────────────────────────────────────────────── */
+/* ── Pie del lateral: de dónde salen los datos ────────────────────────────── */
 
 .lateral-pie {
-  padding: 14px 20px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--vidrio-fuerte);
   font-size: 11.5px;
-  color: rgba(152, 162, 184, 0.72);
-  line-height: 1.5;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.lateral-pie strong { display: block; color: var(--text); font-weight: 600; font-size: 12px; }
+.en-vivo {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #22c98a;
+  box-shadow: 0 0 0 0 rgba(34, 201, 138, 0.6);
+  animation: en-vivo 2.4s ease-out infinite;
+}
+@keyframes en-vivo {
+  0% { box-shadow: 0 0 0 0 rgba(34, 201, 138, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(34, 201, 138, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 201, 138, 0); }
 }
 
-.lateral-pie strong { display: block; color: var(--lateral-text); font-weight: 600; }
+/* ── Plegado: solo iconos ─────────────────────────────────────────────────── */
 
-/* ── Contenido ────────────────────────────────────────────────────────────── */
+.app[data-menu='plegado'] .lateral-marca { flex-direction: column; gap: 14px; padding: 22px 0 16px; }
+.app[data-menu='plegado'] .marca-logo { width: 30px; height: 33.8px; }
+.app[data-menu='plegado'] .marca-logo img { width: 109.2px; left: -2.65px; top: -25.4px; }
+.app[data-menu='plegado'] .marca-ambito { display: none; }
+.app[data-menu='plegado'] .plegar { margin: 0; transform: rotate(180deg); }
+.app[data-menu='plegado'] .nav { padding: 2px 14px 12px; }
+.app[data-menu='plegado'] .nav-titulo { height: 1px; padding: 0; margin: 4px 10px 12px; overflow: hidden; color: transparent; background: var(--border); }
+.app[data-menu='plegado'] .nav-item { justify-content: center; padding: 12px 0; }
+.app[data-menu='plegado'] .nav-texto { display: none; }
+.app[data-menu='plegado'] .lateral-pie { justify-content: center; margin: 0 14px 14px; padding: 14px 0; }
+.app[data-menu='plegado'] .lateral-pie > span:last-child { display: none; }
 
-.contenido { min-width: 0; padding-bottom: 32px; }
+/* ── Contenido y cabecera ─────────────────────────────────────────────────── */
+
+.contenido { min-width: 0; padding-bottom: 40px; }
 
 .cabecera {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 6px 4px 22px;
+  padding: 10px 4px 24px;
 }
-
+.cabecera-titulo { min-width: 0; }
 .cabecera h1 {
-  margin: 0 0 3px;
-  font-size: 23px;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  margin: 0 0 4px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.cabecera p { margin: 0; color: var(--text-2); font-size: 13.5px; max-width: 72ch; }
+.cabecera-acciones { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; align-items: center; }
+
+/* El buscador de la cabecera: abre la paleta ⌘K. */
+.buscador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 250px;
+  height: 46px;
+  padding: 0 8px 0 16px;
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 16px;
+  background: var(--vidrio);
+  box-shadow: var(--vidrio-brillo), var(--sombra-card);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.buscador:hover { color: var(--text-2); border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
+.buscador:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
+.buscador span { flex: 1; }
+/* En una pantalla táctil no hay teclado al que recordarle el atajo. */
+@media (pointer: coarse) { .buscador .tecla { display: none; } }
+.tecla {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 8px;
+  background: var(--vidrio-fuerte);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
 }
 
-.cabecera p { margin: 0; color: var(--text-2); font-size: 13px; max-width: 70ch; }
-
-.cabecera-acciones { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+/* ── Chip y menú del usuario ──────────────────────────────────────────────── */
 
 .chip-usuario {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 5px 13px 5px 5px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px 0 6px;
+  border: 1px solid var(--vidrio-borde);
   border-radius: var(--radius-pill);
-  box-shadow: var(--sombra-card);
+  background: var(--vidrio);
+  box-shadow: var(--vidrio-brillo), var(--sombra-card);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 
 .avatar {
   display: grid;
   place-items: center;
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: linear-gradient(160deg, var(--primario-claro), var(--primario-oscuro));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #ffb86b, #ff5c93);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: #fff;
-  font-size: 11.5px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .usuario-datos { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-
 .usuario-datos strong {
   font-size: 12.5px;
   font-weight: 600;
@@ -980,85 +1169,147 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .usuario-datos small { font-size: 11px; color: var(--text-3); }
 
-.btn-salir {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 8px 15px;
+.menu-usuario { position: relative; }
+
+button.chip-usuario {
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
+  cursor: pointer;
+  color: inherit;
+  transition: border-color 0.13s ease;
+}
+button.chip-usuario:hover { border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
+button.chip-usuario[aria-expanded='true'] { border-color: var(--cian); }
+button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
+
+.chip-usuario .chevron { color: var(--text-3); flex: none; transition: transform 0.15s ease; }
+.chip-usuario .chevron.abierto { transform: rotate(180deg); }
+
+.menu-desplegable {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: 8px;
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 18px;
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  animation: aparecer 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.menu-cabecera {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.3;
+}
+/* El nombre completo, sin recortar: en el chip se corta por espacio, y este es
+   el único sitio donde se puede leer entero. */
+.menu-cabecera strong { font-size: 13px; font-weight: 600; }
+.menu-cabecera small { font-size: 11.5px; color: var(--text-3); }
+
+.menu-desplegable a,
+.menu-desplegable button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
   color: var(--text-2);
   cursor: pointer;
-  box-shadow: var(--sombra-card);
 }
+.menu-desplegable a:hover,
+.menu-desplegable button:hover { background: var(--accent-soft); color: var(--text); text-decoration: none; }
+.menu-desplegable .menu-peligro { color: var(--danger); }
+.menu-desplegable .menu-peligro:hover { background: var(--danger-soft); color: var(--danger); }
 
-.btn-salir:hover { color: var(--text); background: var(--surface-2); }
+/* El selector de tema: tres opciones en una fila. */
+.menu-tema { padding: 6px 4px 8px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+.menu-tema > span { display: block; padding: 0 6px 6px; font-size: 11px; color: var(--text-3); }
+.menu-tema-opciones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 12px; background: var(--accent-soft); }
+.menu-desplegable .menu-tema-opciones button { justify-content: center; padding: 7px 4px; font-size: 12px; border-radius: 9px; }
+.menu-desplegable .menu-tema-opciones button[aria-pressed='true'] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(18, 52, 96, 0.15); }
 
-/* ── Tarjetas ─────────────────────────────────────────────────────────────── */
+@keyframes aparecer { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ── Superficies: lo que ya existía, en vidrio ────────────────────────────── */
 /*
- * Se redondean y se elevan las superficies que YA existían, en vez de inventar
- * clases nuevas: así el rediseño alcanza también a las pantallas que no se han
- * tocado una por una.
+ * Se pasan a vidrio las superficies que YA existían, en vez de inventar clases
+ * nuevas: así el rebranding alcanza también a las pantallas que no se han
+ * tocado una por una. Sin `backdrop-filter`: el fondo detrás es un degradado
+ * suave, no hay detalle que desenfocar, y en una tabla de ochocientas filas el
+ * desenfoque se paga al hacer scroll.
  */
 .panel, .table-wrap, .stat, .notice, .login-card {
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
   border-radius: var(--radius-card);
-  box-shadow: var(--sombra-card);
+  box-shadow: var(--vidrio-brillo), var(--sombra-card);
 }
 
-.stat {
-  padding: 17px 19px;
-  /* Un degradado muy corto, del blanco al gris del fondo: suficiente para que
-     la tarjeta tenga un arriba y un abajo. */
-  background: linear-gradient(170deg, var(--surface) 0%, var(--surface-2) 190%);
-}
+.stat { padding: 18px 20px; }
+.stat-label { font-size: 11px; letter-spacing: 0.08em; color: var(--text-3); }
+.stat-value { font-size: 28px; font-weight: 600; letter-spacing: -0.035em; }
+.stats { gap: 16px; margin-bottom: 24px; }
 
-.stat-label { font-size: 11.5px; letter-spacing: 0.04em; }
-.stat-value { font-size: 27px; letter-spacing: -0.03em; }
-.stats { gap: 14px; margin-bottom: 24px; }
+.notice.error { background: color-mix(in srgb, var(--danger-soft) 80%, transparent); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
 
-/* Botón primario: mismas tres capas que la sección activa. */
+/* Botón primario: el degradado de la marca, con su brillo y su sombra. */
 .btn {
   border-radius: var(--radius-pill);
-  padding: 9px 18px;
-  font-weight: 550;
-  background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--sombra-azul);
+  padding: 10px 20px;
+  font-weight: 600;
+  background: var(--degradado);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), var(--sombra-azul);
+  transition: filter 0.15s, transform 0.15s;
 }
+.btn:hover { filter: brightness(1.07); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { box-shadow: none; filter: saturate(0.6); transform: none; }
+.btn:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
+.btn-inline { padding: 8px 16px; }
 
-.btn:hover { filter: brightness(1.06); }
-.btn:disabled { box-shadow: none; filter: none; }
-.btn-inline { padding: 7px 15px; }
-
-/* ── Estrecho ─────────────────────────────────────────────────────────────── */
-/*
- * El lateral pasa a barra horizontal desplazable. No es un menú hamburguesa a
- * propósito: son cuatro entradas, y esconderlas detrás de un botón cuesta un
- * toque más cada vez para ahorrar 40 px de alto.
- */
-/* ── Pestañas de abajo (estrecho) ────────────────────────────────────────── */
+/* ── Estrecho: el menú baja a pestañas, como en una app ───────────────────── */
 /*
  * En estrecho el lateral se queda en una franja con el logo y el menú baja a
- * pestañas fijas, como en una app: siempre a mano con el pulgar, y sin la tira
- * con barra de desplazamiento que había antes. `NavInferior` en
+ * pestañas fijas: siempre a mano con el pulgar. `NavInferior` en
  * `components/NavLateral.tsx`. En ancho no se ve.
  */
 .nav-inferior, .hoja-fondo { display: none; }
 
 @media (max-width: 880px) {
   /* Abajo, sitio para la barra: que el final de una tabla no quede debajo. */
-  .app { grid-template-columns: 1fr; gap: 12px; padding: 12px 12px calc(92px + env(safe-area-inset-bottom)); }
+  .app,
+  .app[data-menu='plegado'] { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px 12px calc(96px + env(safe-area-inset-bottom)); }
 
-  .lateral { position: static; height: auto; }
-  .lateral-marca { flex-direction: row; align-items: center; gap: 12px; padding: 12px 16px; }
-  .lateral .nav, .lateral-pie { display: none; }
+  .lateral { position: static; height: auto; border-radius: 22px; }
+  .lateral-marca,
+  .app[data-menu='plegado'] .lateral-marca { flex-direction: row; padding: 12px 16px; }
+  .app[data-menu='plegado'] .marca-logo { width: 96px; height: 37.7px; }
+  .app[data-menu='plegado'] .marca-logo img { width: 100.6px; left: -2.44px; top: -16.9px; }
+  .app[data-menu='plegado'] .marca-ambito { display: inline; }
+  .lateral .nav, .lateral-pie, .plegar { display: none; }
 
   .cabecera { flex-wrap: wrap; padding: 4px 2px 16px; }
-  .cabecera-acciones { margin-left: 0; width: 100%; }
+  .cabecera h1 { font-size: 23px; }
+  .cabecera-acciones { margin-left: 0; width: 100%; justify-content: flex-start; }
+  .buscador { flex: 1 1 200px; min-width: 0; }
+  .usuario-datos { display: none; }
+  .chip-usuario { padding-right: 10px; }
 
   .nav-inferior {
     position: fixed;
@@ -1069,9 +1320,12 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     display: flex;
     gap: 2px;
     padding: 6px 4px;
-    border-radius: 20px;
-    background: linear-gradient(160deg, var(--lateral-1) 0%, var(--lateral-2) 62%);
-    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.2), 0 14px 30px -10px rgba(17, 24, 39, 0.55);
+    border-radius: 24px;
+    border: 1px solid var(--vidrio-borde);
+    background: var(--vidrio-fuerte);
+    box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    backdrop-filter: blur(24px) saturate(1.5);
   }
 
   .pestana {
@@ -1083,35 +1337,36 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     gap: 4px;
     padding: 7px 2px 6px;
     border: 0;
-    border-radius: 14px;
+    border-radius: 16px;
     background: none;
-    color: var(--lateral-text);
+    color: var(--text-2);
     font: inherit;
     font-size: 10.5px;
-    font-weight: 550;
+    font-weight: 500;
     letter-spacing: -0.01em;
     text-decoration: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: color 0.15s ease, background-color 0.15s ease;
+    transition: color 0.15s ease;
   }
-  .pestana:hover { color: var(--lateral-text-fuerte); text-decoration: none; }
-  .pestana:focus-visible { outline: 2px solid var(--primario-claro); outline-offset: -2px; }
+  .pestana:hover { color: var(--text); text-decoration: none; }
+  .pestana:focus-visible { outline: 2px solid var(--cian); outline-offset: -2px; }
   .pestana-texto { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  /* La activa: el icono dentro de una pastilla azul, como el botón activo del lateral. */
+  /* La activa: el icono dentro de una pastilla con el degradado. */
   .pestana-icono {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 28px;
+    width: 46px;
+    height: 30px;
     border-radius: 999px;
     transition: background 0.2s ease, transform 0.2s ease;
   }
-  .pestana.activa { color: var(--lateral-text-fuerte); }
+  .pestana.activa { color: var(--text); font-weight: 600; }
   .pestana.activa .pestana-icono {
-    background: linear-gradient(160deg, var(--primario-claro) 0%, var(--primario) 46%, var(--primario-oscuro) 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--sombra-azul);
+    background: var(--degradado);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), var(--sombra-azul);
     transform: translateY(-1px);
   }
 
@@ -1121,7 +1376,9 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     position: fixed;
     inset: 0;
     z-index: 40;
-    background: rgba(10, 14, 24, 0.38);
+    background: rgba(8, 16, 30, 0.32);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -1131,13 +1388,16 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     position: absolute;
     left: 10px;
     right: 10px;
-    bottom: calc(92px + env(safe-area-inset-bottom));
+    bottom: calc(96px + env(safe-area-inset-bottom));
     display: grid;
     gap: 2px;
     padding: 10px 10px 12px;
-    border-radius: 20px;
-    background: var(--surface);
-    box-shadow: 0 20px 40px -12px rgba(17, 24, 39, 0.45);
+    border-radius: 24px;
+    border: 1px solid var(--vidrio-borde);
+    background: var(--vidrio-fuerte);
+    box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
     transform: translateY(16px);
     transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
@@ -1148,98 +1408,121 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: 14px;
     color: var(--text);
     font-size: 14.5px;
-    font-weight: 550;
+    font-weight: 500;
   }
-  .hoja-item:hover { background: var(--surface-2); text-decoration: none; }
-  .hoja-item.activa { background: color-mix(in srgb, var(--primario) 10%, var(--surface)); color: var(--primario-oscuro); }
+  .hoja-item:hover { background: var(--accent-soft); text-decoration: none; }
+  .hoja-item.activa { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 }
 
-@media (max-width: 880px) and (prefers-reduced-motion: reduce) {
-  .pestana, .pestana-icono, .hoja-fondo, .hoja { transition: none; }
-}
-
-/* ── Menú del usuario ─────────────────────────────────────────────────────── */
+/* ── Paleta ⌘K ────────────────────────────────────────────────────────────── */
 /*
- * El chip deja de ser un adorno y pasa a ser un botón. Se conserva su aspecto
- * —pastilla, avatar, nombre— y se le añade lo que lo delata como pulsable: el
- * cursor, el chevron y una reacción al pasar por encima.
+ * `components/Paleta.tsx`. Se abre con ⌘K / Ctrl+K desde cualquier pantalla, o
+ * con el buscador de la cabecera. Salta a una sección, a un cliente de la
+ * cartera o ejecuta una acción (tema, plegar el menú, salir) sin tocar el ratón.
  */
-
-.menu-usuario { position: relative; }
-
-button.chip-usuario {
-  font: inherit;
-  cursor: pointer;
-  color: inherit;
-  transition: border-color .13s ease, background-color .13s ease;
+.paleta-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgba(8, 16, 30, 0.28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: paleta-fondo 0.16s ease;
 }
-
-button.chip-usuario:hover { border-color: var(--border-strong); background: var(--surface-2); }
-
-button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
-
-.chip-usuario .chevron {
-  color: var(--text-3);
-  flex: none;
-  transition: transform .15s ease;
-}
-
-.chip-usuario .chevron.abierto { transform: rotate(180deg); }
-
-.menu-desplegable {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 30;
-  min-width: 210px;
-  padding: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(17, 24, 39, 0.06), 0 16px 32px -12px rgba(17, 24, 39, 0.22);
-}
-
-.menu-cabecera {
+.paleta {
+  width: min(640px, 100%);
+  max-height: 72vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 10px 10px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
-  line-height: 1.25;
+  border-radius: 24px;
+  border: 1px solid var(--vidrio-borde);
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--vidrio-brillo), 0 40px 100px -30px rgba(8, 24, 48, 0.55);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+  overflow: hidden;
+  animation: aparecer 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-
-/* El nombre completo, sin recortar: en el chip se corta por espacio, y este es
-   el único sitio donde se puede leer entero. */
-.menu-cabecera strong { font-size: 13px; font-weight: 600; }
-.menu-cabecera small { font-size: 11.5px; color: var(--text-3); }
-
-.menu-desplegable a,
-.menu-desplegable button {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
+.paleta-entrada {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+}
+.paleta-entrada input {
+  flex: 1;
+  min-width: 0;
+  height: 60px;
   border: 0;
-  border-radius: 8px;
-  background: none;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+}
+.paleta-entrada input::placeholder { color: var(--text-3); }
+.paleta-lista { flex: 1; overflow-y: auto; padding: 8px; scroll-padding: 8px; }
+.paleta-grupo { padding: 10px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.paleta-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
   text-align: left;
-  color: var(--text-2);
   cursor: pointer;
 }
-
-.menu-desplegable a:hover,
-.menu-desplegable button:hover {
-  background: var(--surface-2);
-  color: var(--text);
-  text-decoration: none;
+.paleta-item[aria-selected='true'] { background: var(--accent-soft); }
+.paleta-item[aria-selected='true'] .paleta-icono { background: var(--degradado); color: #fff; border-color: transparent; }
+.paleta-icono {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  transition: background 0.12s, color 0.12s;
 }
+.paleta-icono svg { width: 17px; height: 17px; }
+.paleta-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.paleta-texto strong { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paleta-texto small { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paleta-dato { font-family: var(--mono); font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.paleta-vacio { padding: 36px 16px; text-align: center; color: var(--text-3); }
+.paleta-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.paleta-pie span { display: inline-flex; align-items: center; gap: 6px; }
+@keyframes paleta-fondo { from { opacity: 0; } to { opacity: 1; } }
 
-.menu-desplegable .menu-peligro { color: var(--danger); }
-.menu-desplegable .menu-peligro:hover { background: var(--danger-soft); color: var(--danger); }
+@media (prefers-reduced-motion: reduce) {
+  .app, .nav-item, .plegar, .pestana, .pestana-icono, .hoja-fondo, .hoja { transition: none; }
+  .en-vivo, .paleta, .paleta-fondo, .menu-desplegable { animation: none; }
+}
 
 /* ── Reportes ──────────────────────────────────────────────────────────────
    El selector de periodo son enlaces, no botones con JavaScript: la URL lleva
@@ -1255,31 +1538,35 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 
 .periodo {
   display: inline-block;
-  padding: 7px 14px;
+  padding: 8px 15px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--vidrio-borde);
+  background: var(--vidrio);
+  box-shadow: var(--vidrio-brillo);
   color: var(--text-2);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
 }
 
 .periodo:hover {
-  border-color: var(--primario);
+  border-color: color-mix(in srgb, var(--cian) 45%, transparent);
   color: var(--text);
+  text-decoration: none;
 }
 
 /* El selector de sede (`components/Sedes.tsx`) va encima del de periodo, con
    los mismos chips: las dos filas se leen como un solo filtro. */
 .sedes { margin-bottom: 10px; }
 
+/* La elegida, en tinta: como en los grupos de opciones (`.segmented`). */
 .periodo--activo,
 .periodo--activo:hover {
-  background: var(--primario);
-  border-color: var(--primario);
-  color: #fff;
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+  font-weight: 600;
 }
 
 /* ── Reporte por producto ─────────────────────────────────────────────────── */
@@ -1805,20 +2092,22 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
    ══════════════════════════════════════════════════════════════════════════
  *
  * Un solo login para administración, equipo de ventas y clientes
- * (`components/acceso/PantallaAcceso.tsx`): la marca a un lado y el formulario
- * al otro, sin decir de quién es el panel.
+ * (`components/acceso/PantallaAcceso.tsx`): a un lado la marca, con la pirámide
+ * de categorías en 3D (`components/tres/PiramideCristal.tsx`), y al otro el
+ * formulario en una lámina de vidrio.
  *
- * Es la excepción a «nada se mueve solo» de arriba: aquí no se trabaja, se
- * llega. El fondo de la marca se mueve despacio y el formulario entra con un
- * fundido; con «reducir movimiento» se queda todo quieto.
+ * Es la excepción a «nada se mueve solo»: aquí no se trabaja, se llega. La
+ * pirámide gira y sigue al ratón, y el formulario entra con un fundido; con
+ * «reducir movimiento» se queda todo quieto.
  */
 
 .acceso {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(380px, 46%) 1fr;
-  background: var(--bg);
+  grid-template-columns: minmax(0, 1.15fr) minmax(400px, 0.85fr);
+  gap: 22px;
+  padding: 22px;
 }
 
 /* ── La marca ─────────────────────────────────────────────────────────────── */
@@ -1830,112 +2119,120 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 48px 56px;
-  color: #fff;
-  background: linear-gradient(150deg, var(--primario-claro) 0%, var(--primario) 42%, #0a5f9c 100%);
+  padding: 40px 46px;
+  border-radius: 32px;
+  border: 1px solid var(--vidrio-borde);
+  background:
+    radial-gradient(70% 60% at 70% 55%, color-mix(in srgb, var(--cian) 22%, transparent), transparent 70%),
+    var(--vidrio);
+  box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
 }
 
-/* Una trama de puntos que se apaga hacia abajo: textura sin ruido. */
-.acceso-marca::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.17) 1px, transparent 1.3px);
-  background-size: 22px 22px;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
-  mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
-}
+.acceso-escena { position: absolute; inset: 0; z-index: -1; }
+.acceso-escena canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.acceso-escena canvas:active { cursor: grabbing; }
 
-.acceso-aurora { position: absolute; inset: -10%; z-index: -2; filter: blur(70px); }
-.acceso-aurora span {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.55;
-  animation: acceso-flotar 18s ease-in-out infinite alternate;
-}
-.acceso-aurora span:nth-child(1) { width: 440px; height: 440px; background: #8fd6ff; top: -12%; left: -8%; }
-.acceso-aurora span:nth-child(2) { width: 380px; height: 380px; background: #0b4b80; bottom: -10%; right: -6%; animation-duration: 22s; animation-delay: -6s; }
-.acceso-aurora span:nth-child(3) { width: 280px; height: 280px; background: #5fe1d9; top: 42%; left: 40%; opacity: 0.32; animation-duration: 27s; animation-delay: -12s; }
-
-.acceso-marca-contenido { margin: auto 0; }
+/* El logo azul, recortado a su tinta (medidas en `.marca-logo`). 132 px de ancho. */
 .acceso-logo {
   display: block;
-  width: min(260px, 70%);
-  height: auto;
-  filter: drop-shadow(0 10px 24px rgba(4, 40, 70, 0.22));
+  position: relative;
+  width: 132px;
+  height: 51.8px;
+  overflow: hidden;
   animation: acceso-entrar 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+.acceso-logo img { position: absolute; width: 138.3px; max-width: none; height: auto; left: -3.35px; top: -23.2px; }
+
+.acceso-marca-contenido { pointer-events: none; }
 .acceso-lema {
-  margin: 30px 0 0;
-  font-size: clamp(26px, 2.6vw, 38px);
-  line-height: 1.15;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  margin: 0;
+  max-width: 14ch;
+  font-size: clamp(32px, 3.4vw, 52px);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+  background: linear-gradient(120deg, var(--text) 30%, #1c8cdb 72%, var(--violeta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   animation: acceso-entrar 0.8s 0.12s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.acceso-pie { margin: 0; font-size: 12.5px; color: rgba(255, 255, 255, 0.72); }
+.acceso-niveles { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; animation: acceso-entrar 0.8s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.acceso-niveles li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--vidrio-fuerte);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.acceso-niveles i { width: 9px; height: 9px; border-radius: 3px; background: var(--c); }
+.acceso-pie { margin: 18px 0 0; font-size: 12.5px; color: var(--text-3); }
 
 /* ── El formulario ────────────────────────────────────────────────────────── */
 
-.acceso-panel { display: grid; place-items: center; padding: 40px 24px; }
+.acceso-panel { display: grid; place-items: center; padding: 24px 8px; }
 
 .acceso .acceso-tarjeta {
-  max-width: 400px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  max-width: 440px;
+  padding: 38px 36px;
+  border-radius: 30px;
+  background: var(--vidrio);
+  -webkit-backdrop-filter: blur(26px) saturate(1.4);
+  backdrop-filter: blur(26px) saturate(1.4);
+  box-shadow: var(--vidrio-brillo), var(--sombra-flotante);
   animation: acceso-entrar 0.6s 0.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.acceso .login-card h1 { margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.03em; }
-.acceso .login-card > p { margin: 0 0 28px; font-size: 15px; }
+.acceso .login-card h1 { margin: 0 0 6px; font-size: 30px; font-weight: 600; letter-spacing: -0.035em; }
+.acceso .login-card > p { margin: 0 0 28px; font-size: 14.5px; color: var(--text-2); }
 
 .acceso .field { margin-bottom: 18px; }
-.acceso .field label { margin-bottom: 7px; font-size: 13px; color: var(--text); }
+.acceso .field label { margin-bottom: 7px; font-size: 13px; font-weight: 500; color: var(--text); }
 .acceso-etiqueta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.acceso-etiqueta a { margin-bottom: 7px; font-size: 13px; font-weight: 550; }
+.acceso-etiqueta a { margin-bottom: 7px; font-size: 13px; font-weight: 500; }
 
 .acceso .input {
-  height: 48px;
+  height: 50px;
   padding: 0 14px;
   font-size: 15px;
   border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface);
+  border-radius: 14px;
+  background: var(--vidrio-fuerte);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .acceso .input::placeholder { color: var(--text-3); }
-.acceso .input:hover { border-color: var(--text-3); }
+.acceso .input:hover { border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
 .acceso .input:focus {
   outline: none;
-  border-color: var(--primario);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primario) 18%, transparent);
+  border-color: var(--cian);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cian) 20%, transparent);
 }
 /* El autocompletado de Chrome pinta el campo de azul claro: se le devuelve su fondo. */
 .acceso .input:-webkit-autofill { -webkit-text-fill-color: var(--text); box-shadow: 0 0 0 1000px var(--surface) inset; }
 .acceso .input:-webkit-autofill:focus {
-  box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 4px color-mix(in srgb, var(--primario) 18%, transparent);
+  box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 4px color-mix(in srgb, var(--cian) 20%, transparent);
 }
 
 /* Campo con icono delante y, en la contraseña, el botón de verla detrás. */
 .acceso-entrada { position: relative; }
 .acceso-entrada > svg {
   position: absolute;
-  left: 14px;
+  left: 15px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-3);
   pointer-events: none;
   transition: color 0.15s;
 }
-.acceso-entrada:focus-within > svg { color: var(--primario); }
+.acceso-entrada:focus-within > svg { color: var(--cian); }
 .acceso-entrada .input { padding-left: 44px; padding-right: 48px; }
 
 .acceso-ver {
   position: absolute;
-  right: 6px;
+  right: 7px;
   top: 50%;
   transform: translateY(-50%);
   display: grid;
@@ -1943,13 +2240,13 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
 }
-.acceso-ver:hover { color: var(--text); background: var(--surface-2); }
-.acceso-ver:focus-visible { outline: 2px solid var(--primario); outline-offset: 1px; }
+.acceso-ver:hover { color: var(--text); background: var(--accent-soft); }
+.acceso-ver:focus-visible { outline: 2px solid var(--cian); outline-offset: 1px; }
 .acceso-mayus { margin: 7px 0 0; font-size: 12.5px; color: var(--warning); }
 
 .acceso-boton {
@@ -1957,7 +2254,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  height: 50px;
+  height: 52px;
   margin-top: 8px;
   font-size: 15.5px;
 }
@@ -1979,7 +2276,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   position: relative;
   margin: 0 0 22px;
   padding: 12px 14px 12px 36px;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 14px;
   line-height: 1.4;
 }
@@ -2001,12 +2298,12 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 }
 .acceso-aviso.ok {
   color: var(--positive);
-  background: color-mix(in srgb, var(--positive) 9%, var(--surface));
+  background: color-mix(in srgb, var(--positive) 10%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--positive) 25%, transparent);
 }
 
 /* Las otras pantallas de acceso siguen usando `.notice`: mismas esquinas. */
-.acceso .notice { border-radius: 12px; box-shadow: none; }
+.acceso .notice { border-radius: 14px; box-shadow: none; }
 
 .acceso-ayuda { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
 .acceso-ayuda summary {
@@ -2014,7 +2311,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   align-items: center;
   gap: 8px;
   list-style: none;
-  font-weight: 550;
+  font-weight: 500;
   cursor: pointer;
 }
 .acceso-ayuda summary::-webkit-details-marker { display: none; }
@@ -2033,7 +2330,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   padding-top: 20px;
   border-top: 1px solid var(--border);
   font-size: 13.5px;
-  font-weight: 550;
+  font-weight: 500;
   color: var(--text-2);
 }
 .acceso-whatsapp {
@@ -2054,13 +2351,9 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .acceso-whatsapp { --verde: #5fd38d; }
 }
+:root[data-theme='dark'] .acceso-whatsapp { --verde: #5fd38d; }
 
 @keyframes acceso-entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@keyframes acceso-flotar {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(60px, 40px) scale(1.12); }
-  100% { transform: translate(-40px, 70px) scale(0.92); }
-}
 @keyframes acceso-girar { to { transform: rotate(360deg); } }
 @keyframes acceso-sacudir {
   0%, 100% { transform: translateX(0); }
@@ -2070,14 +2363,17 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
   80% { transform: translateX(2px); }
 }
 
-/* Estrecho: la marca se queda en una franja con el logo, y el formulario arriba. */
+/* Estrecho: la marca se queda en una franja con el logo y la pirámide, y el
+   formulario debajo, a la vista sin desplazarse. */
 @media (max-width: 900px) {
-  .acceso { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .acceso-marca { padding: 22px 24px; }
-  .acceso-marca-contenido { margin: 0; }
-  .acceso-logo { width: 108px; }
-  .acceso-lema, .acceso-pie { display: none; }
-  .acceso-panel { place-items: start center; padding: 32px 20px 40px; }
+  .acceso { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 14px; padding: 14px; }
+  .acceso-marca { min-height: 190px; padding: 22px 24px; border-radius: 26px; }
+  .acceso-logo { width: 96px; height: 37.7px; }
+  .acceso-logo img { width: 100.6px; left: -2.44px; top: -16.9px; }
+  .acceso-lema { font-size: 26px; max-width: 12ch; }
+  .acceso-niveles, .acceso-pie { display: none; }
+  .acceso-panel { place-items: start center; padding: 0; }
+  .acceso .acceso-tarjeta { padding: 28px 22px; border-radius: 26px; }
   .acceso .login-card h1 { font-size: 26px; }
 }
 
@@ -2182,6 +2478,7 @@ button.chip-usuario[aria-expanded='true'] { border-color: var(--primario); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .clase-B { color: var(--accent); }
 }
+:root[data-theme='dark'] .clase-B { color: var(--accent); }
 
 /* ── Celdas de la tabla ────────────────────────────────────────────────── */
 
@@ -3122,7 +3419,7 @@ body:has(.enlace-cargando)::before {
   z-index: 1000;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, var(--primario-claro), var(--primario), var(--primario-oscuro));
+  background: var(--degradado);
   box-shadow: 0 0 8px color-mix(in srgb, var(--primario) 60%, transparent);
   transform-origin: left;
   /* Avanza rápido y se frena antes del final: no sabe cuánto falta. */
@@ -3182,7 +3479,7 @@ body:has(.enlace-cargando) .contenido {
 .cat-avance-cifras strong { font-size: 28px; font-weight: 680; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .cat-avance-cifras span { color: var(--text-2); font-size: 13px; }
 .cat-avance-barra { height: 12px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
-.cat-avance-barra span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primario-claro), var(--primario)); }
+.cat-avance-barra span { display: block; height: 100%; border-radius: inherit; background: var(--degradado); }
 
 .cat-niveles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .cat-nivel {
