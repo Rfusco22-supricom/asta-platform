@@ -13,6 +13,8 @@ import {
   ContractError,
 } from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
+import { Cifra } from '@/components/Cifras';
 import { GraficaMensual } from './GraficaMensual';
 import { Perfil } from './Perfil';
 
@@ -116,28 +118,23 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre}>
-      <div className="page-head ficha-cabeza">
-        {/* El administrador no tiene cartera: llega desde los reportes. */}
-        <div className="crumb">
-          {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
-          <span>/</span> {nombre}
+      {/* La tarjeta del cliente: su avatar, de dónde se llega y la tarifa de Odoo. */}
+      <div className="panel ficha-cabeza">
+        <Avatar nombre={nombre} tamano="l" />
+        <div className="ficha-datos">
+          {/* El administrador no tiene cartera: llega desde los reportes. */}
+          <div className="crumb">
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
+            <span>/</span> {nombre}
+          </div>
+          {/* El nombre ya es el título de la pantalla: aquí no se repite. */}
+          <span className="ficha-tarifa">{cliente.tier ?? 'Sin tarifa asignada'}</span>
         </div>
-        <p>
-          {cliente.tier ?? 'Sin tarifa asignada'}
-          {ODOO_URL && (
-            <>
-              {' · '}
-              <a
-                className="enlace-accion"
-                href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Abrir en Odoo ↗
-              </a>
-            </>
-          )}
-        </p>
+        {ODOO_URL && (
+          <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
+            Abrir en Odoo ↗
+          </a>
+        )}
       </div>
 
       {/*
@@ -225,43 +222,37 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
       {/* ── Resumen ───────────────────────────────────────────────────────── */}
       <section className="stats">
-        <div className="stat">
-          {/* El criterio, escrito donde se lee el número (#26). */}
-          <div className="stat-label">Vendido en ASTA, sin IVA</div>
-          <div className="stat-value">{money(f.totalFacturado)}</div>
-          <div className="stat-sub">
-            {f.numeroFacturas} {f.numeroFacturas === 1 ? 'factura' : 'facturas'} con ASTA · neto de devoluciones
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Por cobrar</div>
-          <div className="stat-value" style={{ color: f.porCobrar > 0 ? 'var(--danger)' : undefined }}>
-            {money(f.porCobrar)}
-          </div>
-          <div className="stat-sub">
-            {f.cobrado + f.porCobrar > 0
-              ? `${pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA`
-              : 'sin facturas con ASTA en Odoo'}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Ticket promedio</div>
-          <div className="stat-value small">{money(f.ticketPromedio)}</div>
-          <div className="stat-sub">de ASTA por factura</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Última compra de ASTA</div>
-          <div className="stat-value small">
-            {f.ultimaFactura ? money(f.ultimaFactura.monto) : '—'}
-          </div>
-          <div className="stat-sub">
-            {f.ultimaFactura
+        {/* El criterio, escrito donde se lee el número (#26). */}
+        <Cifra
+          icono="ventas"
+          etiqueta="Vendido en ASTA, sin IVA"
+          valor={money(f.totalFacturado)}
+          nota={`${f.numeroFacturas} ${f.numeroFacturas === 1 ? 'factura' : 'facturas'} con ASTA · neto de devoluciones`}
+          tendencia={(f.serieMensual ?? []).map((p) => p.monto)}
+        />
+        <Cifra
+          icono="cobrar"
+          color="ambar"
+          etiqueta="Por cobrar"
+          valor={money(f.porCobrar)}
+          tono={f.porCobrar > 0 ? 'alerta' : undefined}
+          nota={f.cobrado + f.porCobrar > 0 ? `${pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA` : 'sin facturas con ASTA en Odoo'}
+        />
+        <Cifra icono="ticket" color="violeta" etiqueta="Ticket promedio" valor={money(f.ticketPromedio)} pequena nota="de ASTA por factura" />
+        <Cifra
+          icono="mes"
+          color="verde"
+          etiqueta="Última compra de ASTA"
+          valor={f.ultimaFactura ? money(f.ultimaFactura.monto) : '—'}
+          pequena
+          nota={
+            f.ultimaFactura
               ? `${f.ultimaFactura.folio} · ${fecha(f.ultimaFactura.fecha)}`
               : perfil?.ultimaCompra
                 ? `en Smartbit · ${fecha(perfil.ultimaCompra)}`
-                : 'nunca ha comprado ASTA'}
-          </div>
-        </div>
+                : 'nunca ha comprado ASTA'
+          }
+        />
       </section>
 
       {perfil && <Perfil perfil={perfil} />}

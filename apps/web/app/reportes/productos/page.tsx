@@ -5,6 +5,7 @@ import { PestanasReportes } from '@/components/PestanasReportes';
 import { getReporteProductos, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
 import { VistaProductos } from './VistaProductos';
+import { Cifra } from '@/components/Cifras';
 
 /**
  * Qué productos ASTA compran los clientes de la PROPIA cartera.
@@ -51,21 +52,9 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
       <Periodos base="/reportes/productos" periodo={periodo} />
 
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Vendido en ASTA</div>
-          <div className="stat-value">{moneyCompact(totales.monto)}</div>
-          <div className="stat-sub">{money(totales.monto)} sin IVA</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Clientes que compraron ASTA</div>
-          <div className="stat-value">{totales.clientes}</div>
-          <div className="stat-sub">en el periodo</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Productos ASTA distintos</div>
-          <div className="stat-value">{totales.productos}</div>
-          <div className="stat-sub">en {datos.categorias.length} categorías</div>
-        </div>
+        <Cifra icono="ventas" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.monto)} nota={`${money(totales.monto)} sin IVA`} />
+        <Cifra icono="clientes" color="verde" etiqueta="Clientes que compraron ASTA" valor={totales.clientes} nota="en el periodo" />
+        <Cifra icono="caja" color="violeta" etiqueta="Productos ASTA distintos" valor={totales.productos} nota={`en ${datos.categorias.length} categorías`} />
       </section>
 
       {datos.apartados.map((a) => (

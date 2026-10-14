@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getActividadCartera, getPortfolio, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { moneyCompact, money } from '@/lib/formato';
+import { Cifra } from '@/components/Cifras';
 import { TablaCartera, type ResultadoActividad } from './TablaCartera';
 
 /**
@@ -85,37 +86,24 @@ export default async function CarteraPage() {
       descripcion={`${meta.clientes} clientes asignados · solo ASTA, sin IVA y neto de devoluciones · Odoo y, antes de abril de 2026, Smartbit`}
     >
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Vendido en ASTA</div>
-          <div className="stat-value">{moneyCompact(meta.totalCartera)}</div>
-          <div className="stat-sub">{money(meta.totalCartera)}</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Por cobrar</div>
-          <div
-            className="stat-value"
-            style={{
-              color: meta.porCobrarCartera > 0 ? 'var(--danger)' : undefined,
-            }}
-          >
-            {moneyCompact(meta.porCobrarCartera)}
-          </div>
-          <div className="stat-sub">{conDeuda} clientes con saldo en facturas con ASTA</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Compran ASTA</div>
-          <div className="stat-value">{conHistorial}</div>
-          <div className="stat-sub">{filas.length - conHistorial} todavía sin comprar ASTA</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Mayor cliente</div>
-          <div className="stat-value small">{moneyCompact(mayor)}</div>
-          <div className="stat-sub">
-            {meta.totalCartera > 0
-              ? `${((mayor / meta.totalCartera) * 100).toFixed(0)} % de la cartera`
-              : '—'}
-          </div>
-        </div>
+        <Cifra icono="ventas" etiqueta="Vendido en ASTA" valor={moneyCompact(meta.totalCartera)} nota={money(meta.totalCartera)} />
+        <Cifra
+          icono="cobrar"
+          color="ambar"
+          etiqueta="Por cobrar"
+          valor={moneyCompact(meta.porCobrarCartera)}
+          tono={meta.porCobrarCartera > 0 ? 'alerta' : undefined}
+          nota={`${conDeuda} clientes con saldo en facturas con ASTA`}
+        />
+        <Cifra icono="clientes" color="verde" etiqueta="Compran ASTA" valor={conHistorial} nota={`${filas.length - conHistorial} todavía sin comprar ASTA`} />
+        <Cifra
+          icono="corona"
+          color="violeta"
+          etiqueta="Mayor cliente"
+          valor={moneyCompact(mayor)}
+          pequena
+          nota={meta.totalCartera > 0 ? `${((mayor / meta.totalCartera) * 100).toFixed(0)} % de la cartera` : '—'}
+        />
       </section>
 
       <TablaCartera filas={filas} actividad={actividad} />

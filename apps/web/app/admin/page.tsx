@@ -12,6 +12,7 @@ import { PiramideCategorias, type NivelPiramide } from '@/components/inicio/Pira
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
 import { money, moneyCompact, moneyEntero } from '@/lib/formato';
+import { Cifra } from '@/components/Cifras';
 
 /**
  * Inicio del administrador: cómo va ASTA.
@@ -75,82 +76,6 @@ function ultimoMes(serie: Reporte['serieMensual']) {
   if (!ultimo) return null;
   const cambio = previo && previo.monto > 0 ? ((ultimo.monto - previo.monto) / previo.monto) * 100 : null;
   return { ultimo, previo, cambio };
-}
-
-/** Los iconos de las cifras, en su baldosa de color. Mismo trazo que el menú. */
-const ICONOS_KPI: Record<string, React.ReactNode> = {
-  ventas: <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />,
-  mes: (
-    <>
-      <rect x="4" y="5" width="16" height="15" rx="3" />
-      <path d="M4 10h16M9 3v4M15 3v4" />
-    </>
-  ),
-  cuota: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 4v8l5.5 5.5" />
-    </>
-  ),
-  clientes: (
-    <>
-      <path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19" />
-      <circle cx="9" cy="7" r="3.2" />
-      <path d="M22 19v-1.5a4 4 0 0 0-3-3.87M16.5 4.2a4 4 0 0 1 0 7.6" />
-    </>
-  ),
-  cobrar: (
-    <>
-      <rect x="2.5" y="6" width="19" height="13" rx="2.5" />
-      <path d="M2.5 10.5h19M7 15h3" />
-    </>
-  ),
-};
-
-/**
- * La tendencia de una cifra, como línea con su área: sin ejes ni números, solo
- * la forma. El valor exacto de cada mes está en la gráfica de abajo.
- */
-function Tendencia({ valores }: { valores: number[] }) {
-  if (valores.length < 2) return null;
-  const max = Math.max(...valores, 1);
-  const puntos = valores.map((v, i) => `${((i / (valores.length - 1)) * 100).toFixed(2)},${(30 - (v / max) * 26).toFixed(2)}`);
-  return (
-    <svg className="kpi-tendencia" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points={`0,32 ${puntos.join(' ')} 100,32`} />
-      <polyline points={puntos.join(' ')} />
-    </svg>
-  );
-}
-
-function Kpi({
-  etiqueta,
-  valor,
-  nota,
-  tono,
-  icono,
-  tendencia,
-}: {
-  etiqueta: string;
-  valor: string;
-  nota: React.ReactNode;
-  tono?: 'sube' | 'baja';
-  icono: keyof typeof ICONOS_KPI;
-  tendencia?: number[];
-}) {
-  return (
-    <div className={`stat dash-kpi kpi-${icono}`}>
-      <span className="kpi-icono" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          {ICONOS_KPI[icono]}
-        </svg>
-      </span>
-      <div className="stat-label">{etiqueta}</div>
-      <div className={`stat-value${tono ? ` dash-${tono}` : ''}`}>{valor}</div>
-      <div className="stat-sub">{nota}</div>
-      {tendencia && <Tendencia valores={tendencia} />}
-    </div>
-  );
 }
 
 function Ranking<T>({
@@ -219,7 +144,8 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
   return (
     <>
       <section className="stats dash-kpis" aria-label="ASTA en cifras">
-        <Kpi
+        <Cifra
+          className="dash-kpi"
           icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
@@ -227,8 +153,10 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           tendencia={r.serieMensual.map((p) => p.monto)}
         />
         {mes ? (
-          <Kpi
+          <Cifra
+            className="dash-kpi"
             icono="mes"
+            color="violeta"
             etiqueta={`Último mes · ${etiquetaMes(mes.ultimo.periodo)}`}
             valor={moneyCompact(mes.ultimo.monto)}
             tono={mes.cambio === null ? undefined : mes.cambio >= 0 ? 'sube' : 'baja'}
@@ -239,21 +167,25 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
             }
           />
         ) : (
-          <Kpi icono="mes" etiqueta="Último mes" valor="—" nota="sin meses completos en el periodo" />
+          <Cifra className="dash-kpi" icono="mes" color="violeta" etiqueta="Último mes" valor="—" nota="sin meses completos en el periodo" />
         )}
-        <Kpi
+        <Cifra
+          className="dash-kpi"
           icono="cuota"
+          color="rosa"
           etiqueta="Cuota de ASTA"
           valor={pct(asta.cuota)}
           nota={`del consumible que compran los clientes · ${moneyCompact(asta.competencia)} se va a otras marcas`}
         />
-        <Kpi
+        <Cifra
+          className="dash-kpi"
           icono="clientes"
+          color="verde"
           etiqueta="Clientes que compran ASTA"
           valor={n(totales.clientes)}
           nota={`ticket promedio ${money(totales.ticketPromedio)}`}
         />
-        <Kpi icono="cobrar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota="en las facturas con ASTA" />
+        <Cifra className="dash-kpi" icono="cobrar" color="ambar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota="en las facturas con ASTA" />
       </section>
 
       <section className="panel dash-serie">

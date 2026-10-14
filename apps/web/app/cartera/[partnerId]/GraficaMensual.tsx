@@ -17,7 +17,9 @@ import { money, moneyCompact } from '@/lib/formato';
 const ALTO = 150;
 const ANCHO_BARRA = 46;
 const HUECO = 10;
-const MARGEN_SUP = 22;
+const MARGEN_SUP = 28;
+/** Lo que sale el bloque hacia atrás: la cara de arriba y la del lado (relieve). */
+const FONDO = 6;
 
 export function GraficaMensual({ puntos }: { puntos: MonthlyPoint[] }) {
   if (puntos.length === 0) {
@@ -29,7 +31,7 @@ export function GraficaMensual({ puntos }: { puntos: MonthlyPoint[] }) {
   }
 
   const max = Math.max(...puntos.map((p) => p.monto), 0);
-  const ancho = puntos.length * (ANCHO_BARRA + HUECO);
+  const ancho = puntos.length * (ANCHO_BARRA + HUECO) + FONDO;
   const altoTotal = ALTO + MARGEN_SUP + 34;
 
   return (
@@ -42,6 +44,19 @@ export function GraficaMensual({ puntos }: { puntos: MonthlyPoint[] }) {
           role="img"
           aria-label={`Facturación mensual: ${puntos.length} periodos, máximo ${money(max)}`}
         >
+          {/* Las caras de cada barra: la de delante en degradado, la de arriba
+              más clara y la del lado más oscura. El mes mayor, en violeta. */}
+          <defs>
+            <linearGradient id="gm-frente" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#4f86f7" />
+              <stop offset="1" stopColor="#27a9f1" />
+            </linearGradient>
+            <linearGradient id="gm-maximo" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#7c5cff" />
+              <stop offset="1" stopColor="#4f86f7" />
+            </linearGradient>
+          </defs>
+
           {/* Línea base: sin ella las barras flotan y cuesta comparar alturas. */}
           <line
             x1="0"
@@ -69,18 +84,25 @@ export function GraficaMensual({ puntos }: { puntos: MonthlyPoint[] }) {
                   p.facturas === 1 ? 'factura' : 'facturas'
                 }`}</title>
 
-                <rect
-                  x={x}
-                  y={y}
-                  width={ANCHO_BARRA}
-                  height={alto}
-                  rx="3"
-                  fill={esMax ? 'var(--accent)' : 'var(--accent-bar)'}
-                />
+                <g opacity={esMax ? 1 : 0.62}>
+                  <rect x={x} y={y} width={ANCHO_BARRA} height={alto} fill={esMax ? 'url(#gm-maximo)' : 'url(#gm-frente)'} />
+                  {alto > 0 && (
+                    <>
+                      <polygon
+                        points={`${x},${y} ${x + ANCHO_BARRA},${y} ${x + ANCHO_BARRA + FONDO},${y - FONDO} ${x + FONDO},${y - FONDO}`}
+                        fill={esMax ? '#b9adff' : '#9ad8ff'}
+                      />
+                      <polygon
+                        points={`${x + ANCHO_BARRA},${y} ${x + ANCHO_BARRA + FONDO},${y - FONDO} ${x + ANCHO_BARRA + FONDO},${y + alto - FONDO} ${x + ANCHO_BARRA},${y + alto}`}
+                        fill={esMax ? '#5a3fd0' : '#2f5fc7'}
+                      />
+                    </>
+                  )}
+                </g>
 
                 <text
                   x={x + ANCHO_BARRA / 2}
-                  y={y - 6}
+                  y={y - FONDO - 6}
                   textAnchor="middle"
                   fontSize="10.5"
                   fill="var(--text-2)"

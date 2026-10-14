@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getImpulsa, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money, moneyCompact } from '@/lib/formato';
+import { Cifra } from '@/components/Cifras';
 import { ListaImpulsa } from './ListaImpulsa';
 
 /**
@@ -43,21 +44,15 @@ export default async function ImpulsaPage() {
       descripcion={`Qué ofrecer hoy · compras del ${fecha(ventana.desde)} al ${fecha(ventana.hasta)}`}
     >
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Clientes para pasar a ASTA</div>
-          <div className="stat-value">{pendientes.clientes}</div>
-          <div className="stat-sub">con sugerencias pendientes</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Sugerencias</div>
-          <div className="stat-value">{pendientes.sugerencias}</div>
-          <div className="stat-sub">{datos.meta.atendidas > 0 ? `${datos.meta.atendidas} ya atendidas` : 'ninguna atendida todavía'}</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">En juego</div>
-          <div className="stat-value">{moneyCompact(pendientes.enJuego)}</div>
-          <div className="stat-sub">{money(pendientes.enJuego)} en otras marcas, sin IVA</div>
-        </div>
+        <Cifra icono="clientes" color="verde" etiqueta="Clientes para pasar a ASTA" valor={pendientes.clientes} nota="con sugerencias pendientes" />
+        <Cifra
+          icono="idea"
+          color="violeta"
+          etiqueta="Sugerencias"
+          valor={pendientes.sugerencias}
+          nota={datos.meta.atendidas > 0 ? `${datos.meta.atendidas} ya atendidas` : 'ninguna atendida todavía'}
+        />
+        <Cifra icono="juego" color="ambar" etiqueta="En juego" valor={moneyCompact(pendientes.enJuego)} nota={`${money(pendientes.enJuego)} en otras marcas, sin IVA`} />
       </section>
 
       <p className="panel-nota">
