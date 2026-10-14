@@ -3234,7 +3234,51 @@ a.ini-tarjeta:hover .ini-accion { text-decoration: underline; }
  * bloques llenos. Ahora es una línea base: lo vacío se ve vacío.
  */
 .serie-pista { background: none; border-bottom: 1px solid var(--border-strong); border-radius: 0; }
-.serie-barra { border-radius: 6px 6px 2px 2px; }
+
+/*
+ * Las barras, en relieve: la cara de delante, la de arriba y la del lado, con
+ * CSS y sin 3D de verdad. La de arriba es un paralelogramo inclinado 45° y la
+ * del lado otro, del mismo fondo (`--fondo`): juntas leen como un bloque visto
+ * desde arriba a la derecha. Las cifras siguen planas y se leen igual.
+ */
+.serie { gap: 12px; padding-right: 8px; }
+.serie-barra {
+  --fondo: 7px;
+  position: relative;
+  border-radius: 3px 0 0 0;
+  background: linear-gradient(180deg, #4f86f7, #27a9f1);
+  box-shadow: none;
+  transform-origin: bottom;
+  animation: serie-crecer 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transition: filter 0.15s;
+}
+.serie-barra::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--fondo) * -1);
+  width: 100%;
+  height: var(--fondo);
+  background: linear-gradient(90deg, #9ad8ff, #b9adff);
+  transform: skewX(-45deg);
+  transform-origin: bottom left;
+}
+.serie-barra::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: calc(var(--fondo) * -1);
+  width: var(--fondo);
+  height: 100%;
+  background: linear-gradient(180deg, #4563d6, #1b78bd);
+  transform: skewY(-45deg);
+  transform-origin: top left;
+}
+.serie-barra.vacia::before, .serie-barra.vacia::after { display: none; }
+.serie-col:hover .serie-barra { filter: brightness(1.12) saturate(1.1); }
+.serie-col:hover .serie-monto { color: var(--text); font-weight: 600; }
+@keyframes serie-crecer { from { transform: scaleY(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .serie-barra { animation: none; } }
 
 /* El importe con su barra detrás, proporcional al mayor de la tabla. */
 .proporcion { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; font-variant-numeric: tabular-nums; }
@@ -3306,12 +3350,12 @@ a.enlace-ficha:hover { color: var(--primario); }
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-areas:
-    'kpis kpis kpis'
     'meta meta meta'
+    'kpis kpis kpis'
     'serie serie oportunidad'
     'productos vendedores clientes';
-  gap: 16px;
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 18px;
 }
 .dash > .panel, .dash > .stats { margin: 0; min-width: 0; }
 .dash-kpis { grid-area: kpis; grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -3321,7 +3365,31 @@ a.enlace-ficha:hover { color: var(--primario); }
 .dash-vendedores { grid-area: vendedores; }
 .dash-clientes { grid-area: clientes; }
 
-.dash-kpi .stat-value { font-size: 25px; }
+.dash-kpi { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+.dash-kpi .stat-value { font-size: 26px; }
+
+/* La baldosa del icono: el degradado de la marca en cada cifra, con su tono. */
+.kpi-icono {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 10px;
+  border-radius: 13px;
+  color: #fff;
+  background: var(--kpi, var(--degradado));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px color-mix(in srgb, var(--kpi-sombra, #4f86f7) 80%, transparent);
+}
+.kpi-ventas { --kpi: linear-gradient(135deg, #27a9f1, #1c6fdb); --kpi-sombra: #1c6fdb; }
+.kpi-mes { --kpi: linear-gradient(135deg, #7c5cff, #b35cff); --kpi-sombra: #7c5cff; }
+.kpi-cuota { --kpi: linear-gradient(135deg, #ff5c93, #ff8a5c); --kpi-sombra: #ff5c93; }
+.kpi-clientes { --kpi: linear-gradient(135deg, #12c28a, #0fa5a0); --kpi-sombra: #12c28a; }
+.kpi-cobrar { --kpi: linear-gradient(135deg, #f5b52e, #f08a24); --kpi-sombra: #f08a24; }
+
+/* La tendencia, abajo y a sangre: la forma de los meses, sin números. */
+.kpi-tendencia { display: block; width: calc(100% + 40px); height: 34px; margin: 10px -20px -18px; }
+.kpi-tendencia polyline { fill: none; stroke: var(--cian); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.kpi-tendencia polygon { fill: color-mix(in srgb, var(--cian) 16%, transparent); }
 .dash-kpi .stat-value.dash-sube { color: var(--positive); }
 .dash-kpi .stat-value.dash-baja { color: var(--danger); }
 
@@ -3340,7 +3408,9 @@ a.enlace-ficha:hover { color: var(--primario); }
   border-top: 1px solid var(--border);
 }
 .dash-ranking li:first-child { border-top: 0; }
-.dash-pos { font-size: 11.5px; font-weight: 650; color: var(--text-3); text-align: center; font-variant-numeric: tabular-nums; }
+.dash-pos { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-3); background: var(--vidrio-fuerte); font-variant-numeric: tabular-nums; }
+/* El podio: los tres primeros con el degradado de la marca. */
+.dash-ranking li:nth-child(-n + 3) .dash-pos { background: var(--degradado); color: #fff; box-shadow: 0 6px 14px -6px rgba(60, 110, 245, 0.7); }
 .dash-nombre { min-width: 0; font-size: 13px; font-weight: 560; line-height: 1.3; overflow-wrap: anywhere; }
 .dash-nombre a { color: var(--text); }
 .dash-nombre a:hover { color: var(--primario); }
@@ -3348,11 +3418,23 @@ a.enlace-ficha:hover { color: var(--primario); }
 .dash-ranking .proporcion { font-size: 12.5px; }
 .dash-ranking .proporcion-barra { width: 56px; }
 
-/* La oportunidad: la cuota grande, su barra y lo que se va a otras marcas. */
-.dash-cuota-cifra { font-size: 34px; font-weight: 680; letter-spacing: -0.03em; color: var(--primario); font-variant-numeric: tabular-nums; }
-.dash-cuota-barra { height: 10px; border-radius: 99px; background: color-mix(in srgb, var(--warning) 22%, var(--surface-2)); overflow: hidden; margin: 6px 0 8px; }
-.dash-cuota-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--primario); }
-.dash-oport-dato { padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-size: 13px; color: var(--text-2); }
+/* La oportunidad: la cuota en un anillo y lo que se va a otras marcas. */
+.dash-cuota { display: flex; align-items: center; gap: 18px; }
+.anillo {
+  --p: 0;
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: conic-gradient(from -90deg, #27a9f1 0, #7c5cff calc(var(--p) * 1%), color-mix(in srgb, var(--rosa) 18%, var(--surface-2)) 0);
+  box-shadow: 0 14px 30px -16px rgba(60, 110, 245, 0.6);
+}
+.anillo::before { content: ''; position: absolute; inset: 13px; border-radius: 50%; background: var(--vidrio-fuerte); box-shadow: inset 0 2px 6px rgba(18, 52, 96, 0.12); }
+.anillo span { position: relative; font-size: 24px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.dash-oport-dato { padding: 12px 14px; border-radius: 14px; background: var(--vidrio-fuerte); font-size: 13px; color: var(--text-2); }
 .dash-oport-dato strong { font-size: 20px; color: var(--text); margin-right: 4px; }
 .dash-oport-dato span { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); }
 .dash-oport-btn { align-self: flex-start; margin-top: auto; }
@@ -3366,8 +3448,8 @@ a.enlace-ficha:hover { color: var(--primario); }
   .dash {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      'kpis kpis'
       'meta meta'
+      'kpis kpis'
       'serie serie'
       'oportunidad productos'
       'vendedores clientes';
@@ -3375,7 +3457,7 @@ a.enlace-ficha:hover { color: var(--primario); }
 }
 @media (max-width: 760px) {
   .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'kpis' 'meta' 'serie' 'oportunidad' 'productos' 'vendedores' 'clientes'; }
+  .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'serie' 'oportunidad' 'productos' 'vendedores' 'clientes'; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -3456,6 +3538,128 @@ body:has(.enlace-cargando) .contenido {
 
 .dash-meta { grid-area: meta; min-width: 0; }
 .dash-meta > .panel { margin: 0; }
+
+/* ── Inicio: el camino a la meta, con la pirámide en 3D ───────────────────── */
+/*
+ * `app/admin/page.tsx` (Meta) y `components/inicio/PiramideCategorias.tsx`. A
+ * la izquierda la cifra y lo que falta; a la derecha la pirámide y su leyenda,
+ * que se señalan la una a la otra.
+ */
+.hero-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 28px;
+  padding: 30px 32px;
+  border-radius: 30px;
+  background:
+    radial-gradient(60% 80% at 78% 40%, color-mix(in srgb, var(--cian) 16%, transparent), transparent 70%),
+    var(--vidrio);
+}
+.hero-texto { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.hero-etiqueta {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hero-cifra { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hero-cifra strong {
+  font-size: clamp(48px, 5.4vw, 76px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--text) 25%, #1c8cdb 70%, var(--violeta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-cifra span { color: var(--text-2); font-size: 15px; }
+.hero-barra { display: flex; gap: 2px; height: 14px; padding: 2px; border-radius: 99px; background: color-mix(in srgb, var(--text) 7%, transparent); overflow: hidden; }
+.hero-barra span { display: block; height: 100%; border-radius: 99px; min-width: 4px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); animation: hero-crecer 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; transform-origin: left; }
+@keyframes hero-crecer { from { transform: scaleX(0); } to { transform: none; } }
+.hero-nota { margin: 0; max-width: 56ch; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+.hero-nota strong { color: var(--text); }
+.hero-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: auto; }
+.hero-acciones .btn:hover { text-decoration: none; }
+
+.piramide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr); gap: 12px; align-items: center; min-width: 0; }
+.piramide-escena { position: relative; height: 360px; min-width: 0; }
+.piramide-lienzo { position: absolute; inset: 0; }
+.piramide-lienzo canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: pan-y; }
+.piramide-lienzo canvas:active { cursor: grabbing; }
+
+/* La ficha del nivel señalado, flotando sobre la escena. */
+.piramide-ficha {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--vidrio-borde);
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--vidrio-brillo), var(--sombra-card);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  font-size: 12.5px;
+  color: var(--text-2);
+  pointer-events: none;
+  animation: aparecer 0.14s ease;
+}
+.piramide-ficha strong { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; font-weight: 600; }
+.piramide-ficha strong i, .piramide-leyenda i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent); flex: none; }
+.piramide-ficha-cifra { font-size: 20px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+.piramide-ficha small { font-size: 11.5px; color: var(--text-3); }
+.piramide-pista { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; font-size: 11.5px; color: var(--text-3); pointer-events: none; }
+/* En una pantalla táctil no hay ratón que pasar: tocar una lámina abre su lista. */
+@media (pointer: coarse) { .piramide-pista { display: none; } }
+
+.piramide-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.piramide-leyenda a {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-areas: 'punto nombre clientes' 'punto barra barra' 'punto compra compra';
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  color: var(--text);
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.piramide-leyenda a:hover, .piramide-leyenda a.activa {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--c) 12%, var(--vidrio-fuerte));
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  transform: translateX(-2px);
+}
+.piramide-leyenda a:focus-visible { outline: 2px solid var(--cian); outline-offset: 1px; }
+.piramide-leyenda i { grid-area: punto; align-self: start; margin-top: 4px; }
+.piramide-nombre { grid-area: nombre; font-size: 13.5px; font-weight: 600; }
+.piramide-clientes { grid-area: clientes; font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.piramide-barra { grid-area: barra; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--text) 8%, transparent); overflow: hidden; }
+.piramide-barra span { display: block; height: 100%; border-radius: inherit; background: var(--c); }
+.piramide-compra { grid-area: compra; font-size: 11.5px; color: var(--text-3); }
+
+@media (max-width: 1200px) {
+  .hero-meta { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .hero-meta { padding: 22px 18px; border-radius: 24px; }
+  .piramide { grid-template-columns: minmax(0, 1fr); }
+  .piramide-escena { height: 260px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-barra span, .piramide-ficha { animation: none; }
+  .piramide-leyenda a { transition: none; }
+}
 
 .cat-insignia {
   display: inline-flex;
