@@ -105,7 +105,7 @@ export function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
             <span className="serie-monto">{p.monto > 0 ? moneyCompact(p.monto) : '—'}</span>
             <div className="serie-pista">
               <div
-                className="serie-barra"
+                className={p.monto > 0 ? 'serie-barra' : 'serie-barra vacia'}
                 style={{ height: `${alto}%` }}
                 title={`${money(p.monto)} · ${p.facturas} facturas`}
               />

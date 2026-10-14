@@ -22,13 +22,26 @@ import { COLORES_CATEGORIAS } from './colores';
  *   · Sin WebGL no pinta nada: el fondo de la página sigue ahí.
  *   · Al desmontarse libera la GPU: geometrías, materiales y el contexto.
  *
- * Es decoración: va oculta a los lectores de pantalla.
+ * ── Interactiva en el Inicio ──────────────────────────────────────────────────
+ *
+ * Con `alSenalar` / `alElegir`, cada lámina responde al ratón: al pasar por
+ * encima se ilumina y se levanta (y las demás se apagan), y al pulsarla avisa a
+ * quien la pinta. `activo` hace lo mismo desde fuera: así la leyenda HTML de al
+ * lado y la pirámide se señalan la una a la otra. Mientras hay una lámina
+ * señalada la pirámide deja de girar, para que se pueda leer.
+ *
+ * El 3D va oculto a los lectores de pantalla: lo que cuenta lo dice también la
+ * leyenda, que son enlaces normales.
  */
 
 export function PiramideCristal({
   colores = COLORES_CATEGORIAS,
   desplazamiento = 0,
   centroY = 0.9,
+  acercar = 1,
+  activo = null,
+  alSenalar,
+  alElegir,
   className,
 }: {
   colores?: string[];
@@ -36,10 +49,31 @@ export function PiramideCristal({
   desplazamiento?: number;
   /** A qué altura mira la cámara: más bajo sube la pirámide en el cuadro. */
   centroY?: number;
+  /** Multiplica la distancia de la cámara: menos de 1 la acerca y la pirámide se ve más grande. */
+  acercar?: number;
+  /** La lámina resaltada desde fuera (0 = la de abajo), o ninguna. */
+  activo?: number | null;
+  /** Avisa de la lámina bajo el ratón, o `null` al salir. */
+  alSenalar?: (indice: number | null) => void;
+  /** Avisa de un clic en una lámina (un clic, no el final de un arrastre). */
+  alElegir?: (indice: number) => void;
   className?: string;
 }) {
   const caja = useRef<HTMLDivElement>(null);
   const clave = colores.join(',');
+  const interactiva = Boolean(alSenalar || alElegir);
+
+  // Lo que cambia sin reiniciar la escena va en referencias que lee el bucle.
+  const activoRef = useRef<number | null>(activo);
+  const senalarRef = useRef(alSenalar);
+  const elegirRef = useRef(alElegir);
+  const repintarRef = useRef<() => void>(() => {});
+  senalarRef.current = alSenalar;
+  elegirRef.current = alElegir;
+  useEffect(() => {
+    activoRef.current = activo;
+    repintarRef.current();
+  }, [activo]);
 
   useEffect(() => {
     const cont = caja.current;
@@ -92,6 +126,7 @@ export function PiramideCristal({
       const lados = [3.0, 2.45, 1.9, 1.35, 0.8];
       const alto = 0.32;
       const hueco = 0.16;
+      const laminas: { m: InstanceType<typeof THREE.Mesh>; mat: InstanceType<typeof THREE.MeshPhysicalMaterial>; y: number; brillo: number; luz: number; opacidad: number; alza: number }[] = [];
       lados.forEach((lado, i) => {
         const color = new THREE.Color(colores[i] ?? '#ffffff');
         const geo = new RoundedBoxGeometry(lado, alto, lado, 4, 0.07);
@@ -109,8 +144,10 @@ export function PiramideCristal({
         });
         const lamina = new THREE.Mesh(geo, mat);
         lamina.position.y = i * (alto + hueco);
+        lamina.userData.indice = i;
         piramide.add(lamina);
         desechables.push(geo, mat);
+        laminas.push({ m: lamina, mat, y: lamina.position.y, brillo: mat.emissiveIntensity, luz: mat.emissiveIntensity, opacidad: 0.92, alza: 0 });
       });
 
       // Un brillo cian sobre el Diamante: es la meta, y se ve desde lejos.
@@ -171,7 +208,7 @@ export function PiramideCristal({
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
         camara.aspect = w / h;
-        const distancia = Math.max(12.5, 10 / Math.min(camara.aspect, 1.25));
+        const distancia = Math.max(12.5, 10 / Math.min(camara.aspect, 1.25)) * acercar;
         camara.position.set(desplazamiento * 0.6, 3.4, distancia);
         camara.lookAt(objetivo.x + desplazamiento * 0.6, objetivo.y, objetivo.z);
         camara.updateProjectionMatrix();
@@ -189,32 +226,90 @@ export function PiramideCristal({
       let suaveX = 0;
       let suaveY = 0;
       let giro = 0.6;
-      let arrastre: { x: number; giro: number } | null = null;
+      let arrastre: { x: number; giro: number; movido: boolean } | null = null;
+      let senalada: number | null = null;
       const lienzoGL = renderer.domElement;
+      const rayo = new THREE.Raycaster();
+      const puntero = new THREE.Vector2();
+
+      /** La lámina bajo el ratón, o `null`. */
+      const laminaEn = (e: PointerEvent): number | null => {
+        const r = lienzoGL.getBoundingClientRect();
+        puntero.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        rayo.setFromCamera(puntero, camara);
+        const [toque] = rayo.intersectObjects(laminas.map((l) => l.m), false);
+        return toque ? (toque.object.userData.indice as number) : null;
+      };
+      const senalar = (i: number | null) => {
+        if (i === senalada) return;
+        senalada = i;
+        lienzoGL.style.cursor = i === null ? '' : 'pointer';
+        senalarRef.current?.(i);
+        repintar();
+      };
+
       const mover = (e: PointerEvent) => {
         const r = cont.getBoundingClientRect();
         const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
         const ny = ((e.clientY - r.top) / r.height) * 2 - 1;
         inclY = nx * 0.35;
         inclX = ny * 0.12;
-        if (arrastre) giro = arrastre.giro + (e.clientX - arrastre.x) * 0.008;
+        if (arrastre) {
+          if (Math.abs(e.clientX - arrastre.x) > 4) arrastre.movido = true;
+          giro = arrastre.giro + (e.clientX - arrastre.x) * 0.008;
+        } else if (interactiva) {
+          senalar(laminaEn(e));
+        }
       };
       const bajar = (e: PointerEvent) => {
-        arrastre = { x: e.clientX, giro };
+        arrastre = { x: e.clientX, giro, movido: false };
         lienzoGL.setPointerCapture(e.pointerId);
       };
-      const subir = () => {
+      const subir = (e: PointerEvent) => {
+        const fueClic = arrastre && !arrastre.movido;
         arrastre = null;
+        if (fueClic && interactiva) {
+          // La señalada y no la que hay ahora bajo el puntero: al resaltarse se
+          // levanta, y por su borde de abajo el rayo ya da en la de debajo. Sin
+          // ratón (en un móvil) no hay señalada, y manda el rayo.
+          const i = senalada ?? laminaEn(e);
+          if (i !== null) elegirRef.current?.(i);
+        }
+      };
+      const cancelar = () => {
+        arrastre = null;
+      };
+      const salir = () => {
+        if (!arrastre) senalar(null);
       };
       lienzoGL.addEventListener('pointermove', mover);
       lienzoGL.addEventListener('pointerdown', bajar);
       lienzoGL.addEventListener('pointerup', subir);
-      lienzoGL.addEventListener('pointercancel', subir);
+      lienzoGL.addEventListener('pointercancel', cancelar);
+      lienzoGL.addEventListener('pointerleave', salir);
 
       function pintar(t: number) {
         const s = t / 1000;
         suaveX += (inclX - suaveX) * 0.05;
         suaveY += (inclY - suaveY) * 0.05;
+
+        // La lámina resaltada se ilumina y se levanta; las demás se apagan.
+        // Con «reducir movimiento» el cambio es inmediato, sin transición.
+        const foco = senalada ?? activoRef.current;
+        const k = quieto ? 1 : 0.14;
+        for (const [i, l] of laminas.entries()) {
+          const es = foco === i;
+          const objLuz = foco === null ? l.brillo : es ? l.brillo + 0.5 : l.brillo * 0.4;
+          const objOpacidad = foco === null || es ? 0.92 : 0.38;
+          const objAlza = es ? 0.14 : 0;
+          l.luz += (objLuz - l.luz) * k;
+          l.opacidad += (objOpacidad - l.opacidad) * k;
+          l.alza += (objAlza - l.alza) * k;
+          l.mat.emissiveIntensity = l.luz;
+          l.mat.opacity = l.opacidad;
+          l.m.position.y = l.y + l.alza;
+        }
+
         piramide.rotation.y = giro + suaveY;
         piramide.rotation.x = suaveX;
         piramide.position.y = quieto ? 0 : Math.sin(s * 0.8) * 0.08;
@@ -231,7 +326,8 @@ export function PiramideCristal({
       let visible = true;
       let ultimo = performance.now();
       const bucle = (t: number) => {
-        if (!arrastre) giro += ((t - ultimo) / 1000) * 0.18;
+        // Quieta mientras se arrastra o mientras hay una lámina señalada.
+        if (!arrastre && senalada === null && activoRef.current === null) giro += ((t - ultimo) / 1000) * 0.18;
         ultimo = t;
         pintar(t);
         marco = requestAnimationFrame(bucle);
@@ -254,6 +350,12 @@ export function PiramideCristal({
       const alCambiarPestana = () => (document.hidden ? parar() : arrancar());
       document.addEventListener('visibilitychange', alCambiarPestana);
 
+      // Sin bucle (reducir movimiento, o parado), un cambio de foco se pinta a mano.
+      function repintar() {
+        if (!marco) pintar(performance.now());
+      }
+      repintarRef.current = repintar;
+
       // Un primer fotograma siempre, aunque la pestaña empiece en segundo plano:
       // si no, al volver se vería el hueco vacío hasta el siguiente cuadro.
       pintar(performance.now());
@@ -267,7 +369,9 @@ export function PiramideCristal({
         lienzoGL.removeEventListener('pointermove', mover);
         lienzoGL.removeEventListener('pointerdown', bajar);
         lienzoGL.removeEventListener('pointerup', subir);
-        lienzoGL.removeEventListener('pointercancel', subir);
+        lienzoGL.removeEventListener('pointercancel', cancelar);
+        lienzoGL.removeEventListener('pointerleave', salir);
+        repintarRef.current = () => {};
         for (const d of desechables) d.dispose();
         renderer.dispose();
         lienzoGL.remove();
@@ -280,7 +384,7 @@ export function PiramideCristal({
     };
     // `clave` resume `colores`: un array nuevo con los mismos colores no reinicia la escena.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clave, desplazamiento, centroY]);
+  }, [clave, desplazamiento, centroY, acercar, interactiva]);
 
   return <div ref={caja} className={className} aria-hidden="true" />;
 }

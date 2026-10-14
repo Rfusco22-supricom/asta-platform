@@ -5,10 +5,13 @@ import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import { nombreSede, type SedeId } from '@asta/shared-types';
+import { reglaDe, type ClaveCategoria } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
-import { CaminoMeta } from '@/components/Categorias';
+import { estaCerca, ventana } from '@/components/Categorias';
+import { PiramideCategorias, type NivelPiramide } from '@/components/inicio/PiramideCategorias';
+import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
-import { money, moneyCompact } from '@/lib/formato';
+import { money, moneyCompact, moneyEntero } from '@/lib/formato';
 
 /**
  * Inicio del administrador: cómo va ASTA.
@@ -18,10 +21,11 @@ import { money, moneyCompact } from '@/lib/formato';
  * parte del consumible se lleva ASTA frente a las otras marcas, qué y a quién
  * se vende, y cuánto queda por ganar. Lo que hay por hacer está en Pendientes.
  *
- * Tres lecturas independientes, cada una con su `Suspense`: el reporte de la
- * empresa (cifras, serie, vendedores, clientes), los productos y la oportunidad.
- * La página sale enseguida y cada bloque llega cuando responde Odoo; si uno
- * falla, solo ese bloque lo dice.
+ * Cuatro lecturas independientes, cada una con su `Suspense`: las categorías
+ * (el bloque de arriba, con la pirámide en 3D), el reporte de la empresa
+ * (cifras, serie, vendedores, clientes), los productos y la oportunidad. La
+ * página sale enseguida y cada bloque llega cuando responde Odoo; si uno falla,
+ * solo ese bloque lo dice.
  */
 
 export const dynamic = 'force-dynamic';
@@ -73,12 +77,78 @@ function ultimoMes(serie: Reporte['serieMensual']) {
   return { ultimo, previo, cambio };
 }
 
-function Kpi({ etiqueta, valor, nota, tono }: { etiqueta: string; valor: string; nota: React.ReactNode; tono?: 'sube' | 'baja' }) {
+/** Los iconos de las cifras, en su baldosa de color. Mismo trazo que el menú. */
+const ICONOS_KPI: Record<string, React.ReactNode> = {
+  ventas: <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />,
+  mes: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="3" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </>
+  ),
+  cuota: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4v8l5.5 5.5" />
+    </>
+  ),
+  clientes: (
+    <>
+      <path d="M16 19v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19" />
+      <circle cx="9" cy="7" r="3.2" />
+      <path d="M22 19v-1.5a4 4 0 0 0-3-3.87M16.5 4.2a4 4 0 0 1 0 7.6" />
+    </>
+  ),
+  cobrar: (
+    <>
+      <rect x="2.5" y="6" width="19" height="13" rx="2.5" />
+      <path d="M2.5 10.5h19M7 15h3" />
+    </>
+  ),
+};
+
+/**
+ * La tendencia de una cifra, como línea con su área: sin ejes ni números, solo
+ * la forma. El valor exacto de cada mes está en la gráfica de abajo.
+ */
+function Tendencia({ valores }: { valores: number[] }) {
+  if (valores.length < 2) return null;
+  const max = Math.max(...valores, 1);
+  const puntos = valores.map((v, i) => `${((i / (valores.length - 1)) * 100).toFixed(2)},${(30 - (v / max) * 26).toFixed(2)}`);
   return (
-    <div className="stat dash-kpi">
+    <svg className="kpi-tendencia" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points={`0,32 ${puntos.join(' ')} 100,32`} />
+      <polyline points={puntos.join(' ')} />
+    </svg>
+  );
+}
+
+function Kpi({
+  etiqueta,
+  valor,
+  nota,
+  tono,
+  icono,
+  tendencia,
+}: {
+  etiqueta: string;
+  valor: string;
+  nota: React.ReactNode;
+  tono?: 'sube' | 'baja';
+  icono: keyof typeof ICONOS_KPI;
+  tendencia?: number[];
+}) {
+  return (
+    <div className={`stat dash-kpi kpi-${icono}`}>
+      <span className="kpi-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          {ICONOS_KPI[icono]}
+        </svg>
+      </span>
       <div className="stat-label">{etiqueta}</div>
       <div className={`stat-value${tono ? ` dash-${tono}` : ''}`}>{valor}</div>
       <div className="stat-sub">{nota}</div>
+      {tendencia && <Tendencia valores={tendencia} />}
     </div>
   );
 }
@@ -149,9 +219,16 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
   return (
     <>
       <section className="stats dash-kpis" aria-label="ASTA en cifras">
-        <Kpi etiqueta="Vendido en ASTA" valor={moneyCompact(totales.facturado)} nota={`${facturas(totales.facturas)} · sin IVA, neto de devoluciones`} />
+        <Kpi
+          icono="ventas"
+          etiqueta="Vendido en ASTA"
+          valor={moneyCompact(totales.facturado)}
+          nota={`${facturas(totales.facturas)} · sin IVA, neto de devoluciones`}
+          tendencia={r.serieMensual.map((p) => p.monto)}
+        />
         {mes ? (
           <Kpi
+            icono="mes"
             etiqueta={`Último mes · ${etiquetaMes(mes.ultimo.periodo)}`}
             valor={moneyCompact(mes.ultimo.monto)}
             tono={mes.cambio === null ? undefined : mes.cambio >= 0 ? 'sube' : 'baja'}
@@ -162,15 +239,21 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
             }
           />
         ) : (
-          <Kpi etiqueta="Último mes" valor="—" nota="sin meses completos en el periodo" />
+          <Kpi icono="mes" etiqueta="Último mes" valor="—" nota="sin meses completos en el periodo" />
         )}
         <Kpi
+          icono="cuota"
           etiqueta="Cuota de ASTA"
           valor={pct(asta.cuota)}
           nota={`del consumible que compran los clientes · ${moneyCompact(asta.competencia)} se va a otras marcas`}
         />
-        <Kpi etiqueta="Clientes que compran ASTA" valor={n(totales.clientes)} nota={`ticket promedio ${money(totales.ticketPromedio)}`} />
-        <Kpi etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota="en las facturas con ASTA" />
+        <Kpi
+          icono="clientes"
+          etiqueta="Clientes que compran ASTA"
+          valor={n(totales.clientes)}
+          nota={`ticket promedio ${money(totales.ticketPromedio)}`}
+        />
+        <Kpi icono="cobrar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota="en las facturas con ASTA" />
       </section>
 
       <section className="panel dash-serie">
@@ -254,9 +337,9 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
     <section className="panel dash-oportunidad">
       <h2>Lo que queda por ganar</h2>
       <div className="dash-cuota">
-        <div className="dash-cuota-cifra">{pct(t.cuota)}</div>
-        <div className="dash-cuota-barra" role="img" aria-label={`ASTA ${pct(t.cuota)} del consumible`}>
-          <span style={{ width: `${Math.min(100, t.cuota)}%` }} />
+        {/* La cuota como anillo: lo lleno es ASTA, lo vacío lo que se llevan las otras marcas. */}
+        <div className="anillo" role="img" aria-label={`ASTA ${pct(t.cuota)} del consumible`} style={{ '--p': Math.min(100, t.cuota) } as React.CSSProperties}>
+          <span>{pct(t.cuota)}</span>
         </div>
         <div className="stat-sub">
           {moneyCompact(t.asta)} en ASTA frente a {moneyCompact(t.competencia)} en otras marcas, en los {n(t.clientes)} clientes que compran consumibles.
@@ -273,16 +356,91 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
   );
 }
 
-// ── Camino a la meta: las categorías de ASTA (#131) ────────────────────────────
+// ── Camino a la meta: las categorías de ASTA (#131), con la pirámide en 3D ─────
 
-/** De toda la empresa siempre: la categoría es del cliente, no de la sede. */
+/** De abajo arriba, como las láminas de la pirámide. */
+const DE_ABAJO_ARRIBA: ClaveCategoria[] = ['GENERAL', 'BRONCE', 'PLATA', 'ORO', 'DIAMANTE'];
+
+/** Compacto a partir de 10.000 y entero por debajo, como en `Categorias.tsx`. */
+const corto = (x: number) => (Math.abs(x) >= 10_000 ? moneyCompact(x) : moneyEntero(x));
+
+/**
+ * Lo primero del Inicio: cuánto se compra de ASTA al mes frente a la meta de
+ * 100.000, cuánto pone cada categoría, y la pirámide que se puede tocar.
+ *
+ * De toda la empresa siempre: la categoría es del cliente, no de la sede.
+ */
 async function Meta({ token }: { token: string }) {
   const r = await intentar(() => getCategoriasAstaEmpresa(token));
   if (!r) return <Fallo area="meta" titulo="Camino a la meta" />;
+
+  const avance = r.meta > 0 ? Math.min(100, (r.compraMensual / r.meta) * 100) : 0;
+  const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
+  const cerca = r.clientes.filter(estaCerca).length;
+  const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
+
+  const niveles: NivelPiramide[] = DE_ABAJO_ARRIBA.map((clave, i) => {
+    const c = porClave.get(clave);
+    const regla = reglaDe(clave);
+    const clientes = c?.clientes ?? 0;
+    const metaClientes = c?.metaClientes ?? null;
+    return {
+      clave,
+      nombre: regla.nombre,
+      color: COLORES_CATEGORIAS[i]!,
+      clientes: metaClientes === null ? `${n(clientes)} clientes` : `${n(clientes)} de ${n(metaClientes)} clientes`,
+      compra: `${corto(c?.compraMensual ?? 0)} USD/mes`,
+      meta: `meta ${corto(c?.metaCompraMensual ?? 0)} USD/mes`,
+      regla:
+        regla.minimoMensual > 0
+          ? `≥ ${moneyEntero(regla.minimoMensual)}/mes y ${regla.minimoMeses} de 4 meses`
+          : `< ${moneyEntero(reglaDe('BRONCE').minimoMensual)}/mes`,
+      avance: metaClientes ? Math.min(100, (clientes / metaClientes) * 100) : null,
+      href: `/admin/categorias?ver=${clave}`,
+    };
+  });
+
   return (
-    <div className="dash-meta">
-      <CaminoMeta datos={r} alcance="Toda la empresa" enlace={{ href: '/admin/categorias', texto: 'Clientes por categoría' }} />
-    </div>
+    <section className="panel dash-meta hero-meta">
+      <div className="hero-texto">
+        <span className="hero-etiqueta">Camino a {moneyEntero(r.meta)} USD/mes</span>
+        <div className="hero-cifra">
+          <strong>{moneyCompact(r.compraMensual)}</strong>
+          <span>de {moneyCompact(r.meta)} al mes</span>
+        </div>
+
+        {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
+        <div className="hero-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)} aria-label="Avance hacia la meta">
+          {[...niveles].reverse().map((nv) => {
+            const c = porClave.get(nv.clave as ClaveCategoria);
+            const ancho = r.meta > 0 ? ((c?.compraMensual ?? 0) / r.meta) * 100 : 0;
+            return ancho > 0 ? <span key={nv.clave} style={{ width: `${ancho}%`, background: nv.color }} title={`${nv.nombre}: ${nv.compra}`} /> : null;
+          })}
+        </div>
+
+        <p className="hero-nota">
+          Faltan <strong>{moneyCompact(Math.max(0, r.meta - r.compraMensual))}</strong> al mes. {n(enPrograma)} clientes en el programa
+          {cerca > 0 && (
+            <>
+              {' '}
+              y <strong>{n(cerca)}</strong> {cerca === 1 ? 'está' : 'están'} cerca de subir de categoría
+            </>
+          )}
+          . Promedio de ASTA de {ventana(r.meses)}, sin IVA.
+        </p>
+
+        <div className="hero-acciones">
+          <Link className="btn btn-inline" href="/admin/categorias?ver=cerca">
+            Ver quién está cerca de subir
+          </Link>
+          <Link className="dash-mas" href="/admin/categorias">
+            Todas las categorías →
+          </Link>
+        </div>
+      </div>
+
+      <PiramideCategorias niveles={niveles} />
+    </section>
   );
 }
 
@@ -303,7 +461,7 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
         <Suspense fallback={<EsqueletoVentas />}>
           <Ventas token={token} rango={rango} sede={sede} />
         </Suspense>
-        <Suspense fallback={<Esqueleto area="meta" alto={260} />}>
+        <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="oportunidad" alto={230} />}>
