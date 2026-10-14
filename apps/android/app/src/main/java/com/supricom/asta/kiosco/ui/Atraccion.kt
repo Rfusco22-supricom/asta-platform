@@ -1,5 +1,8 @@
 package com.supricom.asta.kiosco.ui
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -76,7 +79,19 @@ fun Atraccion(estado: EstadoConexion, alEmpezar: () -> Unit) {
         .animateFloat(1f, 1.035f, infiniteRepeatable(tween(1_100), RepeatMode.Reverse), label = "escala")
 
     Pulsable(alEmpezar, Modifier.fillMaxSize().semantics { contentDescription = "Empezar a buscar tu tóner" }) {
-        Box(Modifier.fillMaxSize().background(Tema.azul)) {
+        // El degradado de la marca con una luz blanca: vivo para que se vea desde el pasillo.
+        Box(
+            Modifier.fillMaxSize().background(Tema.degradado).drawBehind {
+                drawCircle(
+                    Brush.radialGradient(listOf(Color.White.copy(alpha = 0.3f), Color.White.copy(alpha = 0f)), center = Offset(size.width * 0.14f, size.height * 0.16f), radius = size.width * 0.35f),
+                    size.width * 0.35f, Offset(size.width * 0.14f, size.height * 0.16f),
+                )
+                drawCircle(
+                    Brush.radialGradient(listOf(Tema.rosa.copy(alpha = 0.35f), Tema.rosa.copy(alpha = 0f)), center = Offset(size.width * 0.95f, size.height * 0.9f), radius = size.width * 0.3f),
+                    size.width * 0.3f, Offset(size.width * 0.95f, size.height * 0.9f),
+                )
+            },
+        ) {
             BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 64.dp, vertical = 40.dp)) {
                 // Proporción fija: con el título largo la izquierda se lo comía todo.
                 val separacion = minOf(64.dp, maxWidth * 0.05f)
@@ -94,7 +109,7 @@ fun Atraccion(estado: EstadoConexion, alEmpezar: () -> Unit) {
                         }
                         Row(
                             Modifier.scale(latido).height(Tema.alturaBoton + 16.dp)
-                                .background(Tema.superficie, RoundedCornerShape(Tema.radio)).padding(horizontal = 40.dp),
+                                .tarjeta(RoundedCornerShape(50)).background(Tema.superficie, RoundedCornerShape(50)).padding(horizontal = 40.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
                         ) {
@@ -117,12 +132,12 @@ private fun Placa(indice: Int, modifier: Modifier) {
         Text("DÓNDE ESTÁ TU MODELO", style = Tema.fuerte(18, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
         Column(
             Modifier.fillMaxWidth()
-                .shadow(24.dp, RoundedCornerShape(14.dp), ambientColor = Color(0xFF062E4A), spotColor = Color(0xFF062E4A))
-                .background(Color(0xFFE9EEF2), RoundedCornerShape(14.dp)).padding(24.dp),
+                .shadow(30.dp, RoundedCornerShape(28.dp), ambientColor = Color(0xFF1B2A80), spotColor = Color(0xFF1B2A80))
+                .background(Color.White.copy(alpha = 0.88f), RoundedCornerShape(28.dp)).border(2.dp, Color.White, RoundedCornerShape(28.dp)).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Box(Modifier.fillMaxWidth().padding(horizontal = 40.dp).height(18.dp).background(Color(0xFFC9D3DC), RoundedCornerShape(9.dp)))
-            Box(Modifier.fillMaxWidth().heightIn(min = 150.dp).background(Color(0xFF2A3440), RoundedCornerShape(6.dp)).padding(24.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.fillMaxWidth().heightIn(min = 150.dp).background(Color(0xFF1C2638), RoundedCornerShape(16.dp)).padding(24.dp), contentAlignment = Alignment.CenterStart) {
                 AnimatedContent(indice, transitionSpec = { fadeIn(tween(320)) togetherWith fadeOut(tween(220)) }, label = "ejemplo") { i ->
                     val (linea, modelo) = EJEMPLOS[i]
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

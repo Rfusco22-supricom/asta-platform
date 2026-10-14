@@ -1,5 +1,6 @@
 package com.supricom.asta.kiosco.ui
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,9 +51,9 @@ fun AvisoSesion(alSeguir: () -> Unit, alTerminar: () -> Unit) {
     // Encima de todo y recogiendo los toques: lo de debajo no se puede tocar.
     Box(Modifier.fillMaxSize().background(Tema.tinta.copy(alpha = 0.72f)).padding(40.dp), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.widthIn(max = 760.dp).fillMaxWidth().background(Tema.superficie, RoundedCornerShape(Tema.radio)),
+            Modifier.widthIn(max = 760.dp).fillMaxWidth().tarjeta().background(Tema.superficie, RoundedCornerShape(Tema.radio)).clip(RoundedCornerShape(Tema.radio)),
         ) {
-            Box(Modifier.fillMaxWidth().height(10.dp).background(Tema.azul, RoundedCornerShape(topStart = Tema.radio, topEnd = Tema.radio)))
+            Box(Modifier.fillMaxWidth().height(10.dp).background(Tema.degradado))
             Column(Modifier.padding(40.dp), verticalArrangement = Arrangement.spacedBy(40.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(40.dp)) {
                     Box(Modifier.size(128.dp).border(8.dp, Tema.azul, CircleShape), contentAlignment = Alignment.Center) {
@@ -77,7 +78,7 @@ fun AvisoSesion(alSeguir: () -> Unit, alTerminar: () -> Unit) {
                     }
                     Pulsable(alSeguir, Modifier.weight(2f)) { pulsado ->
                         Box(
-                            Modifier.fillMaxWidth().height(Tema.alturaBoton).background(if (pulsado) Tema.azulHondo else Tema.azul, RoundedCornerShape(Tema.radio)),
+                            Modifier.fillMaxWidth().height(Tema.alturaBoton).tarjeta().background(if (pulsado) Tema.degradadoPulsado else Tema.degradado, RoundedCornerShape(Tema.radio)),
                             contentAlignment = Alignment.Center,
                         ) { Text("Sigo aquí", style = Tema.titulo(28, Tema.superficie)) }
                     }

@@ -31,13 +31,12 @@
 	</dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Archivo_500Medium.ttf</string>
-		<string>Archivo_600SemiBold.ttf</string>
-		<string>Archivo_700Bold.ttf</string>
-		<string>Archivo_800ExtraBold.ttf</string>
-		<string>JetBrainsMono_500Medium.ttf</string>
-		<string>JetBrainsMono_700Bold.ttf</string>
-		<string>JetBrainsMono_800ExtraBold.ttf</string>
+		<string>Sora_400Regular.ttf</string>
+		<string>Sora_500Medium.ttf</string>
+		<string>Sora_600SemiBold.ttf</string>
+		<string>Sora_700Bold.ttf</string>
+		<string>DMMono_400Regular.ttf</string>
+		<string>DMMono_500Medium.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

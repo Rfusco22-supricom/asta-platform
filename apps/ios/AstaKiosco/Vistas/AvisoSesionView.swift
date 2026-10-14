@@ -43,7 +43,8 @@ struct AvisoSesionView: View {
                     BotonPlano(accion: alSeguir) { pulsado in
                         Text("Sigo aquí").font(Tema.titulo(28)).foregroundStyle(Tema.superficie)
                             .frame(maxWidth: .infinity).frame(height: Tema.alturaBoton)
-                            .background(RoundedRectangle(cornerRadius: Tema.radio).fill(pulsado ? Tema.azulHondo : Tema.azul))
+                            .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.degradado).brightness(pulsado ? -0.1 : 0))
+                    .shadow(color: Tema.azul.opacity(0.45), radius: 14, y: 8)
                     }
                     .frame(maxWidth: .infinity)
                     .layoutPriority(1)
@@ -54,6 +55,7 @@ struct AvisoSesionView: View {
             .background(Tema.superficie)
             .overlay(alignment: .top) { Tema.azul.frame(height: 10) }
             .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+            .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
             .padding(40)
         }
     }

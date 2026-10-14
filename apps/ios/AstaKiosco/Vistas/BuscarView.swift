@@ -209,6 +209,7 @@ private struct OpcionImpresora: View {
             .background(pulsado ? Tema.azulSuave : Tema.superficie)
             .overlay(alignment: .leading) { (sugerida ? Tema.tintaTenue : Tema.azul).frame(width: 8) }
             .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+            .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
         }
         .accessibilityLabel("\(impresora.marca) \(impresora.nombre)")
     }
@@ -227,7 +228,8 @@ struct MensajeView: View {
             BotonPlano(accion: alCorregir) { pulsado in
                 Text("Corregir el modelo").font(Tema.titulo(24)).foregroundStyle(Tema.superficie)
                     .padding(.horizontal, 40).frame(height: Tema.alturaBoton)
-                    .background(RoundedRectangle(cornerRadius: Tema.radio).fill(pulsado ? Tema.azulHondo : Tema.azul))
+                    .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.degradado).brightness(pulsado ? -0.1 : 0))
+                    .shadow(color: Tema.azul.opacity(0.45), radius: 14, y: 8)
             }
             .padding(.top, 16)
         }

@@ -47,7 +47,7 @@ fun Logo(ancho: Dp, color: Color) {
 /** Logo, «1 Tu impresora › 2 Tu tóner», la conexión y «Terminar». */
 @Composable
 fun Barra(paso: Int, estado: EstadoConexion, alTerminar: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Tema.superficie)) {
+    Column(Modifier.fillMaxWidth().background(Tema.superficie.copy(alpha = 0.72f))) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val caben = maxWidth >= 980.dp
             Row(Modifier.fillMaxWidth().padding(horizontal = 40.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -60,7 +60,7 @@ fun Barra(paso: Int, estado: EstadoConexion, alTerminar: () -> Unit) {
                 BotonTerminar(alTerminar)
             }
         }
-        HorizontalDivider(color = Tema.linea)
+        HorizontalDivider(color = Color.White.copy(alpha = 0.9f))
     }
 }
 
@@ -73,8 +73,7 @@ private fun Pasos(paso: Int) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     Modifier.size(32.dp)
-                        .background(if (activo) Tema.azul else Color.Transparent, CircleShape)
-                        .border(2.dp, if (activo) Tema.azul else Tema.linea, CircleShape),
+                        .then(if (activo) Modifier.background(Tema.degradado, CircleShape) else Modifier.border(2.dp, Tema.linea, CircleShape)),
                     contentAlignment = Alignment.Center,
                 ) { Text("${i + 1}", style = Tema.codigoFuerte(16, if (activo) Tema.superficie else Tema.tintaTenue)) }
                 Text(nombre, style = if (activo) Tema.titulo(20) else Tema.medio(20, Tema.tintaTenue))

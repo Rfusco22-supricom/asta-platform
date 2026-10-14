@@ -3,7 +3,6 @@ package com.supricom.asta.kiosco.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +25,7 @@ fun Raiz(kiosco: Kiosco) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .background(Tema.papel)
+                        .fondoCristal()
                         // Cualquier toque, en cualquier sitio, cuenta como actividad (#41).
                         // En la pasada inicial y sin consumirlo: el botón tocado lo recibe igual.
                         .pointerInput(Unit) {

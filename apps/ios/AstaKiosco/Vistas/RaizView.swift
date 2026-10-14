@@ -34,7 +34,7 @@ struct RaizView: View {
                 BuscarView(kiosco: kiosco)
             }
         }
-        .background(Tema.papel)
+        .background(FondoCristal())
         // Cualquier toque, en cualquier sitio, cuenta como actividad (#41).
         .simultaneousGesture(DragGesture(minimumDistance: 0).onChanged { _ in kiosco.tocar() })
     }

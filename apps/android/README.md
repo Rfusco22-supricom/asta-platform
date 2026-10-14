@@ -69,7 +69,7 @@ cambiarlas a la vez:
   se pone al día sola.
 - **Teclado propio**: el del sistema tapa los resultados y autocorrige los
   modelos. Solo letras, números, guion y espacio.
-- **Fuentes**: Archivo y JetBrains Mono van dentro de la app (`res/font`,
+- **Fuentes**: Sora y DM Mono (las del panel, identidad «Cristal») van dentro de la app (`res/font`,
   licencia OFL en `licencias/`).
 - **Tamaño de letra**: no sigue al del sistema. El kiosco ya es grande, y ese
   ajuste lo puso alguien en una tablet compartida, no el cliente.

@@ -76,8 +76,9 @@ struct TecladoView: View {
                     .font(Tema.titulo(28))
                     .foregroundStyle(Tema.superficie)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(canto(relleno: puedeBuscar ? (pulsado ? Tema.azulHondo : Tema.azul) : Color(hex: 0x9FCDEB),
-                                      canto: puedeBuscar ? Tema.azulHondo : Color(hex: 0x8ABFE2)))
+                    // «Buscar», con el degradado de la marca cuando se puede pulsar.
+                    .background(cantoCon(relleno: puedeBuscar ? AnyShapeStyle(Tema.degradado) : AnyShapeStyle(Color(hex: 0x9FCDEB)),
+                                         borde: puedeBuscar ? Tema.azulHondo : Color(hex: 0x8ABFE2)).brightness(puedeBuscar && pulsado ? -0.1 : 0))
             }
             .disabled(!puedeBuscar)
             .frame(width: ancho(4.5, unidad))
@@ -89,6 +90,11 @@ struct TecladoView: View {
 /// El canto inferior de una tecla física: sin él, una cuadrícula blanca no se
 /// lee como algo que se pulsa.
 private func canto(relleno: Color, canto: Color) -> some View {
+    cantoCon(relleno: AnyShapeStyle(relleno), borde: canto)
+}
+
+/// Lo mismo, con cualquier relleno: el degradado de la marca en «Buscar».
+private func cantoCon(relleno: AnyShapeStyle, borde canto: Color) -> some View {
     RoundedRectangle(cornerRadius: Tema.radio).fill(canto)
         .overlay(alignment: .top) { RoundedRectangle(cornerRadius: Tema.radio).fill(relleno).padding(.bottom, 4) }
 }

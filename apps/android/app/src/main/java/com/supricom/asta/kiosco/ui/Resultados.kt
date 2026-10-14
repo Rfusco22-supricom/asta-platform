@@ -1,5 +1,6 @@
 package com.supricom.asta.kiosco.ui
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -163,7 +164,7 @@ private fun Cabecera(impresora: Impresora, alVolver: () -> Unit) {
 private fun Respuesta(productos: List<ProductoCompatible>, sugerido: ProductoCompatible?, impresora: Impresora) {
     val codigos = codigosDeCartucho(productos)
     val enTienda = productos.count { it.stock != EstadoStock.AGOTADO }
-    Column(Modifier.width(340.dp).background(Tema.azul, RoundedCornerShape(Tema.radio)).padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.width(340.dp).tarjeta().background(Tema.degradado, RoundedCornerShape(Tema.radio)).padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(if (codigos.size == 1) "USA EL CARTUCHO" else "USA LOS CARTUCHOS", style = Tema.fuerte(16, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
         codigos.forEach { Text(it, style = Tema.codigo(56, Tema.superficie), maxLines = 1) }
         Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.28f)))
@@ -220,7 +221,7 @@ private fun Pie(elegido: ProductoCompatible?, impresora: Impresora) {
  */
 @Composable
 private fun SinAstaParaEsta(impresora: Impresora) {
-    Row(Modifier.padding(top = 24.dp).widthIn(max = 820.dp).height(IntrinsicSize.Min).background(Tema.superficie, RoundedCornerShape(Tema.radio))) {
+    Row(Modifier.padding(top = 24.dp).widthIn(max = 820.dp).height(IntrinsicSize.Min).tarjeta().background(Tema.superficie, RoundedCornerShape(Tema.radio)).clip(RoundedCornerShape(Tema.radio))) {
         Box(Modifier.width(10.dp).fillMaxHeight().background(Tema.azul))
         Column(Modifier.padding(40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("\u2605 ASTA PARA TU IMPRESORA", style = Tema.fuerte(16, Tema.azulHondo).copy(letterSpacing = 2.5.sp))
@@ -243,7 +244,7 @@ private fun SinAstaParaEsta(impresora: Impresora) {
  */
 @Composable
 private fun SinTonerCargado(impresora: Impresora) {
-    Row(Modifier.padding(top = 24.dp).widthIn(max = 820.dp).height(IntrinsicSize.Min).background(Tema.superficie, RoundedCornerShape(Tema.radio))) {
+    Row(Modifier.padding(top = 24.dp).widthIn(max = 820.dp).height(IntrinsicSize.Min).tarjeta().background(Tema.superficie, RoundedCornerShape(Tema.radio)).clip(RoundedCornerShape(Tema.radio))) {
         Box(Modifier.width(10.dp).fillMaxHeight().background(Tema.azul))
         Column(Modifier.padding(40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("TE AYUDAMOS EN EL MOSTRADOR", style = Tema.fuerte(16, Tema.azulHondo).copy(letterSpacing = 2.5.sp))
@@ -266,7 +267,7 @@ private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boole
     Pulsable(alPulsar, Modifier.fillMaxWidth().semantics { contentDescription = "${p.titulo(impresora)}, ${p.stock.texto}" }) { pulsado ->
         Row(
             Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 112.dp)
-                .background(if ((pulsado && !elegido) || recomendado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio))
+                .tarjeta().background(if ((pulsado && !elegido) || recomendado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio))
                 .border(3.dp, if (elegido) Tema.azul else Color.Transparent, RoundedCornerShape(Tema.radio)),
         ) {
             Box(Modifier.width(10.dp).fillMaxHeight().background(color))
