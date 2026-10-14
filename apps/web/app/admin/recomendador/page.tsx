@@ -4,6 +4,7 @@ import { Periodos } from '@/components/Periodos';
 import { getEstadisticasRecomendador, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fechaCorta } from '@/lib/formato';
 import { BusquedasSinResultado } from './BusquedasSinResultado';
+import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
 
 /**
  * Qué buscan los clientes en el recomendador, y dónde se pierde la venta (#43).
@@ -21,16 +22,23 @@ import { BusquedasSinResultado } from './BusquedasSinResultado';
 
 export const dynamic = 'force-dynamic';
 
-function Metrica({ etiqueta, valor, nota, tono }: { etiqueta: string; valor: string; nota?: string; tono?: 'mal' | 'atencion' | 'bien' }) {
-  const color = tono === 'mal' ? 'var(--danger)' : tono === 'atencion' ? 'var(--warning)' : tono === 'bien' ? 'var(--positive)' : undefined;
+function Metrica({
+  etiqueta,
+  valor,
+  nota,
+  tono,
+  icono,
+  color,
+}: {
+  etiqueta: string;
+  valor: string;
+  nota?: string;
+  tono?: 'mal' | 'atencion' | 'bien';
+  icono: IconoCifra;
+  color?: ColorCifra;
+}) {
   return (
-    <div className="stat">
-      <div className="stat-label">{etiqueta}</div>
-      <div className="stat-value" style={{ color }}>
-        {valor}
-      </div>
-      {nota && <div className="stat-sub">{nota}</div>}
-    </div>
+    <Cifra icono={icono} color={color} etiqueta={etiqueta} valor={valor} nota={nota} tono={tono === 'mal' ? 'alerta' : tono === 'bien' ? 'sube' : tono} />
   );
 }
 
@@ -88,20 +96,26 @@ export default async function RecomendadorPage({
       ) : (
         <>
           <section className="stats">
-            <Metrica etiqueta="Búsquedas" valor={num(totales.busquedas)} nota={`${num(totales.consultasDirectas)} consultas directas, sin buscar`} />
+            <Metrica icono="busqueda" etiqueta="Búsquedas" valor={num(totales.busquedas)} nota={`${num(totales.consultasDirectas)} consultas directas, sin buscar`} />
             <Metrica
+              icono="cruz"
+              color="ambar"
               etiqueta="Sin resultado"
               valor={num(totales.sinResultado)}
               nota={`${pct(totales.sinResultado, totales.busquedas)} de las búsquedas`}
               tono={totales.sinResultado > 0 ? 'atencion' : undefined}
             />
             <Metrica
+              icono="clic"
+              color="verde"
               etiqueta="Acabaron en un clic"
               valor={num(totales.conClic)}
               nota={`${pct(totales.conClic, totales.busquedas)} de las búsquedas`}
               tono={totales.conClic > 0 ? 'bien' : undefined}
             />
             <Metrica
+              icono="alerta"
+              color="rosa"
               etiqueta="Quiebres de stock"
               valor={num(totales.quiebres)}
               nota="había tóner compatible y ninguno en existencia"

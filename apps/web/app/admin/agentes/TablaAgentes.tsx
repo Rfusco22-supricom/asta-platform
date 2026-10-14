@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Agente } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
 
 /**
  * Tabla de agentes con búsqueda y orden.
@@ -153,8 +154,13 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
               return (
                 <tr key={a.odooUserId}>
                   <td>
-                    <div className="cliente-nombre">{a.nombre}</div>
-                    <div className="cliente-contacto">{a.login || '—'}</div>
+                    <div className="cliente-fila">
+                      <Avatar nombre={a.nombre} tamano="s" />
+                      <span className="cliente-datos">
+                        <span className="cliente-nombre">{a.nombre}</span>
+                        <span className="cliente-contacto">{a.login || '—'}</span>
+                      </span>
+                    </div>
                   </td>
 
                   <td className="num">

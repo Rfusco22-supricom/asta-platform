@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getReconciliacion, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
 
 /**
  * Accesos: reconciliación Odoo ↔ middleware (issue #19).
@@ -26,28 +27,25 @@ function Metrica({
   valor,
   nota,
   tono = 'neutro',
+  icono,
+  color,
 }: {
   etiqueta: string;
   valor: number | string;
   nota?: string;
   tono?: 'neutro' | 'bien' | 'atencion' | 'mal';
+  icono: IconoCifra;
+  color?: ColorCifra;
 }) {
-  const color =
-    tono === 'mal'
-      ? 'var(--danger)'
-      : tono === 'atencion'
-        ? 'var(--warning)'
-        : tono === 'bien'
-          ? 'var(--positive)'
-          : undefined;
   return (
-    <div className="stat">
-      <div className="stat-label">{etiqueta}</div>
-      <div className="stat-value" style={{ color }}>
-        {typeof valor === 'number' ? valor.toLocaleString('es-VE') : valor}
-      </div>
-      {nota && <div className="stat-sub">{nota}</div>}
-    </div>
+    <Cifra
+      icono={icono}
+      color={color}
+      etiqueta={etiqueta}
+      valor={typeof valor === 'number' ? valor.toLocaleString('es-VE') : valor}
+      nota={nota}
+      tono={tono === 'mal' ? 'alerta' : tono === 'atencion' ? 'atencion' : tono === 'bien' ? 'sube' : undefined}
+    />
   );
 }
 
@@ -136,20 +134,26 @@ export default async function AccesosPage() {
       descripcion={`Qué clientes de Odoo tienen cuenta en el panel, y cuáles no pueden entrar · generado en ${(rec.duracionMs / 1000).toFixed(1)} s · ${new Date(rec.generadoEn).toLocaleString("es-VE")}`}
     >
       <section className="stats">
-        <Metrica etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
+        <Metrica icono="clientes" etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
         <Metrica
+          icono="check"
+          color="verde"
           etiqueta="Con cuenta"
           valor={rec.middleware.clientes}
           nota={`${((rec.middleware.clientes / rec.odoo.clientesActivos) * 100).toFixed(0)} % de los clientes`}
           tono="bien"
         />
         <Metrica
+          icono="llave"
+          color="ambar"
           etiqueta="Sin cuenta"
           valor={rec.sinCuenta.total}
           nota="no pueden usar el panel"
           tono={rec.sinCuenta.total > 0 ? 'atencion' : 'bien'}
         />
         <Metrica
+          icono="candado"
+          color="rosa"
           etiqueta="No pueden entrar"
           valor={rec.sinCredenciales.total}
           nota="tienen cuenta, les falta contraseña"
@@ -230,18 +234,23 @@ export default async function AccesosPage() {
 
       <section className="stats">
         <Metrica
+          icono="alerta"
+          color="ambar"
           etiqueta="Huérfanos"
           valor={rec.huerfanos.total}
           nota="su cliente ya no está en Odoo"
           tono={rec.huerfanos.total > 0 ? 'atencion' : 'bien'}
         />
         <Metrica
+          icono="sincronizar"
+          color="violeta"
           etiqueta="Desalineados"
           valor={rec.desalineados.total}
           nota="datos distintos entre sistemas"
           tono={rec.desalineados.total > 0 ? 'atencion' : 'bien'}
         />
         <Metrica
+          icono="reloj"
           etiqueta="Nunca sincronizados"
           valor={rec.nuncaSincronizados.total}
           nota="creados a mano"
