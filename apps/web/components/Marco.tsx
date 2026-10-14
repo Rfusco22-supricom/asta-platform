@@ -1,9 +1,12 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { clearSession } from '@/lib/session';
 import { ambitoDe, navegacionDe } from '@/lib/navegacion';
-import { NavInferior, NavLateral } from './NavLateral';
+import { COOKIE_MENU } from '@/lib/menu';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
+import { MarcoCliente } from './MarcoCliente';
 import { MenuUsuario } from './MenuUsuario';
+import { BuscadorCabecera } from './Paleta';
 
 /**
  * El marco de toda pantalla con sesión: menú lateral, cabecera y contenido.
@@ -18,16 +21,16 @@ import { MenuUsuario } from './MenuUsuario';
  *
  * ── Menú lateral y no pestañas arriba ────────────────────────────────────────
  *
- * Porque el número de secciones va a crecer —agentes, ASTA, reportes— y una
- * barra superior se rompe a la cuarta. El lateral crece hacia abajo, que es
- * gratis, y deja el ancho entero para lo que importa: tablas de datos.
+ * Porque el número de secciones crece, y una barra superior se rompe a la
+ * cuarta. El lateral crece hacia abajo, que es gratis, y se pliega a iconos
+ * cuando hace falta el ancho para una tabla.
  *
- * ── Sin JavaScript para lo que no lo necesita ────────────────────────────────
+ * ── Servidor por fuera, cliente por dentro ───────────────────────────────────
  *
- * El marco es un componente de SERVIDOR. Solo el menú es de cliente, y solo
- * porque marcar la sección activa necesita la ruta del navegador. Salir es un
- * formulario con una acción de servidor: funciona aunque el JavaScript falle, y
- * la pantalla de la que más conviene poder salir siempre es esta.
+ * Esto es un componente de SERVIDOR: lee la sesión y la preferencia del menú,
+ * y pinta la cabecera. Lo interactivo —plegar el menú, la paleta ⌘K, marcar la
+ * sección activa— va en `MarcoCliente`. Salir es una acción de servidor: el
+ * formulario del menú funciona aunque el JavaScript falle.
  */
 
 async function salir() {
@@ -36,14 +39,14 @@ async function salir() {
   redirect('/login');
 }
 
-/** Iniciales para el avatar. Dos como mucho: tres ya no se leen a 28 px. */
+/** Iniciales para el avatar. Dos como mucho: tres ya no se leen a 34 px. */
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return '·';
   return (partes[0][0] + (partes[1]?.[0] ?? '')).toUpperCase();
 }
 
-export function Marco({
+export async function Marco({
   usuario,
   titulo,
   descripcion,
@@ -54,81 +57,36 @@ export function Marco({
   titulo: string;
   /** Una línea que diga a qué pregunta responde la pantalla. */
   descripcion?: string;
-  /** Botones propios de la pantalla, a la izquierda del chip de usuario. */
+  /** Botones propios de la pantalla, a la izquierda del buscador. */
   acciones?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const grupos = navegacionDe(usuario.role);
+  const plegado = (await cookies()).get(COOKIE_MENU)?.value === 'plegado';
   // El vendedor es una persona y su nombre viene de Odoo tal cual («MARTA  RUIZ (v)»).
   // El de un cliente es una razón social: solo se le quitan los espacios de más.
   const nombreVisible = usuario.role === 'VENDEDOR' ? nombrePersona(usuario.nombre) : limpiarEspacios(usuario.nombre);
 
   return (
-    <div className="app">
-      <aside className="lateral">
-        <div className="lateral-marca">
-          {/*
-            El logo de la marca, recortado por CSS.
-            El PNG viene con mucho margen transparente alrededor —la tinta ocupa
-            de x 94 a 3798 y de y 652 a 2106 en un lienzo de 3881×3105—, así que
-            con `contain` saldría pequeño y descentrado. Los desplazamientos de
-            `.marca-logo img` están calculados con esas medidas; si se cambia el
-            fichero, hay que volver a medirlas.
-
-            Sin `next/image` a propósito: es un activo fijo de 128 kB que sale en
-            todas las pantallas, y el optimizador añade un salto al servidor para
-            algo que el navegador ya cachea desde la primera carga.
-          */}
-          <span className="marca-logo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/asta-logo.png" alt="ASTA" />
-          </span>
-          <span className="marca-ambito">{ambitoDe(usuario.role)}</span>
+    <MarcoCliente grupos={grupos} ambito={ambitoDe(usuario.role)} rol={usuario.role} plegadoInicial={plegado} salir={salir}>
+      <header className="cabecera">
+        <div className="cabecera-titulo">
+          <h1>{titulo}</h1>
+          {descripcion && <p>{descripcion}</p>}
         </div>
-
-        <NavLateral grupos={grupos} />
 
         {/*
-          El pie dice de dónde salen los datos, no adorna.
-          En una herramienta que lee un ERP en vivo, «¿esto está actualizado?» es
-          la pregunta que más se repite, y tenerla contestada en un sitio fijo
-          ahorra el viaje a preguntarlo.
+          El chip del usuario ABRE un menú: tema, sesiones activas y cerrar
+          sesión. A su izquierda, el buscador que abre la paleta ⌘K.
         */}
-        <div className="lateral-pie">
-          <strong>Datos en vivo</strong>
-          Facturación y cartera se leen de Odoo y se renuevan cada minuto.
+        <div className="cabecera-acciones">
+          {acciones}
+          <BuscadorCabecera />
+          <MenuUsuario nombre={nombreVisible} rol={usuario.role} iniciales={iniciales(nombreVisible)} salir={salir} />
         </div>
-      </aside>
+      </header>
 
-      {/* En estrecho el menú baja a pestañas fijas; en ancho, el CSS lo oculta. */}
-      <NavInferior grupos={grupos} />
-
-      <main className="contenido">
-        <header className="cabecera">
-          <div>
-            <h1>{titulo}</h1>
-            {descripcion && <p>{descripcion}</p>}
-          </div>
-
-          {/*
-            El chip del usuario ABRE un menú: sesiones activas y cerrar sesión.
-            Antes era decorativo con el botón de Salir suelto al lado, y todo el
-            mundo intentaba pulsarlo igualmente porque es donde está en cualquier
-            herramienta.
-          */}
-          <div className="cabecera-acciones">
-            {acciones}
-            <MenuUsuario
-              nombre={nombreVisible}
-              rol={usuario.role}
-              iniciales={iniciales(nombreVisible)}
-              salir={salir}
-            />
-          </div>
-        </header>
-
-        {children}
-      </main>
-    </div>
+      {children}
+    </MarcoCliente>
   );
 }

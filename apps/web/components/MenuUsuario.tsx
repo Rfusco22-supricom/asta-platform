@@ -3,6 +3,7 @@
 import { ROLE_LABEL, type AppRole } from '@asta/shared-types';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { aplicarTema, temaActual, type Tema } from '@/lib/tema';
 
 /**
  * El chip del usuario, con menú.
@@ -21,7 +22,16 @@ import { useEffect, useRef, useState } from 'react';
  * Salir sigue siendo un `<form>` con acción de servidor, ahora dentro del menú:
  * funciona aunque el JavaScript falle, que es la propiedad que más conviene
  * conservar justo en esa opción.
+ *
+ * El tema (claro, oscuro o el del sistema) se elige aquí y se aplica al
+ * momento, sin recargar: ver `lib/tema.ts`.
  */
+
+const TEMAS: { valor: Tema; texto: string }[] = [
+  { valor: 'sistema', texto: 'Sistema' },
+  { valor: 'claro', texto: 'Claro' },
+  { valor: 'oscuro', texto: 'Oscuro' },
+];
 
 export function MenuUsuario({
   nombre,
@@ -38,7 +48,13 @@ export function MenuUsuario({
   // «Oro», «Cliente general»: no el valor técnico («gold», «general»).
   const etiqueta = ROLE_LABEL[rol as AppRole] ?? rol.toLowerCase();
   const [abierto, setAbierto] = useState(false);
+  const [tema, setTema] = useState<Tema>('sistema');
   const caja = useRef<HTMLDivElement>(null);
+
+  // El tema guardado se lee al abrir: en el servidor no hay `document`.
+  useEffect(() => {
+    if (abierto) setTema(temaActual());
+  }, [abierto]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -95,6 +111,25 @@ export function MenuUsuario({
           <div className="menu-cabecera">
             <strong>{nombre}</strong>
             <small>{etiqueta}</small>
+          </div>
+
+          <div className="menu-tema" role="group" aria-label="Tema">
+            <span>Tema</span>
+            <div className="menu-tema-opciones">
+              {TEMAS.map((t) => (
+                <button
+                  key={t.valor}
+                  type="button"
+                  aria-pressed={tema === t.valor}
+                  onClick={() => {
+                    aplicarTema(t.valor);
+                    setTema(t.valor);
+                  }}
+                >
+                  {t.texto}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Cerrar al navegar: si no, el menú sigue abierto en la página nueva. */}
