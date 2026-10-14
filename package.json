@@ -23,6 +23,8 @@
     "impresoras-catalogo:importar": "tsx apps/middleware/src/cli/importar-impresoras-catalogo.ts",
     "impresoras:unir": "tsx apps/middleware/src/cli/unir-impresoras-duplicadas.ts",
     "listas:importar": "tsx apps/middleware/src/cli/importar-listas-fabricante.ts",
+    "validaciones:exportar": "tsx apps/middleware/src/cli/exportar-validaciones.ts",
+    "validaciones:trasladar": "tsx apps/middleware/src/cli/trasladar-validaciones.ts",
     "compatibilidades:cargar-csv": "tsx scripts/cargar-compatibilidad-csv.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
