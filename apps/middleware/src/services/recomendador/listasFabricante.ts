@@ -1232,6 +1232,489 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
     ],
     consultado: '2026-10-07',
   },
+
+  // ── El quinto tramo: lo que faltaba del top 200 ────────────────────────────
+  //
+  // Medido el 2026-10-14 sobre los 200 productos más vendidos: cartuchos sin
+  // impresoras y láser de HP que no tenían ni el cartucho enlazado. Igual que en
+  // el cuarto tramo, de las páginas LatAm de HP entra la SERIE sin «(serie)», y
+  // los modelos concretos salen de la tienda de HP US o Canadá, sin el
+  // «Printer» que añade la tienda. Fuera:
+  //   · HP 105X: sigue sin existir en hp.com (solo el 105A).
+  //   · GI-10 en las GM2010 y GM4010: son monocromáticas y aquí el GI-10 es UN
+  //     cartucho con las cuatro botellas; enlazarlo les ofrecería el color.
+  //   · Lo que solo nombra una página de otro país (M127fs, España) o un
+  //     distribuidor (MG2110, MX371… del CL-141): sin página oficial que abrir.
+  {
+    marca: 'HP',
+    cartuchos: ['85A', 'CE285A'],
+    impresoras: [
+      'LaserJet Pro P1100',
+      'LaserJet Pro MFP M1130',
+      'LaserJet Pro MFP M1210',
+      'LaserJet Pro P1102w',
+      'LaserJet Pro P1109w',
+      'LaserJet Pro M1212nf',
+      'LaserJet Pro M1217nfw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-85a-negro-laserjet-original-ce285a.html',
+      'https://www.hp.com/co-es/shop/cartucho-de-toner-hp-85a-negro-laserjet-original-ce285a.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-85a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-85a-black-original-laserjet-toner-cartridge-ce285a',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['83A', 'CF283A'],
+    impresoras: [
+      'LaserJet Pro MFP M125',
+      'LaserJet Pro MFP M127',
+      'LaserJet Pro M201n',
+      'LaserJet Pro M201dw',
+      'LaserJet Pro MFP M225dn',
+      'LaserJet Pro MFP M225dw',
+      'LaserJet Pro MFP M127fn',
+      'LaserJet Pro MFP M127fw',
+      'LaserJet Pro MFP M127fp',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-83a-negro-laserjet-original-cf283a.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-83a-black-original-laserjet-toner-cartridge-cf283a',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-83a-black-original-laserjet-toner-cartridge-cf283a',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['87A', 'CF287A'],
+    impresoras: [
+      'LaserJet Enterprise M506',
+      'LaserJet Enterprise MFP M527',
+      'LaserJet Enterprise M506n',
+      'LaserJet Enterprise M506dn',
+      'LaserJet Enterprise M506x',
+      'LaserJet Enterprise MFP M527dn',
+      'LaserJet Enterprise MFP M527f',
+      'LaserJet Enterprise Flow MFP M527z',
+      'LaserJet Pro M501dn',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-87a-negro-laserjet-original-cf287a.html',
+      'https://www.hp.com/co-es/shop/cartucho-de-toner-hp-87a-negro-laserjet-original-cf287a.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-87a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-87a-black-original-laserjet-toner-cartridge-cf287a',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Las mismas impresoras que el 89A del cuarto tramo.
+  {
+    marca: 'HP',
+    cartuchos: ['89X', 'CF289X'],
+    impresoras: [
+      'LaserJet Enterprise M507',
+      'LaserJet Enterprise MFP M528',
+      'LaserJet Enterprise M507n',
+      'LaserJet Enterprise M507dn',
+      'LaserJet Enterprise M507dng',
+      'LaserJet Enterprise M507x',
+      'LaserJet Enterprise MFP M528dn',
+      'LaserJet Enterprise MFP M528f',
+      'LaserJet Enterprise Flow MFP M528c',
+      'LaserJet Enterprise Flow MFP M528z',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-89x-negro-laserjet-original-cf289x.html',
+      'https://www.hp.com/pe-es/shop/cartucho-de-toner-hp-89x-negro-alto-rendimiento-laserjet-original-cf289x.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-89x-high-yield-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-89x-high-yield-black-original-laserjet-toner-cartridge-cf289x',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['17A', 'CF217A'],
+    impresoras: [
+      'LaserJet Pro M102',
+      'LaserJet Pro MFP M130',
+      'LaserJet Pro M102w',
+      'LaserJet Pro MFP M130fn',
+      'LaserJet Pro MFP M130fw',
+      'LaserJet Pro MFP M130nw',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-17a-negro-laserjet-original-cf217a.html',
+      'https://www.hp.com/co-es/shop/cartucho-de-toner-hp-17a-negro-laserjet-original-cf217a.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-17a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-17a-black-original-laserjet-toner-cartridge-cf217a',
+    ],
+    consultado: '2026-10-14',
+  },
+  // La ficha LatAm solo nombra las M630; las M605, M606 y «Managed» las añaden
+  // las tiendas de EE. UU. y Canadá.
+  {
+    marca: 'HP',
+    cartuchos: ['81X', 'CF281X'],
+    impresoras: [
+      'LaserJet Enterprise MFP M630dn',
+      'LaserJet Enterprise MFP M630f',
+      'LaserJet Enterprise MFP M630h',
+      'LaserJet Enterprise Flow MFP M630z',
+      'LaserJet Enterprise Flow MFP M630h',
+      'LaserJet Enterprise M605n',
+      'LaserJet Enterprise M605dn',
+      'LaserJet Enterprise M605dh',
+      'LaserJet Enterprise M605x',
+      'LaserJet Enterprise M606dn',
+      'LaserJet Enterprise M606x',
+      'LaserJet Managed M605xm',
+      'LaserJet Managed Flow MFP M630zm',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-81x-negro-alto-rendimiento-laserjet-original-cf281x.html',
+      'https://www.hp.com/co-es/shop/cartucho-de-toner-hp-81x-negro-alto-rendimiento-laserjet-original-cf281x.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-81x-high-yield-black-original-laserjet-toner-cartridge-cf281x',
+      'https://www.hp.com/ca-en/shop/products/supplies/hp-81x-high-yield-black-original-laserjet-toner-cartridge-cf281x',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['80A', 'CF280A'],
+    impresoras: [
+      'LaserJet Pro 400 M401',
+      'LaserJet Pro 400 MFP M425',
+      'LaserJet Pro 400 M401n',
+      'LaserJet Pro 400 M401dn',
+      'LaserJet Pro 400 M401dne',
+      'LaserJet Pro 400 M401dw',
+      'LaserJet Pro 400 MFP M425dn',
+    ],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-80a-negro-laserjet-original-cf280a.html',
+      'https://www.hp.com/co-es/shop/cartucho-de-toner-hp-80a-negro-laserjet-original-cf280a.html',
+      'https://www.hp.com/us-en/shop/pdp/hp-80a-black-original-laserjet-toner-cartridge',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Los cuatro colores nombran las mismas impresoras. La M552dn y la M577c no
+  // las nombra ninguna página de HP modelo a modelo (solo «M552/M553»).
+  {
+    marca: 'HP',
+    cartuchos: ['508A', 'CF360A', 'CF361A', 'CF362A', 'CF363A'],
+    impresoras: [
+      'Color LaserJet Enterprise M553n',
+      'Color LaserJet Enterprise M553x',
+      'Color LaserJet Enterprise M553dn',
+      'Color LaserJet Enterprise M553dh',
+      'Color LaserJet Enterprise MFP M577f',
+      'Color LaserJet Enterprise MFP M577dn',
+      'Color LaserJet Enterprise Flow MFP M577z',
+    ],
+    fuentes: [
+      'https://www.hp.com/us-en/shop/pdp/hp-508a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/us-en/shop/pdp/hp-508a-cyan-original-laserjet-toner-cartridge',
+      'https://www.hp.com/uy-es/products/ink-toner/product-details/6888220',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-508a-cian-laserjet-original-cf361a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['55A', 'CE255A'],
+    impresoras: [
+      'LaserJet Enterprise P3015d',
+      'LaserJet Enterprise P3015n',
+      'LaserJet Enterprise P3015dn',
+      'LaserJet Enterprise P3015x',
+      'LaserJet Enterprise Flow MFP M525c',
+      'LaserJet Enterprise 500 MFP M525dn',
+      'LaserJet Enterprise 500 MFP M525f',
+      'LaserJet Pro MFP M521dn',
+    ],
+    fuentes: [
+      'https://www.hp.com/us-en/shop/pdp/hp-55a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ve-es/products/ink-toner/product-details/3724333',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Los nombres, como los escribe HP, aunque llame «Flow» a la M631h y no a la M631z.
+  {
+    marca: 'HP',
+    cartuchos: ['37X', 'CF237X'],
+    impresoras: [
+      'LaserJet Enterprise M608n',
+      'LaserJet Enterprise M608dn',
+      'LaserJet Enterprise M608x',
+      'LaserJet Enterprise M609dn',
+      'LaserJet Enterprise M609x',
+      'LaserJet Enterprise Flow MFP M631h',
+      'LaserJet Enterprise MFP M631z',
+      'LaserJet Enterprise MFP M632h',
+      'LaserJet Enterprise MFP M632fht',
+      'LaserJet Enterprise Flow MFP M632z',
+      'LaserJet Enterprise MFP M633fh',
+    ],
+    fuentes: ['https://www.hp.com/us-en/shop/pdp/hp-37x-high-yield-black-original-laserjet-toner-cartridge'],
+    consultado: '2026-10-14',
+  },
+  // Los cuatro colores nombran las mismas impresoras.
+  {
+    marca: 'HP',
+    cartuchos: ['410A', 'CF410A', 'CF411A', 'CF412A', 'CF413A'],
+    impresoras: [
+      'Color LaserJet Pro M452dn',
+      'Color LaserJet Pro M452nw',
+      'Color LaserJet Pro M452dw',
+      'Color LaserJet Pro MFP M477fdn',
+      'Color LaserJet Pro MFP M477fdw',
+      'Color LaserJet Pro MFP M477fnw',
+    ],
+    fuentes: [
+      'https://www.hp.com/us-en/shop/pdp/hp-410a-black-original-laserjet-toner-cartridge',
+      'https://www.hp.com/us-en/shop/pdp/hp-410a-cyan-original-laserjet-toner-cartridge',
+      'https://www.hp.com/ve-es/products/ink-toner/product-details/8610926',
+    ],
+    consultado: '2026-10-14',
+  },
+  // HP Venezuela repite la 9010e sin «Pro»: es la misma, va una vez.
+  {
+    marca: 'HP',
+    cartuchos: ['964', '964XL'],
+    impresoras: [
+      'OfficeJet Pro 9010',
+      'OfficeJet Pro 9010e',
+      'OfficeJet Pro 9015e',
+      'OfficeJet Pro 9016',
+      'OfficeJet Pro 9018',
+      'OfficeJet Pro 9020',
+      'OfficeJet Pro 9025e',
+    ],
+    fuentes: [
+      'https://www.hp.com/ve-es/products/ink-toner/product-details/21858533',
+      'https://www.hp.com/mx-es/shop/cartucho-de-tinta-de-hp-964xl-negro-alto-rendimiento-3ja57al.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  // El CL-141 no tiene página con su lista: sale al revés, de la ficha de cada
+  // impresora que dice usarlo. La GM4010 es monocromática y lo acepta como
+  // cartucho de color opcional.
+  {
+    marca: 'Canon',
+    cartuchos: ['CL-141', 'CL-141XL'],
+    impresoras: [
+      'PIXMA MG2210',
+      'PIXMA MG3210',
+      'PIXMA MG3510',
+      'PIXMA MG3610',
+      'PIXMA MG4210',
+      'PIXMA MX391',
+      'PIXMA MX451',
+      'PIXMA MX471',
+      'PIXMA MX521',
+      'PIXMA MX531',
+      'PIXMA GM4010',
+    ],
+    fuentes: [
+      'https://www.cla.canon.com/en/p/pixma-mg2210',
+      'https://www.cla.canon.com/en/p/pixma-mg3210',
+      'https://www.cla.canon.com/en/p/pixma-mg3510',
+      'https://www.cla.canon.com/en/p/pixma-mg3610',
+      'https://www.cla.canon.com/en/p/pixma-mg4210',
+      'https://www.cla.canon.com/en/p/pixma-mx391',
+      'https://www.cla.canon.com/en/p/pixma-mx451',
+      'https://www.cla.canon.com/en/p/pixma-mx471',
+      'https://www.cla.canon.com/en/p/pixma-mx521',
+      'https://www.cla.canon.com/en/p/pixma-mx531',
+      'https://www.cla.canon.com/en/p/pixma-gm4010',
+      'https://www.canon.cl/productos/tinta/pixma-gm4010',
+    ],
+    consultado: '2026-10-14',
+  },
+  // El PG-210 y el CL-211 nombran las mismas impresoras; la MP230 la añade
+  // Canon Latinoamérica.
+  {
+    marca: 'Canon',
+    cartuchos: ['PG-210', 'PG-210XL'],
+    impresoras: [
+      'PIXMA MX330',
+      'PIXMA MP240',
+      'PIXMA MP480',
+      'PIXMA MP490',
+      'PIXMA iP2702',
+      'PIXMA MX340',
+      'PIXMA MX350',
+      'PIXMA MX320',
+      'PIXMA MP250',
+      'PIXMA MP270',
+      'PIXMA MP280',
+      'PIXMA MP495',
+      'PIXMA MX410',
+      'PIXMA MX420',
+      'PIXMA MP230',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/pg-210-xl-black-ink-tank',
+      'https://shop.canon.ca/en_ca/p/pg-210-black-ink-cartridge',
+      'https://shop.canon.ca/en_ca/p/pg-210-xl-ink-tank',
+      'https://www.cla.canon.com/en/p/pixma-mp230',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['CL-211', 'CL-211XL'],
+    impresoras: [
+      'PIXMA MX330',
+      'PIXMA MP240',
+      'PIXMA MP480',
+      'PIXMA MP490',
+      'PIXMA iP2702',
+      'PIXMA MX340',
+      'PIXMA MX350',
+      'PIXMA MX320',
+      'PIXMA MP250',
+      'PIXMA MP270',
+      'PIXMA MP280',
+      'PIXMA MP495',
+      'PIXMA MX410',
+      'PIXMA MX420',
+      'PIXMA MP230',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/cl-211-xl-ink-tank',
+      'https://shop.canon.ca/en_ca/p/cl-211-xl-colour-ink-tank',
+      'https://www.cla.canon.com/en/p/pixma-mp230',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Canon Chile nombra tres; EE. UU. y Canadá añaden la LBP215dw y la MF429dw.
+  {
+    marca: 'Canon',
+    cartuchos: ['052', '052H'],
+    impresoras: [
+      'imageCLASS LBP214dw',
+      'imageCLASS LBP215dw',
+      'imageCLASS MF424dw',
+      'imageCLASS MF426dw',
+      'imageCLASS MF429dw',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/052-black-toner-cartridge',
+      'https://www.usa.canon.com/shop/p/052-black-toner-cartridge-high-capacity',
+      'https://shop.canon.ca/en_ca/p/052-black-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/052-black-toner-cartridge-high-capacity',
+      'https://www.canon.cl/productos/toner/cartridge-052',
+      'https://www.canon.cl/productos/toner/cartridge-052-h',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Negro y colores, normal y alta capacidad: la misma lista. La tienda escribe
+  // «MF641Cdw»; el modelo es la MF641Cw, como la llama su página de soporte.
+  {
+    marca: 'Canon',
+    cartuchos: ['054', '054H'],
+    impresoras: [
+      'Color imageCLASS LBP622Cdw',
+      'Color imageCLASS LBP623Cdw',
+      'Color imageCLASS MF641Cw',
+      'Color imageCLASS MF642Cdw',
+      'Color imageCLASS MF644Cdw',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/054-black-toner-cartridge-high-capacity',
+      'https://www.usa.canon.com/shop/p/054-cyan-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/054-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/054-h-toner-cartridge-high-capacity',
+      'https://www.usa.canon.com/support/p/color-imageclass-mf641cw',
+    ],
+    consultado: '2026-10-14',
+  },
+  // La ficha habla de series (MF210, MF220, MF230, MF240): entran los modelos
+  // que confirman su propia página de soporte, y la MF242dw por ser de la MF240.
+  {
+    marca: 'Canon',
+    cartuchos: ['137'],
+    impresoras: [
+      'imageCLASS LBP151dw',
+      'imageCLASS MF212w',
+      'imageCLASS MF216n',
+      'imageCLASS MF217w',
+      'imageCLASS MF227dw',
+      'imageCLASS MF229dw',
+      'imageCLASS MF232w',
+      'imageCLASS MF236n',
+      'imageCLASS MF242dw',
+      'imageCLASS MF244dw',
+      'imageCLASS MF247dw',
+      'imageCLASS MF249dw',
+      'imageCLASS D570',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/137-black-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/137-black-toner-cartridge',
+      'https://www.usa.canon.com/support/p/imageclass-mf212w',
+      'https://www.usa.canon.com/support/p/imageclass-mf244dw',
+      'https://www.usa.canon.com/support/p/imageclass-mf249dw',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'Canon',
+    cartuchos: ['128'],
+    impresoras: [
+      'imageCLASS MF4450',
+      'imageCLASS MF4770n',
+      'imageCLASS MF4570dw',
+      'imageCLASS MF4570dn',
+      'imageCLASS MF4880dw',
+      'imageCLASS MF4890dw',
+      'imageCLASS D530',
+      'imageCLASS D550',
+      'FAXPHONE L100',
+      'FAXPHONE L190',
+    ],
+    fuentes: [
+      'https://www.usa.canon.com/shop/p/128-black-toner-cartridge',
+      'https://shop.canon.ca/en_ca/p/128-black-toner-cartridge',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Solo las tres a color: ver la cabecera del tramo.
+  {
+    marca: 'Canon',
+    cartuchos: ['GI-10'],
+    impresoras: ['PIXMA G5010', 'PIXMA G6010', 'PIXMA G7010'],
+    fuentes: [
+      'https://www.canon.cl/productos/tinta/gi-10-cyan',
+      'https://www.canon.cl/productos/tinta/gi-10-pigment-black',
+      'https://www.cla.canon.com/en/p/pixma-g5010',
+    ],
+    consultado: '2026-10-14',
+  },
+  // HP vende hoy los suministros de Samsung; su ficha abrevia «ML-1660/1665/…».
+  {
+    marca: 'Samsung',
+    cartuchos: ['MLT-D104S'],
+    impresoras: [
+      'ML-1660',
+      'ML-1665',
+      'ML-1670',
+      'ML-1675',
+      'ML-1860',
+      'ML-1865',
+      'ML-1865W',
+      'SCX-3200',
+      'SCX-3205',
+      'SCX-3205W',
+    ],
+    fuentes: [
+      'https://www.hp.com/cl-es/shop/cartucho-de-toner-samsung-mlt-d104s-negro-original-su750a.html',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-mlt-d104s-negro-samsung-su751a.html',
+    ],
+    consultado: '2026-10-14',
+  },
 ];
 
 /**
