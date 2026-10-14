@@ -74,5 +74,5 @@ compararlas y cambiarlas a la vez:
   la red la pantalla se pone al día sola.
 - **Teclado propio**: el del sistema tapa los resultados y autocorrige los
   modelos. Solo letras, números, guion y espacio.
-- **Fuentes**: Archivo y JetBrains Mono van dentro de la app (`Recursos/Fuentes`,
+- **Fuentes**: Sora y DM Mono (las del panel, identidad «Cristal») van dentro de la app (`Recursos/Fuentes`,
   licencia OFL), así no dependen de la red de la tienda.

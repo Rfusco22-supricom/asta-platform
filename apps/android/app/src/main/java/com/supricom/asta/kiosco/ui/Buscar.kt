@@ -1,5 +1,6 @@
 package com.supricom.asta.kiosco.ui
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -224,7 +225,7 @@ private fun textoDe(motivo: MotivoFallo) = when (motivo) {
 private fun OpcionImpresora(impresora: Impresora, sugerida: Boolean, alPulsar: () -> Unit) {
     Pulsable(alPulsar, Modifier.fillMaxWidth().semantics { contentDescription = "${impresora.marca} ${impresora.nombre}" }) { pulsado ->
         Row(
-            Modifier.fillMaxWidth().heightIn(min = Tema.alturaBoton + 24.dp).background(if (pulsado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio)),
+            Modifier.fillMaxWidth().heightIn(min = Tema.alturaBoton + 24.dp).tarjeta().background(if (pulsado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio)).clip(RoundedCornerShape(Tema.radio)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.width(8.dp).height(Tema.alturaBoton + 24.dp).background(if (sugerida) Tema.tintaTenue else Tema.azul))
@@ -244,7 +245,7 @@ fun Mensaje(titulo: String, texto: String, alCorregir: () -> Unit, aviso: Boolea
         Text(texto, style = Tema.cuerpo(20, Tema.tintaSuave), modifier = Modifier.widthIn(max = 760.dp))
         Pulsable(alCorregir, Modifier.padding(top = 16.dp)) { pulsado ->
             Box(
-                Modifier.height(Tema.alturaBoton).background(if (pulsado) Tema.azulHondo else Tema.azul, RoundedCornerShape(Tema.radio)).padding(horizontal = 40.dp),
+                Modifier.height(Tema.alturaBoton).tarjeta().background(if (pulsado) Tema.degradadoPulsado else Tema.degradado, RoundedCornerShape(Tema.radio)).padding(horizontal = 40.dp),
                 contentAlignment = Alignment.Center,
             ) { Text("Corregir el modelo", style = Tema.titulo(24, Tema.superficie)) }
         }

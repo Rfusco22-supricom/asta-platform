@@ -23,8 +23,10 @@ struct BarraView: View {
         }
         .padding(.horizontal, 40)
         .padding(.vertical, 12)
-        .background(Tema.superficie)
-        .overlay(alignment: .bottom) { Tema.linea.frame(height: 1) }
+        // Vidrio sobre las luces del fondo, como la cabecera del panel.
+        .background(.ultraThinMaterial)
+        .background(Tema.superficie.opacity(0.5))
+        .overlay(alignment: .bottom) { Color.white.opacity(0.9).frame(height: 1) }
     }
 
     private var pasos: some View {
@@ -37,8 +39,8 @@ struct BarraView: View {
                         .font(Tema.codigoFuerte(16))
                         .foregroundStyle(activo ? Tema.superficie : Tema.tintaTenue)
                         .frame(width: 32, height: 32)
-                        .background(Circle().fill(activo ? Tema.azul : .clear))
-                        .overlay(Circle().stroke(activo ? Tema.azul : Tema.linea, lineWidth: 2))
+                        .background(Circle().fill(activo ? AnyShapeStyle(Tema.degradado) : AnyShapeStyle(Color.clear)))
+                        .overlay(Circle().stroke(activo ? .clear : Tema.linea, lineWidth: 2))
                     Text(nombre)
                         .font(activo ? Tema.titulo(20) : Tema.medio(20))
                         .foregroundStyle(activo ? Tema.tinta : Tema.tintaTenue)

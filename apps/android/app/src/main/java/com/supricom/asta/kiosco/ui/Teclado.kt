@@ -17,7 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -75,7 +77,7 @@ fun Teclado(alEscribir: (String) -> Unit, alBorrar: () -> Unit, alBuscar: () -> 
                             Pieza.Espacio -> Tecla("espacio", "Espacio", m, secundaria = true, pequena = true) { alEscribir(" ") }
                             Pieza.Buscar -> Pulsable(alBuscar, m.semantics { contentDescription = "Buscar" }, habilitado = puedeBuscar) { pulsado ->
                                 Canto(
-                                    relleno = if (!puedeBuscar) Color(0xFF9FCDEB) else if (pulsado) Tema.azulHondo else Tema.azul,
+                                    relleno = if (!puedeBuscar) SolidColor(Color(0xFF9FCDEB)) else if (pulsado) Tema.degradadoPulsado else Tema.degradado,
                                     canto = if (puedeBuscar) Tema.azulHondo else Color(0xFF8ABFE2),
                                 ) { Text("Buscar  →", style = Tema.titulo(28, Tema.superficie)) }
                             }
@@ -91,7 +93,7 @@ fun Teclado(alEscribir: (String) -> Unit, alBorrar: () -> Unit, alBuscar: () -> 
 private fun Tecla(etiqueta: String, accesible: String, modifier: Modifier, secundaria: Boolean = false, pequena: Boolean = false, alPulsar: () -> Unit) {
     Pulsable(alPulsar, modifier.semantics { contentDescription = accesible }) { pulsado ->
         Canto(
-            relleno = if (pulsado) Tema.azul else if (secundaria) Color(0xFFD3DCE5) else Tema.superficie,
+            relleno = SolidColor(if (pulsado) Tema.azul else if (secundaria) Color(0xFFD3DCE5) else Tema.superficie),
             canto = if (pulsado) Tema.azulHondo else if (secundaria) Color(0xFFB9C5D1) else Tema.linea,
         ) {
             val color = if (pulsado) Tema.superficie else if (pequena) Tema.tintaSuave else Tema.tinta
@@ -105,7 +107,7 @@ private fun Tecla(etiqueta: String, accesible: String, modifier: Modifier, secun
  * como algo que se pulsa.
  */
 @Composable
-private fun Canto(relleno: Color, canto: Color, contenido: @Composable () -> Unit) {
+private fun Canto(relleno: Brush, canto: Color, contenido: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(canto, RoundedCornerShape(Tema.radio))) {
         Box(Modifier.fillMaxSize().padding(bottom = 4.dp).background(relleno, RoundedCornerShape(Tema.radio)), contentAlignment = Alignment.Center) {
             contenido()

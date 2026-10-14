@@ -40,7 +40,7 @@ struct AtraccionView: View {
             .padding(.horizontal, 64)
             .padding(.vertical, 40)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Tema.azul)
+            .background(fondo)
             .overlay(alignment: .topTrailing) {
                 IndicadorConexion(estado: estado, sobreAzul: true).padding(.top, 16).padding(.trailing, 40)
             }
@@ -77,9 +77,31 @@ struct AtraccionView: View {
             }
             .padding(.horizontal, 40)
             .frame(height: Tema.alturaBoton + 16)
-            .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.superficie))
+            .background(Capsule().fill(Tema.superficie))
+            .shadow(color: Color(hex: 0x1B2A80).opacity(0.35), radius: 24, y: 12)
             .scaleEffect(latido ? 1.035 : 1)
         }
+    }
+
+    /// El degradado de la marca con dos luces blancas que se mueven despacio:
+    /// vivo para que se vea desde el pasillo, lento para que no parezca un anuncio.
+    private var fondo: some View {
+        ZStack {
+            Tema.degradado
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                Circle()
+                    .fill(RadialGradient(colors: [.white.opacity(0.32), .white.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.35))
+                    .frame(width: w * 0.7, height: w * 0.7)
+                    .position(x: latido ? w * 0.18 : w * 0.1, y: latido ? h * 0.12 : h * 0.2)
+                Circle()
+                    .fill(RadialGradient(colors: [Tema.rosa.opacity(0.35), Tema.rosa.opacity(0)], center: .center, startRadius: 0, endRadius: w * 0.3))
+                    .frame(width: w * 0.6, height: w * 0.6)
+                    .position(x: latido ? w * 0.92 : w * 0.98, y: latido ? h * 0.95 : h * 0.85)
+            }
+        }
+        .ignoresSafeArea()
     }
 
     private var derecha: some View {
@@ -105,12 +127,13 @@ struct AtraccionView: View {
                 .transition(.opacity)
                 .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
                 .padding(24)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color(hex: 0x2A3440)))
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color(hex: 0x1C2638)))
                 Capsule().fill(Color(hex: 0x1D252E)).frame(height: 14).padding(.horizontal, 64)
             }
             .padding(24)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color(hex: 0xE9EEF2)))
-            .shadow(color: Color(hex: 0x062E4A).opacity(0.35), radius: 24, y: 14)
+            .background(RoundedRectangle(cornerRadius: 28).fill(Color.white.opacity(0.88)))
+            .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white, lineWidth: 2))
+            .shadow(color: Color(hex: 0x1B2A80).opacity(0.4), radius: 30, y: 16)
             Text("Suele estar impreso en el frente o en la tapa. Basta con las letras y los números.")
                 .font(Tema.cuerpo(20)).foregroundStyle(Tema.sobreAzul)
         }

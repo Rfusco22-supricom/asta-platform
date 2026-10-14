@@ -50,13 +50,12 @@ targets:
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
         UIAppFonts:
-          - Archivo_500Medium.ttf
-          - Archivo_600SemiBold.ttf
-          - Archivo_700Bold.ttf
-          - Archivo_800ExtraBold.ttf
-          - JetBrainsMono_500Medium.ttf
-          - JetBrainsMono_700Bold.ttf
-          - JetBrainsMono_800ExtraBold.ttf
+          - Sora_400Regular.ttf
+          - Sora_500Medium.ttf
+          - Sora_600SemiBold.ttf
+          - Sora_700Bold.ttf
+          - DMMono_400Regular.ttf
+          - DMMono_500Medium.ttf
         # Del xcconfig de cada tablet: ver Config/Kiosco.example.xcconfig.
         AstaApiBase: $(ASTA_API_BASE)
         AstaApiKey: $(ASTA_API_KEY)

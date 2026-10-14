@@ -126,7 +126,8 @@ struct ResultadosView: View {
         }
         .padding(24)
         .frame(width: 340, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.azul))
+        .background(RoundedRectangle(cornerRadius: Tema.radio).fill(Tema.degradado))
+        .shadow(color: Tema.violeta.opacity(0.35), radius: 24, y: 12)
     }
 
     private func pie(_ elegido: ProductoCompatible?) -> some View {
@@ -165,6 +166,7 @@ struct ResultadosView: View {
         .background(Tema.superficie)
         .overlay(alignment: .leading) { Tema.azul.frame(width: 10) }
         .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+        .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
         .padding(.top, 24)
     }
 
@@ -185,6 +187,7 @@ struct ResultadosView: View {
         .background(Tema.superficie)
         .overlay(alignment: .leading) { Tema.azul.frame(width: 10) }
         .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+        .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
         .padding(.top, 24)
     }
 }
@@ -240,6 +243,8 @@ private struct EtiquetaView: View {
             .frame(minHeight: 112)
             .background((pulsado && !elegido) || recomendado ? Tema.azulSuave : Tema.superficie)
             .clipShape(RoundedRectangle(cornerRadius: Tema.radio))
+            .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
+        .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
             .overlay(RoundedRectangle(cornerRadius: Tema.radio).stroke(elegido ? Tema.azul : .clear, lineWidth: 3))
         }
         .accessibilityLabel("\(producto.titulo(para: impresora)), \(producto.stock.texto)")
