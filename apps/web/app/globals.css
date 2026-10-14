@@ -400,6 +400,21 @@ tbody tr:hover { background: color-mix(in srgb, var(--cian) 7%, transparent); }
 }
 
 .empty { padding: 44px 20px; text-align: center; color: var(--text-3); font-size: 13.5px; }
+/* Lo vacío también lleva la marca: un disco de vidrio con el degradado, encima
+   del texto. Sin imagen: dos degradados. */
+.empty::before {
+  content: '';
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--vidrio-fuerte) 0 34%, transparent 36%),
+    var(--degradado);
+  opacity: 0.55;
+  box-shadow: 0 10px 24px -12px rgba(60, 110, 245, 0.6);
+}
 
 /* ── Login ────────────────────────────────────────────────────────────────── */
 
@@ -1320,6 +1335,7 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
 .cifra-ambar { --cifra-fondo: linear-gradient(135deg, #f5b52e, #f08a24); --cifra-sombra: #f08a24; }
 .stat-value.cifra-sube { color: var(--positive); }
 .stat-value.cifra-baja, .stat-value.cifra-alerta { color: var(--danger); }
+.stat-value.cifra-atencion { color: var(--warning); }
 .cifra-tendencia { display: block; width: calc(100% + 40px); height: 34px; margin: 10px -20px -18px; }
 .cifra-tendencia polyline { fill: none; stroke: var(--cian); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .cifra-tendencia polygon { fill: color-mix(in srgb, var(--cian) 16%, transparent); }
@@ -3815,4 +3831,68 @@ body:has(.enlace-cargando) .contenido {
 @media (prefers-reduced-motion: reduce) {
   .cat-avance-barra span { animation: none; }
   .cat-nivel { transition: none; }
+}
+
+/* ── La pirámide en relieve, solo CSS (`components/PiramideCSS.tsx`) ──────── */
+/*
+ * Cinco losas con sus cinco caras cada una. Las caras de cada losa se colocan
+ * en el plano de la losa y se doblan 90° hacia arriba desde su borde; el techo
+ * sube su altura con `translateZ`. La escena se inclina y gira.
+ *
+ * Una losa apagada baja la opacidad de sus CARAS y no la suya: la opacidad en
+ * un elemento con `preserve-3d` aplana su contenido y la losa dejaría de ser un
+ * bloque.
+ */
+.piramide-css { flex: none; display: grid; place-items: center; width: 230px; height: 220px; perspective: 900px; }
+.piramide-css-giro {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  transform-style: preserve-3d;
+  transform: rotateX(58deg) rotateZ(-40deg);
+  animation: losas-giro 32s linear infinite;
+}
+@keyframes losas-giro { to { transform: rotateX(58deg) rotateZ(320deg); } }
+.losa { position: absolute; transform-style: preserve-3d; transform: translateZ(var(--z)); transition: transform 0.3s; }
+.losa > span { position: absolute; }
+.losa-techo { inset: 0; background: var(--techo); transform: translateZ(var(--alto)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45); }
+.losa-frente { left: 0; top: 100%; width: 100%; height: var(--alto); background: var(--frente); transform-origin: top; transform: rotateX(90deg); }
+.losa-fondo { left: 0; top: 0; width: 100%; height: var(--alto); background: var(--frente); transform-origin: top; transform: rotateX(90deg); }
+.losa-derecha { left: 100%; top: 0; width: var(--alto); height: 100%; background: var(--lado); transform-origin: left; transform: rotateY(-90deg); }
+.losa-izquierda { left: 0; top: 0; width: var(--alto); height: 100%; background: var(--lado); transform-origin: left; transform: rotateY(-90deg); }
+.losa-activa { transform: translateZ(calc(var(--z) + 12px)); }
+.losa-activa .losa-techo { box-shadow: 0 0 34px var(--techo), inset 0 0 0 1px rgba(255, 255, 255, 0.75); }
+.losa-apagada > span { opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) { .piramide-css-giro { animation: none; } }
+
+/* ── Portal de clientes: la bienvenida ────────────────────────────────────── */
+.panel.bienvenida {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 26px 30px;
+  margin-bottom: 20px;
+  border-radius: 28px;
+  background:
+    radial-gradient(60% 90% at 85% 50%, color-mix(in srgb, var(--cian) 16%, transparent), transparent 70%),
+    var(--vidrio);
+}
+.bienvenida-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.panel.bienvenida .bienvenida-texto h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); font-weight: 600; letter-spacing: -0.035em; text-transform: none; color: var(--text); text-wrap: balance; }
+.bienvenida-texto p { margin: 0; max-width: 60ch; color: var(--text-2); line-height: 1.6; }
+.bienvenida-nivel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  background: color-mix(in srgb, var(--c) 14%, var(--vidrio-fuerte));
+  font-size: 13.5px;
+}
+.bienvenida-nivel i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); box-shadow: 0 0 10px var(--c); }
+@media (max-width: 640px) {
+  .panel.bienvenida { flex-direction: column; align-items: stretch; padding: 20px 18px; }
+  .bienvenida .piramide-css { align-self: center; height: 180px; }
 }

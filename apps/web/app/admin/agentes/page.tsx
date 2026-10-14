@@ -6,6 +6,7 @@ import { getAgentes, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAgentes } from './TablaAgentes';
+import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
 
 /**
  * Agentes de venta: quién lleva qué cartera, cuánto factura y si puede entrar.
@@ -28,22 +29,17 @@ function Metrica({
   valor,
   nota,
   tono,
+  icono,
+  color,
 }: {
   etiqueta: string;
   valor: string;
   nota?: string;
   tono?: 'mal' | 'atencion';
+  icono: IconoCifra;
+  color?: ColorCifra;
 }) {
-  const color = tono === 'mal' ? 'var(--danger)' : tono === 'atencion' ? 'var(--warning)' : undefined;
-  return (
-    <div className="stat">
-      <div className="stat-label">{etiqueta}</div>
-      <div className="stat-value" style={{ color }}>
-        {valor}
-      </div>
-      {nota && <div className="stat-sub">{nota}</div>}
-    </div>
-  );
+  return <Cifra icono={icono} color={color} etiqueta={etiqueta} valor={valor} nota={nota} tono={tono === 'mal' ? 'alerta' : tono} />;
 }
 
 export default async function AgentesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -83,21 +79,28 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
       <Sedes base="/admin/agentes" sede={sede} />
       <section className="stats">
         <Metrica
+          icono="clientes"
+          color="violeta"
           etiqueta="Cartera total"
           valor={totales.clientes.toLocaleString('es-VE')}
           nota="clientes asignados"
         />
         <Metrica
+          icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
           nota="histórico, sin IVA, neto de devoluciones; lo de Smartbit, por quien hizo la venta"
         />
         <Metrica
+          icono="cobrar"
+          color="ambar"
           etiqueta="Por cobrar"
           valor={moneyCompact(totales.porCobrar)}
           nota="en las facturas con ASTA"
         />
         <Metrica
+          icono="candado"
+          color="rosa"
           etiqueta="Sin acceso al panel"
           valor={String(totales.sinAcceso)}
           nota="trabajan hoy y no pueden entrar"

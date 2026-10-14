@@ -70,6 +70,67 @@ const ICONOS = {
       <circle cx="12" cy="12" r="1" />
     </>
   ),
+  busqueda: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M15.8 15.8 21 21" />
+    </>
+  ),
+  clic: <path d="M9 3v2M4.6 4.6 6 6M3 9h2M10 10l10 4-4.5 1.5L14 20Z" />,
+  alerta: (
+    <>
+      <path d="M12 4 2.8 19.5h18.4Z" />
+      <path d="M12 10v4.5M12 17.2v.1" />
+    </>
+  ),
+  check: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8.3 12.2 2.5 2.5 4.9-5" />
+    </>
+  ),
+  cruz: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
+    </>
+  ),
+  reloj: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  llave: (
+    <>
+      <circle cx="7.5" cy="12" r="3.5" />
+      <path d="M11 12h10M18 12v3M15 12v2" />
+    </>
+  ),
+  candado: (
+    <>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2" />
+    </>
+  ),
+  copias: (
+    <>
+      <rect x="3" y="7" width="12" height="12" rx="2" />
+      <path d="M8 4h11a2 2 0 0 1 2 2v11" />
+    </>
+  ),
+  sincronizar: (
+    <>
+      <path d="M20 11a8 8 0 0 0-14.3-4.6L4 8.5M4 13a8 8 0 0 0 14.3 4.6L20 15.5" />
+      <path d="M4 4v4.5h4.5M20 20v-4.5h-4.5" />
+    </>
+  ),
+  tablet: (
+    <>
+      <rect x="5" y="3" width="14" height="15" rx="2" />
+      <path d="M11 15h2M9 21h6M12 18v3" />
+    </>
+  ),
 } as const;
 
 export type IconoCifra = keyof typeof ICONOS;
@@ -106,8 +167,8 @@ export function Cifra({
   etiqueta: React.ReactNode;
   valor: React.ReactNode;
   nota?: React.ReactNode;
-  /** El color del número: sube (verde), baja o alerta (rojo). */
-  tono?: 'sube' | 'baja' | 'alerta';
+  /** El color del número: sube (verde), atención (ámbar), baja o alerta (rojo). */
+  tono?: 'sube' | 'baja' | 'alerta' | 'atencion';
   /** Número más pequeño, para importes largos con decimales. */
   pequena?: boolean;
   tendencia?: number[];

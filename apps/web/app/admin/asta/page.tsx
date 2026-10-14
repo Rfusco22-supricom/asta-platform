@@ -5,6 +5,7 @@ import { getAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/ap
 import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAsta } from './TablaAsta';
+import { Cifra } from '@/components/Cifras';
 
 /**
  * Marca ASTA: cuánto del consumible que compran nuestros clientes es nuestro.
@@ -61,32 +62,17 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
     >
       <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">CUOTA DE ASTA</div>
-          <div className="stat-value">{totales.cuota.toFixed(1)} %</div>
-          <div className="stat-sub">del consumible que compran nuestros clientes</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">VENDIDO EN ASTA</div>
-          <div className="stat-value" style={{ color: 'var(--positive)' }}>
-            {moneyCompact(totales.asta)}
-          </div>
-          <div className="stat-sub">marca propia</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">A LA COMPETENCIA</div>
-          <div className="stat-value" style={{ color: 'var(--danger)' }}>
-            {moneyCompact(totales.competencia)}
-          </div>
-          <div className="stat-sub">mismo tipo de producto, otra marca</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">SIN PROBAR ASTA</div>
-          <div className="stat-value" style={{ color: 'var(--warning)' }}>
-            {totales.sinAsta.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">clientes · {moneyCompact(totales.sinAstaImporte)} fuera</div>
-        </div>
+        <Cifra icono="cuota" color="rosa" etiqueta="Cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran nuestros clientes" />
+        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} tono="sube" nota="marca propia" />
+        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="mismo tipo de producto, otra marca" />
+        <Cifra
+          icono="diana"
+          color="violeta"
+          etiqueta="Sin probar ASTA"
+          valor={totales.sinAsta.toLocaleString('es-VE')}
+          tono="atencion"
+          nota={`clientes · ${moneyCompact(totales.sinAstaImporte)} fuera`}
+        />
       </section>
 
       {/*

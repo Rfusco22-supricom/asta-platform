@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getDuplicadosInforme, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { money, moneyCompact, fechaHora } from '@/lib/formato';
+import { Cifra } from '@/components/Cifras';
 
 /**
  * Clientes duplicados: qué fusiones arreglan las cifras del panel (#50).
@@ -88,32 +89,30 @@ export default async function DuplicadosPage({
       descripcion={`${resumen.registros.toLocaleString('es-VE')} clientes examinados, comparados dentro de cada compañía · leído de Odoo el ${fechaHora(generadoEn)}`}
     >
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Facturación mal repartida</div>
-          <div className="stat-value" style={{ color: resumen.montoPartido > 0 ? 'var(--danger)' : undefined }}>
-            {moneyCompact(resumen.montoPartido)}
-          </div>
-          <div className="stat-sub">{pct.toFixed(1)} % de lo facturado, en cifras que nadie ve completas</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Fusiones pendientes</div>
-          <div className="stat-value">{resumen.partidos.toLocaleString('es-VE')}</div>
-          <div className="stat-sub">grupos con la facturación partida en varios registros</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Cruzan carteras</div>
-          <div className="stat-value" style={{ color: resumen.partidosEntreVendedores > 0 ? 'var(--warning)' : undefined }}>
-            {resumen.partidosEntreVendedores.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">fusionarlos mueve facturación entre vendedores</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Duplicados inofensivos</div>
-          <div className="stat-value">{inofensivos.toLocaleString('es-VE')}</div>
-          <div className="stat-sub">
-            {resumen.sinFacturas} sin facturas y {resumen.inocuos} con todo en un registro: el panel muestra bien
-          </div>
-        </div>
+        <Cifra
+          icono="juego"
+          color="rosa"
+          etiqueta="Facturación mal repartida"
+          valor={moneyCompact(resumen.montoPartido)}
+          tono={resumen.montoPartido > 0 ? 'alerta' : undefined}
+          nota={`${pct.toFixed(1)} % de lo facturado, en cifras que nadie ve completas`}
+        />
+        <Cifra icono="copias" color="violeta" etiqueta="Fusiones pendientes" valor={resumen.partidos.toLocaleString('es-VE')} nota="grupos con la facturación partida en varios registros" />
+        <Cifra
+          icono="clientes"
+          color="ambar"
+          etiqueta="Cruzan carteras"
+          valor={resumen.partidosEntreVendedores.toLocaleString('es-VE')}
+          tono={resumen.partidosEntreVendedores > 0 ? 'atencion' : undefined}
+          nota="fusionarlos mueve facturación entre vendedores"
+        />
+        <Cifra
+          icono="check"
+          color="verde"
+          etiqueta="Duplicados inofensivos"
+          valor={inofensivos.toLocaleString('es-VE')}
+          nota={`${resumen.sinFacturas} sin facturas y ${resumen.inocuos} con todo en un registro: el panel muestra bien`}
+        />
       </section>
 
       {resumen.partidos === 0 ? (

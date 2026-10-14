@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { fechaCorta } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
 
 /**
  * Generación de enlaces de invitación (issue #16).
@@ -175,8 +176,13 @@ export function Invitaciones({
               {candidatos.map((c) => (
                 <tr key={c.id}>
                   <td>
-                    <div className="cliente-nombre">{c.nombre}</div>
-                    <div className="cliente-contacto">{c.email}</div>
+                    <div className="cliente-fila">
+                      <Avatar nombre={c.nombre} tamano="s" />
+                      <span className="cliente-datos">
+                        <span className="cliente-nombre">{c.nombre}</span>
+                        <span className="cliente-contacto">{c.email}</span>
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <span className="tag prospecto">{c.role}</span>

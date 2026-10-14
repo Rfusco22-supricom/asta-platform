@@ -7,6 +7,7 @@ import { Pestanas } from './Pestanas';
 import { AvisoOdoo } from './AvisoOdoo';
 import { Cobertura } from './Cobertura';
 import { LoteAsta } from './LoteAsta';
+import { Cifra } from '@/components/Cifras';
 
 /**
  * Revisión de compatibilidades: qué producto de Odoo es, o sustituye a, qué
@@ -101,25 +102,23 @@ export default async function CompatibilidadesPage({
       {loteOriginales && loteOriginales.data.length > 0 && <LoteAsta tipo="ORIGINAL" pares={loteOriginales.data} />}
 
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">Pendientes</div>
-          <div className="stat-value" style={{ color: porEstado.PROPUESTA ? 'var(--warning)' : undefined }}>
-            {porEstado.PROPUESTA.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">propuestas sin revisar</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Validadas</div>
-          <div className="stat-value" style={{ color: 'var(--positive)' }}>
-            {porEstado.VALIDADA.toLocaleString('es-VE')}
-          </div>
-          <div className="stat-sub">{!total ? 'nada cargado' : porEstado.VALIDADA > 0 && porEstado.VALIDADA / total < 0.01 ? 'menos del 1 % del total' : `${Math.round((porEstado.VALIDADA / total) * 100)} % del total`}</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Rechazadas</div>
-          <div className="stat-value">{porEstado.RECHAZADA.toLocaleString('es-VE')}</div>
-          <div className="stat-sub">no se vuelven a proponer</div>
-        </div>
+        <Cifra
+          icono="reloj"
+          color="ambar"
+          etiqueta="Pendientes"
+          valor={porEstado.PROPUESTA.toLocaleString('es-VE')}
+          tono={porEstado.PROPUESTA ? 'atencion' : undefined}
+          nota="propuestas sin revisar"
+        />
+        <Cifra
+          icono="check"
+          color="verde"
+          etiqueta="Validadas"
+          valor={porEstado.VALIDADA.toLocaleString('es-VE')}
+          tono="sube"
+          nota={!total ? 'nada cargado' : porEstado.VALIDADA > 0 && porEstado.VALIDADA / total < 0.01 ? 'menos del 1 % del total' : `${Math.round((porEstado.VALIDADA / total) * 100)} % del total`}
+        />
+        <Cifra icono="cruz" color="rosa" etiqueta="Rechazadas" valor={porEstado.RECHAZADA.toLocaleString('es-VE')} nota="no se vuelven a proponer" />
       </section>
 
       <form className="filtros revision-filtros" action="/admin/compatibilidades" method="get">
