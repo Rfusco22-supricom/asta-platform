@@ -183,12 +183,65 @@ function estaActiva(ruta: string, href: string, prefijo?: boolean): boolean {
   return prefijo ? ruta === href || ruta.startsWith(`${href}/`) : ruta === href;
 }
 
+/** Evento para pedir los contadores al momento: lo lanza quien acaba de cambiar uno. */
+export const EVENTO_CONTADORES = 'asta:contadores';
+const CADA_MS = 5 * 60_000;
+
+/**
+ * Los números del menú (`/api/contadores`): cuánto espera en cada sección.
+ *
+ * Se piden al cargar, cada cinco minutos mientras la pestaña está a la vista y
+ * al volver a ella. Quien cambia algo que mueve un número (marcar una sugerencia
+ * de Impulsa) lanza `EVENTO_CONTADORES` y se piden al momento, sin caché.
+ * Sin respuesta no hay números: el menú funciona igual.
+ */
+export function useContadores(): Record<string, number> {
+  const [contadores, setContadores] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let vivo = true;
+    const pedir = (fresco = false) =>
+      fetch(`/api/contadores${fresco ? '?fresco=1' : ''}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { contadores?: Record<string, number> } | null) => {
+          if (vivo && d?.contadores) setContadores(d.contadores);
+        })
+        .catch(() => {});
+    pedir();
+    const intervalo = window.setInterval(() => !document.hidden && pedir(), CADA_MS);
+    const alVolver = () => !document.hidden && pedir();
+    const alCambiar = () => pedir(true);
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener(EVENTO_CONTADORES, alCambiar);
+    return () => {
+      vivo = false;
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener(EVENTO_CONTADORES, alCambiar);
+    };
+  }, []);
+
+  return contadores;
+}
+
+/** «99+» a partir de cien: el número exacto está en la pantalla. */
+const cifra = (n: number) => (n > 99 ? '99+' : String(n));
+
 /**
  * Plegado, el menú es solo iconos: el nombre de cada sección pasa a `title` (el
  * globo del navegador al pasar por encima) y a `aria-label`, para que siga
  * diciéndose aunque no se vea.
  */
-export function NavLateral({ grupos, plegado = false }: { grupos: GrupoNav[]; plegado?: boolean }) {
+export function NavLateral({
+  grupos,
+  plegado = false,
+  contadores = {},
+}: {
+  grupos: GrupoNav[];
+  plegado?: boolean;
+  /** Los números de `useContadores`, leídos una vez en `MarcoCliente` para los dos menús. */
+  contadores?: Record<string, number>;
+}) {
   const ruta = usePathname();
 
   return (
@@ -198,6 +251,7 @@ export function NavLateral({ grupos, plegado = false }: { grupos: GrupoNav[]; pl
           {g.titulo && <div className="nav-titulo">{g.titulo}</div>}
           {g.secciones.map((s) => {
             const activa = estaActiva(ruta, s.href, s.prefijo);
+            const cuenta = contadores[s.href] ?? 0;
             return (
               <Link
                 key={s.href}
@@ -207,10 +261,15 @@ export function NavLateral({ grupos, plegado = false }: { grupos: GrupoNav[]; pl
                 // es solo un color y no se anuncia.
                 aria-current={activa ? 'page' : undefined}
                 title={plegado ? s.titulo : undefined}
-                aria-label={plegado ? s.titulo : undefined}
+                aria-label={plegado ? (cuenta > 0 ? `${s.titulo}: ${cuenta} pendientes` : s.titulo) : undefined}
               >
                 <Icono nombre={s.icono} />
                 <span className="nav-texto">{s.titulo}</span>
+                {cuenta > 0 && (
+                  <span className="nav-contador" aria-label={`${cuenta} pendientes`}>
+                    {cifra(cuenta)}
+                  </span>
+                )}
                 <CargandoEnlace />
               </Link>
             );
@@ -234,7 +293,7 @@ const MAX_PESTANAS = 5;
  * se ve: con JavaScript mirando el ancho, servidor y navegador pintarían cosas
  * distintas y la hidratación fallaría.
  */
-export function NavInferior({ grupos }: { grupos: GrupoNav[] }) {
+export function NavInferior({ grupos, contadores = {} }: { grupos: GrupoNav[]; contadores?: Record<string, number> }) {
   const ruta = usePathname();
   const [abierta, setAbierta] = useState(false);
 
@@ -261,6 +320,7 @@ export function NavInferior({ grupos }: { grupos: GrupoNav[] }) {
         <span className="pestana-icono">
           <Icono nombre={s.icono} />
           <CargandoEnlace />
+          {(contadores[s.href] ?? 0) > 0 && <span className="pestana-contador">{cifra(contadores[s.href]!)}</span>}
         </span>
         <span className="pestana-texto">{s.corto ?? s.titulo}</span>
       </Link>

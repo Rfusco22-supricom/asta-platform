@@ -33,6 +33,7 @@ import {
   revisionImpresorasDecisionSchema,
   revisionQuerySchema,
   tipoCartuchoCambioSchema,
+  clientTierSchema,
 } from '@asta/shared-types';
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
@@ -214,6 +215,28 @@ adminRouter.get('/asta/categorias', autorizar('admin.asta.ver'), async (_req, re
     const t0 = Date.now();
     const data = await dePantalla('admin:asta:categorias', () => categoriasAsta());
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Todos los clientes con cuenta, para la paleta ⌘K del administrador: saltar a
+ * la ficha de cualquiera escribiendo su nombre.
+ *
+ * Sale de `app_users` y no de Odoo: son ~2.300 filas de tres campos, se leen en
+ * milisegundos y la paleta las filtra en el navegador mientras se escribe. El
+ * nivel es el de la cuenta (#131). Solo el administrador: el vendedor busca en
+ * su cartera (`/salesperson/portfolio`).
+ */
+adminRouter.get('/clientes', autorizar('admin.reportes.ver'), async (_req, res, next) => {
+  try {
+    const filas = await prisma.appUser.findMany({
+      where: { role: { in: clientTierSchema.options }, isActive: true },
+      select: { odooPartnerId: true, fullName: true, role: true },
+      orderBy: { fullName: 'asc' },
+    });
+    res.json({ data: filas.map((f) => ({ id: f.odooPartnerId, nombre: f.fullName, nivel: f.role })), meta: { total: filas.length } });
   } catch (error) {
     next(error);
   }

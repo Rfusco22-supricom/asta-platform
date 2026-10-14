@@ -630,3 +630,15 @@ export async function getPropuestasPropias(accessToken: string): Promise<Propues
   const r = await request('/api/v1/salesperson/compatibilidades/propias', propuestasPropiasRespuestaSchema, accessToken);
   return r.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const clientesAdminSchema = z.object({
+  data: z.array(z.object({ id: z.number().int().positive(), nombre: z.string(), nivel: z.string() })),
+  meta: z.object({ total: z.number().int().nonnegative() }),
+});
+
+/** Todos los clientes con cuenta, para la paleta ⌘K del administrador. */
+export async function getClientesAdmin(accessToken: string) {
+  return (await request('/api/v1/admin/clientes', clientesAdminSchema, accessToken)).data;
+}
