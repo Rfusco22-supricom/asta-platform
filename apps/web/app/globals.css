@@ -3954,3 +3954,53 @@ body:has(.enlace-cargando) .contenido {
 @media (max-width: 760px) {
   .dash-vendedor { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'hoy' 'serie' 'cerca' 'enfriando'; }
 }
+
+/* ── Contadores del menú (`useContadores` en NavLateral.tsx) ──────────────── */
+.nav-contador {
+  margin-left: auto;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 99px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--rosa);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--rosa) 80%, transparent);
+  animation: contador-entra 0.3s cubic-bezier(0.2, 0.7, 0.2, 1.4);
+}
+.nav-item.activa .nav-contador { background: rgba(255, 255, 255, 0.92); color: #5a3fd0; box-shadow: none; }
+.nav-item .nav-contador + .enlace-cargando { margin-left: 8px; }
+/* Plegado, el número se queda como un punto sobre el icono. */
+.app[data-menu='plegado'] .nav-contador {
+  position: absolute;
+  top: 5px;
+  right: 9px;
+  min-width: 0;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  font-size: 0;
+  border: 2px solid var(--vidrio-fuerte);
+}
+.pestana-icono { position: relative; }
+.pestana-contador {
+  position: absolute;
+  top: -4px;
+  right: 2px;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 99px;
+  display: grid;
+  place-items: center;
+  background: var(--rosa);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+@keyframes contador-entra { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .nav-contador { animation: none; } }

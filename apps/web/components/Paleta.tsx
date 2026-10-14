@@ -14,8 +14,9 @@ import { Icono } from './NavLateral';
  * buscador de la cabecera. Busca en tres sitios:
  *
  *   · Secciones — las del menú de ESTE rol, nunca otras (`navegacionDe`).
- *   · Clientes — los de la cartera del vendedor, para abrir su ficha. Se piden
- *     una sola vez, al abrir la paleta por primera vez (`/api/buscar/clientes`).
+ *   · Clientes — los de la cartera del vendedor, o todos para el administrador,
+ *     para abrir su ficha. Se piden una sola vez, al abrir la paleta por
+ *     primera vez (`/api/buscar/clientes`).
  *   · Acciones — tema, plegar el menú, cerrar sesión.
  *
  * Sin texto escrito enseña lo último que se abrió desde aquí («Recientes»), que
@@ -129,7 +130,8 @@ export function Paleta({
   const [cargandoClientes, setCargandoClientes] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
   const lista = useRef<HTMLDivElement>(null);
-  const conCartera = rol === 'VENDEDOR';
+  // El vendedor busca en su cartera; el administrador, en todos los clientes.
+  const conCartera = rol === 'VENDEDOR' || rol === 'SUPERADMIN';
 
   const cerrar = useCallback(() => setAbierta(false), []);
 
@@ -314,7 +316,7 @@ export function Paleta({
         <div className="paleta-lista" id="paleta-lista" role="listbox" ref={lista} aria-label="Resultados">
           {elementos.length === 0 && (
             <div className="paleta-vacio">
-              {cargandoClientes ? 'Buscando en tu cartera…' : `Nada coincide con «${consulta}».`}
+              {cargandoClientes ? 'Buscando clientes…' : `Nada coincide con «${consulta}».`}
             </div>
           )}
           {elementos.map((e, i) => {

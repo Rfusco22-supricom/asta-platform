@@ -7,6 +7,7 @@ import type { ClienteImpulsa, EstadoImpulsa, SugerenciaPasale } from '@asta/shar
 import { fecha, money } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
 import { CargandoEnlace } from '@/components/CargandoEnlace';
+import { EVENTO_CONTADORES } from '@/components/NavLateral';
 
 /**
  * Las sugerencias de «Pásale a ASTA», cliente por cliente, con sus botones.
@@ -92,6 +93,8 @@ function Sugerencia({ partnerId, s }: { partnerId: number; s: SugerenciaPasale }
       }
       setPosponiendo(false);
       router.refresh();
+      // El número de Impulsa del menú cambia: que lo pida ya, sin esperar.
+      window.dispatchEvent(new Event(EVENTO_CONTADORES));
     });
   };
 

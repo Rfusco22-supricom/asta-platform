@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { GrupoNav } from '@/lib/navegacion';
 import { COOKIE_MENU } from '@/lib/menu';
-import { NavInferior, NavLateral } from './NavLateral';
+import { NavInferior, NavLateral, useContadores } from './NavLateral';
 import { Paleta } from './Paleta';
 
 /**
@@ -33,6 +33,7 @@ export function MarcoCliente({
   children: React.ReactNode;
 }) {
   const [plegado, setPlegado] = useState(plegadoInicial);
+  const contadores = useContadores();
 
   const alternarMenu = useCallback(() => setPlegado((p) => !p), []);
 
@@ -71,7 +72,7 @@ export function MarcoCliente({
           </button>
         </div>
 
-        <NavLateral grupos={grupos} plegado={plegado} />
+        <NavLateral grupos={grupos} plegado={plegado} contadores={contadores} />
 
         {/*
           El pie dice de dónde salen los datos, no adorna. En una herramienta que
@@ -88,7 +89,7 @@ export function MarcoCliente({
       </aside>
 
       {/* En estrecho el menú baja a pestañas fijas; en ancho, el CSS lo oculta. */}
-      <NavInferior grupos={grupos} />
+      <NavInferior grupos={grupos} contadores={contadores} />
 
       <main className="contenido">{children}</main>
 
