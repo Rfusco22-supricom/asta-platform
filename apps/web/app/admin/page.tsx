@@ -5,13 +5,10 @@ import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import { nombreSede, type SedeId } from '@asta/shared-types';
-import { reglaDe, type ClaveCategoria } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
-import { estaCerca, ventana } from '@/components/Categorias';
-import { PiramideCategorias, type NivelPiramide } from '@/components/inicio/PiramideCategorias';
-import { COLORES_CATEGORIAS } from '@/components/tres/colores';
-import { esRedireccion, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa, type Reporte } from '@/lib/api';
-import { money, moneyCompact, moneyEntero } from '@/lib/formato';
+import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
+import { getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa } from '@/lib/api';
+import { money, moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 
 /**
@@ -31,10 +28,6 @@ import { Cifra } from '@/components/Cifras';
 
 export const dynamic = 'force-dynamic';
 
-const n = (x: number) => x.toLocaleString('es-VE');
-const facturas = (x: number) => `${n(x)} ${x === 1 ? 'factura' : 'facturas'}`;
-const pct = (x: number) => `${x.toLocaleString('es-VE', { maximumFractionDigits: 1 })} %`;
-
 type Rango = { desde: string; hasta: string };
 
 function rangoDe(params: Record<string, string | string[] | undefined>): Rango | undefined {
@@ -43,40 +36,7 @@ function rangoDe(params: Record<string, string | string[] | undefined>): Rango |
   return desde && hasta ? { desde, hasta } : undefined;
 }
 
-async function intentar<T>(leer: () => Promise<T>): Promise<T | null> {
-  try {
-    return await leer();
-  } catch (error) {
-    if (esRedireccion(error)) throw error;
-    return null;
-  }
-}
-
-function Fallo({ area, titulo }: { area: string; titulo: string }) {
-  return (
-    <section className={`panel dash-${area} dash-fallo`}>
-      <h2>{titulo}</h2>
-      <p className="panel-nota">No se pudo leer de Odoo ahora. Recarga en un momento.</p>
-    </section>
-  );
-}
-
-function Esqueleto({ area, alto = 120 }: { area: string; alto?: number }) {
-  return <div className={`panel dash-${area} dash-esqueleto`} style={{ minHeight: alto }} aria-busy="true" />;
-}
-
 // ── Cifras, serie, vendedores y clientes: el reporte de la empresa ─────────────
-
-/** El último mes COMPLETO frente al anterior: el mes en curso todavía no se puede comparar. */
-function ultimoMes(serie: Reporte['serieMensual']) {
-  const hoy = new Date().toISOString().slice(0, 7);
-  const completos = serie.filter((p) => p.periodo < hoy);
-  const ultimo = completos.at(-1);
-  const previo = completos.at(-2);
-  if (!ultimo) return null;
-  const cambio = previo && previo.monto > 0 ? ((ultimo.monto - previo.monto) / previo.monto) * 100 : null;
-  return { ultimo, previo, cambio };
-}
 
 function Ranking<T>({
   area,
@@ -290,90 +250,11 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
 
 // ── Camino a la meta: las categorías de ASTA (#131), con la pirámide en 3D ─────
 
-/** De abajo arriba, como las láminas de la pirámide. */
-const DE_ABAJO_ARRIBA: ClaveCategoria[] = ['GENERAL', 'BRONCE', 'PLATA', 'ORO', 'DIAMANTE'];
-
-/** Compacto a partir de 10.000 y entero por debajo, como en `Categorias.tsx`. */
-const corto = (x: number) => (Math.abs(x) >= 10_000 ? moneyCompact(x) : moneyEntero(x));
-
-/**
- * Lo primero del Inicio: cuánto se compra de ASTA al mes frente a la meta de
- * 100.000, cuánto pone cada categoría, y la pirámide que se puede tocar.
- *
- * De toda la empresa siempre: la categoría es del cliente, no de la sede.
- */
+/** De toda la empresa siempre: la categoría es del cliente, no de la sede. */
 async function Meta({ token }: { token: string }) {
   const r = await intentar(() => getCategoriasAstaEmpresa(token));
   if (!r) return <Fallo area="meta" titulo="Camino a la meta" />;
-
-  const avance = r.meta > 0 ? Math.min(100, (r.compraMensual / r.meta) * 100) : 0;
-  const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
-  const cerca = r.clientes.filter(estaCerca).length;
-  const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
-
-  const niveles: NivelPiramide[] = DE_ABAJO_ARRIBA.map((clave, i) => {
-    const c = porClave.get(clave);
-    const regla = reglaDe(clave);
-    const clientes = c?.clientes ?? 0;
-    const metaClientes = c?.metaClientes ?? null;
-    return {
-      clave,
-      nombre: regla.nombre,
-      color: COLORES_CATEGORIAS[i]!,
-      clientes: metaClientes === null ? `${n(clientes)} clientes` : `${n(clientes)} de ${n(metaClientes)} clientes`,
-      compra: `${corto(c?.compraMensual ?? 0)} USD/mes`,
-      meta: `meta ${corto(c?.metaCompraMensual ?? 0)} USD/mes`,
-      regla:
-        regla.minimoMensual > 0
-          ? `≥ ${moneyEntero(regla.minimoMensual)}/mes y ${regla.minimoMeses} de 4 meses`
-          : `< ${moneyEntero(reglaDe('BRONCE').minimoMensual)}/mes`,
-      avance: metaClientes ? Math.min(100, (clientes / metaClientes) * 100) : null,
-      href: `/admin/categorias?ver=${clave}`,
-    };
-  });
-
-  return (
-    <section className="panel dash-meta hero-meta">
-      <div className="hero-texto">
-        <span className="hero-etiqueta">Camino a {moneyEntero(r.meta)} USD/mes</span>
-        <div className="hero-cifra">
-          <strong>{moneyCompact(r.compraMensual)}</strong>
-          <span>de {moneyCompact(r.meta)} al mes</span>
-        </div>
-
-        {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
-        <div className="hero-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)} aria-label="Avance hacia la meta">
-          {[...niveles].reverse().map((nv) => {
-            const c = porClave.get(nv.clave as ClaveCategoria);
-            const ancho = r.meta > 0 ? ((c?.compraMensual ?? 0) / r.meta) * 100 : 0;
-            return ancho > 0 ? <span key={nv.clave} style={{ width: `${ancho}%`, background: nv.color }} title={`${nv.nombre}: ${nv.compra}`} /> : null;
-          })}
-        </div>
-
-        <p className="hero-nota">
-          Faltan <strong>{moneyCompact(Math.max(0, r.meta - r.compraMensual))}</strong> al mes. {n(enPrograma)} clientes en el programa
-          {cerca > 0 && (
-            <>
-              {' '}
-              y <strong>{n(cerca)}</strong> {cerca === 1 ? 'está' : 'están'} cerca de subir de categoría
-            </>
-          )}
-          . Promedio de ASTA de {ventana(r.meses)}, sin IVA.
-        </p>
-
-        <div className="hero-acciones">
-          <Link className="btn btn-inline" href="/admin/categorias?ver=cerca">
-            Ver quién está cerca de subir
-          </Link>
-          <Link className="dash-mas" href="/admin/categorias">
-            Todas las categorías →
-          </Link>
-        </div>
-      </div>
-
-      <PiramideCategorias niveles={niveles} />
-    </section>
-  );
+  return <HeroMeta datos={r} alcance="empresa" base="/admin/categorias" />;
 }
 
 export default async function InicioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
