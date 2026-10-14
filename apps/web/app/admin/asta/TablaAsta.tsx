@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { OportunidadAsta } from '@asta/shared-types';
 import { money, moneyEntero } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
 
 /**
  * Lista de oportunidades: quién compra consumibles de otra marca y cuánto.
@@ -123,10 +124,15 @@ export function TablaAsta({
             {visibles.slice(0, 200).map((o) => (
               <tr key={o.partnerId}>
                 <td className="c-cliente">
-                  <Link href={`/cartera/${o.partnerId}`} className="cliente-nombre enlace-ficha">
-                    {o.nombre}
-                  </Link>
-                  <div className="cliente-contacto">Odoo #{o.partnerId}</div>
+                  <div className="cliente-fila">
+                    <Avatar nombre={o.nombre} tamano="s" />
+                    <span className="cliente-datos">
+                      <Link href={`/cartera/${o.partnerId}`} className="cliente-nombre enlace-ficha">
+                        {o.nombre}
+                      </Link>
+                      <span className="cliente-contacto">Odoo #{o.partnerId}</span>
+                    </span>
+                  </div>
                 </td>
 
                 {conVendedor && (

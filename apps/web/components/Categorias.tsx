@@ -2,6 +2,16 @@ import Link from 'next/link';
 import { reglaDe, type CategoriasAsta, type ClaveCategoria, type ClienteCategoria } from '@asta/shared-types';
 import { money, moneyCompact, moneyEntero } from '@/lib/formato';
 import { etiquetaMes } from '@/components/Reporte';
+import { COLORES_CATEGORIAS } from '@/components/tres/colores';
+
+/** El color de cada categoría, el mismo que su lámina en la pirámide 3D del Inicio. */
+const COLOR: Record<ClaveCategoria, string> = {
+  GENERAL: COLORES_CATEGORIAS[0]!,
+  BRONCE: COLORES_CATEGORIAS[1]!,
+  PLATA: COLORES_CATEGORIAS[2]!,
+  ORO: COLORES_CATEGORIAS[3]!,
+  DIAMANTE: COLORES_CATEGORIAS[4]!,
+};
 
 /**
  * Las categorías de ASTA (#131) en el panel: el avance hacia la meta y la lista
@@ -60,8 +70,14 @@ export function CaminoMeta({ datos, enlace, alcance }: { datos: CategoriasAsta; 
             de {moneyCompact(datos.meta)} al mes · faltan {moneyCompact(Math.max(0, datos.meta - datos.compraMensual))}
           </span>
         </div>
+        {/* Un tramo por categoría, del ancho de lo que pone: se ve quién empuja. */}
         <div className="cat-avance-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)}>
-          <span style={{ width: `${avance}%` }} />
+          {datos.porCategoria.map((c) => {
+            const ancho = datos.meta > 0 ? (c.compraMensual / datos.meta) * 100 : 0;
+            return ancho > 0 ? (
+              <span key={c.categoria} style={{ width: `${ancho}%`, background: COLOR[c.categoria] }} title={`${reglaDe(c.categoria).nombre}: ${corto(c.compraMensual)}/mes`} />
+            ) : null;
+          })}
         </div>
       </div>
 

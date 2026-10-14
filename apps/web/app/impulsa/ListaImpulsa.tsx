@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import type { ClienteImpulsa, EstadoImpulsa, SugerenciaPasale } from '@asta/shared-types';
 import { fecha, money } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
 import { CargandoEnlace } from '@/components/CargandoEnlace';
 
 /**
@@ -50,6 +51,7 @@ export function ListaImpulsa({ clientes }: { clientes: ClienteImpulsa[] }) {
           {visibles.map((c) => (
             <section key={c.partnerId} className="panel imp-cliente">
               <header className="imp-cabecera">
+                <Avatar nombre={c.nombre} />
                 <Link href={`/cartera/${c.partnerId}`} className="imp-nombre">
                   {c.nombre}
                   <CargandoEnlace />
@@ -111,7 +113,9 @@ function Sugerencia({ partnerId, s }: { partnerId: number; s: SugerenciaPasale }
       </div>
 
       <span className="imp-flecha" aria-hidden="true">
-        →
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
       </span>
 
       <div className="imp-asta">

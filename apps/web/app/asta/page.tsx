@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getAstaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { moneyCompact } from '@/lib/formato';
+import { Cifra } from '@/components/Cifras';
 import { TablaAsta } from '../admin/asta/TablaAsta';
 
 /**
@@ -68,27 +69,22 @@ export default async function AstaCarteraPage() {
       descripcion={`${totales.clientes} de tus clientes compran consumibles · tu cuota de ASTA es del ${totales.cuota.toFixed(1)} %`}
     >
       <section className="stats">
-        <div className="stat">
-          <div className="stat-label">TU CUOTA DE ASTA</div>
-          <div className="stat-value">{totales.cuota.toFixed(1)} %</div>
-          <div className="stat-sub">del consumible que compran tus clientes</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">A LA COMPETENCIA</div>
-          <div className="stat-value" style={{ color: 'var(--danger)' }}>
-            {moneyCompact(totales.competencia)}
-          </div>
-          <div className="stat-sub">mismo producto, otra marca</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">SIN PROBAR ASTA</div>
-          <div className="stat-value" style={{ color: 'var(--warning)' }}>
-            {totales.sinAsta}
-          </div>
-          <div className="stat-sub">
-            clientes tuyos · {moneyCompact(totales.sinAstaImporte)} fuera
-          </div>
-        </div>
+        <Cifra icono="cuota" color="rosa" etiqueta="Tu cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran tus clientes" />
+        <Cifra
+          icono="juego"
+          color="ambar"
+          etiqueta="A la competencia"
+          valor={moneyCompact(totales.competencia)}
+          tono="alerta"
+          nota="mismo producto, otra marca"
+        />
+        <Cifra
+          icono="diana"
+          color="violeta"
+          etiqueta="Sin probar ASTA"
+          valor={totales.sinAsta}
+          nota={`clientes tuyos · ${moneyCompact(totales.sinAstaImporte)} fuera`}
+        />
       </section>
 
       <TablaAsta filas={filas} conVendedor={false} />

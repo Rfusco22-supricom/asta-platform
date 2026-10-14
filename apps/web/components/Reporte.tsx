@@ -4,6 +4,7 @@ import { Periodos } from '@/components/Periodos';
 import { Sedes } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
+import { Cifra, type ColorCifra, type IconoCifra } from './Cifras';
 
 /**
  * El reporte, dibujado.
@@ -26,24 +27,19 @@ function Metrica({
   valor,
   nota,
   tono,
+  icono,
+  color,
 }: {
   etiqueta: string;
   valor: string;
   nota?: string;
   tono?: 'mal' | 'bien';
+  icono: IconoCifra;
+  color?: ColorCifra;
 }) {
-  // Mismas clases que el resto del panel (`.stat`), para que estas tarjetas no
+  // La misma cifra que el resto del panel (`Cifra`), para que estas tarjetas no
   // sean «casi» iguales a las de las otras pantallas.
-  const color = tono === 'mal' ? 'var(--danger)' : tono === 'bien' ? 'var(--positive)' : undefined;
-  return (
-    <div className="stat">
-      <div className="stat-label">{etiqueta}</div>
-      <div className="stat-value" style={{ color }}>
-        {valor}
-      </div>
-      {nota && <div className="stat-sub">{nota}</div>}
-    </div>
-  );
+  return <Cifra icono={icono} color={color} etiqueta={etiqueta} valor={valor} nota={nota} tono={tono === 'mal' ? 'alerta' : tono === 'bien' ? 'sube' : undefined} />;
 }
 
 const MESES = [
@@ -189,22 +185,29 @@ export function VistaReporte({
         <>
           <section className="stats">
             <Metrica
+              icono="ventas"
               etiqueta={t.facturado}
               valor={moneyCompact(totales.facturado)}
               nota={t.facturas}
             />
             <Metrica
+              icono="cobrar"
+              color="ambar"
               etiqueta="Por cobrar"
               valor={moneyCompact(totales.porCobrar)}
               nota={t.deuda}
               tono={!soloAsta && pctDeuda >= 30 ? 'mal' : undefined}
             />
             <Metrica
+              icono="ticket"
+              color="violeta"
               etiqueta="Ticket promedio"
               valor={moneyCompact(totales.ticketPromedio)}
               nota={t.ticket}
             />
             <Metrica
+              icono="clientes"
+              color="verde"
               etiqueta="Clientes que compraron"
               valor={totales.clientes.toLocaleString('es-VE')}
               nota={t.clientes}

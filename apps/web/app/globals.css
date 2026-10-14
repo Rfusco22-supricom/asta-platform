@@ -354,8 +354,11 @@ tbody tr:hover { background: color-mix(in srgb, var(--cian) 7%, transparent); }
 .num.zero { color: var(--text-3); }
 .num.debt { color: var(--danger); }
 
-.cliente-nombre { font-weight: 520; }
-.cliente-contacto { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.cliente-nombre { display: block; font-weight: 520; }
+.cliente-contacto { display: block; font-size: 12px; color: var(--text-3); margin-top: 1px; }
+/* El nombre con su avatar delante (`components/Avatar.tsx`). */
+.row-link.cliente-fila, .cliente-fila { display: flex; align-items: center; gap: 10px; }
+.cliente-datos { min-width: 0; }
 
 /* ── Etiquetas ────────────────────────────────────────────────────────────── */
 
@@ -363,11 +366,12 @@ tbody tr:hover { background: color-mix(in srgb, var(--cian) 7%, transparent); }
   display: inline-block;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 20px;
   letter-spacing: .02em;
   white-space: nowrap;
-  border: 1px solid currentColor;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  background: color-mix(in srgb, currentColor 11%, transparent);
 }
 .tag.bronce { color: var(--bronce); }
 .tag.plata  { color: var(--plata); }
@@ -1160,6 +1164,31 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
   font-weight: 600;
 }
 
+/* El avatar de un cliente (`components/Avatar.tsx`): iniciales sobre uno de
+   seis degradados, elegido por el nombre para que siempre sea el mismo. */
+.avatar-cliente {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--avatar);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -8px rgba(18, 52, 96, 0.5);
+}
+.avatar-s { width: 28px; height: 28px; border-radius: 9px; font-size: 10.5px; }
+.avatar-l { width: 64px; height: 64px; border-radius: 20px; font-size: 22px; }
+.avatar-tono-0 { --avatar: linear-gradient(135deg, #27a9f1, #1c6fdb); }
+.avatar-tono-1 { --avatar: linear-gradient(135deg, #7c5cff, #b35cff); }
+.avatar-tono-2 { --avatar: linear-gradient(135deg, #ff5c93, #ff8a5c); }
+.avatar-tono-3 { --avatar: linear-gradient(135deg, #12c28a, #0fa5a0); }
+.avatar-tono-4 { --avatar: linear-gradient(135deg, #f5b52e, #f08a24); }
+.avatar-tono-5 { --avatar: linear-gradient(135deg, #4f86f7, #7c5cff); }
+
 .usuario-datos { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .usuario-datos strong {
   font-size: 12.5px;
@@ -1264,6 +1293,36 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
 .stat-label { font-size: 11px; letter-spacing: 0.08em; color: var(--text-3); }
 .stat-value { font-size: 28px; font-weight: 600; letter-spacing: -0.035em; }
 .stats { gap: 16px; margin-bottom: 24px; }
+
+/* ── Cifras con icono (`components/Cifras.tsx`) ───────────────────────────── */
+/*
+ * La baldosa del icono lleva el degradado de su color, y la tendencia, abajo y
+ * a sangre, la forma de los meses. El color dice de qué va la cifra: cian para
+ * lo vendido, violeta para el tiempo, rosa para la cuota, verde para clientes y
+ * ámbar para dinero pendiente.
+ */
+.cifra { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+.cifra-icono {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 10px;
+  border-radius: 13px;
+  color: #fff;
+  background: var(--cifra-fondo);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px var(--cifra-sombra);
+}
+.cifra-cian { --cifra-fondo: linear-gradient(135deg, #27a9f1, #1c6fdb); --cifra-sombra: #1c6fdb; }
+.cifra-violeta { --cifra-fondo: linear-gradient(135deg, #7c5cff, #b35cff); --cifra-sombra: #7c5cff; }
+.cifra-rosa { --cifra-fondo: linear-gradient(135deg, #ff5c93, #ff8a5c); --cifra-sombra: #ff5c93; }
+.cifra-verde { --cifra-fondo: linear-gradient(135deg, #12c28a, #0fa5a0); --cifra-sombra: #12c28a; }
+.cifra-ambar { --cifra-fondo: linear-gradient(135deg, #f5b52e, #f08a24); --cifra-sombra: #f08a24; }
+.stat-value.cifra-sube { color: var(--positive); }
+.stat-value.cifra-baja, .stat-value.cifra-alerta { color: var(--danger); }
+.cifra-tendencia { display: block; width: calc(100% + 40px); height: 34px; margin: 10px -20px -18px; }
+.cifra-tendencia polyline { fill: none; stroke: var(--cian); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.cifra-tendencia polygon { fill: color-mix(in srgb, var(--cian) 16%, transparent); }
 
 .notice.error { background: color-mix(in srgb, var(--danger-soft) 80%, transparent); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
 
@@ -2548,41 +2607,68 @@ tr:hover .mini-serie .mes-lleno { fill: var(--primario-oscuro); }
  * botones al final. En estrecho se apila.
  */
 
-.imp-lista { display: grid; gap: 12px; }
+.imp-lista { display: grid; gap: 16px; }
 .imp-cliente { padding: 0; overflow: hidden; }
 .imp-cabecera {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 35%, transparent);
 }
-.imp-nombre { font-size: 15px; font-weight: 640; color: var(--text); }
-.imp-nombre:hover { color: var(--primario); }
-.imp-enjuego { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+.imp-nombre { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.imp-nombre:hover { color: var(--accent); }
+/* Lo que se va a otras marcas, en una pastilla ámbar: es lo que hay que ganar. */
+.imp-enjuego {
+  padding: 5px 11px;
+  border-radius: 99px;
+  background: color-mix(in srgb, #f5b52e 16%, transparent);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 .imp-sugerencias { margin: 0; padding: 0; list-style: none; }
 .imp-sugerencia {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  transition: opacity 0.2s;
+  gap: 16px;
+  padding: 16px 20px;
+  transition: opacity 0.2s, background-color 0.15s;
 }
+.imp-sugerencia:hover { background: color-mix(in srgb, var(--cian) 4%, transparent); }
 .imp-sugerencia + .imp-sugerencia { border-top: 1px dashed var(--border); }
 .imp-sugerencia.guardando { opacity: 0.55; }
 
 .imp-compra, .imp-asta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .imp-rotulo { font-size: 11px; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); }
-.imp-asta .imp-rotulo { color: var(--primario); }
+.imp-asta .imp-rotulo { color: var(--accent); }
 .imp-producto { font-size: 13.5px; font-weight: 550; overflow-wrap: anywhere; }
 .imp-compra small, .imp-alternativa small { font-size: 12px; color: var(--text-3); }
-.imp-alternativa { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--primario) 7%, var(--surface)); }
+.imp-alternativa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--cian) 30%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cian) 10%, var(--vidrio-fuerte)), color-mix(in srgb, var(--violeta) 8%, var(--vidrio-fuerte)));
+}
 .imp-alternativa + .imp-alternativa { margin-top: 4px; }
 .imp-corto { color: var(--warning) !important; font-weight: 600; }
-.imp-flecha { color: var(--primario); font-size: 18px; text-align: center; }
+.imp-flecha {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--degradado);
+  color: #fff;
+  box-shadow: var(--sombra-azul);
+}
 
 .imp-acciones { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
 .imp-posponer { display: inline-flex; gap: 10px; }
@@ -3290,7 +3376,27 @@ a.enlace-ficha { color: var(--text); display: inline-block; }
 a.enlace-ficha:hover { color: var(--primario); }
 
 /* La ficha ya lleva el nombre en la cabecera: aquí solo la miga y la tarifa. */
-.ficha-cabeza { padding-top: 0; }
+/* La tarjeta del cliente, arriba de su ficha. */
+.panel.ficha-cabeza { display: flex; align-items: center; gap: 18px; padding: 20px 24px; margin-bottom: 18px; }
+.ficha-datos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ficha-datos .crumb { margin-bottom: 2px; }
+.ficha-tarifa { font-size: 14px; font-weight: 500; color: var(--text); }
+.ficha-odoo {
+  flex: none;
+  padding: 9px 16px;
+  border-radius: 99px;
+  border: 1px solid var(--vidrio-borde);
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--vidrio-brillo);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.ficha-odoo:hover { text-decoration: none; border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
+@media (max-width: 640px) {
+  .panel.ficha-cabeza { flex-wrap: wrap; padding: 16px; }
+  .ficha-cabeza .avatar-l { width: 48px; height: 48px; border-radius: 16px; font-size: 17px; }
+}
 
 /* ── Tablas en tarjetas, en el móvil ──────────────────────────────────────── */
 /*
@@ -3365,33 +3471,8 @@ a.enlace-ficha:hover { color: var(--primario); }
 .dash-vendedores { grid-area: vendedores; }
 .dash-clientes { grid-area: clientes; }
 
-.dash-kpi { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
 .dash-kpi .stat-value { font-size: 26px; }
 
-/* La baldosa del icono: el degradado de la marca en cada cifra, con su tono. */
-.kpi-icono {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 10px;
-  border-radius: 13px;
-  color: #fff;
-  background: var(--kpi, var(--degradado));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px color-mix(in srgb, var(--kpi-sombra, #4f86f7) 80%, transparent);
-}
-.kpi-ventas { --kpi: linear-gradient(135deg, #27a9f1, #1c6fdb); --kpi-sombra: #1c6fdb; }
-.kpi-mes { --kpi: linear-gradient(135deg, #7c5cff, #b35cff); --kpi-sombra: #7c5cff; }
-.kpi-cuota { --kpi: linear-gradient(135deg, #ff5c93, #ff8a5c); --kpi-sombra: #ff5c93; }
-.kpi-clientes { --kpi: linear-gradient(135deg, #12c28a, #0fa5a0); --kpi-sombra: #12c28a; }
-.kpi-cobrar { --kpi: linear-gradient(135deg, #f5b52e, #f08a24); --kpi-sombra: #f08a24; }
-
-/* La tendencia, abajo y a sangre: la forma de los meses, sin números. */
-.kpi-tendencia { display: block; width: calc(100% + 40px); height: 34px; margin: 10px -20px -18px; }
-.kpi-tendencia polyline { fill: none; stroke: var(--cian); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-.kpi-tendencia polygon { fill: color-mix(in srgb, var(--cian) 16%, transparent); }
-.dash-kpi .stat-value.dash-sube { color: var(--positive); }
-.dash-kpi .stat-value.dash-baja { color: var(--danger); }
 
 .dash-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .dash-cabeza h2 { margin-bottom: 10px; }
@@ -3680,10 +3761,20 @@ body:has(.enlace-cargando) .contenido {
 
 .cat-avance { display: grid; gap: 8px; margin: 14px 0 18px; }
 .cat-avance-cifras { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.cat-avance-cifras strong { font-size: 28px; font-weight: 680; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.cat-avance-cifras strong {
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--text) 25%, #1c8cdb 70%, var(--violeta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .cat-avance-cifras span { color: var(--text-2); font-size: 13px; }
-.cat-avance-barra { height: 12px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
-.cat-avance-barra span { display: block; height: 100%; border-radius: inherit; background: var(--degradado); }
+.cat-avance-barra { display: flex; gap: 2px; height: 14px; padding: 2px; border-radius: 99px; background: color-mix(in srgb, var(--text) 7%, transparent); overflow: hidden; }
+.cat-avance-barra span { display: block; height: 100%; min-width: 4px; border-radius: 99px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); animation: hero-crecer 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; transform-origin: left; }
 
 .cat-niveles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .cat-nivel {
@@ -3691,11 +3782,14 @@ body:has(.enlace-cargando) .contenido {
   flex-direction: column;
   gap: 6px;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cat) 6%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--cat) 22%, var(--border));
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--cat) 14%, var(--vidrio-fuerte)), var(--vidrio));
+  border: 1px solid color-mix(in srgb, var(--cat) 30%, var(--vidrio-borde));
+  box-shadow: var(--vidrio-brillo);
+  transition: transform 0.15s;
 }
+.cat-nivel:hover { transform: translateY(-2px); }
 .cat-nivel .cat-insignia { align-self: flex-start; }
 .cat-nivel-cifra { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 13px; }
 .cat-nivel-cifra strong { font-size: 24px; font-weight: 680; color: var(--text); letter-spacing: -0.02em; }
@@ -3716,4 +3810,9 @@ body:has(.enlace-cargando) .contenido {
 @media (max-width: 640px) {
   .cat-niveles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tabla-categorias tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-avance-barra span { animation: none; }
+  .cat-nivel { transition: none; }
 }

@@ -5,6 +5,7 @@ import { ROLE_LABEL } from '@asta/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente, PortfolioRow } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
+import { Avatar } from '@/components/Avatar';
 import { CargandoEnlace } from '@/components/CargandoEnlace';
 
 /**
@@ -226,12 +227,15 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                     {/* El enlace envuelve el contenido y no la fila: un <a> no
                         puede contener <td>, y con onClick se perdería abrir en
                         pestaña nueva con ctrl+clic. */}
-                    <Link href={`/cartera/${f.id}`} className="row-link">
-                      <div className="cliente-nombre">
-                        {f.nombre}
-                        <CargandoEnlace />
-                      </div>
-                      {(f.email || f.telefono) && <div className="cliente-contacto">{[f.email, f.telefono].filter(Boolean).join(' · ')}</div>}
+                    <Link href={`/cartera/${f.id}`} className="row-link cliente-fila">
+                      <Avatar nombre={f.nombre} tamano="s" />
+                      <span className="cliente-datos">
+                        <span className="cliente-nombre">
+                          {f.nombre}
+                          <CargandoEnlace />
+                        </span>
+                        {(f.email || f.telefono) && <span className="cliente-contacto">{[f.email, f.telefono].filter(Boolean).join(' · ')}</span>}
+                      </span>
                     </Link>
                   </td>
                   <td className="col-clase c-clase" data-etiqueta="Clase">{cargando ? <Hueco ancho={22} /> : a?.clase ? <span className={`clase clase-${a.clase}`}>{a.clase}</span> : <span className="zero">—</span>}</td>
