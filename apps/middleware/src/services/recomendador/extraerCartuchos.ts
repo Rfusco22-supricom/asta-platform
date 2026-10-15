@@ -70,6 +70,8 @@ const REGLAS: Regla[] = [
   // "CRG 057H", "CRG-070H", "TONER 067 H", "TONER 125".
   // "CRG" solo lo usa Canon: no hace falta que el nombre diga CANON ("ASTA TONER CRG-055BK").
   { marca: 'Canon', exigeMarca: false, patron: /\bCRG\s?[-.]?\s?(\d{3})(\s?H)?(?:BK|C|M|Y)?\b/gi, canonico: (m) => `${m[1]}${m[2] ? 'H' : ''}` },
+  // "GPR" tampoco lo usa nadie más: «ASTA TONER GPR-22 NEGRO» no dice CANON y se quedaba sin cartucho.
+  { marca: 'Canon', exigeMarca: false, patron: /\bGPR\s?-?\s?(\d{1,3})\b/gi, canonico: (m) => `GPR-${m[1]}` },
   { marca: 'Canon', exigeMarca: true, patron: /\bTONER\s(\d{3})(\s?H)?\b/gi, canonico: (m) => `${m[1]}${m[2] ? 'H' : ''}` },
   // "CANON 054 YELLOW", "CANON 075H": tres cifras empezando por 0, sin TONER delante.
   { marca: 'Canon', exigeMarca: true, patron: /(?<!-)\b(0\d{2})(\s?H)?\b/g, canonico: (m) => `${m[1]}${m[2] ? 'H' : ''}` },
@@ -92,6 +94,25 @@ const REGLAS: Regla[] = [
 
   // ── Samsung ──
   { marca: 'Samsung', exigeMarca: false, patron: /\b(MLT-?D\d{3}[A-Z]?)\b/gi, canonico: (m) => m[1].replace(/^MLT-?/i, 'MLT-').toUpperCase() },
+  // Sin el «MLT-»: «ASTA POLVO TONER POWDER D101S-XEROX P3020». Solo con la S o la L
+  // del final, que es lo que distingue el tóner Samsung de un modelo («imageCLASS D570»).
+  { marca: 'Samsung', exigeMarca: false, patron: /(?<![\w-])(D1\d{2}[SL])\b/gi, canonico: (m) => `MLT-${m[1].toUpperCase()}` },
+];
+
+/**
+ * Lo que un ASTA sustituye y su código no dice, confirmado por Supricom
+ * (Lino, 2026-10-15). Son PROPUESTAS como todo lo demás: se validan en el panel.
+ *
+ *   · A-W1105X: HP no vende ningún «105X». Es el 105A de alto rendimiento y
+ *     va en las mismas impresoras (Laser 107, 135, 137…). Era el ASTA sin
+ *     impresoras que más vendía.
+ *   · A-GTBK / A-GTCYAN…: las tintas para Smart Tank. El negro es la GT53 y
+ *     los colores, la GT52.
+ */
+const ASTA_EQUIVALENTES: Array<{ siReferencia: RegExp; marca: MarcaCartucho; codigo: string }> = [
+  { siReferencia: /^W1105X$/i, marca: 'HP', codigo: 'W1105A' },
+  { siReferencia: /^GT\s?-?(BK|BLACK|NEGRO)$/i, marca: 'HP', codigo: 'GT53' },
+  { siReferencia: /^GT\s?-?(C|M|Y|CYAN|MAGENTA|YELLOW)$/i, marca: 'HP', codigo: 'GT52' },
 ];
 
 /** Marcas que menciona el texto. Los ASTA dicen de quién es el cartucho: "ASTA TONER CANON T03". */
@@ -131,6 +152,17 @@ export function extraerCartuchos(nombre: string, defaultCode: string | null): Ca
         if (!encontrados.has(clave)) {
           encontrados.set(clave, { marca: regla.marca, codigo, codigoNormalizado: normalizarCodigoCartucho(codigo), evidencia: m[0].trim() });
         }
+      }
+    }
+  }
+
+  if (/^\s*ASTA\b/i.test(nombre)) {
+    const ref = referenciaUtil(defaultCode).trim();
+    for (const e of ASTA_EQUIVALENTES) {
+      if (!e.siReferencia.test(ref)) continue;
+      const clave = `${e.marca}:${normalizarCodigoCartucho(e.codigo)}`;
+      if (!encontrados.has(clave)) {
+        encontrados.set(clave, { marca: e.marca, codigo: e.codigo, codigoNormalizado: normalizarCodigoCartucho(e.codigo), evidencia: `${defaultCode} = ${e.codigo}` });
       }
     }
   }
