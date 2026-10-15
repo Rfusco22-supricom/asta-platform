@@ -13,15 +13,25 @@ import { prisma } from '../../config/prisma.js';
  *
  * Por cada cartucho Epson cuyo código son tres cifras:
  *
- *   · si existe el de la T, sus enlaces pasan a ese y el de sin T se borra;
+ *   · si existe el de la T, sus enlaces pasan a ese y el de sin T se retira;
  *   · si no, se renombra.
  *
  * Un enlace que ya estaba en el de la T se queda como está allí: lo decidido en
  * el cartucho de las impresoras manda. Nada pasa a validado por el camino.
+ *
+ * ── Sin borrar nada ──────────────────────────────────────────────────────────
+ *
+ * `asta_app` no tiene DELETE en estas tablas (`004_usuarios.sql`, #105), y la
+ * primera versión de esto lo necesitaba: en producción falló con «DELETE command
+ * denied». Así que los enlaces se MUEVEN (UPDATE de `cartridge_id`) y el cartucho
+ * vacío se retira renombrándolo a `RETIRADO-664`, un código que ningún producto ni
+ * ninguna lista va a escribir. Si le queda algún enlace repetido —el mismo
+ * producto ya estaba en el de la T—, se queda en el retirado y se lista, para
+ * rechazarlo en el panel.
  */
 
 export interface ResumenUnionEpson {
-  unidos: Array<{ de: string; a: string; productos: number; impresoras: number; repetidos: number }>;
+  unidos: Array<{ de: string; a: string; productos: number; impresoras: number; repetidos: number; retirado: string }>;
   renombrados: Array<{ de: string; a: string }>;
 }
 
@@ -51,7 +61,7 @@ export async function unirEn(tx: Prisma.TransactionClient): Promise<ResumenUnion
       const ya = await tx.productCartridge.findUnique({ where: { odooProductTmplId_cartridgeId: { odooProductTmplId: p.odooProductTmplId, cartridgeId: destino.id } } });
       if (ya) repetidos++;
       else {
-        await tx.productCartridge.create({ data: { ...p, cartridgeId: destino.id } });
+        await tx.productCartridge.update({ where: { odooProductTmplId_cartridgeId: { odooProductTmplId: p.odooProductTmplId, cartridgeId: c.id } }, data: { cartridgeId: destino.id } });
         productos++;
       }
     }
@@ -59,13 +69,13 @@ export async function unirEn(tx: Prisma.TransactionClient): Promise<ResumenUnion
       const ya = await tx.cartridgePrinterModel.findUnique({ where: { cartridgeId_printerModelId: { cartridgeId: destino.id, printerModelId: i.printerModelId } } });
       if (ya) repetidos++;
       else {
-        await tx.cartridgePrinterModel.create({ data: { ...i, cartridgeId: destino.id } });
+        await tx.cartridgePrinterModel.update({ where: { cartridgeId_printerModelId: { cartridgeId: c.id, printerModelId: i.printerModelId } }, data: { cartridgeId: destino.id } });
         impresoras++;
       }
     }
-    // Sus enlaces se van con él (ON DELETE CASCADE): ya están copiados al de la T.
-    await tx.cartridge.delete({ where: { id: c.id } });
-    r.unidos.push({ de: c.code, a: destino.code, productos, impresoras, repetidos });
+    const retirado = `RETIRADO-${c.code}`;
+    await tx.cartridge.update({ where: { id: c.id }, data: { code: retirado, codeNormalized: `retirado${c.codeNormalized}` } });
+    r.unidos.push({ de: c.code, a: destino.code, productos, impresoras, repetidos, retirado });
   }
   return r;
 }

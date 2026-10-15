@@ -25,7 +25,8 @@ async function main(): Promise<void> {
   const v = (hecho: string, futuro: string) => (aplicar ? hecho : futuro);
 
   for (const u of r.unidos) {
-    console.log(`  ${u.de.padEnd(6)} → ${u.a.padEnd(7)} ${u.productos} productos y ${u.impresoras} impresoras ${v('pasados', 'pasarían')}, ${u.repetidos} ya estaban`);
+    console.log(`  ${u.de.padEnd(6)} → ${u.a.padEnd(7)} ${u.productos} productos y ${u.impresoras} impresoras ${v('pasados', 'pasarían')}; el ${u.de} ${v('queda', 'quedaría')} como ${u.retirado}`);
+    if (u.repetidos) console.log(`         ${u.repetidos} enlaces ya estaban en el ${u.a}: ${v('quedan', 'quedarían')} en ${u.retirado}; recházalos en el panel`);
   }
   for (const n of r.renombrados) console.log(`  ${n.de.padEnd(6)} → ${n.a.padEnd(7)} ${v('renombrado', 'se renombraría')} (no había ${n.a})`);
   if (!r.unidos.length && !r.renombrados.length) console.log('  Nada que unir: todas las botellas Epson ya llevan su T.');
