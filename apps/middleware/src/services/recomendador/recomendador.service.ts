@@ -209,8 +209,10 @@ export async function buscarImpresoras(q: string, limit: number): Promise<{ impr
     const porCartucho = await impresorasPorCartucho();
     // «PG-145» es el PG-145XL para quien no sabe si el suyo es XL: el código exacto,
     // o con su sufijo de tamaño. Nada más abierto: «64» no es el 640.
+    // Y «544» es la botella T544 de Epson, que se guarda con su T.
+    const formas = codigo ? [codigo, ...(/^\d{3}$/.test(codigo) ? [`t${codigo}`] : [])] : [];
     const ids = codigo
-      ? [...new Set(['', 'xl', 'xxl', 'h'].flatMap((sufijo) => porCartucho.get(codigo + sufijo) ?? []))]
+      ? [...new Set(formas.flatMap((c) => ['', 'xl', 'xxl', 'h'].flatMap((sufijo) => porCartucho.get(c + sufijo) ?? [])))]
       : undefined;
     if (ids?.length) {
       const porId = new Map(catalogo.map((m) => [m.id, m]));
