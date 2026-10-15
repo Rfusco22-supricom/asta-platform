@@ -12,12 +12,13 @@ import { unirCartuchosEpson } from '../services/recomendador/unirCartuchosEpson.
  *
  *   · los enlaces del "991" pasan al "T991", tal como estaban (nada se valida);
  *   · si el enlace ya estaba en el "T991", manda el del T991;
+ *   · el "991" no se borra (asta_app no tiene DELETE): queda como RETIRADO-991;
  *   · sin "T992", el "992" se renombra;
  *   · el simulacro no escribe, y repetir no encuentra nada.
  */
 
 const PLANTILLA = 3_850_000_000;
-const CODIGOS = ['991', 't991', '992', 't992'];
+const CODIGOS = ['991', 't991', '992', 't992', 'retirado991'];
 let epson = 0;
 let impresora = 0;
 let comprobado = false;
@@ -60,10 +61,14 @@ describe('#56 · Botellas Epson sin T', () => {
 
     const r = await unirCartuchosEpson({ aplicar: true });
     expect(simulado).toEqual(r);
-    expect(r.unidos).toContainEqual({ de: '991', a: 'T991', productos: 1, impresoras: 0, repetidos: 1 });
+    expect(r.unidos).toContainEqual({ de: '991', a: 'T991', productos: 1, impresoras: 0, repetidos: 1, retirado: 'RETIRADO-991' });
     expect(r.renombrados).toContainEqual({ de: '992', a: 'T992' });
 
-    expect(await prisma.cartridge.count({ where: { id: sinT.id } })).toBe(0);
+    // Retirado, no borrado; con el enlace repetido, que no se tocó.
+    expect(await prisma.cartridge.findUnique({ where: { id: sinT.id } })).toMatchObject({ code: 'RETIRADO-991', codeNormalized: 'retirado991' });
+    expect(await prisma.productCartridge.findMany({ where: { cartridgeId: sinT.id }, select: { odooProductTmplId: true, status: true } })).toEqual([
+      { odooProductTmplId: PLANTILLA + 1, status: 'PROPUESTA' },
+    ]);
     const enT = await prisma.productCartridge.findMany({ where: { cartridgeId: conT.id }, orderBy: { odooProductTmplId: 'asc' } });
     expect(enT.map((p) => [p.odooProductTmplId, p.status, p.evidence])).toEqual([
       [PLANTILLA, 'PROPUESTA', '991BK'],
