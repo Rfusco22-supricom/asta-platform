@@ -26,7 +26,12 @@ export interface Correo {
   texto: string;
   html: string;
   /** Solo para el log: qué plantilla es. */
-  plantilla: 'reseteo' | 'invitacion' | 'alertas';
+  plantilla: 'reseteo' | 'invitacion' | 'alertas' | 'prueba';
+  /**
+   * Lo que viaja al webhook de n8n en vez del correo armado (ver `correoEnv`):
+   * nombre, enlace y caducidad. Sin esto, la plantilla no puede salir por n8n.
+   */
+  datos?: Record<string, string | number | boolean>;
 }
 
 /** Lo único que se usa de un transporte de nodemailer. Lo implementan los tests. */
@@ -43,7 +48,44 @@ export function usarTransporteDePrueba(t: Transporte | null): void {
 }
 
 export function correoConfigurado(): boolean {
-  return Boolean(transporteDePrueba || correoEnv().SMTP_HOST);
+  const e = correoEnv();
+  return Boolean(transporteDePrueba || e.CORREO_WEBHOOK_URL || e.SMTP_HOST);
+}
+
+/** Por dónde sale el correo: n8n, SMTP o ninguno. Para `probar-correo` y el log. */
+export function viaDelCorreo(): 'n8n' | 'smtp' | null {
+  const e = correoEnv();
+  return e.CORREO_WEBHOOK_URL ? 'n8n' : e.SMTP_HOST ? 'smtp' : null;
+}
+
+/**
+ * Por el webhook de n8n. Solo los DATOS: n8n arma el correo con sus plantillas
+ * y valida destinatario y enlace (el webhook es público). Contesta 200 si lo
+ * envió y 4xx si lo rechazó; el motivo viene en `error`, sin datos personales.
+ */
+async function enviarPorWebhook(url: string, c: Correo): Promise<{ enviado: boolean }> {
+  if (!c.datos) {
+    logger.error({ correo: c.plantilla, via: 'n8n' }, 'correo no enviado: esta plantilla no sale por el webhook de n8n');
+    return { enviado: false };
+  }
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plantilla: c.plantilla, para: c.para, ...c.datos }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (res.ok) {
+      logger.info({ correo: c.plantilla, via: 'n8n' }, 'correo enviado');
+      return { enviado: true };
+    }
+    const cuerpo = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    logger.error({ correo: c.plantilla, via: 'n8n', codigo: res.status, motivo: typeof cuerpo?.error === 'string' ? cuerpo.error.slice(0, 200) : null }, 'fallo al enviar el correo');
+    return { enviado: false };
+  } catch (error) {
+    logger.error({ correo: c.plantilla, via: 'n8n', codigo: error instanceof Error ? error.name : 'desconocido' }, 'fallo al enviar el correo');
+    return { enviado: false };
+  }
 }
 
 function transporteReal(): Transporte {
@@ -65,6 +107,8 @@ export async function enviarCorreo(c: Correo): Promise<{ enviado: boolean }> {
     logger.info({ correo: c.plantilla }, 'correo no enviado: sin SMTP configurado');
     return { enviado: false };
   }
+  const webhook = correoEnv().CORREO_WEBHOOK_URL;
+  if (webhook && !transporteDePrueba) return enviarPorWebhook(webhook, c);
   try {
     await (transporteDePrueba ?? transporteReal()).sendMail({
       from: correoEnv().SMTP_FROM,
@@ -165,7 +209,14 @@ export function plantillaReseteo(d: { para: string; nombre: string; url: string;
     { texto: 'Elegir contraseña nueva', url: d.url },
     `El enlace caduca en ${d.minutos} minutos y solo sirve una vez. Al usarlo se cerrarán las sesiones abiertas. Si no lo pediste, ignora este correo: tu contraseña no cambia.`,
   );
-  return { para: d.para, asunto: 'Restablecer tu contraseña de ASTA', texto, html, plantilla: 'reseteo' };
+  return {
+    para: d.para,
+    asunto: 'Restablecer tu contraseña de ASTA',
+    texto,
+    html,
+    plantilla: 'reseteo',
+    datos: { nombre: d.nombre, enlace: d.url, minutos: d.minutos, esPersonal: d.esPersonal },
+  };
 }
 
 export function plantillaInvitacion(d: { para: string; nombre: string; url: string; dias: number }): Correo {
@@ -174,7 +225,7 @@ export function plantillaInvitacion(d: { para: string; nombre: string; url: stri
     { texto: 'Elegir mi contraseña', url: d.url },
     `El enlace caduca en ${d.dias} días y solo sirve una vez. Si no esperabas este correo, puedes ignorarlo.`,
   );
-  return { para: d.para, asunto: 'Tu acceso al panel de ASTA', texto, html, plantilla: 'invitacion' };
+  return { para: d.para, asunto: 'Tu acceso al panel de ASTA', texto, html, plantilla: 'invitacion', datos: { nombre: d.nombre, enlace: d.url, dias: d.dias } };
 }
 
 /** Lo que necesita la plantilla de alertas de cada aviso (#46). */
