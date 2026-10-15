@@ -576,9 +576,12 @@ describe('#46 · Regla de kioscos', () => {
   });
 });
 
-describe('Solo se envían las alertas de kiosco', () => {
+describe('Solo se envían las alertas de tablet y de accesos cruzados', () => {
   const KIOSCO = 'kiosco-mudo:00000000-0000-0000-0000-00000000test';
-  const borrar = () => prisma.alertState.deleteMany({ where: { id: KIOSCO } });
+  // `accesos-cruzados` es un id real: si la base de desarrollo ya tiene su fila, se guarda y se repone.
+  const CRUZADOS = 'accesos-cruzados';
+  let filaCruzados: Awaited<ReturnType<typeof prisma.alertState.findUnique>> = null;
+  const borrar = () => prisma.alertState.deleteMany({ where: { id: { in: [KIOSCO, CRUZADOS] } } });
   const guardado: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
@@ -587,11 +590,13 @@ describe('Solo se envían las alertas de kiosco', () => {
       guardado[k] = process.env[k];
       delete process.env[k];
     }
+    filaCruzados = await prisma.alertState.findUnique({ where: { id: CRUZADOS } });
     await borrar();
   });
   afterAll(async () => {
     for (const [k, v] of Object.entries(guardado)) if (v !== undefined) process.env[k] = v;
     await borrar();
+    if (filaCruzados) await prisma.alertState.create({ data: filaCruzados });
   });
 
   it('las demás reglas no avisan a nadie; la del kiosco, sí', async () => {
@@ -607,6 +612,17 @@ describe('Solo se envían las alertas de kiosco', () => {
     // Sin el kiosco, solo sale su «resuelta»; las otras siguen sin avisarse.
     const r2 = await avisar(otras, []);
     expect(r2.cuenta).toEqual({ nueva: 0, cambiada: 0, recordatorio: 0, resuelta: 1 });
+  });
+
+  it('#44 · la de accesos cruzados también se envía, y su «resuelta»', async () => {
+    const cruzados = evaluarAccesosCruzados(Array.from({ length: UMBRALES.accesosCruzados }, (_, i) => ({ actorEmail: `x${i}@prueba`, targetId: String(i) })))!;
+    expect(cruzados.id).toBe(CRUZADOS);
+
+    const r = await avisar([reglaLatenciaOdoo({ muestras: 100, p95: 999_999 })!, cruzados], []);
+    expect(r.cuenta).toEqual({ nueva: 1, cambiada: 0, recordatorio: 0, resuelta: 0 });
+    // Si la regla no se pudo evaluar, no se da por resuelta.
+    expect((await avisar([], ['accesos-cruzados: la base no responde'])).sinNovedades).toBe(true);
+    expect((await avisar([], [])).cuenta.resuelta).toBe(1);
   });
 
   it('si la regla de kioscos no se pudo evaluar, no se da por resuelto', async () => {

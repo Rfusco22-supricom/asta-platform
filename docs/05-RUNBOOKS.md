@@ -21,10 +21,11 @@ cron cada pocos minutos.
 
 ## Dónde llegan
 
-> **Solo se envían las de kiosco (desde el 2026-10-15).** A los canales solo va
-> [`kiosco-mudo`](#kiosco-mudo): la aplicación ASTA de una tablet que dejó de funcionar. Las demás reglas
-> de esta página se siguen evaluando y se ven en el log de cada pasada y en
-> `pnpm alertas`, pero no le llegan a nadie.
+> **Solo se envían dos (desde el 2026-10-15).** A los canales solo van
+> [`kiosco-mudo`](#kiosco-mudo), la aplicación ASTA de una tablet que dejó de
+> funcionar, y [`accesos-cruzados`](#accesos-cruzados), la de seguridad de #44.
+> Las demás reglas de esta página se siguen evaluando y se ven en el log de cada
+> pasada y en `pnpm alertas`, pero no le llegan a nadie.
 
 **Por correo**, a las direcciones de `ALERTAS_CORREO`, con el SMTP de #53.
 Opcionalmente también a un webhook (`ALERTAS_WEBHOOK_URL`). Sin ninguno de los
@@ -470,7 +471,7 @@ IP que no había aparecido nunca, a la 3.
 ## `kiosco-mudo`
 
 **La aplicación ASTA de una tablet dejó de funcionar: lleva 30 minutos de
-tienda abierta sin dar señales.** Es la única alerta que se envía. Sale una por
+tienda abierta sin dar señales.** Es una de las dos alertas que se envían. Sale una por
 tablet, con su nombre y su tienda, y otra cuando vuelve («RESUELTA»). (En el
 código y en las rutas se sigue llamando «kiosco»; para la tienda es la
 aplicación ASTA.)

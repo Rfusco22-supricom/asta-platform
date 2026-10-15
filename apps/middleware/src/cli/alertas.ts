@@ -32,8 +32,9 @@ import { avisar, consultarSalud, type ResultadoAvisos } from '../services/pasada
  *   · `ALERTAS_WEBHOOK_URL`: cualquier webhook que acepte `{"text": "..."}`
  *     (Slack, Discord, Google Chat).
  *
- * Desde el 2026-10-15 a los canales solo van las de kiosco (un kiosco que dejó
- * de funcionar). Las demás salen aquí, en la salida estándar, y nada más.
+ * Desde el 2026-10-15 a los canales solo van dos: una tablet que dejó de
+ * funcionar y los accesos cruzados (#44). Las demás salen aquí, en la salida
+ * estándar, y nada más.
  *
  * A los canales NO va todo en cada pasada: solo lo que empieza, cambia de
  * gravedad o se resuelve, y un recordatorio cada `ALERTAS_RECORDATORIO_HORAS`

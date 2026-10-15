@@ -9,9 +9,10 @@ import { prisma } from '../config/prisma.js';
  * Quién se entera y por dónde es problema de `scripts/alertas.ts`, que es lo que
  * corre el cron.
  *
- * Desde el 2026-10-15 solo se ENVÍAN las de kiosco (`kiosco-mudo`): un kiosco
- * que dejó de funcionar. Las demás se evalúan y se ven en el log y en
- * `pnpm alertas`, pero no le llegan a nadie. Ver `esAlertaDeKiosco`.
+ * Desde el 2026-10-15 solo se ENVÍAN dos: la de una tablet que dejó de
+ * funcionar (`kiosco-mudo`) y la de accesos cruzados (#44, seguridad). Las
+ * demás se evalúan y se ven en el log y en `pnpm alertas`, pero no le llegan a
+ * nadie. Ver `esAlertaAvisable`.
  *
  * Están separados a propósito. Una alerta que solo existe dentro del middleware
  * muere con él, y "el middleware está caído" es justo la que más importa. Por
@@ -458,15 +459,22 @@ export async function reglaNMasUno(): Promise<Alerta | null> {
 }
 
 /**
- * Las alertas de kiosco son las ÚNICAS que se envían (2026-10-15).
+ * Las ÚNICAS alertas que se envían (decisión de negocio del 2026-10-15):
+ *
+ *   · una tablet con la aplicación ASTA que dejó de funcionar (`kiosco-mudo:<id>`)
+ *   · accesos cruzados (#44): varios intentos de ver clientes de otra cartera.
+ *     Sin RLS en MySQL, el scoping del middleware es lo único entre un bug y
+ *     una fuga, y esta es la señal de que algo lo está probando o lo rompió.
  *
  * El resto de reglas se siguen evaluando —salen en el log de cada pasada y en
- * `pnpm alertas`—, pero a nadie le llega un correo por ellas: lo que la tienda
- * necesita saber es que un kiosco dejó de funcionar. Ver `avisar`.
+ * `pnpm alertas`—, pero a nadie le llega un correo por ellas. Ver `avisar`.
  */
 export const REGLA_KIOSCOS = 'kioscos';
 const PREFIJO_KIOSCO = 'kiosco-mudo:';
-export const esAlertaDeKiosco = (id: string): boolean => id.startsWith(PREFIJO_KIOSCO);
+const ACCESOS_CRUZADOS = 'accesos-cruzados';
+/** Las reglas cuyas alertas se envían, por su nombre en `reglasDeBase`. */
+export const REGLAS_AVISABLES: readonly string[] = [REGLA_KIOSCOS, ACCESOS_CRUZADOS];
+export const esAlertaAvisable = (id: string): boolean => id.startsWith(PREFIJO_KIOSCO) || id === ACCESOS_CRUZADOS;
 
 export interface HorarioTienda {
   zona: string;
@@ -669,7 +677,7 @@ export async function ejecutarReglas(reglas: ReglaConNombre[]): Promise<{
 export function reglasDeBase(): ReglaConNombre[] {
   return [
     ['sync', reglaSync],
-    ['accesos-cruzados', reglaAccesosCruzados],
+    [ACCESOS_CRUZADOS, reglaAccesosCruzados],
     ['key-401', regla401PorKey],
     ['key-429', regla429PorKey],
     ['tasa-5xx', regla5xx],
