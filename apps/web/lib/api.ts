@@ -347,6 +347,23 @@ export async function getSinAcceso(accessToken: string, limite = 25, busqueda?: 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Accesos → Personal: quién del equipo entra al panel y con qué rol
+// ─────────────────────────────────────────────────────────────────────────────
+
+const personaConAccesoSchema = z.object({
+  appUserId: z.string(),
+  nombre: z.string(),
+  email: z.string(),
+  rol: z.enum(['SUPERADMIN', 'VENDEDOR']),
+  odooUserId: z.number().int().nullable(),
+});
+export type PersonaConAcceso = z.infer<typeof personaConAccesoSchema>;
+
+export async function getPersonal(accessToken: string): Promise<PersonaConAcceso[]> {
+  return (await request('/api/v1/admin/personal', z.object({ data: z.array(personaConAccesoSchema) }), accessToken)).data;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const apiKeysSchema = z.object({
   data: z.array(apiKeySummarySchema),

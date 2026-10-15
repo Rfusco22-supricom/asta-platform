@@ -7,6 +7,7 @@ import { reconciliar, resincronizarUno } from '../services/reconciliation.servic
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS } from '../services/invitation.service.js';
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
+import { AccesoImposible, buscarUsuariosOdoo, darAccesoPorId, listarConAcceso, quitarAccesoPersonal } from '../services/accesoPersonal.service.js';
 import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
@@ -382,6 +383,73 @@ adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'),
       return;
     }
     next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Accesos → Personal: quién del equipo entra al panel y con qué rol
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Solo usuarios INTERNOS de Odoo; entran con su usuario y contraseña de Odoo.
+// Los clientes no se gestionan aquí: entran como clientes, por su lado.
+// Ver `accesoPersonal.service.ts`.
+
+const odooUserIdSchema = z.coerce.number().int().positive().max(4_294_967_295);
+const rolPersonalSchema = z.object({ rol: z.enum(['SUPERADMIN', 'VENDEDOR']) });
+const conflicto = (res: import('express').Response, error: AccesoImposible) =>
+  res.status(409).json({ error: { code: 'CONFLICT', message: error.message } });
+
+/** Quién entra hoy como personal. */
+adminRouter.get('/personal', autorizar('admin.usuarios.gestionar'), async (_req, res, next) => {
+  try {
+    res.json({ data: await listarConAcceso() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Busca usuarios internos de Odoo, con su acceso actual. Dos letras como mínimo. */
+adminRouter.get('/personal/odoo', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
+    if (q.length < 2) {
+      res.json({ data: [] });
+      return;
+    }
+    res.json({ data: await buscarUsuariosOdoo(q) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Da acceso con un rol, o cambia el rol de quien ya lo tiene. */
+adminRouter.put('/personal/:odooUserId', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const id = odooUserIdSchema.safeParse(req.params.odooUserId);
+    const cuerpo = rolPersonalSchema.safeParse(req.body);
+    if (!id.success || !cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Usuario o rol no válido.' } });
+      return;
+    }
+    res.json({ data: await darAccesoPorId(id.data, cuerpo.data.rol, req.identity.appUserId) });
+  } catch (error) {
+    if (error instanceof AccesoImposible) conflicto(res, error);
+    else next(error);
+  }
+});
+
+/** Quita el acceso: desactiva la cuenta y cierra sus sesiones. */
+adminRouter.delete('/personal/:odooUserId', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const id = odooUserIdSchema.safeParse(req.params.odooUserId);
+    if (!id.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Usuario no válido.' } });
+      return;
+    }
+    res.json({ data: await quitarAccesoPersonal(id.data, req.identity.appUserId) });
+  } catch (error) {
+    if (error instanceof AccesoImposible) conflicto(res, error);
+    else next(error);
   }
 });
 

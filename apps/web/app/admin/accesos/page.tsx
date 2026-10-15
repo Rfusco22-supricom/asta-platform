@@ -1,11 +1,20 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getReconciliacion, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getReconciliacion, getPersonal, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
+import { Personal } from './Personal';
 
 /**
- * Accesos: reconciliación Odoo ↔ middleware (issue #19).
+ * Accesos, en dos pestañas:
+ *
+ *   · Personal (la primera): quién del equipo entra al panel y con qué rol.
+ *     Usuarios internos de Odoo; se da, se cambia y se quita desde aquí.
+ *   · Clientes: la reconciliación Odoo ↔ middleware (issue #19), abajo.
+ *
+ * Los clientes siguen entrando como clientes: eso no se gestiona aquí.
+ *
+ * Clientes: reconciliación Odoo ↔ middleware (issue #19).
  *
  * Fue la portada del administrador hasta que la portada pasó a ser «Inicio»,
  * con lo pendiente de cada sección; esto vive ahora en Datos de Odoo.
@@ -49,8 +58,47 @@ function Metrica({
   );
 }
 
-export default async function AccesosPage() {
+function Pestanas({ activa }: { activa: 'personal' | 'clientes' }) {
+  return (
+    <nav className="pestanas-reporte" aria-label="Accesos">
+      <Link href="/admin/accesos" className={activa === 'personal' ? 'activa' : undefined} aria-current={activa === 'personal' ? 'page' : undefined}>
+        Personal
+      </Link>
+      <Link href="/admin/accesos?pestana=clientes" className={activa === 'clientes' ? 'activa' : undefined} aria-current={activa === 'clientes' ? 'page' : undefined}>
+        Clientes
+      </Link>
+    </nav>
+  );
+}
+
+async function PestanaPersonal({ sesion }: { sesion: Awaited<ReturnType<typeof requireSession>> }) {
+  let conAcceso;
+  try {
+    conAcceso = await getPersonal(sesion.accessToken);
+  } catch (error) {
+    if (esRedireccion(error)) throw error;
+    const esPermiso = error instanceof ApiError && error.status === 403;
+    return (
+      <Marco usuario={sesion.usuario} titulo="Accesos">
+        <Pestanas activa="personal" />
+        <div className="notice error">
+          <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo leer quién tiene acceso'}</h2>
+          <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
+        </div>
+      </Marco>
+    );
+  }
+  return (
+    <Marco usuario={sesion.usuario} titulo="Accesos" descripcion="Quién del equipo entra al panel y con qué rol. Entran con su usuario y contraseña de Odoo.">
+      <Pestanas activa="personal" />
+      <Personal conAcceso={conAcceso} yo={sesion.usuario.id} />
+    </Marco>
+  );
+}
+
+export default async function AccesosPage({ searchParams }: { searchParams: Promise<{ pestana?: string }> }) {
   const sesion = await requireSession();
+  if ((await searchParams).pestana !== 'clientes') return <PestanaPersonal sesion={sesion} />;
 
   let r;
   try {
@@ -62,6 +110,7 @@ export default async function AccesosPage() {
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
       <Marco usuario={sesion.usuario} titulo="Accesos">
+        <Pestanas activa="clientes" />
         <div className="notice error">
           <h2>
             {esPermiso
@@ -133,6 +182,7 @@ export default async function AccesosPage() {
       titulo="Accesos"
       descripcion={`Qué clientes de Odoo tienen cuenta en el panel, y cuáles no pueden entrar · generado en ${(rec.duracionMs / 1000).toFixed(1)} s · ${new Date(rec.generadoEn).toLocaleString("es-VE")}`}
     >
+      <Pestanas activa="clientes" />
       <section className="stats">
         <Metrica icono="clientes" etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
         <Metrica
