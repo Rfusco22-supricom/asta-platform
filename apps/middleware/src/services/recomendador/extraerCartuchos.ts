@@ -101,7 +101,7 @@ const REGLAS: Regla[] = [
 
 /**
  * Lo que un ASTA sustituye y su código no dice, confirmado por Supricom
- * (Lino, 2026-10-15). Son PROPUESTAS como todo lo demás: se validan en el panel.
+ * (2026-10-15). Son PROPUESTAS como todo lo demás: se validan en el panel.
  *
  *   · A-W1105X: HP no vende ningún «105X». Es el 105A de alto rendimiento y
  *     va en las mismas impresoras (Laser 107, 135, 137…). Era el ASTA sin
