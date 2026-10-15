@@ -14,6 +14,15 @@ import { z } from 'zod';
  *   SMTP_HOST=smtp.gmail.com  SMTP_PORT=587  SMTP_USER=no-reply@…  SMTP_PASSWORD=<contraseña de aplicación>
  *
  * Así el correo sale firmado por Google y no cae en spam.
+ *
+ * ── O por n8n, como el panel de Supricom ─────────────────────────────────────
+ *
+ * Con `CORREO_WEBHOOK_URL` el correo NO sale por SMTP: se manda a un webhook de
+ * n8n («ASTA - Correos del panel»), que lo envía con la API de Gmail, igual que
+ * los avisos del panel de Supricom. Solo viajan los DATOS (a quién, su nombre, el
+ * enlace y cuánto dura): el texto lo arma n8n con plantillas fijas y solo acepta
+ * enlaces al panel de ASTA, porque el webhook es público. Si están las dos
+ * cosas, manda el webhook.
  */
 
 /** `SMTP_HOST=` en el `.env` llega como cadena vacía: eso es «sin configurar», no un host. */
@@ -25,11 +34,17 @@ export const correoEnvSchema = z.object({
   SMTP_USER: opcional,
   SMTP_PASSWORD: opcional,
   SMTP_FROM: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), z.email().default('no-reply@supricom.com.ve')),
+  CORREO_WEBHOOK_URL: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), z.url().optional()),
 });
 
 export type CorreoEnv = z.infer<typeof correoEnvSchema>;
 
 let cache: CorreoEnv | null = null;
+
+/** Solo para tests: vuelve a leer las variables. */
+export function olvidarCorreoEnv(): void {
+  cache = null;
+}
 
 export function correoEnv(): CorreoEnv {
   if (cache) return cache;

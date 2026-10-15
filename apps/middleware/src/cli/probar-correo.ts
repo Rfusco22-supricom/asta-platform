@@ -7,6 +7,9 @@
  *   node dist/cli/probar-correo.js --enviar a@b.com     además manda un correo de prueba
  *   node dist/cli/probar-correo.js --webhook            manda un aviso de prueba a ALERTAS_WEBHOOK_URL
  *
+ * Con CORREO_WEBHOOK_URL el correo sale por n8n (como el panel de Supricom) y el
+ * SMTP no se usa: `--enviar` prueba esa vía, y solo a direcciones de supricom.
+ *
  * Existe porque el fallo solo se veía en el log como «fallo al enviar el correo,
  * codigo 535», cuando una alerta ya se había perdido. El mismo SMTP manda los
  * reseteos de contraseña y las invitaciones: si falla, tampoco llegan.
@@ -16,7 +19,7 @@
  */
 import '../config/dotenv.js';
 import { correoEnv } from '../config/correoEnv.js';
-import { correoConfigurado, enviarCorreo, verificarCorreo } from '../services/correo.service.js';
+import { correoConfigurado, enviarCorreo, verificarCorreo, viaDelCorreo } from '../services/correo.service.js';
 
 const arg = (nombre: string) => {
   const i = process.argv.indexOf(nombre);
@@ -63,11 +66,30 @@ async function main(): Promise<void> {
   console.log(`  SMTP_USER      ${tapar(e.SMTP_USER)}`);
   console.log(`  SMTP_PASSWORD  ${describirClave(process.env.SMTP_PASSWORD)}`);
   console.log(`  SMTP_FROM      ${tapar(e.SMTP_FROM)}${e.SMTP_USER && e.SMTP_FROM.split('@')[1] !== e.SMTP_USER.split('@')[1] ? '  ← distinto dominio que SMTP_USER' : ''}`);
+  console.log(`  CORREO_WEBHOOK_URL ${e.CORREO_WEBHOOK_URL ?? '(vacía: el correo sale por SMTP)'}`);
   console.log(`  ALERTAS_CORREO ${(process.env.ALERTAS_CORREO ?? '').split(',').filter((x) => x.trim()).map((x) => tapar(x.trim())).join(', ') || '(vacío: las alertas no van por correo)'}`);
   console.log('');
 
+  const via = viaDelCorreo();
+  const para = arg('--enviar');
+  const prueba = (destino: string) =>
+    enviarCorreo({
+      para: destino,
+      asunto: 'Prueba de correo de ASTA',
+      texto: 'Si lees esto, el correo saliente del middleware funciona: alertas, reseteos de contraseña e invitaciones.',
+      html: '<p>Si lees esto, el correo saliente del middleware funciona: alertas, reseteos de contraseña e invitaciones.</p>',
+      plantilla: 'prueba',
+      datos: {},
+    });
+
   if (!correoConfigurado()) {
-    console.log('  Sin SMTP_HOST no se prueba el correo.');
+    console.log('  Ni CORREO_WEBHOOK_URL ni SMTP_HOST: no sale ningún correo.');
+  } else if (via === 'n8n') {
+    console.log('  el correo sale por n8n (CORREO_WEBHOOK_URL); el SMTP no se usa.');
+    if (para) {
+      const r = await prueba(para);
+      console.log(r.enviado ? `  correo de prueba: n8n lo envió a ${tapar(para)}. Mira la bandeja (y la de spam).` : '  correo de prueba: n8n no lo envió; mira el log del middleware (motivo) y las ejecuciones del flujo en n8n.');
+    } else console.log('  Para probarlo: --enviar <tu correo @supricom>');
   } else {
     const v = await verificarCorreo();
     if (v.ok) console.log('  conexión y autenticación: OK');
@@ -75,16 +97,8 @@ async function main(): Promise<void> {
       console.log(`  conexión y autenticación: FALLA · ${v.codigo}${v.motivo ? ` · ${v.motivo}` : ''}`);
       if (v.pista) console.log(`\n  → ${v.pista}`);
     }
-
-    const para = arg('--enviar');
     if (v.ok && para) {
-      const r = await enviarCorreo({
-        para,
-        asunto: 'Prueba de correo de ASTA',
-        texto: 'Si lees esto, el correo saliente del middleware funciona: alertas, reseteos de contraseña e invitaciones.',
-        html: '<p>Si lees esto, el correo saliente del middleware funciona: alertas, reseteos de contraseña e invitaciones.</p>',
-        plantilla: 'alertas',
-      });
+      const r = await prueba(para);
       console.log(r.enviado ? `  correo de prueba: enviado a ${tapar(para)}. Mira la bandeja (y la de spam).` : '  correo de prueba: no salió; mira el log del middleware.');
     }
   }
