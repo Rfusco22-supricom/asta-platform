@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma.js';
-import { AccesoImposible, darAccesoPersonal, type UsuarioOdoo } from '../services/accesoPersonal.service.js';
+import { AccesoImposible, darAccesoPersonal, listarConAcceso, quitarAccesoPersonal, type UsuarioOdoo } from '../services/accesoPersonal.service.js';
+import { caducaEnDias, hashSecreto } from '../auth/tokens.js';
 
 /**
  * #81 · Acceso al panel para el personal que no es vendedor.
@@ -71,5 +72,35 @@ describe('#81 · Acceso del personal', () => {
     await expect(intentar([odoo({ partner_id: false })])).rejects.toThrow(/contacto/);
     await expect(intentar([odoo(), odoo({ id: UID + 1 })])).rejects.toThrow(/más de un usuario/);
     expect(await cuenta()).toBeNull();
+  });
+});
+
+describe('#81 · Quitar el acceso desde el panel', () => {
+  const dar = () => darAccesoPersonal({ login: `gerente${DOMINIO}`, rol: 'VENDEDOR', aplicar: true }, buscar([odoo()]));
+
+  it('desactiva la cuenta, cierra sus sesiones y deja de salir en la lista; devolverlo la reactiva', async () => {
+    await dar();
+    const c = (await cuenta())!;
+    await prisma.userSession.create({ data: { userId: c.id, refreshTokenHash: hashSecreto(`acc-${Date.now()}`), expiresAt: caducaEnDias(1) } });
+    expect((await listarConAcceso()).some((p) => p.appUserId === c.id)).toBe(true);
+
+    const r = await quitarAccesoPersonal(UID, 'otro-admin');
+    expect(r.sesionesCerradas).toBe(1);
+    expect(await cuenta()).toMatchObject({ isActive: false });
+    expect(await prisma.userSession.count({ where: { userId: c.id, revokedAt: null } })).toBe(0);
+    expect((await listarConAcceso()).some((p) => p.appUserId === c.id)).toBe(false);
+
+    await expect(quitarAccesoPersonal(UID, 'otro-admin')).rejects.toThrow(/no tiene acceso/);
+    expect((await dar()).tipo).toBe('cambiar');
+    expect(await cuenta()).toMatchObject({ isActive: true, role: 'VENDEDOR' });
+    await prisma.userSession.deleteMany({ where: { userId: c.id } });
+  });
+
+  it('nadie se quita el acceso ni se cambia el rol a sí mismo', async () => {
+    await dar();
+    const yo = (await cuenta())!.id;
+    await expect(quitarAccesoPersonal(UID, yo)).rejects.toThrow(/a ti mismo/);
+    await expect(darAccesoPersonal({ login: `gerente${DOMINIO}`, rol: 'SUPERADMIN', aplicar: true, actorId: yo }, buscar([odoo()]))).rejects.toThrow(/tu propio rol/);
+    expect(await cuenta()).toMatchObject({ isActive: true, role: 'VENDEDOR' });
   });
 });
