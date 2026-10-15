@@ -48,6 +48,9 @@ interface Regla {
 
 const sinEspacios = (s: string) => s.replace(/\s+/g, '').toUpperCase();
 
+/** "664" → "T664"; "748XXL" se queda igual. Ver la regla del número comercial de Epson. */
+export const conTDeBotella = (codigo: string) => (/^\d{3}$/.test(codigo) ? `T${codigo}` : codigo);
+
 const REGLAS: Regla[] = [
   // ── HP ── Códigos de pieza que SON el cartucho, en cualquier producto.
   // Sufijo opcional de contrato (C) o de paquete (D): "W2023XC", "CF217AC", "CE285AD".
@@ -76,7 +79,13 @@ const REGLAS: Regla[] = [
   { marca: 'Epson', exigeMarca: true, patron: /\b(T\d{2}[0-9A-Z])(?:\d{3})?(?:-\w+)?\b/gi, canonico: (m) => m[1].toUpperCase() },
   // Número comercial: "748XXL", "673", "664", y con el color pegado en las
   // referencias ASTA ("A-664BK"), que sin quitar el prefijo quedarían tapadas por el guion.
-  { marca: 'Epson', exigeMarca: true, patron: /(?<!-)\b(\d{3}(?:XXL|XL)?)(?:BK|C|M|Y)?\b(?!\s?ml)/gi, canonico: (m) => m[1].toUpperCase() },
+  //
+  // Las botellas se escriben con la T delante: "664" ES la T664, la misma que sale
+  // de la referencia del original ("T664120-AL"). Sin la T, el ASTA y el original
+  // eran dos cartuchos distintos, y la tinta ASTA nunca llegaba a las impresoras
+  // del original: la EcoTank L3110 solo enseñaba las botellas Epson. Los XL/XXL
+  // son cartuchos, no botellas, y Epson los nombra sin T ("748XXL").
+  { marca: 'Epson', exigeMarca: true, patron: /(?<!-)\b(\d{3}(?:XXL|XL)?)(?:BK|C|M|Y)?\b(?!\s?ml)/gi, canonico: (m) => conTDeBotella(m[1].toUpperCase()) },
 
   // ── Brother ──
   { marca: 'Brother', exigeMarca: false, patron: /\b((?:TN|DR)\s?-?\s?\d{3,4}[A-Z]*)\b/gi, canonico: (m) => m[1].replace(/[\s-]/g, '').replace(/^(TN|DR)/i, '$1-').toUpperCase() },

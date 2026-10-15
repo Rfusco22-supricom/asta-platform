@@ -134,10 +134,15 @@ export function separarModelos(texto: string, marca: string): ModelosSeparados {
  * importador de productos sacó el cartucho. Solo se prueba sin el prefijo; NO se
  * quita el color ("CRG055BK" no es "055"): el cartucho negro y el cian son
  * productos distintos, y juntarlos le vendería al cliente el que no es.
+ *
+ * Epson: la botella "544" es la "T544", que es como la guarda el importador
+ * (ver `conTDeBotella` en `extraerCartuchos`).
  */
 export function formasDelCodigo(codigo: string, marca: string): string[] {
   const n = normalizarModelo(codigo);
   const formas = [n];
-  if (marca.trim().toLowerCase() === 'canon' && n.startsWith('crg') && n.length > 3) formas.push(n.slice(3));
+  const m = marca.trim().toLowerCase();
+  if (m === 'canon' && n.startsWith('crg') && n.length > 3) formas.push(n.slice(3));
+  if (m === 'epson' && /^\d{3}$/.test(n)) formas.push(`t${n}`);
   return formas;
 }

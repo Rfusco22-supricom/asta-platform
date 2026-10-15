@@ -57,7 +57,17 @@ describe('#56 · Compatibles ASTA', () => {
   it('Epson ASTA: el cartucho está en la referencia, con el color pegado', () => {
     // El nombre no lo dice ("ASTA TINTA EPSON NEGRO"), y con el prefijo A- el
     // guion taparía el número.
-    expect(codigos('ASTA TINTA EPSON NEGRO', 'A-664BK')).toEqual(['Epson:664']);
+    expect(codigos('ASTA TINTA EPSON NEGRO', 'A-664BK')).toEqual(['Epson:T664']);
+  });
+
+  it('Epson ASTA: la botella es el MISMO cartucho que el original, con su T', () => {
+    // Sin la T, la tinta ASTA quedaba en un cartucho "544" sin impresoras, y la
+    // L3110 solo enseñaba las botellas Epson del "T544".
+    expect(codigos('ASTA TINTA EPSON NEGRO ', 'A-544BK')).toEqual(codigos('EPSON L1110, L3110, L3150, L5190  BLACK', 'T544120-AL'));
+    expect(codigos('EPSON 664 - BOTELLA DE TINTA, CYAN', 'T664220AL')).toEqual(['Epson:T664']);
+    expect(codigos('EPSON TINTA 673 MAGENTA', null)).toEqual(['Epson:T673']);
+    // Los cartuchos XL/XXL no son botellas y Epson no les pone T.
+    expect(codigos('EPSON CARTUCHO 748XXL NEGRO', null)).toEqual(['Epson:748XXL']);
   });
 
   it('un compatible de dos marcas propone las dos', () => {
