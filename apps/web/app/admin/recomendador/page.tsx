@@ -81,7 +81,7 @@ export default async function RecomendadorPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Recomendador"
-      descripcion={`Qué buscan los clientes en el kiosco · ${datos.desde} a ${datos.hasta}`}
+      descripcion={`Qué buscan los clientes en la aplicación ASTA · ${datos.desde} a ${datos.hasta}`}
     >
       <Periodos base="/admin/recomendador" periodo={{ desde: datos.desde, hasta: datos.hasta }} />
 
@@ -89,7 +89,7 @@ export default async function RecomendadorPage({
         <div className="notice">
           <h2>No hay búsquedas en este periodo</h2>
           <p>
-            Entre el {datos.desde} y el {datos.hasta} nadie usó el recomendador. Se registra desde que el kiosco o una
+            Entre el {datos.desde} y el {datos.hasta} nadie usó el recomendador. Se registra desde que la aplicación o una
             integración empiezan a consultarlo; prueba con un rango más amplio.
           </p>
         </div>

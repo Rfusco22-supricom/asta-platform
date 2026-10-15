@@ -247,7 +247,7 @@ function TokenRecienEmitido({ datos, onListo }: { datos: { kiosco: Kiosco; token
         <li>
           En la configuración de la app pon la dirección <code>{URL_API}</code> y este token como <em>API key</em>.
         </li>
-        <li>Abre el kiosco: el indicador de arriba a la izquierda tiene que estar en verde.</li>
+        <li>Abre la aplicación ASTA: el indicador de arriba a la izquierda tiene que estar en verde.</li>
         <li>Haz una búsqueda: aquí la tablet pasará a «Activa ahora».</li>
       </ol>
       <div className="kio-token-pie">

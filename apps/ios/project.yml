@@ -36,7 +36,7 @@ targets:
     info:
       path: AstaKiosco/Info.plist
       properties:
-        CFBundleDisplayName: Asta Kiosco
+        CFBundleDisplayName: ASTA
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:

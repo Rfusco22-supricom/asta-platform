@@ -545,10 +545,11 @@ export async function reglaKioscos(ahora = new Date()): Promise<Alerta[]> {
     .map((k) => ({
       id: `${PREFIJO_KIOSCO}${k.id}`,
       severidad: 'critica' as const,
-      titulo: `Kiosco sin funcionar: ${k.label} (${k.storeLocation})`,
+      titulo: `La aplicación ASTA no funciona: ${k.label} (${k.storeLocation})`,
+      // Sin punto tras la hora: «10:12 a. m.» ya acaba en punto.
       detalle:
-        `Sin señal desde ${hora.format(k.lastSeenAt!)}. ` +
-        'Está apagado, sin red o con la aplicación cerrada: alguien de la tienda tiene que mirarlo.',
+        `Sin señal desde ${hora.format(k.lastSeenAt!)} — la tablet está apagada, sin red o con la ` +
+        'aplicación cerrada. Alguien de la tienda tiene que mirarla.',
       runbook: `${RUNBOOKS}#kiosco-mudo`,
     }));
 }

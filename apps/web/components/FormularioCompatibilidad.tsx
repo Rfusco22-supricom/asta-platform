@@ -88,10 +88,10 @@ export function FormularioCompatibilidad({
       <h2>Añadir compatibilidad</h2>
       <p className="formulario-nota">
         {codigoInicial
-          ? `${codigoInicial} todavía no tiene ninguna impresora validada: es uno de los más vendidos y el kiosco no lo puede recomendar. Di qué impresora lo usa.`
+          ? `${codigoInicial} todavía no tiene ninguna impresora validada: es uno de los más vendidos y la aplicación no lo puede recomendar. Di qué impresora lo usa.`
           : como === 'admin'
-            ? 'Lo que añades aquí queda validado y el kiosco lo recomienda en cuanto el cartucho tenga un producto validado.'
-            : 'Lo que propones aquí lo revisa un administrador antes de que el kiosco lo recomiende.'}
+            ? 'Lo que añades aquí queda validado y la aplicación lo recomienda en cuanto el cartucho tenga un producto validado.'
+            : 'Lo que propones aquí lo revisa un administrador antes de que la aplicación lo recomiende.'}
       </p>
       <form onSubmit={enviar}>
         <datalist id="marcas-impresora">

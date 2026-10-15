@@ -32,7 +32,7 @@ export default async function KioscosPage() {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Kioscos">
+      <Marco usuario={sesion.usuario} titulo="Tablets">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -42,7 +42,7 @@ export default async function KioscosPage() {
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Kioscos" descripcion="Las tablets de las tiendas. Cada una con su token y su almacén.">
+    <Marco usuario={sesion.usuario} titulo="Tablets" descripcion="Las tablets de las tiendas con la aplicación ASTA. Cada una con su token y su almacén.">
       <Kioscos inicial={datos.kioscos.data} almacenes={datos.almacenes} odooDisponible={datos.kioscos.meta.odooDisponible} />
     </Marco>
   );

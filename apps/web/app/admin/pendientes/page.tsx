@@ -126,7 +126,7 @@ async function ImpresorasListas({ token }: { token: string }) {
       estado={listas === 0 ? 'alerta' : pct < 50 ? 'pendiente' : 'ok'}
       cifra={`${n(listas)} de ${n(todas)}`}
       progreso={pct}
-      detalle={listas === 0 ? 'Ninguna tiene un tóner validado: el kiosco manda a todos al mostrador.' : 'Con al menos un tóner validado.'}
+      detalle={listas === 0 ? 'Ninguna tiene un tóner validado: la aplicación manda a todos al mostrador.' : 'Con al menos un tóner validado.'}
       href={href}
       accion="Ver impresoras"
     />
@@ -203,7 +203,7 @@ async function Tablets({ token }: { token: string }) {
             : `Sin conectarse en 24 horas: ${calladas.map((k) => k.nombre).join(', ')}.`
       }
       href={href}
-      accion="Ver kioscos"
+      accion="Ver tablets"
     />
   );
 }
@@ -223,8 +223,8 @@ async function SinResultado({ token }: { token: string }) {
       cifra={n(sinResultado)}
       detalle={
         busquedas === 0
-          ? 'Nadie ha buscado en el kiosco en los últimos 30 días.'
-          : `Búsquedas del kiosco que no encontraron impresora: ${n(sinResultado)} de ${n(busquedas)} en 30 días. Cada una es un alias que falta o una impresora que no está.`
+          ? 'Nadie ha buscado en la aplicación en los últimos 30 días.'
+          : `Búsquedas en la aplicación que no encontraron impresora: ${n(sinResultado)} de ${n(busquedas)} en 30 días. Cada una es un alias que falta o una impresora que no está.`
       }
       href={href}
       accion="Añadir alias"
@@ -327,7 +327,7 @@ export default async function PendientesPage() {
         <span className="ini-ok"><i /> Al día</span>
       </div>
 
-      <Grupo titulo="Kiosco" nota="Lo que hace falta para que la tablet recomiende tóner ASTA.">
+      <Grupo titulo="Aplicación ASTA" nota="Lo que hace falta para que la tablet recomiende tóner ASTA.">
         {conCarga('Listo para validar', <PorValidar token={token} />)}
         {conCarga('Impresoras listas', <ImpresorasListas token={token} />)}
         {conCarga('Cobertura del top', <Cobertura token={token} />)}

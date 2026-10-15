@@ -57,7 +57,7 @@ function origenLegible(t: TonerDeImpresora): string {
       .replace(/^product\.template\s+#\d+:\s*/, 'del nombre del producto: ');
   }
   if (t.propuestaPor) return `propuesto por ${t.propuestaPor}`;
-  return { FABRICANTE: 'lista del fabricante', PARSEO: 'leído del nombre del producto', MANUAL: 'añadido a mano', BUSQUEDA: 'búsqueda del kiosco' }[t.fuente];
+  return { FABRICANTE: 'lista del fabricante', PARSEO: 'leído del nombre del producto', MANUAL: 'añadido a mano', BUSQUEDA: 'búsqueda en la aplicación' }[t.fuente];
 }
 
 export function TonersPorImpresora({ impresoras, odooDisponible, marcas }: { impresoras: ImpresoraConToners[]; odooDisponible: boolean; marcas: string[] }) {
@@ -153,14 +153,14 @@ function FilaImpresora({ inicial, odooDisponible, marcas }: { inicial: Impresora
   // Lo que el kiosco hará con esta impresora si se guarda así.
   const conAsta = marcados.some((c) => c.asta);
   const kiosco = !odooDisponible
-    ? { clase: 'neutro', texto: 'Kiosco: sin datos de Odoo' }
+    ? { clase: 'neutro', texto: 'Aplicación: sin datos de Odoo' }
     : conAsta
-      ? { clase: 'bien', texto: 'Kiosco: recomienda ASTA' }
+      ? { clase: 'bien', texto: 'Aplicación: recomienda ASTA' }
       : marcados.length || nuevos.length
-        ? { clase: 'aviso', texto: 'Kiosco: sin ASTA, al mostrador' }
+        ? { clase: 'aviso', texto: 'Aplicación: sin ASTA, al mostrador' }
         : impresora.seVende
-          ? { clase: 'neutro', texto: 'Kiosco: sale, sin tóner' }
-          : { clase: 'neutro', texto: 'Kiosco: no sale' };
+          ? { clase: 'neutro', texto: 'Aplicación: sale, sin tóner' }
+          : { clase: 'neutro', texto: 'Aplicación: no sale' };
 
   const revisada = sugeridos.length === 0 && !tocada && impresora.toners.some((t) => t.estado === 'VALIDADA');
 
@@ -422,7 +422,7 @@ function Selector({
         {marcados.map((c) => (
           <span key={c.cartridgeId} className={`pi-chip${c.asta && odooDisponible ? ' asta' : ''}`}>
             <span className="pi-chip-codigo">{c.codigo}</span>
-            {odooDisponible && (c.asta ? <span className="pi-asta-mini" title={c.asta.nombre}>ASTA</span> : <span className="pi-sin-asta" title="Sin producto ASTA validado: el kiosco manda al mostrador">sin ASTA</span>)}
+            {odooDisponible && (c.asta ? <span className="pi-asta-mini" title={c.asta.nombre}>ASTA</span> : <span className="pi-sin-asta" title="Sin producto ASTA validado: la aplicación manda al mostrador">sin ASTA</span>)}
             <button type="button" className="pi-chip-quitar" aria-label={`Quitar ${c.codigo}`} disabled={deshabilitado} onClick={() => onAlternar(c)}>
               ×
             </button>

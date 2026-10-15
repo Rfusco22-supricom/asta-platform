@@ -15,9 +15,9 @@ import { money } from '@/lib/formato';
  */
 
 const TRAMOS = {
-  procede: { texto: 'El kiosco puede salir como estaba planeado', color: 'var(--positive)' },
+  procede: { texto: 'La aplicación puede salir como estaba planeado', color: 'var(--positive)' },
   con_respaldo: { texto: 'Sale con flujo de respaldo: «no encontramos tu modelo, deja tus datos»', color: 'var(--warning)' },
-  pospuesta: { texto: 'Por debajo del 60 %: el kiosco sigue pospuesto', color: 'var(--danger)' },
+  pospuesta: { texto: 'Por debajo del 60 %: la aplicación sigue pospuesta', color: 'var(--danger)' },
 } as const;
 
 const FALTA = {

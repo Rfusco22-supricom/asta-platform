@@ -59,11 +59,11 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       ],
     },
     {
-      titulo: 'Kiosco',
+      titulo: 'Aplicación ASTA',
       secciones: [
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
         { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
-        { href: '/admin/kioscos', titulo: 'Kioscos', icono: 'tablet' },
+        { href: '/admin/kioscos', titulo: 'Tablets', icono: 'tablet' },
       ],
     },
     {

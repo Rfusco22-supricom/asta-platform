@@ -599,7 +599,7 @@ describe('Solo se envían las alertas de kiosco', () => {
       reglaSalud({ alcanzable: true, status: 'degraded' })!,
       reglaLatenciaOdoo({ muestras: 100, p95: 999_999 })!,
     ];
-    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'Kiosco sin funcionar', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
+    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'La aplicación ASTA no funciona', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
 
     const r = await avisar([...otras, kiosco], []);
     expect(r.cuenta).toEqual({ nueva: 1, cambiada: 0, recordatorio: 0, resuelta: 0 });
@@ -610,7 +610,7 @@ describe('Solo se envían las alertas de kiosco', () => {
   });
 
   it('si la regla de kioscos no se pudo evaluar, no se da por resuelto', async () => {
-    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'Kiosco sin funcionar', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
+    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'La aplicación ASTA no funciona', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
     await avisar([kiosco], []);
     const r = await avisar([], ['kioscos: la base no responde']);
     expect(r.sinNovedades).toBe(true);

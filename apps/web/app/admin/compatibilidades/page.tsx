@@ -90,7 +90,7 @@ export default async function CompatibilidadesPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Compatibilidades"
-      descripcion="Qué producto es, o sustituye a, qué cartucho. El kiosco solo recomienda lo validado."
+      descripcion="Qué producto es, o sustituye a, qué cartucho. La aplicación solo recomienda lo validado."
     >
       <Pestanas actual="productos" />
 

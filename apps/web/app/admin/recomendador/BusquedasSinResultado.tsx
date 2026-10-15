@@ -96,7 +96,7 @@ export function BusquedasSinResultado({ busquedas }: { busquedas: Busqueda[] }) 
         texto: d.creado
           ? impresora.visibleEnKiosco
             ? `«${b.ejemplo}» ahora encuentra ${impresora.nombre}.`
-            : `«${b.ejemplo}» queda atado a ${impresora.nombre}, pero el kiosco aún no la enseña: valida antes alguna compatibilidad suya en Compatibilidades → Impresoras.`
+            : `«${b.ejemplo}» queda atado a ${impresora.nombre}, pero la aplicación aún no la enseña: valida antes alguna compatibilidad suya en Compatibilidades → Impresoras.`
           : d.estabaDesactivado
             ? `Ese alias ya existía en ${impresora.nombre}, pero está desactivado. Se retiró a propósito: revísalo en Compatibilidades.`
             : `Ese alias ya estaba en ${impresora.nombre}.`,
@@ -122,7 +122,7 @@ export function BusquedasSinResultado({ busquedas }: { busquedas: Busqueda[] }) 
             className="btn btn-inline"
             disabled={ocupado}
             onClick={() => void atar(b, c)}
-            title={c.visibleEnKiosco ? undefined : 'El kiosco todavía no la enseña: le falta una compatibilidad validada'}
+            title={c.visibleEnKiosco ? undefined : 'La aplicación todavía no la enseña: le falta una compatibilidad validada'}
           >
             {c.marca} {c.nombre}
             {!c.visibleEnKiosco && <span className="sin-kiosco"> · sin validar</span>}
