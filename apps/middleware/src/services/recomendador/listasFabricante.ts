@@ -2094,6 +2094,20 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
     ],
     consultado: '2026-10-15',
   },
+  // ── El ASTA GPR-22 ──────────────────────────────────────────────────────────
+  //
+  // Del folleto oficial de Canon Canadá, leído entero. Las fichas de Canon U.S.A.
+  // de las imageRUNNER 1023, 1023N y 1023iF también nombran el GPR-22, pero solo
+  // se vieron en un buscador (el sitio redirige): fuera hasta abrirlas. Las
+  // 1018/1022/1024 usan el C-EXV18 en Europa, y ninguna página de Canon dice
+  // que sea el mismo tóner.
+  {
+    marca: 'Canon',
+    cartuchos: ['GPR-22'],
+    impresoras: ['imageRUNNER 1025', 'imageRUNNER 1025N', 'imageRUNNER 1025iF'],
+    fuentes: ['https://www.canon.ca/inetCAWeb/userfiles/pdf/ISG/imageRUNNER/iR1025BrochureEnglish.pdf'],
+    consultado: '2026-10-15',
+  },
 ];
 
 /**

@@ -70,6 +70,23 @@ describe('#56 · Compatibles ASTA', () => {
     expect(codigos('EPSON CARTUCHO 748XXL NEGRO', null)).toEqual(['Epson:748XXL']);
   });
 
+  it('lo que el código del ASTA no dice, confirmado por Supricom: 105X = 105A, tintas GT = GT53 y GT52', () => {
+    // HP no vende ningún 105X: el ASTA es el 105A de alto rendimiento, y sin esto no llegaba a ninguna impresora.
+    expect(codigos('ASTA TONER A-W1105X', 'A-W1105X')).toEqual(['HP:W1105X', 'HP:W1105A']);
+    expect(codigos('ASTA TINTA HP GT NEGRO', 'A-GTBK')).toEqual(['HP:GT53']);
+    expect(codigos('ASTA TINTA HP GT CYAN', 'A-GTCYAN')).toEqual(['HP:GT52']);
+    expect(codigos('ASTA TINTA HP GT YELLOW', 'A-GTYELLOW')).toEqual(['HP:GT52']);
+    // Solo para los ASTA: el original de HP con esa referencia no se toca.
+    expect(codigos('HP TONER 105X ', 'W1105X')).toEqual(['HP:105X', 'HP:W1105X']);
+  });
+
+  it('GPR sin CANON en el nombre, y el Samsung sin MLT-', () => {
+    expect(codigos('ASTA TONER GPR-22 NEGRO', 'A-GPR-22')).toEqual(['Canon:GPR-22']);
+    expect(codigos('ASTA POLVO TONER POWDER D101S-XEROX P3020 NEGRO', 'A-POW101')).toEqual(['Samsung:MLT-D101S']);
+    // Un modelo de impresora no es un tóner Samsung: le falta la S o la L.
+    expect(codigos('CANON IMAGECLASS D570 MULTIFUNCIONAL', 'D570')).toEqual([]);
+  });
+
   it('un compatible de dos marcas propone las dos', () => {
     expect(codigos('ASTA TONER CANON CRG 057H / A-CF258X CON CHIP', 'A-057H')).toEqual(['HP:CF258X', 'Canon:057H']);
     expect(codigos('ASTA TONER CF230A NEGRO/ 051 CANON', 'A-CF230A')).toEqual(['HP:CF230A', 'Canon:051']);
