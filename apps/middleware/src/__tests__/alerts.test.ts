@@ -11,6 +11,7 @@ import {
   evaluarAccesosCruzados,
   reglaAccesosCruzados,
   type AccesoDenegado,
+  minutosAbiertos,
   reglaKioscos,
   reglaLatenciaOdoo,
   reglaNMasUno,
@@ -20,6 +21,8 @@ import {
   type Alerta,
 } from '../services/alerts.service.js';
 import { metricasOdoo, registrarRpc, reiniciarMetricas } from '../odoo/metrics.js';
+import { avisar } from '../services/pasadaAlertas.service.js';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Issue #46 — Alertas de operación.
@@ -508,46 +511,109 @@ describe('#29 · Regla tasa-5xx: los 501 no son errores', () => {
 });
 
 describe('#46 · Regla de kioscos', () => {
-  async function sembrarKiosco(minutosSinSenal: number): Promise<void> {
+  async function sembrarKiosco(ultimaSenal: Date | null, nombre = 'tienda 1'): Promise<string> {
     const k = await prisma.kioskDevice.create({
       data: {
-        label: `${MARCA} tienda 1`,
+        label: `${MARCA} ${nombre}`,
         storeLocation: 'Prueba',
         odooCompanyId: 1,
         odooWarehouseId: 1,
-        tokenHash: 'f'.repeat(64),
+        tokenHash: randomBytes(32).toString('hex'),
         isActive: true,
-        lastSeenAt: haceMin(minutosSinSenal),
+        lastSeenAt: ultimaSenal,
       },
       select: { id: true },
     });
     idsKioscos.push(k.id);
+    return k.id;
   }
 
-  /** Mediodía en Caracas: dentro de cualquier franja laboral razonable. */
-  const enHorario = new Date('2026-09-14T16:00:00Z');
-  /** Madrugada en Caracas. */
-  const fueraDeHorario = new Date('2026-09-14T07:00:00Z');
+  /** Solo las alertas de los kioscos sembrados aquí: la base de desarrollo puede tener otros. */
+  const deEstos = async (ahora: Date) => (await reglaKioscos(ahora)).filter((a) => idsKioscos.some((id) => a.id.endsWith(id)));
+  /** Hora de Caracas (UTC−4) → instante. */
+  const caracas = (iso: string) => new Date(`${iso}-04:00`);
+  const antes = (t: Date, min: number) => new Date(t.getTime() - min * 60_000);
 
-  it('avisa de un kiosco callado EN horario laboral', async () => {
-    await sembrarKiosco(UMBRALES.kioscoMin + 10);
+  /** Lunes 14-sep a mediodía en Caracas: tienda abierta. */
+  const enHorario = caracas('2026-09-14T12:00:00');
 
-    const a = await reglaKioscos(enHorario);
-    expect(a?.id).toBe('kiosco-mudo');
-    expect(a?.detalle).toContain(MARCA);
+  it('avisa de un kiosco callado EN horario laboral, una alerta por kiosco', async () => {
+    const a = await sembrarKiosco(antes(enHorario, UMBRALES.kioscoMin + 10), 'tienda 1');
+    const b = await sembrarKiosco(antes(enHorario, UMBRALES.kioscoMin + 60), 'tienda 2');
+
+    const alertas = await deEstos(enHorario);
+    expect(alertas.map((x) => x.id).sort()).toEqual([`kiosco-mudo:${a}`, `kiosco-mudo:${b}`].sort());
+    expect(alertas[0].titulo).toContain(MARCA);
+    expect(alertas[0].severidad).toBe('critica');
+    expect(alertas[0].runbook).toBe('docs/05-RUNBOOKS.md#kiosco-mudo');
   });
 
-  it('NO avisa fuera de horario: la tienda está cerrada', async () => {
-    await sembrarKiosco(UMBRALES.kioscoMin + 10);
-
-    // Avisar con la tienda cerrada entrena a la gente a ignorar la alerta, y
-    // entonces tampoco la mira el día que salta a las once de la mañana.
-    expect(await reglaKioscos(fueraDeHorario)).toBeNull();
+  it('NO avisa de un kiosco que acaba de reportar ni de uno que nunca se conectó', async () => {
+    await sembrarKiosco(antes(enHorario, 1));
+    await sembrarKiosco(null, 'recién dado de alta');
+    expect(await deEstos(enHorario)).toEqual([]);
   });
 
-  it('NO avisa de un kiosco que acaba de reportar', async () => {
-    await sembrarKiosco(1);
-    expect(await reglaKioscos(enHorario)).toBeNull();
+  it('el silencio se cuenta con la tienda abierta: apagarlo al cerrar no avisa al abrir', async () => {
+    // Se apagó el lunes a las 19:05, con la tienda ya cerrada.
+    await sembrarKiosco(caracas('2026-09-14T19:05:00'));
+    // Martes 8:10: lleva diez minutos de tienda abierta sin señal, no trece horas.
+    expect(await deEstos(caracas('2026-09-15T08:10:00'))).toEqual([]);
+    // Martes 8:40: ya son cuarenta minutos con la tienda abierta y sin encenderlo.
+    expect(await deEstos(caracas('2026-09-15T08:40:00'))).toHaveLength(1);
+  });
+
+  it('un kiosco caído por la tarde sigue caído de noche: no se da por resuelto al cerrar', async () => {
+    await sembrarKiosco(caracas('2026-09-14T15:00:00'));
+    expect(await deEstos(caracas('2026-09-15T03:00:00'))).toHaveLength(1);
+  });
+
+  it('el domingo la tienda no abre (ALERTA_KIOSCO_DIAS, lunes a sábado por defecto)', async () => {
+    // Sábado 19-sep, 18:59; el domingo a mediodía no suma minutos.
+    await sembrarKiosco(caracas('2026-09-19T18:59:00'));
+    expect(await deEstos(caracas('2026-09-20T12:00:00'))).toEqual([]);
+    expect(minutosAbiertos(caracas('2026-09-19T18:59:00'), caracas('2026-09-21T08:30:00'), 999)).toBe(31);
+  });
+});
+
+describe('Solo se envían las alertas de kiosco', () => {
+  const KIOSCO = 'kiosco-mudo:00000000-0000-0000-0000-00000000test';
+  const borrar = () => prisma.alertState.deleteMany({ where: { id: KIOSCO } });
+  const guardado: Record<string, string | undefined> = {};
+
+  beforeAll(async () => {
+    // Sin canales: que esta prueba no mande ningún correo ni llame al webhook.
+    for (const k of ['ALERTAS_WEBHOOK_URL', 'ALERTAS_CORREO']) {
+      guardado[k] = process.env[k];
+      delete process.env[k];
+    }
+    await borrar();
+  });
+  afterAll(async () => {
+    for (const [k, v] of Object.entries(guardado)) if (v !== undefined) process.env[k] = v;
+    await borrar();
+  });
+
+  it('las demás reglas no avisan a nadie; la del kiosco, sí', async () => {
+    const otras: Alerta[] = [
+      reglaSalud({ alcanzable: true, status: 'degraded' })!,
+      reglaLatenciaOdoo({ muestras: 100, p95: 999_999 })!,
+    ];
+    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'Kiosco sin funcionar', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
+
+    const r = await avisar([...otras, kiosco], []);
+    expect(r.cuenta).toEqual({ nueva: 1, cambiada: 0, recordatorio: 0, resuelta: 0 });
+
+    // Sin el kiosco, solo sale su «resuelta»; las otras siguen sin avisarse.
+    const r2 = await avisar(otras, []);
+    expect(r2.cuenta).toEqual({ nueva: 0, cambiada: 0, recordatorio: 0, resuelta: 1 });
+  });
+
+  it('si la regla de kioscos no se pudo evaluar, no se da por resuelto', async () => {
+    const kiosco: Alerta = { id: KIOSCO, severidad: 'critica', titulo: 'Kiosco sin funcionar', detalle: 'x', runbook: 'docs/05-RUNBOOKS.md#kiosco-mudo' };
+    await avisar([kiosco], []);
+    const r = await avisar([], ['kioscos: la base no responde']);
+    expect(r.sinNovedades).toBe(true);
   });
 });
 

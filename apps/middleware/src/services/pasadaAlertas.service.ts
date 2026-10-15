@@ -1,4 +1,4 @@
-import { evaluarTodo, type Alerta } from './alerts.service.js';
+import { esAlertaDeKiosco, evaluarTodo, REGLA_KIOSCOS, type Alerta } from './alerts.service.js';
 import { cargarEstados, decidirAvisos, guardarEstados, todoComoNuevo, type Aviso, type EstadoAlerta, type TipoAviso } from './avisosAlertas.service.js';
 import { correoConfigurado, enviarCorreo, plantillaAlertas } from './correo.service.js';
 
@@ -145,7 +145,15 @@ export interface ResultadoAvisos {
  * hasta el recordatorio. Y solo se guarda si algún canal entregó, o si no hay
  * ninguno configurado (entonces la salida estándar es el canal).
  */
-export async function avisar(alertas: Alerta[], hayReglasSinEvaluar: boolean): Promise<ResultadoAvisos> {
+export async function avisar(todas: Alerta[], fallos: string[]): Promise<ResultadoAvisos> {
+  /*
+   * Solo se avisa de los kioscos que dejan de funcionar (2026-10-15): el resto
+   * de alertas no se manda a nadie. Se filtra también la memoria de lo avisado,
+   * para que las alertas viejas de otras reglas que quedaron activas en
+   * `alert_states` no salgan ahora como «resueltas».
+   */
+  const alertas = todas.filter((a) => esAlertaDeKiosco(a.id));
+  const hayReglasSinEvaluar = fallos.some((f) => f.startsWith(`${REGLA_KIOSCOS}:`));
   const ahora = new Date();
   const recordatorioMs = Number(process.env.ALERTAS_RECORDATORIO_HORAS ?? 4) * 3600_000;
   const errores: string[] = [];
@@ -155,7 +163,7 @@ export async function avisar(alertas: Alerta[], hayReglasSinEvaluar: boolean): P
   let escribir: EstadoAlerta[] = [];
   let conMemoria = true;
   try {
-    ({ avisos, escribir } = decidirAvisos(alertas, await cargarEstados(), { ahora, recordatorioMs, hayReglasSinEvaluar }));
+    ({ avisos, escribir } = decidirAvisos(alertas, (await cargarEstados()).filter((e) => esAlertaDeKiosco(e.id)), { ahora, recordatorioMs, hayReglasSinEvaluar }));
   } catch {
     // Sin poder leer qué se avisó, se avisa de todo: repetir molesta, callar no.
     conMemoria = false;
@@ -191,7 +199,7 @@ export async function pasarAlertas(baseUrl: string): Promise<ResultadoPasada> {
    * el servidor no responda no dice nada sobre si el sync está atrasado.
    */
   const { alertas, fallos } = await evaluarTodo(salud);
-  const avisos = await avisar(alertas, fallos.length > 0);
+  const avisos = await avisar(alertas, fallos);
   return { alertas, fallos, salud, avisos };
 }
 

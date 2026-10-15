@@ -115,7 +115,14 @@ describe('#46 · el runbook de cada alerta existe', () => {
     fileURLToPath(new URL('../services/alerts.service.ts', import.meta.url)),
     'utf8',
   );
-  const ids = [...new Set([...fuente.matchAll(/return alerta\(\s*\n?\s*'([a-z0-9-]+)'/g)].map((m) => m[1]))];
+  // Las de `alerta('id', …)` y las que ponen el runbook a mano, como la de
+  // kiosco, cuyo id lleva el de la tablet pero el ancla es `kiosco-mudo`.
+  const ids = [
+    ...new Set([
+      ...[...fuente.matchAll(/return alerta\(\s*\n?\s*'([a-z0-9-]+)'/g)].map((m) => m[1]),
+      ...[...fuente.matchAll(/runbook: `\$\{RUNBOOKS\}#([a-z0-9-]+)`/g)].map((m) => m[1]),
+    ]),
+  ];
 
   it('el fuente declara los doce ids que se esperan', () => {
     // Si esto falla es que cambió la forma de construir las alertas y el barrido
