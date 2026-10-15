@@ -176,7 +176,7 @@ struct ResultadosView: View {
     private var sinTonerCargado: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("TE AYUDAMOS EN EL MOSTRADOR").font(Tema.fuerte(16)).kerning(2.5).foregroundStyle(Tema.azulHondo)
-            Text("Aún no tenemos cargado en el kiosco qué tóner le sirve a esta impresora.")
+            Text("Aún no tenemos cargado qué tóner le sirve a esta impresora.")
                 .font(Tema.titulo(28)).foregroundStyle(Tema.tinta)
             (Text("Enseña esta pantalla en el mostrador y te decimos cuál es y si lo tenemos: ")
                 + Text("\(impresora.marca) \(impresora.nombre)").font(Tema.codigoFuerte(24)).foregroundColor(Tema.tinta))

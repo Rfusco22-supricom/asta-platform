@@ -42,7 +42,7 @@ export default async function CompatibilidadesVendedorPage() {
   const pendientes = propias.filter((p) => p.estado === 'PROPUESTA').length;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Propón qué cartucho le sirve a una impresora. Un administrador lo revisa antes de que llegue al kiosco.">
+    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Propón qué cartucho le sirve a una impresora. Un administrador lo revisa antes de que llegue a la aplicación.">
       <FormularioCompatibilidad como="vendedor" marcas={[...new Set(propias.map((p) => p.marcaImpresora))]} />
 
       <section className="panel">

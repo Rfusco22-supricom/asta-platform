@@ -248,7 +248,7 @@ private fun SinTonerCargado(impresora: Impresora) {
         Box(Modifier.width(10.dp).fillMaxHeight().background(Tema.azul))
         Column(Modifier.padding(40.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("TE AYUDAMOS EN EL MOSTRADOR", style = Tema.fuerte(16, Tema.azulHondo).copy(letterSpacing = 2.5.sp))
-            Text("Aún no tenemos cargado en el kiosco qué tóner le sirve a esta impresora.", style = Tema.titulo(28))
+            Text("Aún no tenemos cargado qué tóner le sirve a esta impresora.", style = Tema.titulo(28))
             Text(
                 buildAnnotatedString {
                     append("Enseña esta pantalla en el mostrador y te decimos cuál es y si lo tenemos: ")
