@@ -1381,7 +1381,9 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
   },
   {
     marca: 'HP',
-    cartuchos: ['80A', 'CF280A'],
+    // "CF280" es como lo escribe el ASTA «CF280-CE505A»: el 80A y el 80X van en
+    // las mismas impresoras, así que el código sin la letra también vale aquí.
+    cartuchos: ['80A', 'CF280A', 'CF280'],
     impresoras: [
       'LaserJet Pro 400 M401',
       'LaserJet Pro 400 MFP M425',
@@ -1714,6 +1716,383 @@ export const LISTAS_FABRICANTE: ListaFabricante[] = [
       'https://www.hp.com/mx-es/shop/cartucho-de-toner-mlt-d104s-negro-samsung-su751a.html',
     ],
     consultado: '2026-10-14',
+  },
+
+  // ── El sexto tramo: los ASTA que no llegaban a ninguna impresora ───────────
+  //
+  // Medido el 2026-10-14: tóneres ASTA con su cartucho ya validado, pero ese
+  // cartucho sin ninguna impresora. El kiosco no los podía recomendar.
+  // La tienda de HP de EE. UU. no cargó: los modelos concretos salen de las
+  // GUÍAS DE USUARIO oficiales (h10032.www1.hp.com/ctg/Manual), que nombran el
+  // modelo y el número de pieza en su tabla de consumibles, y las fichas de las
+  // tiendas de HP de otros países confirman la serie. Fuera:
+  //   · lo que solo se vio en un buscador sin abrir la página (4240n, P2014n);
+  //   · el 4240 en el 42X: la guía de HP para Latinoamérica dice que solo usa el
+  //     42A, y la ficha del 42X lo deja fuera;
+  //   · las P2035 en el 05X: su guía solo da el 05A.
+  {
+    marca: 'HP',
+    cartuchos: ['05A', 'CE505A'],
+    impresoras: ['LaserJet P2035', 'LaserJet P2035n', 'LaserJet P2055', 'LaserJet P2055d', 'LaserJet P2055dn', 'LaserJet P2055x'],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c01461682.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c01460703.pdf',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-05a-negro-laserjet-original-ce505a.html',
+      'https://www.hp.com/my-en/shop/hp-05a-black-original-laserjet-toner-cartridge-ce505a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['05X', 'CE505X'],
+    impresoras: ['LaserJet P2055', 'LaserJet P2055d', 'LaserJet P2055dn', 'LaserJet P2055x'],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c01461682.pdf',
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-hp-05x-negro-alto-rendimiento-laserjet-original-ce505x.html',
+      'https://www.hp.com/my-en/shop/hp-05x-high-yield-black-original-laserjet-toner-cartridge-ce505x.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  // «LaserJet 4350» es la serie: los modelos son las n, tn, dtn y dtnsl.
+  {
+    marca: 'HP',
+    cartuchos: ['42X', 'Q5942X'],
+    impresoras: [
+      'LaserJet 4250',
+      'LaserJet 4250n',
+      'LaserJet 4250tn',
+      'LaserJet 4250dtn',
+      'LaserJet 4250dtnsl',
+      'LaserJet 4350',
+      'LaserJet 4350n',
+      'LaserJet 4350tn',
+      'LaserJet 4350dtn',
+      'LaserJet 4350dtnsl',
+    ],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c00218691.pdf',
+      'https://www.hp.com/br-pt/shop/cartucho-original-de-toner-negro-de-alto-rendimiento-hp-42x-laserjet-q5942x.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['42A', 'Q5942A'],
+    impresoras: [
+      'LaserJet 4240',
+      'LaserJet 4250',
+      'LaserJet 4250n',
+      'LaserJet 4250tn',
+      'LaserJet 4250dtn',
+      'LaserJet 4250dtnsl',
+      'LaserJet 4350',
+      'LaserJet 4350n',
+      'LaserJet 4350tn',
+      'LaserJet 4350dtn',
+      'LaserJet 4350dtnsl',
+    ],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c00218691.pdf',
+      'https://www.hp.com/my-en/shop/hp-42a-black-original-laserjet-toner-cartridge-q5942a.html',
+      'https://www.hp.com/latam/mx/hogar/productos/supplies/tintas/Guia_Compatibilidad_1005_HP_SRG_T2_esp.pdf',
+    ],
+    consultado: '2026-10-15',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['53A', 'Q7553A', '53X', 'Q7553X'],
+    impresoras: [
+      'LaserJet P2015',
+      'LaserJet P2015d',
+      'LaserJet P2015n',
+      'LaserJet P2015dn',
+      'LaserJet P2015x',
+      'LaserJet P2014',
+      'LaserJet M2727 MFP',
+      'LaserJet M2727nf MFP',
+      'LaserJet M2727nfs MFP',
+    ],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c00623611.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c01072069.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c00810215.pdf',
+      'https://www.hp.com/hk-en/shop/hp-53a-black-original-laserjet-toner-cartridge-q7553a.html',
+    ],
+    consultado: '2026-10-15',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['49A', 'Q5949A'],
+    impresoras: ['LaserJet 1160', 'LaserJet 1320', 'LaserJet 1320n', 'LaserJet 1320tn', 'LaserJet 1320nw', 'LaserJet 3390 All-in-One', 'LaserJet 3392 All-in-One'],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c00208219.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c00495173.pdf',
+      'https://www.hp.com/hk-en/shop/hp-49a-black-original-laserjet-toner-cartridge-q5949a.html',
+    ],
+    consultado: '2026-10-15',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['51A', 'Q7551A'],
+    impresoras: [
+      'LaserJet P3005',
+      'LaserJet P3005d',
+      'LaserJet P3005n',
+      'LaserJet P3005dn',
+      'LaserJet P3005x',
+      'LaserJet M3027 MFP',
+      'LaserJet M3027x MFP',
+      'LaserJet M3035 MFP',
+      'LaserJet M3035xs MFP',
+    ],
+    fuentes: ['https://h10032.www1.hp.com/ctg/Manual/c01057465.pdf', 'https://h10032.www1.hp.com/ctg/Manual/c00744962.pdf'],
+    consultado: '2026-10-14',
+  },
+  // El kit de recarga de las Neverstop. Las guías dicen «103A/143A»: el 143A es el
+  // mismo kit en otras regiones.
+  {
+    marca: 'HP',
+    cartuchos: ['103A', 'W1103A'],
+    impresoras: [
+      'Neverstop Laser 1000',
+      'Neverstop Laser 1000a',
+      'Neverstop Laser 1000n',
+      'Neverstop Laser 1000w',
+      'Neverstop Laser 1001nw',
+      'Neverstop Laser MFP 1200',
+      'Neverstop Laser MFP 1200a',
+      'Neverstop Laser MFP 1200n',
+      'Neverstop Laser MFP 1200w',
+      'Neverstop Laser MFP 1200nw',
+      'Neverstop Laser MFP 1201n',
+      'Neverstop Laser MFP 1202nw',
+      'Neverstop Laser MFP 1202w',
+    ],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c06318365.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c06318495.pdf',
+      'https://www.hp.com/mx-es/shop/kit-de-recarga-de-toner-hp-laser-103a-negro-w1103a.html',
+      'https://www.hp.com/my-en/shop/hp-103a-black-original-neverstop-laser-toner-reload-kit-w1103a.html',
+    ],
+    consultado: '2026-10-15',
+  },
+  // El tambor de las M102/M104 y las MFP M130/M132.
+  {
+    marca: 'HP',
+    cartuchos: ['19A', 'CF219A'],
+    impresoras: [
+      'LaserJet Pro M102',
+      'LaserJet Pro M102w',
+      'LaserJet Pro M104',
+      'LaserJet Pro M104w',
+      'LaserJet Pro MFP M130',
+      'LaserJet Pro MFP M130a',
+      'LaserJet Pro MFP M130nw',
+      'LaserJet Pro MFP M130fn',
+      'LaserJet Pro MFP M130fw',
+      'LaserJet Pro MFP M132',
+      'LaserJet Pro MFP M132a',
+      'LaserJet Pro MFP M132nw',
+      'LaserJet Pro MFP M132snw',
+      'LaserJet Pro MFP M132fn',
+      'LaserJet Pro MFP M132fp',
+      'LaserJet Pro MFP M132fw',
+    ],
+    fuentes: [
+      'https://h10032.www1.hp.com/ctg/Manual/c05208327.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c05172884.pdf',
+      'https://www.hp.com/au-en/shop/hp-19a-original-laserjet-imaging-drum-cf219a.html',
+    ],
+    consultado: '2026-10-15',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['79A', 'CF279A'],
+    impresoras: ['LaserJet Pro M12a', 'LaserJet Pro M12w', 'LaserJet Pro MFP M26a', 'LaserJet Pro MFP M26nw'],
+    fuentes: [
+      'https://www.hp.com/hk-en/shop/hp-79a-black-original-laserjet-toner-cartridge-cf279a.html',
+      'https://h10032.www1.hp.com/ctg/Manual/c05188828.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c05185468.pdf',
+    ],
+    consultado: '2026-10-15',
+  },
+  // Los cuatro colores nombran las mismas impresoras. La ficha de Hong Kong llama
+  // «Flow» a la M578dn y la M578f; su guía no, y así quedan.
+  {
+    marca: 'HP',
+    cartuchos: ['212A', 'W2120A', 'W2121A', 'W2122A', 'W2123A'],
+    impresoras: [
+      'Color LaserJet Enterprise M554dn',
+      'Color LaserJet Enterprise M555dn',
+      'Color LaserJet Enterprise M555x',
+      'Color LaserJet Enterprise MFP M578dn',
+      'Color LaserJet Enterprise MFP M578f',
+      'Color LaserJet Enterprise Flow MFP M578c',
+      'Color LaserJet Enterprise Flow MFP M578z',
+    ],
+    fuentes: [
+      'https://www.hp.com/hk-en/shop/hp-212a-black-original-laserjet-toner-cartridge-w2120a.html',
+      'https://h10032.www1.hp.com/ctg/Manual/c06637211.pdf',
+      'https://h10032.www1.hp.com/ctg/Manual/c06634385.pdf',
+    ],
+    consultado: '2026-10-15',
+  },
+  // Los láser color de HP: solo la tienda de HP Tailandia nombra los modelos uno
+  // a uno; las de Australia, Hong Kong o Arabia Saudí confirman la serie. En
+  // cada uno, los cuatro colores nombran las mismas impresoras.
+  {
+    marca: 'HP',
+    cartuchos: ['128A', 'CE320A', 'CE321A', 'CE322A', 'CE323A'],
+    impresoras: ['LaserJet Pro CP1525', 'LaserJet Pro CP1525n', 'LaserJet Pro CP1525nw', 'LaserJet Pro CM1415', 'LaserJet Pro CM1415fn', 'LaserJet Pro CM1415fnw'],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-128a-black-original-laserjet-toner-cartridge-ce320a.html',
+      'https://www.hp.com/au-en/shop/hp-128a-black-original-laserjet-toner-cartridge-ce320a.html',
+      'https://www.hp.com/sa-en/shop/hp-128a-black-original-laserjet-toner-cartridge-ce320a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['125A', 'CB540A', 'CB541A', 'CB542A', 'CB543A'],
+    impresoras: ['Color LaserJet CP1215', 'Color LaserJet CP1515n', 'Color LaserJet CP1518ni', 'Color LaserJet CM1312', 'Color LaserJet CM1312nfi'],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-125a-black-original-laserjet-toner-cartridge-cb540a.html',
+      'https://www.hp.com/sa-en/shop/hp-125a-black-original-laserjet-toner-cartridge-cb540a.html',
+      'https://www.hp.com/au-en/shop/hp-125a-black-original-laserjet-toner-cartridge-cb540a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['131A', 'CF210A', '131X', 'CF210X', 'CF211A', 'CF212A', 'CF213A'],
+    impresoras: [
+      'LaserJet Pro 200 color M251',
+      'LaserJet Pro 200 color M251n',
+      'LaserJet Pro 200 color M251nw',
+      'LaserJet Pro 200 color MFP M276',
+      'LaserJet Pro 200 color MFP M276n',
+      'LaserJet Pro 200 color MFP M276nw',
+    ],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-131a-black-original-laserjet-toner-cartridge-cf210a.html',
+      'https://www.hp.com/hk-en/shop/hp-131x-high-yield-black-original-laserjet-toner-cartridge-cf210x.html',
+      'https://www.hp.com/au-en/shop/hp-131a-black-original-laserjet-toner-cartridge-cf210a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  // Las M175 y la TopShot M275 solo las nombra la tienda de Tailandia; las demás,
+  // la serie CP1020.
+  {
+    marca: 'HP',
+    cartuchos: ['126A', 'CE310A', 'CE311A', 'CE312A', 'CE313A'],
+    impresoras: [
+      'LaserJet Pro CP1020',
+      'Color LaserJet CP1025',
+      'Color LaserJet CP1025nw',
+      'LaserJet Pro 100 color MFP M175a',
+      'LaserJet Pro 100 color MFP M175nw',
+      'TopShot LaserJet Pro M275',
+    ],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-126a-black-original-laserjet-toner-cartridge-ce310a.html',
+      'https://www.hp.com/au-en/shop/hp-126a-black-original-laserjet-toner-cartridge-ce310a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['130A', 'CF350A', 'CF351A', 'CF352A', 'CF353A'],
+    impresoras: ['Color LaserJet Pro MFP M176', 'Color LaserJet Pro MFP M176n', 'Color LaserJet Pro MFP M177', 'Color LaserJet Pro MFP M177fw'],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-130a-black-original-laserjet-toner-cartridge-cf350a.html',
+      'https://www.hp.com/au-en/shop/hp-130a-black-original-laserjet-toner-cartridge-cf350a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  {
+    marca: 'HP',
+    cartuchos: ['204A', 'CF510A', 'CF511A', 'CF512A', 'CF513A'],
+    impresoras: [
+      'Color LaserJet Pro M154',
+      'Color LaserJet Pro M154a',
+      'Color LaserJet Pro M154nw',
+      'Color LaserJet Pro MFP M180',
+      'Color LaserJet Pro MFP M180n',
+      'Color LaserJet Pro MFP M180nw',
+      'Color LaserJet Pro MFP M181fw',
+    ],
+    fuentes: [
+      'https://www.hp.com/th-en/shop/hp-204a-black-original-laserjet-toner-cartridge-cf510a.html',
+      'https://www.hp.com/hk-en/shop/ink-toner.html?supply-related=hp-color-laserjet-pro-mfp-m180nw-t6b74a-',
+      'https://www.hp.com/au-en/shop/hp-204a-black-original-laserjet-toner-cartridge-cf510a.html',
+    ],
+    consultado: '2026-10-14',
+  },
+  // HP México, que vende hoy los Samsung. Fuera «ML-2541» y «ML-2645», que nombra
+  // esa ficha pero no son modelos de Samsung: erratas, y crearían impresoras falsas.
+  {
+    marca: 'Samsung',
+    cartuchos: ['MLT-D105S'],
+    impresoras: ['ML-1910', 'ML-1915', 'ML-2525', 'ML-2525W', 'ML-2580N', 'ML-2540', 'ML-2545', 'SF-650', 'SF-650P', 'SCX-4600', 'SCX-4623F', 'SCX-4623FN', 'SCX-4623FW'],
+    fuentes: [
+      'https://www.hp.com/mx-es/shop/cartucho-de-toner-mlt-d105s-negro-samsung-su779a.html',
+      'https://www.samsung.com/us/system/consumer/product/sc/x4/62/scx4623fwxaa/SCX_4623FW.pdf',
+    ],
+    consultado: '2026-10-15',
+  },
+  // Las botellas Epson: la unión de lo que dicen las webs de Epson de cada país.
+  // Fuera del 664 las L606, L655, L656 y L1455: usan el 664 solo en COLOR (su
+  // negro es otro), y aquí el T664 es UN cartucho con las cuatro botellas:
+  // enlazarlo les ofrecería un negro que no les sirve. Y la L850, que alguna web
+  // pone en el negro del 664 pero es del 673 en todos los colores.
+  {
+    marca: 'Epson',
+    cartuchos: ['T664', 'T664120', 'T664220', 'T664320', 'T664420'],
+    impresoras: [
+      'EcoTank L110',
+      'EcoTank L120',
+      'EcoTank L121',
+      'L200',
+      'EcoTank L210',
+      'EcoTank L220',
+      'EcoTank L310',
+      'L350',
+      'EcoTank L355',
+      'EcoTank L365',
+      'EcoTank L375',
+      'EcoTank L380',
+      'EcoTank L395',
+      'EcoTank L396',
+      'EcoTank L455',
+      'EcoTank L475',
+      'EcoTank L495',
+      'EcoTank L555',
+      'EcoTank L565',
+      'EcoTank L575',
+      'EcoTank L1300',
+      'Expression ET-2550',
+    ],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664120-AL',
+      'https://epson.com.pe/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664120-AL',
+      'https://epson.com.co/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664120-AL',
+      'https://epson.com.ve/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664',
+      'https://epson.cl/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664120-AL',
+      'https://epson.com.ar/Para-el-hogar/Tintas/Botellas-de-Tinta-Epson-T664/i/T664120-AL',
+    ],
+    consultado: '2026-10-15',
+  },
+  {
+    marca: 'Epson',
+    cartuchos: ['T673', 'T673120', 'T673220', 'T673320', 'T673420', 'T673520', 'T673620'],
+    impresoras: ['EcoTank L800', 'EcoTank L805', 'EcoTank L810', 'EcoTank L850', 'EcoTank L1800'],
+    fuentes: [
+      'https://epson.com.mx/Para-el-hogar/Tintas/Botella-de-Tinta-Epson-T673/i/T673',
+      'https://epson.com.co/Para-el-hogar/Tintas/Botella-de-Tinta-Epson-T673/i/T673120-AL',
+      'https://epson.cl/Para-el-hogar/Tintas/Botella-de-Tinta-Epson-673/i/T673',
+      'https://epson.com.ve/Para-el-hogar/Tintas/Botella-de-Tinta-Epson-T673/i/T673',
+    ],
+    consultado: '2026-10-15',
   },
 ];
 
