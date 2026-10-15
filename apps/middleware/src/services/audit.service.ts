@@ -39,6 +39,10 @@ export type AuditAction =
   /// `sync.partners` porque no es lo mismo copiar un cliente que conceder
   /// acceso a la facturación de una cartera entera.
   | 'sync.vendedores'
+  /// Acceso al panel para alguien del personal que no es vendedor (#81):
+  /// `dar-acceso-personal`. Aparte de `sync.vendedores` porque lo concede una
+  /// persona a mano, no la cartera que Odoo le ve.
+  | 'personal.acceso'
   /// Una cuenta se apaga porque Odoo dice que esa persona está de baja (#89).
   /// Va aparte de `user.role_changed` porque no es un cambio de permisos: es
   /// retirar el acceso entero, y es lo primero que se mira cuando alguien
