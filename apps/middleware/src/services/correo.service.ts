@@ -76,11 +76,64 @@ export async function enviarCorreo(c: Correo): Promise<{ enviado: boolean }> {
     logger.info({ correo: c.plantilla }, 'correo enviado');
     return { enviado: true };
   } catch (error) {
-    // El mensaje de error del SMTP no lleva el cuerpo, pero puede llevar la
-    // dirección («550 user unknown <x@y>»): solo el código.
-    const codigo = (error as { code?: string; responseCode?: number }).responseCode ?? (error as { code?: string }).code ?? 'desconocido';
-    logger.error({ correo: c.plantilla, codigo }, 'fallo al enviar el correo');
+    const { codigo, motivo } = motivoSmtp(error);
+    logger.error({ correo: c.plantilla, codigo, motivo }, 'fallo al enviar el correo');
     return { enviado: false };
+  }
+}
+
+/**
+ * Por qué rechazó el SMTP, sin datos personales.
+ *
+ * Solo con el código no se podía arreglar nada: «535» lo mismo es una
+ * contraseña de aplicación revocada que unas comillas pegadas en EasyPanel, y
+ * Gmail lo explica en la respuesta («5.7.8 Username and Password not
+ * accepted»). La respuesta no lleva el cuerpo, pero PUEDE llevar una dirección
+ * («550 user unknown <x@y>»), así que las direcciones se tachan y se corta.
+ */
+export function motivoSmtp(error: unknown): { codigo: number | string; motivo: string | null } {
+  const e = error as { code?: string; responseCode?: number; response?: string };
+  const codigo = e.responseCode ?? e.code ?? 'desconocido';
+  const motivo = typeof e.response === 'string'
+    ? e.response
+        .replace(/<?[^\s<>@]+@[^\s<>@]+>?/g, '<dirección>')
+        // Gmail parte la respuesta en líneas que repiten el código: «535-5.7.8 … 535 5.7.8 …».
+        .replace(/\s*\n\s*\d{3}[ -]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200)
+    : null;
+  return { codigo, motivo };
+}
+
+/** Qué suele significar un rechazo del SMTP de Google, para quien lo tiene que arreglar. */
+export function pistaSmtp(codigo: number | string, motivo: string | null): string | null {
+  if (codigo === 535 || /5\.7\.8|BadCredentials/i.test(motivo ?? '')) {
+    return 'Google no acepta el usuario o la contraseña. SMTP_PASSWORD tiene que ser una CONTRASEÑA DE APLICACIÓN de SMTP_USER (con verificación en dos pasos activada), no la de la cuenta. Google las anula si cambia la contraseña de la cuenta: crea una nueva y pégala sin comillas.';
+  }
+  if (codigo === 534 || /5\.7\.9|WebLoginRequired|ApplicationSpecificPassword/i.test(motivo ?? '')) {
+    return 'Google pide una contraseña de aplicación: activa la verificación en dos pasos en SMTP_USER y crea una.';
+  }
+  if (codigo === 'ECONNECTION' || codigo === 'ETIMEDOUT' || codigo === 'ESOCKET') {
+    return 'No se llega al servidor: revisa SMTP_HOST y SMTP_PORT (smtp.gmail.com, 587).';
+  }
+  if (codigo === 'EENVELOPE' || codigo === 553 || codigo === 550) {
+    return 'El remitente o el destinatario no valen: SMTP_FROM tiene que ser SMTP_USER o un alias suyo.';
+  }
+  return null;
+}
+
+/**
+ * Conecta y se autentica, sin enviar nada. Para `probar-correo`: saber si el SMTP
+ * vale sin esperar a que salte una alerta.
+ */
+export async function verificarCorreo(): Promise<{ ok: true } | { ok: false; codigo: number | string; motivo: string | null; pista: string | null }> {
+  try {
+    await (transporteReal() as unknown as { verify(): Promise<unknown> }).verify();
+    return { ok: true };
+  } catch (error) {
+    const { codigo, motivo } = motivoSmtp(error);
+    return { ok: false, codigo, motivo, pista: pistaSmtp(codigo, motivo) };
   }
 }
 
