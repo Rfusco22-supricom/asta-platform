@@ -1,4 +1,4 @@
-import { esAlertaDeKiosco, evaluarTodo, REGLA_KIOSCOS, type Alerta } from './alerts.service.js';
+import { esAlertaAvisable, evaluarTodo, REGLAS_AVISABLES, type Alerta } from './alerts.service.js';
 import { cargarEstados, decidirAvisos, guardarEstados, todoComoNuevo, type Aviso, type EstadoAlerta, type TipoAviso } from './avisosAlertas.service.js';
 import { correoConfigurado, enviarCorreo, plantillaAlertas } from './correo.service.js';
 
@@ -147,13 +147,13 @@ export interface ResultadoAvisos {
  */
 export async function avisar(todas: Alerta[], fallos: string[]): Promise<ResultadoAvisos> {
   /*
-   * Solo se avisa de los kioscos que dejan de funcionar (2026-10-15): el resto
-   * de alertas no se manda a nadie. Se filtra también la memoria de lo avisado,
-   * para que las alertas viejas de otras reglas que quedaron activas en
-   * `alert_states` no salgan ahora como «resueltas».
+   * Solo se avisa de las tablets que dejan de funcionar y de los accesos
+   * cruzados (2026-10-15): el resto de alertas no se manda a nadie. Se filtra
+   * también la memoria de lo avisado, para que las alertas viejas de otras
+   * reglas que quedaron activas en `alert_states` no salgan como «resueltas».
    */
-  const alertas = todas.filter((a) => esAlertaDeKiosco(a.id));
-  const hayReglasSinEvaluar = fallos.some((f) => f.startsWith(`${REGLA_KIOSCOS}:`));
+  const alertas = todas.filter((a) => esAlertaAvisable(a.id));
+  const hayReglasSinEvaluar = fallos.some((f) => REGLAS_AVISABLES.some((r) => f.startsWith(`${r}:`)));
   const ahora = new Date();
   const recordatorioMs = Number(process.env.ALERTAS_RECORDATORIO_HORAS ?? 4) * 3600_000;
   const errores: string[] = [];
@@ -163,7 +163,7 @@ export async function avisar(todas: Alerta[], fallos: string[]): Promise<Resulta
   let escribir: EstadoAlerta[] = [];
   let conMemoria = true;
   try {
-    ({ avisos, escribir } = decidirAvisos(alertas, (await cargarEstados()).filter((e) => esAlertaDeKiosco(e.id)), { ahora, recordatorioMs, hayReglasSinEvaluar }));
+    ({ avisos, escribir } = decidirAvisos(alertas, (await cargarEstados()).filter((e) => esAlertaAvisable(e.id)), { ahora, recordatorioMs, hayReglasSinEvaluar }));
   } catch {
     // Sin poder leer qué se avisó, se avisa de todo: repetir molesta, callar no.
     conMemoria = false;
