@@ -21,6 +21,11 @@ cron cada pocos minutos.
 
 ## Dónde llegan
 
+> **Solo se envían las de kiosco (desde el 2026-10-15).** A los canales solo va
+> [`kiosco-mudo`](#kiosco-mudo): un kiosco que dejó de funcionar. Las demás reglas
+> de esta página se siguen evaluando y se ven en el log de cada pasada y en
+> `pnpm alertas`, pero no le llegan a nadie.
+
 **Por correo**, a las direcciones de `ALERTAS_CORREO`, con el SMTP de #53.
 Opcionalmente también a un webhook (`ALERTAS_WEBHOOK_URL`). Sin ninguno de los
 dos, la salida estándar y el código de salida son el canal.
@@ -464,12 +469,20 @@ IP que no había aparecido nunca, a la 3.
 
 ## `kiosco-mudo`
 
-**Un kiosco lleva rato sin dar señales en horario laboral.**
+**Un kiosco dejó de funcionar: lleva 30 minutos de tienda abierta sin dar
+señales.** Es la única alerta que se envía. Sale una por tablet, con su nombre y
+su tienda, y otra cuando vuelve («RESUELTA»).
 
-Fuera de horario el silencio es lo normal y la alerta no salta: avisar con la
-tienda cerrada entrena a la gente a ignorarla. La franja y la zona horaria se
-configuran con `ALERTA_KIOSCO_ABRE`, `ALERTA_KIOSCO_CIERRA` y
-`ALERTA_KIOSCO_TZ` (por defecto `America/Caracas`).
+Las tablets mandan un latido cada 10 minutos mientras la app está abierta, así
+que una sin clientes no salta. El silencio se cuenta **solo con la tienda
+abierta**: una tablet que se apaga al cerrar no salta al abrir al día siguiente
+(salta si a la media hora de abrir sigue sin encenderse), y una que se cayó por
+la tarde sigue activa de noche, sin darse por resuelta al cerrar.
+
+El horario se configura con `ALERTA_KIOSCO_ABRE` (8), `ALERTA_KIOSCO_CIERRA`
+(19), `ALERTA_KIOSCO_DIAS` (`1,2,3,4,5,6`: lunes a sábado; 7 es domingo) y
+`ALERTA_KIOSCO_TZ` (`America/Caracas`). Las tablets que nunca se conectaron
+(recién dadas de alta) no cuentan.
 
 Casi siempre es la tablet: sin red, apagada, o la aplicación cerrada. Alguien de
 la tienda tiene que mirarla físicamente.
@@ -496,7 +509,8 @@ un mes de tráfico real.
 | `ALERTA_KEY_401` | 10 | Rechazos de una misma key |
 | `ALERTA_KEY_429_MINUTOS` | 5 | Minutos distintos con 429 de una misma key |
 | `ALERTA_ODOO_CALLS` | 5 | RPC por petición |
-| `ALERTA_KIOSCO_MIN` | 30 | Minutos sin señal de un kiosco |
+| `ALERTA_KIOSCO_MIN` | 30 | Minutos de tienda abierta sin señal de un kiosco |
+| `ALERTA_KIOSCO_DIAS` | 1,2,3,4,5,6 | Días con la tienda abierta (1 = lunes, 7 = domingo) |
 
 Una alerta mal calibrada se silencia, y **una alerta silenciada es peor que
 ninguna**: da sensación de cobertura donde no la hay.

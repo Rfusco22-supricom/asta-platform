@@ -32,6 +32,9 @@ import { avisar, consultarSalud, type ResultadoAvisos } from '../services/pasada
  *   · `ALERTAS_WEBHOOK_URL`: cualquier webhook que acepte `{"text": "..."}`
  *     (Slack, Discord, Google Chat).
  *
+ * Desde el 2026-10-15 a los canales solo van las de kiosco (un kiosco que dejó
+ * de funcionar). Las demás salen aquí, en la salida estándar, y nada más.
+ *
  * A los canales NO va todo en cada pasada: solo lo que empieza, cambia de
  * gravedad o se resuelve, y un recordatorio cada `ALERTAS_RECORDATORIO_HORAS`
  * (4 por defecto) de lo que sigue. Ver `avisosAlertas.service.ts`. La salida
@@ -121,7 +124,7 @@ async function main(): Promise<void> {
     console.log('');
   }
 
-  informarAvisos(await avisar(alertas, fallos.length > 0));
+  informarAvisos(await avisar(alertas, fallos));
   await prisma.$disconnect();
 
   const plural = (n: number, una: string, varias: string) =>

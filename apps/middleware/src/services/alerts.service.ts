@@ -9,6 +9,10 @@ import { prisma } from '../config/prisma.js';
  * Quién se entera y por dónde es problema de `scripts/alertas.ts`, que es lo que
  * corre el cron.
  *
+ * Desde el 2026-10-15 solo se ENVÍAN las de kiosco (`kiosco-mudo`): un kiosco
+ * que dejó de funcionar. Las demás se evalúan y se ven en el log y en
+ * `pnpm alertas`, pero no le llegan a nadie. Ver `esAlertaDeKiosco`.
+ *
  * Están separados a propósito. Una alerta que solo existe dentro del middleware
  * muere con él, y "el middleware está caído" es justo la que más importa. Por
  * eso quien evalúa es un proceso aparte que sigue vivo aunque el servidor no.
@@ -454,43 +458,99 @@ export async function reglaNMasUno(): Promise<Alerta | null> {
 }
 
 /**
- * Un kiosco callado en horario laboral.
+ * Las alertas de kiosco son las ÚNICAS que se envían (2026-10-15).
  *
- * Fuera de horario el silencio es lo normal —la tienda está cerrada— y avisar
- * entonces entrena a la gente a ignorar la alerta. La franja y la zona horaria
- * son configurables porque la tienda no está en UTC.
+ * El resto de reglas se siguen evaluando —salen en el log de cada pasada y en
+ * `pnpm alertas`—, pero a nadie le llega un correo por ellas: lo que la tienda
+ * necesita saber es que un kiosco dejó de funcionar. Ver `avisar`.
  */
-export async function reglaKioscos(ahora = new Date()): Promise<Alerta | null> {
-  const zona = process.env.ALERTA_KIOSCO_TZ ?? 'America/Caracas';
-  const abre = num('ALERTA_KIOSCO_ABRE', 8);
-  const cierra = num('ALERTA_KIOSCO_CIERRA', 19);
+export const REGLA_KIOSCOS = 'kioscos';
+const PREFIJO_KIOSCO = 'kiosco-mudo:';
+export const esAlertaDeKiosco = (id: string): boolean => id.startsWith(PREFIJO_KIOSCO);
 
-  const hora = Number(
-    new Intl.DateTimeFormat('es-VE', {
-      timeZone: zona,
-      hour: 'numeric',
-      hour12: false,
-    }).format(ahora),
-  );
+export interface HorarioTienda {
+  zona: string;
+  abre: number;
+  cierra: number;
+  /** Días con la tienda abierta, 1 = lunes … 7 = domingo. */
+  dias: Set<number>;
+}
 
-  if (hora < abre || hora >= cierra) return null;
+export function horarioTienda(): HorarioTienda {
+  const dias = (process.env.ALERTA_KIOSCO_DIAS ?? '1,2,3,4,5,6')
+    .split(',')
+    .map((d) => Number(d.trim()))
+    .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7);
+  return {
+    zona: process.env.ALERTA_KIOSCO_TZ ?? 'America/Caracas',
+    abre: num('ALERTA_KIOSCO_ABRE', 8),
+    cierra: num('ALERTA_KIOSCO_CIERRA', 19),
+    dias: new Set(dias.length > 0 ? dias : [1, 2, 3, 4, 5, 6, 7]),
+  };
+}
 
-  const mudos = await prisma.kioskDevice.findMany({
-    where: { isActive: true, lastSeenAt: { lt: haceMinutos(UMBRALES.kioscoMin) } },
-    select: { label: true, lastSeenAt: true },
-    take: 10,
+const DIA_SEMANA: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+
+/**
+ * Minutos con la tienda abierta entre `desde` y `hasta`, contados hasta `tope`.
+ *
+ * El silencio de un kiosco se mide en tiempo de tienda abierta, no de reloj.
+ * Así, una tablet que se apaga al cerrar no salta a primera hora del día
+ * siguiente (lleva cero minutos «callada» al abrir), y una que dejó de
+ * funcionar a media tarde sigue activa durante la noche: ni se da por resuelta
+ * al cerrar ni se avisa otra vez al abrir.
+ *
+ * Recorre de minuto en minuto hacia atrás y para en cuanto llega al tope; lo
+ * más largo es un cierre de fin de semana. Nunca más de 14 días.
+ */
+export function minutosAbiertos(desde: Date, hasta: Date, tope: number, h: HorarioTienda = horarioTienda()): number {
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: h.zona, weekday: 'short', hour: 'numeric', hourCycle: 'h23' });
+  const limite = Math.max(desde.getTime(), hasta.getTime() - 14 * 24 * 3_600_000);
+  let n = 0;
+  for (let t = hasta.getTime() - 60_000; t >= limite && n < tope; t -= 60_000) {
+    const partes = fmt.formatToParts(new Date(t));
+    const dia = DIA_SEMANA[partes.find((p) => p.type === 'weekday')?.value ?? ''] ?? 0;
+    const hora = Number(partes.find((p) => p.type === 'hour')?.value) % 24;
+    if (h.dias.has(dia) && hora >= h.abre && hora < h.cierra) n++;
+  }
+  return n;
+}
+
+/**
+ * Un kiosco que dejó de funcionar: lleva `ALERTA_KIOSCO_MIN` minutos de tienda
+ * abierta sin dar señales.
+ *
+ * Las tablets mandan un latido cada 10 minutos mientras la app está abierta
+ * (`/api/v1/kiosk/latido`), así que una sin clientes no queda callada; una
+ * apagada, sin red o con la app cerrada, sí.
+ *
+ * Una alerta POR KIOSCO, no una para todos: si cae una segunda tablet mientras
+ * la primera sigue caída, es un aviso nuevo; y cada una avisa por su lado
+ * cuando vuelve. Las tablets que nunca se conectaron (recién dadas de alta) no
+ * cuentan: todavía no están instaladas.
+ */
+export async function reglaKioscos(ahora = new Date()): Promise<Alerta[]> {
+  const h = horarioTienda();
+  const umbral = UMBRALES.kioscoMin;
+  const candidatos = await prisma.kioskDevice.findMany({
+    where: { isActive: true, lastSeenAt: { lt: new Date(ahora.getTime() - umbral * 60_000) } },
+    select: { id: true, label: true, storeLocation: true, lastSeenAt: true },
+    orderBy: { label: 'asc' },
+    take: 50,
   });
 
-  if (mudos.length === 0) return null;
-
-  return alerta(
-    'kiosco-mudo',
-    'aviso',
-    'Kioscos sin dar señales en horario laboral',
-    mudos
-      .map((k) => `${k.label}: sin señal desde ${k.lastSeenAt?.toISOString() ?? 'nunca'}`)
-      .join(' · '),
-  );
+  const hora = new Intl.DateTimeFormat('es-VE', { timeZone: h.zona, dateStyle: 'short', timeStyle: 'short' });
+  return candidatos
+    .filter((k) => k.lastSeenAt && minutosAbiertos(k.lastSeenAt, ahora, umbral, h) >= umbral)
+    .map((k) => ({
+      id: `${PREFIJO_KIOSCO}${k.id}`,
+      severidad: 'critica' as const,
+      titulo: `Kiosco sin funcionar: ${k.label} (${k.storeLocation})`,
+      detalle:
+        `Sin señal desde ${hora.format(k.lastSeenAt!)}. ` +
+        'Está apagado, sin red o con la aplicación cerrada: alguien de la tienda tiene que mirarlo.',
+      runbook: `${RUNBOOKS}#kiosco-mudo`,
+    }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -552,7 +612,7 @@ export async function evaluarTodo(salud: EstadoSalud): Promise<{
   return { alertas: [...deSalud.filter((a): a is Alerta => a !== null), ...alertas], fallos };
 }
 
-export type ReglaConNombre = [string, () => Promise<Alerta | null>];
+export type ReglaConNombre = [string, () => Promise<Alerta | Alerta[] | null>];
 
 /**
  * Ejecuta una lista de reglas aislando los fallos de cada una.
@@ -572,7 +632,8 @@ export async function ejecutarReglas(reglas: ReglaConNombre[]): Promise<{
   for (const [nombre, fn] of reglas) {
     try {
       const a = await fn();
-      if (a) alertas.push(a);
+      if (Array.isArray(a)) alertas.push(...a);
+      else if (a) alertas.push(a);
     } catch (error) {
       /*
        * Recortado y en una sola línea.
@@ -612,7 +673,7 @@ export function reglasDeBase(): ReglaConNombre[] {
     ['key-429', regla429PorKey],
     ['tasa-5xx', regla5xx],
     ['n+1', reglaNMasUno],
-    ['kioscos', () => reglaKioscos()],
+    [REGLA_KIOSCOS, () => reglaKioscos()],
   ];
 }
 
