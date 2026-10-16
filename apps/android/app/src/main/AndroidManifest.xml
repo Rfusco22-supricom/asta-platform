@@ -10,7 +10,7 @@
     -->
     <application
         android:label="ASTA"
-        android:icon="@drawable/asta_logo"
+        android:icon="@drawable/asta_icono"
         android:theme="@style/Tema.Kiosco"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="false">
