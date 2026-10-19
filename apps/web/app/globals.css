@@ -1404,7 +1404,9 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
   }
 
   .pestana {
-    flex: 1 1 0;
+    /* El ancho parte del texto: «Inicio» y «Más» ceden lo que les sobra a
+       «Vendedores», que con anchos iguales se cortaba en los móviles de 375 px. */
+    flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -3557,6 +3559,21 @@ a.enlace-ficha:hover { color: var(--primario); }
   .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'serie' 'oportunidad' 'productos' 'vendedores' 'clientes'; }
 }
 
+/* Las cinco cifras del Inicio de administración no caben parejas en 3 ni en 2
+   columnas: quedaba una fila con hueco (3 + 2) o una tarjeta sola (2 + 2 + 1).
+   En una rejilla de 6, cada tarjeta ocupa 2 y las de la última fila se
+   reparten el ancho. El del vendedor tiene cuatro y no lo necesita. */
+@media (max-width: 1200px) and (min-width: 761px) {
+  .dash:not(.dash-vendedor) > .dash-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .dash:not(.dash-vendedor) > .dash-kpis > * { grid-column: span 2; }
+  .dash:not(.dash-vendedor) > .dash-kpis > :nth-last-child(2):nth-child(3n + 1),
+  .dash:not(.dash-vendedor) > .dash-kpis > :last-child:nth-child(3n + 2) { grid-column: span 3; }
+  .dash:not(.dash-vendedor) > .dash-kpis > :last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .dash:not(.dash-vendedor) > .dash-kpis > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    Navegación en curso
    ══════════════════════════════════════════════════════════════════════════
@@ -4004,3 +4021,27 @@ body:has(.enlace-cargando) .contenido {
 }
 @keyframes contador-entra { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .nav-contador { animation: none; } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Accesos → Personal en el móvil: cada persona en su bloque.
+   La tabla de tres columnas no cabía en 375 px: el rol salía cortado y
+   «Quitar acceso» quedaba fuera de la vista hasta deslizar de lado. Arriba la
+   persona; debajo, el rol y la acción en la misma línea.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .tabla-personal thead { display: none; }
+  .tabla-personal, .tabla-personal tbody { display: block; }
+  .tabla-personal tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabla-personal tr:last-child { border-bottom: 0; }
+  .tabla-personal td { display: block; padding: 0; border: 0; min-width: 0; }
+  .tabla-personal td:first-child { grid-column: 1 / -1; }
+  .tabla-personal td:nth-child(2) .input { width: 100%; }
+  .tabla-personal td.num { text-align: right; }
+}
