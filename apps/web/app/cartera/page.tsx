@@ -41,6 +41,9 @@ export default async function CarteraPage() {
     // Odoo caído no puede dar pantalla en blanco: el vendedor tiene que
     // entender qué pasa y si es culpa suya.
     const esContrato = error instanceof ContractError;
+    // Un cliente que escribe /cartera recibe 403: el mismo aviso que el resto
+    // de pantallas de vendedor, no la ayuda de un fallo de conexión.
+    const esPermiso = error instanceof ApiError && error.status === 403;
     const mensaje =
       error instanceof ApiError
         ? error.message
@@ -52,18 +55,21 @@ export default async function CarteraPage() {
       <Marco usuario={sesion.usuario} titulo="Mi cartera">
         <div className="notice error">
           <h2>
-            {esContrato ? 'El panel y la API no se entienden' : 'No se pudieron cargar los datos'}
+            {esPermiso
+              ? 'Esta pantalla es para vendedores'
+              : esContrato
+                ? 'El panel y la API no se entienden'
+                : 'No se pudieron cargar los datos'}
           </h2>
           <p>{mensaje}</p>
-          {esContrato ? (
+          {esPermiso ? null : esContrato ? (
             <p style={{ marginTop: 10 }}>
               Es un fallo de programación, no de conexión: el middleware está devolviendo una forma
               distinta a la que declara el contrato.
             </p>
           ) : (
             <p style={{ marginTop: 10 }}>
-              Comprueba que el middleware esté arriba con <code>pnpm dev:middleware</code> y que
-              Odoo responda.
+              Puede que Odoo no esté respondiendo en este momento. Vuelve a intentarlo en unos minutos.
             </p>
           )}
         </div>
