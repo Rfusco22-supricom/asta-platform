@@ -43,6 +43,8 @@ export const dynamic = 'force-dynamic';
 type Estado = 'ok' | 'pendiente' | 'alerta';
 
 const n = (x: number) => x.toLocaleString('es-VE');
+/** «1 fusión», «3 fusiones»: la cifra con su palabra en singular o plural. */
+const cuantos = (x: number, uno: string, varios: string) => `${n(x)} ${x === 1 ? uno : varios}`;
 
 function Tarjeta({
   titulo,
@@ -155,7 +157,7 @@ async function PorValidar({ token }: { token: string }) {
           'No queda ningún caso claro pendiente.'
         ) : (
           <>
-            Casos claros que se validan con un clic: {n(f)} de listas oficiales, {n(a)} productos ASTA y {n(o)} originales.
+            Casos claros que se validan con un clic: {n(f)} de listas oficiales, {cuantos(a, 'producto', 'productos')} ASTA y {cuantos(o, 'original', 'originales')}.
           </>
         )
       }
@@ -249,7 +251,7 @@ async function Calidad({ token }: { token: string }) {
       detalle={
         alta + media === 0
           ? 'Nada que mueva dinero ni rompa nada.'
-          : `${n(alta)} mueven dinero (clientes o facturas sin vendedor) y ${n(media)} rompen algo (RIF, correos).`
+          : `${n(alta)} ${alta === 1 ? 'mueve' : 'mueven'} dinero (clientes o facturas sin vendedor) y ${n(media)} ${media === 1 ? 'rompe' : 'rompen'} algo (RIF, correos).`
       }
       href={href}
       accion="Corregir en Odoo"
@@ -267,11 +269,11 @@ async function Duplicados({ token }: { token: string }) {
     <Tarjeta
       titulo="Clientes duplicados"
       estado={partidos === 0 ? 'ok' : 'pendiente'}
-      cifra={partidos === 0 ? 'Ninguno' : `${n(partidos)} fusiones`}
+      cifra={partidos === 0 ? 'Ninguno' : cuantos(partidos, 'fusión', 'fusiones')}
       detalle={
         partidos === 0
           ? 'Ningún cliente tiene la facturación repartida.'
-          : `${moneyCompact(montoPartido)} repartidos entre fichas.${noventa && noventa.fusiones > 0 ? ` Con ${n(noventa.fusiones)} se arregla el 90 %.` : ''}`
+          : `${moneyCompact(montoPartido)} repartidos entre fichas.${noventa && noventa.fusiones > 0 ? ` Con ${cuantos(noventa.fusiones, 'fusión', 'fusiones')} se arregla el 90 %.` : ''}`
       }
       href={href}
       accion="Ver por dónde empezar"
@@ -289,11 +291,11 @@ async function Accesos({ token }: { token: string }) {
     <Tarjeta
       titulo="Sin acceso"
       estado={vendedores > 0 ? 'alerta' : clientes > 0 ? 'pendiente' : 'ok'}
-      cifra={vendedores > 0 ? `${n(vendedores)} vendedores` : n(clientes)}
+      cifra={vendedores > 0 ? cuantos(vendedores, 'vendedor', 'vendedores') : n(clientes)}
       detalle={
         vendedores > 0
-          ? `Trabajan hoy y no pueden ver su cartera. Además, ${n(clientes)} cuentas de cliente esperan su invitación.`
-          : `${n(clientes)} cuentas de cliente esperan su invitación.`
+          ? `${vendedores === 1 ? 'Trabaja hoy y no puede' : 'Trabajan hoy y no pueden'} ver su cartera. Además, ${cuantos(clientes, 'cuenta de cliente espera', 'cuentas de cliente esperan')} su invitación.`
+          : `${cuantos(clientes, 'cuenta de cliente espera', 'cuentas de cliente esperan')} su invitación.`
       }
       href={vendedores > 0 ? '/admin/agentes' : href}
       accion="Invitar"

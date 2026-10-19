@@ -118,7 +118,7 @@ export function Personal({ conAcceso, yo }: { conAcceso: PersonaConAcceso[]; yo:
           <strong> administrador</strong> lo ve y lo gestiona todo; el <strong>vendedor</strong>, su cartera.
         </p>
         <div className="table-wrap" style={{ border: 0 }}>
-          <table>
+          <table className="tabla-personal">
             <thead>
               <tr>
                 <th>Persona</th>
@@ -218,7 +218,7 @@ export function Personal({ conAcceso, yo }: { conAcceso: PersonaConAcceso[]; yo:
           </div>
         ) : resultados ? (
           <div className="table-wrap" style={{ border: 0 }}>
-            <table>
+            <table className="tabla-personal">
               <thead>
                 <tr>
                   <th>Usuario de Odoo</th>
