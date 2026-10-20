@@ -155,7 +155,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
             Ver el reporte completo →
           </Link>
         </div>
-        <Serie puntos={r.serieMensual} />
+        <Serie puntos={r.serieMensual} sede={sede} />
       </section>
 
       <Ranking

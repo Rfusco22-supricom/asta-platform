@@ -5,6 +5,7 @@ import { Sedes } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
 import { Cifra, type ColorCifra, type IconoCifra } from './Cifras';
+import { Serie } from './SerieMeses';
 
 /**
  * El reporte, dibujado.
@@ -42,25 +43,7 @@ function Metrica({
   return <Cifra icono={icono} color={color} etiqueta={etiqueta} valor={valor} nota={nota} tono={tono === 'mal' ? 'alerta' : tono === 'bien' ? 'sube' : undefined} />;
 }
 
-const MESES = [
-  'ene',
-  'feb',
-  'mar',
-  'abr',
-  'may',
-  'jun',
-  'jul',
-  'ago',
-  'sep',
-  'oct',
-  'nov',
-  'dic',
-];
-
-export function etiquetaMes(periodo: string): string {
-  const [anio, mes] = periodo.split('-');
-  return `${MESES[Number(mes) - 1] ?? mes} ${anio.slice(2)}`;
-}
+export { etiquetaMes } from '@/lib/meses';
 
 /**
  * El importe con una barra detrás, proporcional al mayor de la tabla: se ve de
@@ -78,41 +61,7 @@ export function Proporcion({ valor, maximo }: { valor: number; maximo: number })
   );
 }
 
-/**
- * La serie mensual, en barras.
- *
- * Sin librería de gráficas: son doce divs con una altura en porcentaje. Meter
- * 90 kB de JavaScript en el navegador para dibujar doce rectángulos no sale a
- * cuenta, y así la pantalla funciona igual sin hidratar.
- *
- * Los meses en cero se dibujan igual, con una barra de altura mínima: un mes sin
- * ventas es justo lo que hay que ver, y omitirlo dibujaría una línea que sube
- * cuando en realidad no se vendió nada.
- */
-export function Serie({ puntos }: { puntos: Reporte['serieMensual'] }) {
-  const maximo = Math.max(...puntos.map((p) => p.monto), 1);
-
-  return (
-    <div className="serie">
-      {puntos.map((p) => {
-        const alto = Math.max((p.monto / maximo) * 100, p.monto > 0 ? 2 : 0);
-        return (
-          <div className="serie-col" key={p.periodo}>
-            <span className="serie-monto">{p.monto > 0 ? moneyCompact(p.monto) : '—'}</span>
-            <div className="serie-pista">
-              <div
-                className={p.monto > 0 ? 'serie-barra' : 'serie-barra vacia'}
-                style={{ height: `${alto}%` }}
-                title={`${money(p.monto)} · ${p.facturas} facturas`}
-              />
-            </div>
-            <span className="serie-mes">{etiquetaMes(p.periodo)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+export { Serie } from './SerieMeses';
 
 /**
  * `soloAsta`: la vista del vendedor, que cuenta solo lo vendido de ASTA, sin IVA
@@ -216,7 +165,7 @@ export function VistaReporte({
 
           <section className="panel">
             <h2>{t.serie}</h2>
-            <Serie puntos={datos.serieMensual} />
+            <Serie puntos={datos.serieMensual} sede={sede ?? null} />
           </section>
 
           <section className="panel">
