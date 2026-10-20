@@ -4045,3 +4045,92 @@ body:has(.enlace-cargando) .contenido {
   .tabla-personal td:nth-child(2) .input { width: 100%; }
   .tabla-personal td.num { text-align: right; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Mes a mes: cada barra es un botón que abre el detalle de su mes.
+   ══════════════════════════════════════════════════════════════════════════ */
+button.serie-col {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+button.serie-col:focus-visible { outline: 2px solid var(--cian); outline-offset: 3px; }
+/* Antes eran <div>: dentro de un botón son <span> y la barra necesita ser bloque para tomar su altura. */
+button.serie-col .serie-barra { display: block; }
+
+.mes-detalle {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 20px;
+  background: var(--vidrio-fuerte);
+  color: var(--text);
+  box-shadow: var(--sombra-flotante);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  overflow: hidden;
+}
+.mes-detalle::backdrop { background: rgba(5, 12, 24, 0.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.mes-detalle-caja { max-height: calc(100dvh - 48px); overflow-y: auto; padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 16px; }
+
+.mes-detalle-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mes-detalle-cabecera h2 { margin: 2px 0 0; font-size: 22px; text-wrap: balance; }
+.mes-detalle-ambito { margin: 0; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.mes-detalle-cerrar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.mes-detalle-cerrar:hover { color: var(--text); }
+
+.mes-detalle-nav { display: flex; justify-content: space-between; margin-top: -8px; }
+.mes-detalle-nav .btn-link:disabled { visibility: hidden; }
+
+.mes-detalle-nota { margin: 8px 0; color: var(--text-2); font-size: 14px; }
+.mes-detalle-nota.error { color: var(--danger); }
+
+.mes-detalle-cifras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mes-detalle-cifras > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  min-width: 0;
+}
+.mes-detalle-cifras strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.mes-detalle-etiqueta { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.mes-detalle-var { font-size: 12px; }
+.mes-detalle-var.sube { color: var(--positive); }
+.mes-detalle-var.baja { color: var(--danger); }
+
+.mes-detalle-lista h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); }
+.mes-detalle-lista ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.mes-detalle-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+.mes-detalle-nombre { min-width: 0; display: flex; flex-direction: column; font-size: 14px; overflow-wrap: anywhere; }
+.mes-detalle-nombre small { font-size: 12px; color: var(--text-3); }
+.mes-detalle-monto { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mes-detalle-barra { grid-column: 1 / -1; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--border) 60%, transparent); overflow: hidden; }
+.mes-detalle-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--degradado); }
+
+.mes-detalle-pie { margin: 2px 0 0; font-size: 14px; }
+
+@media (max-width: 480px) {
+  .mes-detalle-caja { padding: 16px 16px 14px; }
+  .mes-detalle-cifras strong { font-size: 18px; }
+}
