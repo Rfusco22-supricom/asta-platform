@@ -83,4 +83,29 @@ describe('CacheConRefresco', () => {
     expect(await c.cache.obtener('b', c.cargar)).toBe('B');
     expect(await c.cache.obtener('a', c.cargar)).toBe('v1');
   });
+
+  it('olvidar: la siguiente petición vuelve a leer, aunque lo guardado fuera fresco', async () => {
+    const c = preparar();
+    expect(await c.cache.obtener('k', c.cargar)).toBe('v1');
+    c.cambiar('v2');
+    c.cache.olvidar('k');
+    expect(await c.cache.obtener('k', c.cargar)).toBe('v2');
+    expect(c.lecturas()).toBe(2);
+    // Y lo nuevo queda guardado.
+    expect(await c.cache.obtener('k', c.cargar)).toBe('v2');
+    expect(c.lecturas()).toBe(2);
+  });
+
+  it('olvidar con una lectura en curso: esa lectura no se guarda, es de antes del cambio', async () => {
+    let soltar: (v: string) => void = () => undefined;
+    const cache = new CacheConRefresco<string>(1_000, 10_000, 2, () => 0);
+    const lenta = cache.obtener('k', () => new Promise<string>((r) => (soltar = r)));
+    cache.olvidar('k');
+    // Una petición nueva tras olvidar no se engancha a la lectura vieja.
+    const nueva = cache.obtener('k', async () => 'nuevo');
+    soltar('viejo');
+    expect(await lenta).toBe('viejo');
+    expect(await nueva).toBe('nuevo');
+    expect(await cache.obtener('k', async () => 'no debería leerse')).toBe('nuevo');
+  });
 });
