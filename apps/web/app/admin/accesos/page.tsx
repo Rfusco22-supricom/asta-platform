@@ -61,10 +61,12 @@ function Metrica({
 function Pestanas({ activa }: { activa: 'personal' | 'clientes' }) {
   return (
     <nav className="pestanas-reporte" aria-label="Accesos">
-      <Link href="/admin/accesos" className={activa === 'personal' ? 'activa' : undefined} aria-current={activa === 'personal' ? 'page' : undefined}>
+      {/* Sin precarga: la de Clientes pide a Odoo el informe de reconciliación,
+          y precargarla en cada visita a Personal era gastarlo sin que nadie lo mirara. */}
+      <Link href="/admin/accesos" prefetch={false} className={activa === 'personal' ? 'activa' : undefined} aria-current={activa === 'personal' ? 'page' : undefined}>
         Personal
       </Link>
-      <Link href="/admin/accesos?pestana=clientes" className={activa === 'clientes' ? 'activa' : undefined} aria-current={activa === 'clientes' ? 'page' : undefined}>
+      <Link href="/admin/accesos?pestana=clientes" prefetch={false} className={activa === 'clientes' ? 'activa' : undefined} aria-current={activa === 'clientes' ? 'page' : undefined}>
         Clientes
       </Link>
     </nav>

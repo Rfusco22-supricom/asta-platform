@@ -26,6 +26,12 @@
 export class CacheConRefresco<V> {
   private readonly entradas = new Map<string, { valor: V; guardado: number }>();
   private readonly enCurso = new Map<string, Promise<V>>();
+  /**
+   * Cuántas veces se olvidó cada clave. Una lectura recuerda la versión con la
+   * que empezó: si al terminar ya es otra, alguien olvidó la clave mientras
+   * tanto y lo leído puede ser de antes del cambio, así que no se guarda.
+   */
+  private readonly version = new Map<string, number>();
 
   constructor(
     private readonly frescoMs: number,
@@ -48,13 +54,28 @@ export class CacheConRefresco<V> {
   vaciar(): void {
     this.entradas.clear();
     this.enCurso.clear();
+    this.version.clear();
+  }
+
+  /**
+   * Olvida una clave: la próxima petición espera a la fuente. Para cuando quien
+   * llama acaba de cambiar justo lo que esa clave guarda. Una lectura que ya
+   * estuviera en curso no se cancela, pero su resultado tampoco se guarda.
+   */
+  olvidar(clave: string): void {
+    this.entradas.delete(clave);
+    this.enCurso.delete(clave);
+    this.version.set(clave, (this.version.get(clave) ?? 0) + 1);
   }
 
   private leer(clave: string, cargar: () => Promise<V>): Promise<V> {
     const pendiente = this.enCurso.get(clave);
     if (pendiente) return pendiente;
+    const version = this.version.get(clave) ?? 0;
     const p = cargar()
       .then((valor) => {
+        // Olvidada mientras se leía: lo leído puede ser de antes del cambio.
+        if ((this.version.get(clave) ?? 0) !== version) return valor;
         this.entradas.delete(clave);
         if (this.entradas.size >= this.maxEntradas) {
           const masAntigua = this.entradas.keys().next().value;
@@ -63,7 +84,9 @@ export class CacheConRefresco<V> {
         this.entradas.set(clave, { valor, guardado: this.ahora() });
         return valor;
       })
-      .finally(() => this.enCurso.delete(clave));
+      .finally(() => {
+        if (this.enCurso.get(clave) === p) this.enCurso.delete(clave);
+      });
     this.enCurso.set(clave, p);
     return p;
   }

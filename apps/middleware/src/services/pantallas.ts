@@ -26,6 +26,11 @@ export function dePantalla<T>(clave: string, cargar: () => Promise<T>): Promise<
   return cache.obtener(clave, cargar) as Promise<T>;
 }
 
+/** Para cuando el panel acaba de cambiar lo que guarda esa clave. */
+export function olvidarPantalla(clave: string): void {
+  cache.olvidar(clave);
+}
+
 /** Para los tests. */
 export function vaciarCachePantallas(): void {
   cache.vaciar();

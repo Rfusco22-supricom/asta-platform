@@ -9,7 +9,7 @@ import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { AccesoImposible, buscarUsuariosOdoo, darAccesoPorId, listarConAcceso, quitarAccesoPersonal } from '../services/accesoPersonal.service.js';
 import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
-import { dePantalla } from '../services/pantallas.js';
+import { dePantalla, olvidarPantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { claveSede, sedeDeLaPeticion } from '../services/sede.js';
@@ -90,6 +90,7 @@ adminRouter.post('/sync/partners', autorizar('admin.sync.ejecutar'), limiteSync,
   try {
     const completo = req.query.completo === 'true';
     const resumen = await sincronizarPartners({ completo });
+    olvidarPantalla(CLAVE_RECONCILIACION);
     res.json({
       data: resumen,
       meta: { fuente: 'odoo:res.partner', modo: completo ? 'completo' : 'incremental' },
@@ -107,7 +108,9 @@ adminRouter.post('/sync/partners', autorizar('admin.sync.ejecutar'), limiteSync,
 
 adminRouter.post('/sync/orphans', autorizar('admin.sync.ejecutar'), limiteSync, async (_req, res, next) => {
   try {
-    res.json({ data: await marcarHuerfanos() });
+    const r = await marcarHuerfanos();
+    olvidarPantalla(CLAVE_RECONCILIACION);
+    res.json({ data: r });
   } catch (error) {
     next(error);
   }
@@ -138,24 +141,27 @@ adminRouter.get('/sync/status', autorizar('admin.sync.estado.ver'), async (_req,
 });
 
 /**
- * Informe de reconciliación Odoo ↔ middleware.
+ * Informe de reconciliación Odoo ↔ middleware (Accesos → Clientes).
  *
- * Lee ~3000 filas de cada lado y las compara en memoria. Va con el mismo
- * limitador que el sync: no es una consulta barata y no tiene sentido pedirla
- * cada pocos segundos.
+ * Lee ~3000 filas de cada lado y las compara en memoria. No es barato, así que
+ * se guarda como las demás pantallas (`dePantalla`): dentro del minuto se
+ * contesta con lo guardado y las peticiones simultáneas comparten una lectura.
+ *
+ * Antes iba con el limitador del sync (3 cada 5 minutos), y ese contador es
+ * global: todas las peticiones llegan desde el servidor del panel. Bastaba con
+ * abrir Accesos unas pocas veces —y el panel precarga la pestaña— para que el
+ * informe dijera «Espera unos minutos entre sincronizaciones» sin que nadie
+ * hubiera sincronizado nada. La caché acota la carga sobre Odoo igual de bien.
  */
-adminRouter.get(
-  '/reconciliation',
-  autorizar('admin.reconciliacion.ver'),
-  limiteSync,
-  async (_req, res, next) => {
-    try {
-      res.json({ data: await reconciliar(), meta: { fuente: 'odoo:res.partner + mysql' } });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+const CLAVE_RECONCILIACION = 'admin:reconciliacion';
+
+adminRouter.get('/reconciliation', autorizar('admin.reconciliacion.ver'), async (_req, res, next) => {
+  try {
+    res.json({ data: await dePantalla(CLAVE_RECONCILIACION, () => reconciliar()), meta: { fuente: 'odoo:res.partner + mysql' } });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /** Resincroniza un partner suelto, para cuando alguien acaba de arreglarlo. */
 adminRouter.post(
@@ -172,6 +178,8 @@ adminRouter.post(
       }
 
       const r = await resincronizarUno(partnerId);
+      // El informe guardado ya no dice la verdad sobre este cliente.
+      if (r.ok) olvidarPantalla(CLAVE_RECONCILIACION);
       // 422 y no 400: la petición está bien formada, pero el dato en Odoo no
       // permite crear la cuenta. Quien lo lea tiene que ir a arreglar Odoo, no
       // a corregir su llamada.
