@@ -164,6 +164,25 @@ struct ClienteApi: Sendable {
         return true
     }
 
+    enum EstadoToken: Equatable, Sendable {
+        case valido
+        /// 401/403: el servidor no acepta el código (tablet desactivada, token renovado).
+        case rechazado
+        /// Sin red o el servidor no contestó bien: no se sabe, no se da por malo.
+        case sinRespuesta
+    }
+
+    /// El latido, diciendo qué contestó el servidor: para activar la tablet y
+    /// para saber si la desactivaron en el panel (ver `Activacion`).
+    func comprobar() async -> EstadoToken {
+        let r: Resultado<Vacio> = await pedir("/api/v1/kiosk/latido")
+        switch r {
+        case .ok: return .valido
+        case .fallo(.permiso): return .rechazado
+        case .fallo: return .sinRespuesta
+        }
+    }
+
     /// Qué producto miró el cliente (#43). Se lanza y se olvida: que la
     /// telemetría falle no puede estropear lo que el cliente está haciendo.
     func registrarClic(busquedaId: String?, productId: Int) {

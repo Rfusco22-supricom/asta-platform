@@ -103,6 +103,16 @@ class ClienteApi(
         return true
     }
 
+    /**
+     * El latido, diciendo qué contestó el servidor: para activar la tablet y para
+     * saber si la desactivaron en el panel (ver `Activacion`). Siempre por la ruta
+     * del kiosco: solo un código de tablet tiene sentido aquí.
+     */
+    suspend fun comprobar(): EstadoToken = when (val r = pedir("/api/v1/kiosk/latido", JsonObject.serializer())) {
+        is Resultado.Ok -> EstadoToken.VALIDO
+        is Resultado.Fallo -> if (r.motivo == MotivoFallo.PERMISO) EstadoToken.RECHAZADO else EstadoToken.SIN_RESPUESTA
+    }
+
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable private data class Meta(val busquedaId: String? = null)
@@ -172,4 +182,12 @@ class ClienteApi(
     companion object {
         val listaDeProductos: KSerializer<List<ProductoCompatible>> = ListSerializer(ProductoCompatible.serializer())
     }
+}
+
+enum class EstadoToken {
+    VALIDO,
+    /** 401/403: el servidor no acepta el código (tablet desactivada, token renovado). */
+    RECHAZADO,
+    /** Sin red o el servidor no contestó bien: no se sabe, no se da por malo. */
+    SIN_RESPUESTA,
 }

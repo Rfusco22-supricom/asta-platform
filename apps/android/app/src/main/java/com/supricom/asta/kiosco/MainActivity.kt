@@ -10,15 +10,23 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.lifecycle.lifecycleScope
+import com.supricom.asta.kiosco.dominio.Activacion
+import com.supricom.asta.kiosco.dominio.AlmacenCodigoSeguro
 import com.supricom.asta.kiosco.dominio.AlmacenPreferencias
 import com.supricom.asta.kiosco.dominio.CacheLocal
 import com.supricom.asta.kiosco.dominio.ClienteApi
 import com.supricom.asta.kiosco.dominio.Datos
+import com.supricom.asta.kiosco.dominio.EstadoActivacion
+import com.supricom.asta.kiosco.dominio.EstadoToken
 import com.supricom.asta.kiosco.ui.Kiosco
+import com.supricom.asta.kiosco.ui.PantallaActivacion
 import com.supricom.asta.kiosco.ui.Raiz
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * Kiosco de Asta para tablets Android (#40).
@@ -33,11 +41,14 @@ import kotlinx.coroutines.launch
  *
  * Eso NO impide salirse de la app: para eso, fijar la pantalla o el modo
  * dispositivo dedicado. Ver `apps/android/README.md`.
+ *
+ * Sin código de tablet compilado, la primera vez pide uno (`Activacion`): así la
+ * misma app sirve para todas las tablets cuando se instala desde la tienda.
  */
 private const val LATIDO_MS = 10 * 60 * 1000L
 
 class MainActivity : ComponentActivity() {
-    private lateinit var kiosco: Kiosco
+    private lateinit var activacion: Activacion
 
     override fun attachBaseContext(base: Context) {
         val config = Configuration(base.resources.configuration).apply { fontScale = 1f }
@@ -50,23 +61,50 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         ocultarBarras()
 
-        val api = ClienteApi(BuildConfig.ASTA_API_BASE, BuildConfig.ASTA_API_KEY, version = BuildConfig.VERSION_NAME)
+        activacion = Activacion(
+            claveCompilada = BuildConfig.ASTA_API_KEY,
+            almacen = AlmacenCodigoSeguro(getSharedPreferences("asta.activacion", MODE_PRIVATE)),
+            crearApi = ::api,
+        )
+        setContent {
+            when (val estado = activacion.estado) {
+                // Un código distinto es otra tablet: se empieza de cero.
+                is EstadoActivacion.Activa -> key(estado.apiKey) { KioscoActivo(estado.apiKey) }
+                EstadoActivacion.Pendiente -> PantallaActivacion(activacion)
+            }
+        }
+    }
+
+    private fun api(clave: String) = ClienteApi(BuildConfig.ASTA_API_BASE, clave, version = BuildConfig.VERSION_NAME)
+
+    /** La app de la tienda, con la tablet ya activada. */
+    @Composable
+    private fun KioscoActivo(clave: String) {
+        val api = remember { api(clave) }
+        val kiosco = remember {
+            Kiosco(
+                Datos(api, CacheLocal(AlmacenPreferencias(getSharedPreferences("asta.kiosco", MODE_PRIVATE)))),
+                lifecycleScope,
+            )
+        }
         // Señal de vida cada 10 min mientras la app está abierta (#46): menos que el
-        // umbral de la alerta «kiosco mudo» (30 min), con margen para un latido perdido.
-        lifecycleScope.launch {
+        // umbral de la alerta «kiosco mudo» (30 min), con margen para un latido
+        // perdido. Y de paso dice si el código sigue valiendo: un 401 es que la
+        // desactivaron en el panel (o se renovó), y la tablet vuelve a pedirlo.
+        LaunchedEffect(clave) {
             while (true) {
-                api.latir()
+                if (clave.startsWith("asta_kio_")) {
+                    if (api.comprobar() == EstadoToken.RECHAZADO) {
+                        activacion.rechazado()
+                        return@LaunchedEffect
+                    }
+                } else {
+                    api.latir()
+                }
                 delay(LATIDO_MS)
             }
         }
-        kiosco = Kiosco(
-            Datos(
-                api,
-                CacheLocal(AlmacenPreferencias(getSharedPreferences("asta.kiosco", MODE_PRIVATE))),
-            ),
-            lifecycleScope,
-        )
-        setContent { Raiz(kiosco) }
+        Raiz(kiosco)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
