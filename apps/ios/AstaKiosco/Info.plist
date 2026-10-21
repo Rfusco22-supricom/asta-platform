@@ -29,6 +29,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>La cámara se usa una sola vez, para leer el código QR que activa esta tablet.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Sora_400Regular.ttf</string>

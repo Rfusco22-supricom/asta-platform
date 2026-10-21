@@ -1,18 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
 import type { AlmacenKiosco, Kiosco } from '@asta/shared-types';
 
 /**
  * Alta y gestión de las tablets del kiosco (#120).
  *
  * El token sale UNA vez, al registrar o al pedir uno nuevo: no se guarda en
- * claro en ningún sitio, así que la pantalla lo enseña grande, con su botón de
- * copiar y los pasos para ponerlo en la tablet, y no deja seguir sin decir que
- * ya se copió.
+ * claro en ningún sitio, así que la pantalla lo enseña grande, con su QR, su
+ * botón de copiar y los pasos para activar la tablet, y no deja seguir sin
+ * decir que ya se activó.
+ *
+ * El token ES el código de activación: la aplicación ASTA lo pide la primera
+ * vez que se abre (escaneando el QR o escribiéndolo), lo comprueba contra el
+ * middleware y lo guarda en el almacén seguro de la tablet.
  */
-
-const URL_API = 'https://asta-middleware.larlxe.easypanel.host';
 
 function haceCuanto(iso: string | null): string {
   if (!iso) return 'Sin actividad todavía';
@@ -216,6 +219,19 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
 
 function TokenRecienEmitido({ datos, onListo }: { datos: { kiosco: Kiosco; token: string; nuevo: boolean }; onListo: () => void }) {
   const [copiado, setCopiado] = useState(false);
+  const [qr, setQr] = useState<string | null>(null);
+
+  // El QR se dibuja en el navegador: el token no sale de esta pantalla.
+  // Oscuro sobre blanco siempre, también en el tema oscuro: es lo que leen bien las cámaras.
+  useEffect(() => {
+    let vigente = true;
+    QRCode.toString(datos.token, { type: 'svg', errorCorrectionLevel: 'M', margin: 2, color: { dark: '#0f2236', light: '#ffffff' } })
+      .then((svg) => vigente && setQr(svg))
+      .catch(() => vigente && setQr(null));
+    return () => {
+      vigente = false;
+    };
+  }, [datos.token]);
 
   async function copiar() {
     try {
@@ -234,25 +250,35 @@ function TokenRecienEmitido({ datos, onListo }: { datos: { kiosco: Kiosco; token
         {datos.nuevo ? 'Tablet registrada' : 'Token nuevo'}: {datos.kiosco.nombre}
       </h2>
       <p id="kio-token-aviso" className="kio-token-aviso">
-        <strong>Cópialo ahora: no se vuelve a mostrar.</strong> Si se pierde, pide uno nuevo.
+        <strong>Actívala ahora: el código no se vuelve a mostrar.</strong> Si se pierde, pide uno nuevo.
         {!datos.nuevo && ' El anterior ya no funciona.'}
       </p>
-      <div className="kio-token-caja">
-        <code id="kio-token">{datos.token}</code>
-        <button type="button" className="btn btn-inline" onClick={() => void copiar()}>
-          {copiado ? '✓ Copiado' : 'Copiar'}
-        </button>
+      <div className="kio-activar">
+        {/* SVG generado aquí mismo por `qrcode` a partir del token: no lleva nada de fuera. */}
+        {qr ? (
+          <div className="kio-qr" role="img" aria-label="Código QR de activación de la tablet" dangerouslySetInnerHTML={{ __html: qr }} />
+        ) : (
+          <div className="kio-qr kio-qr-vacio" aria-hidden="true" />
+        )}
+        <div className="kio-activar-texto">
+          <ol className="kio-pasos">
+            <li>En la tablet, abre la aplicación ASTA: la primera vez pide un código de activación.</li>
+            <li>
+              Pulsa <strong>Escanear el código</strong> y apunta la cámara a este QR. Si no hay cámara, escribe o pega el código de abajo.
+            </li>
+            <li>La tablet queda activada y no lo vuelve a pedir. Haz una búsqueda: aquí pasará a «Activa ahora».</li>
+          </ol>
+          <div className="kio-token-caja">
+            <code id="kio-token">{datos.token}</code>
+            <button type="button" className="btn btn-inline" onClick={() => void copiar()}>
+              {copiado ? '✓ Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </div>
       </div>
-      <ol className="kio-pasos">
-        <li>
-          En la configuración de la app pon la dirección <code>{URL_API}</code> y este token como <em>API key</em>.
-        </li>
-        <li>Abre la aplicación ASTA: el indicador de arriba a la izquierda tiene que estar en verde.</li>
-        <li>Haz una búsqueda: aquí la tablet pasará a «Activa ahora».</li>
-      </ol>
       <div className="kio-token-pie">
         <button type="button" className="btn btn-inline" onClick={onListo}>
-          Ya lo copié
+          Ya está activada
         </button>
       </div>
     </section>
