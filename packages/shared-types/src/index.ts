@@ -39,3 +39,4 @@ export * from './apiKeys.js';
 export * from './permissions.js';
 export * from './sessions.js';
 export * from './metricasCliente.js';
+export * from './sellOut.js';

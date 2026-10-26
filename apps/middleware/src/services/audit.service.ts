@@ -72,6 +72,8 @@ export type AuditAction =
   | 'kiosco.codigo_creado'
   | 'kiosco.codigo_revision_creado'
   | 'kiosco.codigo_revision_revocado'
+  /// Un cliente subió su sell-out de un mes (ventas o inventario).
+  | 'sellout.subido'
   | 'user.invitado'
   | 'user.invitacion_aceptada'
   /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin

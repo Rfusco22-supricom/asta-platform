@@ -4170,3 +4170,22 @@ button.serie-col .serie-barra { display: block; }
 .met-lista li { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
 .met-lista li span { min-width: 0; overflow-wrap: anywhere; }
 .met-lista li strong { font-variant-numeric: tabular-nums; }
+
+/* Sell-out del cliente. */
+.so-subir { display: grid; gap: 14px; }
+.so-subir-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.so-subir-cabeza h2 { margin: 0; }
+.so-formulario { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; }
+.so-formulario label { display: grid; gap: 5px; min-width: 0; }
+.so-formulario label > span { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.so-archivo input { max-width: 100%; font-size: 13px; }
+.so-botones { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.so-resultado { padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--pi-ok) 40%, var(--border)); background: color-mix(in srgb, var(--pi-ok) 7%, transparent); font-size: 13.5px; }
+.so-resultado.con-errores { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.so-resultado p { margin: 0; font-weight: 600; }
+.so-resultado ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 3px; color: var(--text-2); }
+.so-error { color: var(--danger); }
+.so-reponer { margin-left: 8px; color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.so-historial { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.so-reemplazado { opacity: 0.55; }
+.met-lista li > :last-child { flex: none; align-self: center; }

@@ -54,6 +54,9 @@ export function createApp() {
   app.set('trust proxy', env().TRUSTED_PROXIES);
 
   app.use(helmet());
+  // El Excel del sell-out viaja en base64 dentro del JSON: esa ruta, y solo
+  // esa, admite más. El resto sigue con el límite de siempre.
+  app.use('/api/v1/account/sellout', express.json({ limit: '4mb' }));
   app.use(express.json({ limit: '256kb' }));
   app.use(cookieParser());
 

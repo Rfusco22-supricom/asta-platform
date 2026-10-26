@@ -749,6 +749,56 @@ model ClientNote {
 ///
 /// Una fila por vendedor, cliente, tipo de sugerencia y clave (el producto
 /// original, en «Pásale a ASTA»).
+enum TipoSellOut {
+  /// Unidades vendidas en el mes.
+  VENTAS
+  /// Existencia al cierre del mes. Con dos seguidos, lo vendido se calcula:
+  /// existencia anterior + lo que compró a Supricom − existencia actual.
+  INVENTARIO
+}
+
+/// Lo que un cliente reporta de un mes: sus ventas de ASTA o su inventario al
+/// cierre (fase 2 del sell-out). Lo sube él desde «Mi sell-out» con la
+/// plantilla del panel.
+///
+/// Uno vivo por cliente, mes y tipo: subir otra vez el mismo mes marca el
+/// anterior con `reemplazadoEn` y se queda como historial. Nunca se borran.
+model SellOutReporte {
+  id            String      @id @default(uuid()) @db.Char(36)
+  odooPartnerId Int         @map("odoo_partner_id") @db.UnsignedInt
+  /// «AAAA-MM».
+  mes           String      @db.Char(7)
+  tipo          TipoSellOut
+  archivo       String      @db.VarChar(200)
+  filas         Int         @db.UnsignedInt
+  unidades      Decimal     @db.Decimal(14, 2)
+  /// Quién lo subió (app_users.id). Sin FK: el reporte se queda aunque se borre la cuenta.
+  subidoPor     String?     @map("subido_por") @db.Char(36)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.DateTime(3)
+  reemplazadoEn DateTime?   @map("reemplazado_en") @db.DateTime(3)
+
+  lineas SellOutLinea[]
+
+  @@index([odooPartnerId, mes, tipo], map: "ix_sell_out_reportes_cliente")
+  @@index([mes, tipo], map: "ix_sell_out_reportes_mes")
+  @@map("sell_out_reportes")
+}
+
+/// Una línea del reporte: un producto ASTA de Odoo y su cantidad.
+model SellOutLinea {
+  id            BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  reporteId     String         @map("reporte_id") @db.Char(36)
+  reporte       SellOutReporte @relation(fields: [reporteId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_sell_out_lineas_reporte")
+  odooProductId Int            @map("odoo_product_id") @db.UnsignedInt
+  /// La referencia tal como la escribió el cliente, para poder rastrearla.
+  sku           String         @db.VarChar(64)
+  cantidad      Decimal        @db.Decimal(14, 2)
+
+  @@index([reporteId], map: "ix_sell_out_lineas_reporte")
+  @@index([odooProductId], map: "ix_sell_out_lineas_producto")
+  @@map("sell_out_lineas")
+}
+
 model ImpulsaAccion {
   id String @id @default(uuid()) @db.Char(36)
 

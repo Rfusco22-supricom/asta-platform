@@ -56,6 +56,7 @@ export const accionSchema = z.enum([
   'reportes.propios.ver',
   'admin.compatibilidades.revisar',
   'admin.kioscos.gestionar',
+  'admin.sellout.ver',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
   'admin.duplicados.ver',
@@ -65,6 +66,7 @@ export const accionSchema = z.enum([
   'apikeys.propias.gestionar',
   'tablets.propias.gestionar',
   'metricas.propias.ver',
+  'sellout.propio.gestionar',
   'catalogo.leer',
   'precios.propios.leer',
   'facturas.propias.leer',
@@ -204,6 +206,17 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: CLIENTES,
     ambito: 'identidad',
     descripcion: 'Ver sus propias métricas: compras de ASTA, nivel y tablets',
+  },
+  'sellout.propio.gestionar': {
+    // Reportar lo que vende de ASTA y ver su sell-out: solo lo suyo.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Subir su sell-out (ventas o inventario del mes) y verlo',
+  },
+  'admin.sellout.ver': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver el sell-out que reportan todos los clientes',
   },
   'admin.compatibilidades.revisar': {
     // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).

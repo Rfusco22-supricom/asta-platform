@@ -21,6 +21,7 @@ export function PestanasSeccion({ etiqueta, pestanas, actual }: { etiqueta: stri
 export const PESTANAS_ASTA_ADMIN = [
   { href: '/admin/asta', titulo: 'Oportunidades' },
   { href: '/admin/categorias', titulo: 'Categorías' },
+  { href: '/admin/sellout', titulo: 'Sell-out' },
 ];
 
 export const PESTANAS_ASTA_VENDEDOR = [
