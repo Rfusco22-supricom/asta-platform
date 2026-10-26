@@ -1,9 +1,9 @@
 import SwiftUI
 import VisionKit
 
-/// La pantalla de una tablet sin activar: pide el código que da el panel
-/// (Aplicación ASTA → Tablets → «Registrar una tablet»), escaneando su QR o
-/// escribiéndolo. La pareja de `ui/Activacion.kt` en Android.
+/// La pantalla de una tablet sin vincular: pide el código de 6 dígitos que da el
+/// panel (Tablets → «Añadir tablet»), escribiéndolo o escaneando su QR. La
+/// pareja de `ui/Activacion.kt` en Android.
 ///
 /// La ve el personal de la tienda, una vez, al instalar la tablet; nunca un
 /// cliente. Por eso usa el teclado del sistema y no el del kiosco.
@@ -27,7 +27,7 @@ struct ActivacionView: View {
                 Logo(ancho: 170, color: Tema.azul)
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Activa esta tablet").font(Tema.titulo(48)).foregroundStyle(Tema.tinta)
-                    Text("Esta aplicación es para las tiendas de Supricom. Para usarla, un administrador tiene que darle un código desde el panel: Aplicación ASTA → Tablets → «Registrar una tablet».")
+                    Text("Esta aplicación es para clientes de Supricom. Para usarla, entra al panel de ASTA con tu cuenta, ve a Tablets → «Añadir tablet» y escribe aquí el código de 6 dígitos.")
                         .font(Tema.cuerpo(22)).foregroundStyle(Tema.tintaSuave)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -43,9 +43,10 @@ struct ActivacionView: View {
                 }
 
                 HStack(spacing: 16) {
-                    TextField("asta_kio_…", text: $codigo)
-                        .font(Tema.codigoCuerpo(22))
-                        .textInputAutocapitalization(.never)
+                    TextField("482 913", text: $codigo)
+                        .font(Tema.codigo(34))
+                        .keyboardType(.numberPad)
+                        .textContentType(.oneTimeCode)
                         .autocorrectionDisabled()
                         .submitLabel(.go)
                         .onSubmit { Task { await activar(codigo) } }
@@ -56,9 +57,9 @@ struct ActivacionView: View {
                         Text(comprobando ? "Comprobando…" : "Activar").font(Tema.fuerte(22)).foregroundStyle(.white)
                             .padding(.horizontal, 32)
                             .frame(minHeight: Tema.alturaBoton)
-                            .background(Capsule().fill(codigo.isEmpty ? AnyShapeStyle(Tema.tintaTenue) : AnyShapeStyle(Tema.azul)))
+                            .background(Capsule().fill(normalizarCodigo(codigo) == nil ? AnyShapeStyle(Tema.tintaTenue) : AnyShapeStyle(Tema.azul)))
                     }
-                    .disabled(codigo.isEmpty || comprobando)
+                    .disabled(normalizarCodigo(codigo) == nil || comprobando)
                 }
 
                 if let aviso {
@@ -74,7 +75,7 @@ struct ActivacionView: View {
         .sheet(isPresented: $escaneando) {
             LectorQR { leido in
                 escaneando = false
-                codigo = leido
+                codigo = normalizarCodigo(leido) ?? ""
                 Task { await activar(leido) }
             }
             .ignoresSafeArea()
@@ -89,15 +90,16 @@ struct ActivacionView: View {
         comprobando = false
         switch r {
         case .activada: break
-        case .formatoInvalido: aviso = "Eso no es un código de tablet. Empieza por «asta_kio_»: cópialo entero del panel."
-        case .rechazado: aviso = "El panel no reconoce ese código. Puede que se haya renovado o que la tablet esté desactivada: pide uno nuevo en Tablets."
+        case .formatoInvalido: aviso = "El código tiene 6 dígitos. Escríbelo tal como sale en el panel."
+        case .rechazado: aviso = "Ese código no sirve: está mal escrito, caducó (duran 10 minutos) o ya se usó. Pide uno nuevo en el panel."
+        case .demasiadosIntentos: aviso = "Demasiados códigos equivocados. Espera unos minutos y vuelve a intentarlo."
         case .sinConexion: aviso = "No se pudo comprobar: la tablet no llega al servidor. Revisa el wifi y vuelve a intentarlo."
         }
     }
 }
 
-/// La cámara leyendo un QR (VisionKit). Avisa una vez, con el primer código que
-/// tenga forma de código de tablet; los demás QR que vea los ignora.
+/// La cámara leyendo un QR (VisionKit). Avisa una vez, con el primer QR del
+/// panel (`asta-tablet:…`); los demás QR que vea los ignora.
 private struct LectorQR: UIViewControllerRepresentable {
     let alLeer: (String) -> Void
 
@@ -124,7 +126,8 @@ private struct LectorQR: UIViewControllerRepresentable {
         func dataScanner(_ v: DataScannerViewController, didAdd items: [RecognizedItem], allItems: [RecognizedItem]) {
             guard !leido else { return }
             for item in items {
-                if case let .barcode(codigo) = item, let texto = codigo.payloadStringValue, normalizarCodigo(texto) != nil {
+                if case let .barcode(codigo) = item, let texto = codigo.payloadStringValue,
+                   texto.lowercased().hasPrefix("asta-tablet:"), normalizarCodigo(texto) != nil {
                     leido = true
                     v.stopScanning()
                     alLeer(texto)

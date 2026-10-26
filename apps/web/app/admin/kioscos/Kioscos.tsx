@@ -1,20 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import QRCode from 'qrcode';
-import type { AlmacenKiosco, Kiosco } from '@asta/shared-types';
+import { useMemo, useState } from 'react';
+import type { AlmacenKiosco, CodigoRevision, CodigoTablet as Codigo, Kiosco } from '@asta/shared-types';
+import { CodigoTablet } from '@/components/CodigoTablet';
 
 /**
- * Alta y gestión de las tablets del kiosco (#120).
+ * Las tablets con la aplicación ASTA (#120), vistas por el administrador.
  *
- * El token sale UNA vez, al registrar o al pedir uno nuevo: no se guarda en
- * claro en ningún sitio, así que la pantalla lo enseña grande, con su QR, su
- * botón de copiar y los pasos para activar la tablet, y no deja seguir sin
- * decir que ya se activó.
+ * La app de la tienda de apps no lleva token: se vincula con un código que se
+ * pide aquí («Añadir tablet») y se escribe, o se escanea como QR, en la tablet.
+ * Las de Supricom llevan almacén y enseñan existencias. Las de los clientes las
+ * vincula cada cliente desde su cuenta, y salen aquí también.
  *
- * El token ES el código de activación: la aplicación ASTA lo pide la primera
- * vez que se abre (escaneando el QR o escribiéndolo), lo comprueba contra el
- * middleware y lo guarda en el almacén seguro de la tablet.
+ * Además: el código de los revisores de Apple y Google, y el alta a mano con el
+ * token a la vista para una app compilada con él dentro.
  */
 
 function haceCuanto(iso: string | null): string {
@@ -33,24 +32,95 @@ function enLinea(k: Kiosco): boolean {
   return k.activo && k.ultimaConexion !== null && Date.now() - new Date(k.ultimaConexion).getTime() < 30 * 60_000;
 }
 
-export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosco[]; almacenes: AlmacenKiosco[] | null; odooDisponible: boolean }) {
+/** De quién es y qué enseña. */
+function dondeEsta(k: Kiosco): string {
+  if (k.odooWarehouseId !== null) {
+    return `${k.tienda} · ${k.almacen ?? `almacén #${k.odooWarehouseId}`}${k.compania ? ` · ${k.compania}` : ''}`;
+  }
+  if (k.odooPartnerId !== null) return `Cliente: ${k.cliente ?? `#${k.odooPartnerId}`} · ${k.tienda} · solo compatibilidades`;
+  return `${k.tienda} · solo compatibilidades`;
+}
+
+async function enviar(url: string, metodo: 'POST' | 'PUT' | 'PATCH' | 'DELETE', cuerpo?: unknown) {
+  const res = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error?.message ?? 'No se pudo completar.');
+  return body.data;
+}
+
+export function Kioscos({
+  inicial,
+  almacenes,
+  odooDisponible,
+  revisionInicial,
+}: {
+  inicial: Kiosco[];
+  almacenes: AlmacenKiosco[] | null;
+  odooDisponible: boolean;
+  revisionInicial: CodigoRevision | null;
+}) {
   const [kioscos, setKioscos] = useState(inicial);
+  const [codigo, setCodigo] = useState<{ codigo: Codigo; revision: boolean } | null>(null);
+  const [revision, setRevision] = useState(revisionInicial);
   const [token, setToken] = useState<{ kiosco: Kiosco; token: string; nuevo: boolean } | null>(null);
   const [mensaje, setMensaje] = useState<{ tono: 'ok' | 'error'; texto: string } | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState<string | null>(null);
+  const [conectada, setConectada] = useState(false);
 
-  const porCompania = useMemo(() => {
-    const m = new Map<string, AlmacenKiosco[]>();
-    for (const a of almacenes ?? []) m.set(a.compania, [...(m.get(a.compania) ?? []), a]);
-    return [...m.entries()];
-  }, [almacenes]);
+  function fallo(error: unknown) {
+    setMensaje({ tono: 'error', texto: (error as Error).message });
+  }
 
-  async function llamar(metodo: 'POST' | 'PUT' | 'PATCH', cuerpo: unknown) {
-    const res = await fetch('/api/kioscos', { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
-    const body = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(body?.error?.message ?? 'No se pudo completar.');
-    return body.data;
+  async function pedirCodigo(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const d = new FormData(form);
+    setOcupado('codigo');
+    setMensaje(null);
+    try {
+      const c = (await enviar('/api/kioscos/codigos', 'POST', {
+        nombre: String(d.get('nombre') ?? ''),
+        tienda: String(d.get('tienda') ?? ''),
+        odooWarehouseId: Number(d.get('almacen')),
+      })) as Codigo;
+      setCodigo({ codigo: c, revision: false });
+      form.reset();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      fallo(error);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function nuevoCodigoRevision() {
+    setOcupado('revision');
+    setMensaje(null);
+    try {
+      const c = (await enviar('/api/kioscos/revision', 'POST')) as Codigo;
+      setCodigo({ codigo: c, revision: true });
+      setRevision({ id: c.id, creadoEn: new Date().toISOString(), usos: 0, ultimoUso: null });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      fallo(error);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function revocarRevision() {
+    setOcupado('revision');
+    setMensaje(null);
+    try {
+      await enviar('/api/kioscos/revision', 'DELETE');
+      setRevision(null);
+      setMensaje({ tono: 'ok', texto: 'Código de revisión revocado. Las tablets que ya entraron con él siguen en la lista: desactívalas si hace falta.' });
+    } catch (error) {
+      fallo(error);
+    } finally {
+      setOcupado(null);
+    }
   }
 
   async function registrar(e: React.FormEvent<HTMLFormElement>) {
@@ -60,7 +130,7 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
     setOcupado('alta');
     setMensaje(null);
     try {
-      const r = (await llamar('POST', {
+      const r = (await enviar('/api/kioscos', 'POST', {
         nombre: String(d.get('nombre') ?? ''),
         tienda: String(d.get('tienda') ?? ''),
         odooWarehouseId: Number(d.get('almacen')),
@@ -68,8 +138,9 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
       setKioscos((ks) => [r.kiosco, ...ks]);
       setToken({ ...r, nuevo: true });
       form.reset();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      setMensaje({ tono: 'error', texto: (error as Error).message });
+      fallo(error);
     } finally {
       setOcupado(null);
     }
@@ -80,11 +151,11 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
     setConfirmar(null);
     setMensaje(null);
     try {
-      const r = (await llamar('PUT', { id: k.id })) as { kiosco: Kiosco; token: string };
+      const r = (await enviar('/api/kioscos', 'PUT', { id: k.id })) as { kiosco: Kiosco; token: string };
       setKioscos((ks) => ks.map((x) => (x.id === k.id ? r.kiosco : x)));
       setToken({ ...r, nuevo: false });
     } catch (error) {
-      setMensaje({ tono: 'error', texto: (error as Error).message });
+      fallo(error);
     } finally {
       setOcupado(null);
     }
@@ -94,11 +165,11 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
     setOcupado(k.id);
     setMensaje(null);
     try {
-      const r = (await llamar('PATCH', { id: k.id, activo: !k.activo })) as Kiosco;
+      const r = (await enviar('/api/kioscos', 'PATCH', { id: k.id, activo: !k.activo })) as Kiosco;
       setKioscos((ks) => ks.map((x) => (x.id === k.id ? r : x)));
-      setMensaje({ tono: 'ok', texto: r.activo ? `«${r.nombre}» vuelve a funcionar.` : `«${r.nombre}» desactivada: su token ya no entra.` });
+      setMensaje({ tono: 'ok', texto: r.activo ? `«${r.nombre}» vuelve a funcionar.` : `«${r.nombre}» desactivada: deja de entrar y vuelve a pedir un código.` });
     } catch (error) {
-      setMensaje({ tono: 'error', texto: (error as Error).message });
+      fallo(error);
     } finally {
       setOcupado(null);
     }
@@ -106,19 +177,37 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
 
   return (
     <div className="kio">
+      {codigo && (
+        <CodigoTablet
+          codigo={codigo.codigo}
+          urlEstado={codigo.revision ? undefined : `/api/kioscos/codigos?id=${codigo.codigo.id}`}
+          onConectada={(t) => {
+            setConectada(true);
+            setMensaje({ tono: 'ok', texto: `«${t.nombre}» conectada.` });
+          }}
+          onCerrar={() => {
+            setCodigo(null);
+            // La lista la pinta el servidor: con la tablet nueva, se vuelve a pedir.
+            if (conectada) window.location.reload();
+          }}
+        />
+      )}
       {token && <TokenRecienEmitido datos={token} onListo={() => setToken(null)} />}
 
       <section className="kio-alta" aria-labelledby="kio-alta-titulo">
         <div className="kio-alta-cabecera">
-          <h2 id="kio-alta-titulo">Registrar una tablet</h2>
-          <p>Cada tablet lleva su propio token. Solo sirve para el recomendador, y las existencias que enseña son las del almacén que elijas.</p>
+          <h2 id="kio-alta-titulo">Añadir una tablet de Supricom</h2>
+          <p>
+            Para una tienda de Supricom: elige su almacén y enseñará existencias. Sale un código de 6 dígitos (y su QR) que se escribe en la
+            tablet. Los clientes añaden las suyas desde su cuenta.
+          </p>
         </div>
         {!almacenes ? (
           <div className="notice error" style={{ margin: 0 }}>
             <p>Odoo no responde ahora mismo, y hace falta para elegir el almacén. Las tablets de abajo siguen funcionando.</p>
           </div>
         ) : (
-          <form className="kio-formulario" onSubmit={registrar}>
+          <form className="kio-formulario" onSubmit={pedirCodigo}>
             <label>
               <span>Nombre de la tablet</span>
               <input className="input" name="nombre" required minLength={3} maxLength={100} placeholder="Tablet mostrador 1" />
@@ -127,26 +216,9 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
               <span>Tienda</span>
               <input className="input" name="tienda" required minLength={2} maxLength={150} placeholder="Chacaíto, junto a caja" />
             </label>
-            <label>
-              <span>Almacén de Odoo</span>
-              <select className="select" name="almacen" required defaultValue="">
-                <option value="" disabled>
-                  Elige el almacén de la tienda…
-                </option>
-                {porCompania.map(([compania, as]) => (
-                  <optgroup key={compania} label={compania}>
-                    {as.map((a) => (
-                      <option key={a.warehouseId} value={a.warehouseId}>
-                        {a.nombre}
-                        {a.codigo ? ` (${a.codigo})` : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-            <button className="btn btn-inline" type="submit" disabled={ocupado === 'alta'}>
-              {ocupado === 'alta' ? 'Registrando…' : 'Registrar tablet'}
+            <SelectorAlmacen almacenes={almacenes} />
+            <button className="btn btn-inline" type="submit" disabled={ocupado === 'codigo'}>
+              {ocupado === 'codigo' ? 'Pidiendo…' : 'Añadir tablet'}
             </button>
           </form>
         )}
@@ -165,7 +237,7 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
         {!odooDisponible && kioscos.length > 0 && <p className="kio-nota">Sin Odoo no se ven los nombres de los almacenes; las tablets funcionan igual.</p>}
         {kioscos.length === 0 ? (
           <div className="table-wrap">
-            <div className="empty">Todavía no hay ninguna tablet. Registra la primera arriba.</div>
+            <div className="empty">Todavía no hay ninguna tablet. Añade la primera arriba.</div>
           </div>
         ) : (
           <ul className="kio-lista">
@@ -177,10 +249,7 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
                     {k.nombre}
                     {!k.activo && <span className="pi-insignia">Desactivada</span>}
                   </div>
-                  <div className="kio-tablet-detalle">
-                    {k.tienda} · {k.almacen ?? `almacén #${k.odooWarehouseId}`}
-                    {k.compania ? ` · ${k.compania}` : ''}
-                  </div>
+                  <div className="kio-tablet-detalle">{dondeEsta(k)}</div>
                   <div className="kio-tablet-detalle">
                     {haceCuanto(k.ultimaConexion)}
                     {k.version ? ` · app ${k.version}` : ''}
@@ -199,9 +268,11 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
                     </span>
                   ) : (
                     <>
-                      <button type="button" className="btn-link" disabled={ocupado === k.id || !k.activo} onClick={() => setConfirmar(k.id)}>
-                        Token nuevo
-                      </button>
+                      {k.odooWarehouseId !== null && (
+                        <button type="button" className="btn-link" disabled={ocupado === k.id || !k.activo} onClick={() => setConfirmar(k.id)}>
+                          Token nuevo
+                        </button>
+                      )}
                       <button type="button" className={k.activo ? 'btn-link kio-peligro' : 'btn btn-inline'} disabled={ocupado === k.id} onClick={() => void alternar(k)}>
                         {k.activo ? 'Desactivar' : 'Activar'}
                       </button>
@@ -213,25 +284,96 @@ export function Kioscos({ inicial, almacenes, odooDisponible }: { inicial: Kiosc
           </ul>
         )}
       </section>
+
+      <section className="kio-alta" aria-labelledby="kio-revision-titulo">
+        <div className="kio-alta-cabecera">
+          <h2 id="kio-revision-titulo">Código para los revisores de Apple y Google</h2>
+          <p>
+            Para publicar la aplicación, Apple y Google tienen que poder entrar. Este código no caduca, sirve para varias tablets y solo enseña
+            compatibilidades. Revócalo cuando la revisión termine.
+          </p>
+        </div>
+        <div className="kio-revision">
+          <p className="kio-nota kio-espera">
+            {revision
+              ? `Hay uno vigente desde el ${new Date(revision.creadoEn).toLocaleDateString('es-VE')}. Usado ${revision.usos} ${revision.usos === 1 ? 'vez' : 'veces'}.`
+              : 'No hay ninguno vigente.'}
+          </p>
+          <div className="kio-tablet-acciones">
+            {revision && (
+              <button type="button" className="btn-link kio-peligro" disabled={ocupado === 'revision'} onClick={() => void revocarRevision()}>
+                Revocar
+              </button>
+            )}
+            <button type="button" className="btn btn-inline" disabled={ocupado === 'revision'} onClick={() => void nuevoCodigoRevision()}>
+              {revision ? 'Crear otro (revoca el actual)' : 'Crear código'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <details className="kio-alta kio-mano">
+        <summary>Preparar una tablet a mano</summary>
+        <p className="kio-nota">
+          Solo para una aplicación compilada con el token dentro (desarrollo, o una tablet preparada a mano). Las que instalan la aplicación
+          desde la tienda de apps se añaden arriba con un código.
+        </p>
+        {!almacenes ? (
+          <div className="notice error" style={{ margin: 0 }}>
+            <p>Odoo no responde ahora mismo, y hace falta para elegir el almacén.</p>
+          </div>
+        ) : (
+          <form className="kio-formulario" onSubmit={registrar}>
+            <label>
+              <span>Nombre de la tablet</span>
+              <input className="input" name="nombre" required minLength={3} maxLength={100} placeholder="Tablet mostrador 1" />
+            </label>
+            <label>
+              <span>Tienda</span>
+              <input className="input" name="tienda" required minLength={2} maxLength={150} placeholder="Chacaíto, junto a caja" />
+            </label>
+            <SelectorAlmacen almacenes={almacenes} />
+            <button className="btn btn-inline" type="submit" disabled={ocupado === 'alta'}>
+              {ocupado === 'alta' ? 'Registrando…' : 'Registrar y ver el token'}
+            </button>
+          </form>
+        )}
+      </details>
     </div>
+  );
+}
+
+function SelectorAlmacen({ almacenes }: { almacenes: AlmacenKiosco[] }) {
+  const porCompania = useMemo(() => {
+    const m = new Map<string, AlmacenKiosco[]>();
+    for (const a of almacenes) m.set(a.compania, [...(m.get(a.compania) ?? []), a]);
+    return [...m.entries()];
+  }, [almacenes]);
+
+  return (
+    <label>
+      <span>Almacén de Odoo</span>
+      <select className="select" name="almacen" required defaultValue="">
+        <option value="" disabled>
+          Elige el almacén de la tienda…
+        </option>
+        {porCompania.map(([compania, as]) => (
+          <optgroup key={compania} label={compania}>
+            {as.map((a) => (
+              <option key={a.warehouseId} value={a.warehouseId}>
+                {a.nombre}
+                {a.codigo ? ` (${a.codigo})` : ''}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </label>
   );
 }
 
 function TokenRecienEmitido({ datos, onListo }: { datos: { kiosco: Kiosco; token: string; nuevo: boolean }; onListo: () => void }) {
   const [copiado, setCopiado] = useState(false);
-  const [qr, setQr] = useState<string | null>(null);
-
-  // El QR se dibuja en el navegador: el token no sale de esta pantalla.
-  // Oscuro sobre blanco siempre, también en el tema oscuro: es lo que leen bien las cámaras.
-  useEffect(() => {
-    let vigente = true;
-    QRCode.toString(datos.token, { type: 'svg', errorCorrectionLevel: 'M', margin: 2, color: { dark: '#0f2236', light: '#ffffff' } })
-      .then((svg) => vigente && setQr(svg))
-      .catch(() => vigente && setQr(null));
-    return () => {
-      vigente = false;
-    };
-  }, [datos.token]);
 
   async function copiar() {
     try {
@@ -250,35 +392,25 @@ function TokenRecienEmitido({ datos, onListo }: { datos: { kiosco: Kiosco; token
         {datos.nuevo ? 'Tablet registrada' : 'Token nuevo'}: {datos.kiosco.nombre}
       </h2>
       <p id="kio-token-aviso" className="kio-token-aviso">
-        <strong>Actívala ahora: el código no se vuelve a mostrar.</strong> Si se pierde, pide uno nuevo.
+        <strong>Cópialo ahora: no se vuelve a mostrar.</strong> Si se pierde, pide uno nuevo.
         {!datos.nuevo && ' El anterior ya no funciona.'}
       </p>
-      <div className="kio-activar">
-        {/* SVG generado aquí mismo por `qrcode` a partir del token: no lleva nada de fuera. */}
-        {qr ? (
-          <div className="kio-qr" role="img" aria-label="Código QR de activación de la tablet" dangerouslySetInnerHTML={{ __html: qr }} />
-        ) : (
-          <div className="kio-qr kio-qr-vacio" aria-hidden="true" />
-        )}
-        <div className="kio-activar-texto">
-          <ol className="kio-pasos">
-            <li>En la tablet, abre la aplicación ASTA: la primera vez pide un código de activación.</li>
-            <li>
-              Pulsa <strong>Escanear el código</strong> y apunta la cámara a este QR. Si no hay cámara, escribe o pega el código de abajo.
-            </li>
-            <li>La tablet queda activada y no lo vuelve a pedir. Haz una búsqueda: aquí pasará a «Activa ahora».</li>
-          </ol>
-          <div className="kio-token-caja">
-            <code id="kio-token">{datos.token}</code>
-            <button type="button" className="btn btn-inline" onClick={() => void copiar()}>
-              {copiado ? '✓ Copiado' : 'Copiar'}
-            </button>
-          </div>
-        </div>
+      <ol className="kio-pasos">
+        <li>
+          Pégalo en la configuración de la compilación: <code>ASTA_API_KEY</code> en <code>apps/ios/Config/Kiosco.xcconfig</code> o{' '}
+          <code>asta.apiKey</code> en <code>apps/android/local.properties</code>.
+        </li>
+        <li>Compila e instala la aplicación en esa tablet. Entra directamente, sin pedir código.</li>
+      </ol>
+      <div className="kio-token-caja">
+        <code id="kio-token">{datos.token}</code>
+        <button type="button" className="btn btn-inline" onClick={() => void copiar()}>
+          {copiado ? '✓ Copiado' : 'Copiar'}
+        </button>
       </div>
       <div className="kio-token-pie">
         <button type="button" className="btn btn-inline" onClick={onListo}>
-          Ya está activada
+          Ya lo copié
         </button>
       </div>
     </section>

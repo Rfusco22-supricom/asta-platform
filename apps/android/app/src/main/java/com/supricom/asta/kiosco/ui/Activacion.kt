@@ -26,7 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
@@ -37,9 +37,9 @@ import com.supricom.asta.kiosco.dominio.normalizarCodigo
 import kotlinx.coroutines.launch
 
 /**
- * La pantalla de una tablet sin activar: pide el código que da el panel
- * (Aplicación ASTA → Tablets → «Registrar una tablet»), escaneando su QR o
- * escribiéndolo. La pareja de `Vistas/ActivacionView.swift` en iOS.
+ * La pantalla de una tablet sin vincular: pide el código de 6 dígitos que da el
+ * panel (Tablets → «Añadir tablet»), escribiéndolo o escaneando su QR. La
+ * pareja de `Vistas/ActivacionView.swift` en iOS.
  *
  * La ve el personal de la tienda, una vez, al instalar la tablet; nunca un
  * cliente. Por eso usa el teclado del sistema y no el del kiosco.
@@ -64,8 +64,9 @@ fun PantallaActivacion(activacion: Activacion) {
             comprobando = false
             aviso = when (r) {
                 ResultadoActivacion.ACTIVADA -> null
-                ResultadoActivacion.FORMATO_INVALIDO -> "Eso no es un código de tablet. Empieza por «asta_kio_»: cópialo entero del panel."
-                ResultadoActivacion.RECHAZADO -> "El panel no reconoce ese código. Puede que se haya renovado o que la tablet esté desactivada: pide uno nuevo en Tablets."
+                ResultadoActivacion.FORMATO_INVALIDO -> "El código tiene 6 dígitos. Escríbelo tal como sale en el panel."
+                ResultadoActivacion.RECHAZADO -> "Ese código no sirve: está mal escrito, caducó (duran 10 minutos) o ya se usó. Pide uno nuevo en el panel."
+                ResultadoActivacion.DEMASIADOS_INTENTOS -> "Demasiados códigos equivocados. Espera unos minutos y vuelve a intentarlo."
                 ResultadoActivacion.SIN_CONEXION -> "No se pudo comprobar: la tablet no llega al servidor. Revisa el wifi y vuelve a intentarlo."
             }
         }
@@ -76,11 +77,13 @@ fun PantallaActivacion(activacion: Activacion) {
         GmsBarcodeScanning.getClient(contexto, opciones).startScan()
             .addOnSuccessListener { leido ->
                 val texto = leido.rawValue.orEmpty()
-                if (normalizarCodigo(texto) == null) {
-                    aviso = "Ese QR no es el de activación de una tablet. Escanea el que sale en el panel, en Tablets."
+                val digitos = normalizarCodigo(texto)
+                // Solo el QR del panel (`asta-tablet:…`): otro QR no se toma por un código.
+                if (!texto.lowercase().startsWith("asta-tablet:") || digitos == null) {
+                    aviso = "Ese QR no es el de una tablet. Escanea el que sale en el panel, en Tablets → «Añadir tablet»."
                 } else {
-                    codigo = texto
-                    activar(texto)
+                    codigo = digitos
+                    activar(digitos)
                 }
             }
             .addOnFailureListener {
@@ -97,7 +100,7 @@ fun PantallaActivacion(activacion: Activacion) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Activa esta tablet", style = Tema.titulo(48))
                 Text(
-                    "Esta aplicación es para las tiendas de Supricom. Para usarla, un administrador tiene que darle un código desde el panel: Aplicación ASTA → Tablets → «Registrar una tablet».",
+                    "Esta aplicación es para clientes de Supricom. Para usarla, entra al panel de ASTA con tu cuenta, ve a Tablets → «Añadir tablet» y escribe aquí el código de 6 dígitos.",
                     style = Tema.cuerpo(22, Tema.tintaSuave),
                 )
             }
@@ -114,18 +117,18 @@ fun PantallaActivacion(activacion: Activacion) {
                 OutlinedTextField(
                     value = codigo,
                     onValueChange = { codigo = it },
-                    placeholder = { Text("asta_kio_…", style = Tema.cuerpo(20, Tema.tintaTenue)) },
-                    textStyle = Tema.cuerpo(22),
+                    placeholder = { Text("482 913", style = Tema.codigo(34, Tema.tintaTenue)) },
+                    textStyle = Tema.codigo(34),
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Go),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, autoCorrectEnabled = false, imeAction = ImeAction.Go),
                     keyboardActions = KeyboardActions(onGo = { activar(codigo) }),
                     modifier = Modifier.weight(1f),
                 )
-                Pulsable({ activar(codigo) }, habilitado = codigo.isNotEmpty() && !comprobando, descripcion = "Activar") {
+                Pulsable({ activar(codigo) }, habilitado = normalizarCodigo(codigo) != null && !comprobando, descripcion = "Activar") {
                     Box(
                         Modifier.height(Tema.alturaBoton)
-                            .background(if (codigo.isEmpty()) Tema.tintaTenue else Tema.azul, CircleShape)
+                            .background(if (normalizarCodigo(codigo) == null) Tema.tintaTenue else Tema.azul, CircleShape)
                             .padding(horizontal = 32.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (comprobando) "Comprobando…" else "Activar", style = Tema.fuerte(22, Tema.superficie)) }

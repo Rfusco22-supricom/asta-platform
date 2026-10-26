@@ -32,6 +32,8 @@ import {
   type KioscosRespuesta,
   almacenesKioscoRespuestaSchema,
   type AlmacenKiosco,
+  codigoRevisionRespuestaSchema,
+  type CodigoRevision,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
   estadisticasRecomendadorRespuestaSchema,
@@ -619,6 +621,17 @@ export async function getKioscos(accessToken: string): Promise<KioscosRespuesta>
 export async function getAlmacenesKiosco(accessToken: string): Promise<AlmacenKiosco[]> {
   const r = await request('/api/v1/admin/kioscos/almacenes', almacenesKioscoRespuestaSchema, accessToken);
   return r.data;
+}
+
+/** El código para los revisores de Apple y Google: si hay uno vigente (nunca el código). */
+export async function getCodigoRevision(accessToken: string): Promise<CodigoRevision> {
+  const r = await request('/api/v1/admin/kioscos/codigo-revision', codigoRevisionRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** Las tablets de la tienda del cliente con sesión. */
+export async function getTabletsPropias(accessToken: string): Promise<KioscosRespuesta> {
+  return request('/api/v1/account/tablets', kioscosRespuestaSchema, accessToken);
 }
 
 /** Qué buscan los clientes en el recomendador y dónde se pierden ventas (#43). */

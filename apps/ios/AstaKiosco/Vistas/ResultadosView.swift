@@ -102,6 +102,8 @@ struct ResultadosView: View {
     private func respuesta(_ productos: [ProductoCompatible], sugerido: ProductoCompatible?) -> some View {
         let codigos = codigosDeCartucho(productos)
         let enTienda = productos.filter { $0.stock != .agotado }.count
+        // Una tablet sin almacén (la de un cliente) no sabe qué hay en tienda: no lo dice.
+        let conExistencias = productos.allSatisfy { $0.stock != nil }
         return VStack(alignment: .leading, spacing: 8) {
             Text(codigos.count == 1 ? "USA EL CARTUCHO" : "USA LOS CARTUCHOS").font(Tema.fuerte(16)).kerning(2.5).foregroundStyle(Tema.sobreAzul)
             ForEach(codigos, id: \.self) { c in
@@ -109,14 +111,16 @@ struct ResultadosView: View {
             }
             Rectangle().fill(.white.opacity(0.28)).frame(height: 2).padding(.vertical, 8)
             (Text("\(productos.count) \(productos.count == 1 ? "opción" : "opciones")").font(Tema.titulo(20)).foregroundColor(Tema.superficie)
-                + Text(enTienda > 0 ? " · \(enTienda) en tienda" : " · ninguna en tienda ahora: se puede encargar"))
+                + Text(!conExistencias ? "" : enTienda > 0 ? " · \(enTienda) en tienda" : " · ninguna en tienda ahora: se puede encargar"))
                 .font(Tema.cuerpo(20)).foregroundStyle(Tema.sobreAzul)
             // Lo que la tienda quiere vender, dicho donde el cliente mira primero.
             if let sugerido {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("TE RECOMENDAMOS").font(Tema.fuerte(14)).kerning(2).foregroundStyle(Tema.azulHondo)
                     Text(sugerido.titulo(para: impresora)).font(Tema.titulo(22)).foregroundStyle(Tema.tinta)
-                    Text(sugerido.stock.texto).font(Tema.fuerte(18)).foregroundStyle(Tema.disponible)
+                    if let stock = sugerido.stock {
+                        Text(stock.texto).font(Tema.fuerte(18)).foregroundStyle(Tema.disponible)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
@@ -211,7 +215,8 @@ private struct EtiquetaView: View {
     let accion: () -> Void
 
     var body: some View {
-        let colores = Tema.colores(de: producto.stock)
+        // Sin existencia (tablet de un cliente), la franja va en el azul de la marca y no hay columna de estado.
+        let colores = producto.stock.map(Tema.colores(de:)) ?? (texto: Tema.azul, fondo: Tema.superficie)
         BotonPlano(accion: accion) { pulsado in
             HStack(spacing: 0) {
                 colores.texto.frame(width: 10)
@@ -232,13 +237,17 @@ private struct EtiquetaView: View {
                 .padding(.horizontal, 24)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .opacity(producto.stock == .agotado ? 0.62 : 1)
-                VStack(spacing: 4) {
-                    Text(producto.stock.texto).font(Tema.titulo(20)).foregroundStyle(colores.texto).multilineTextAlignment(.center)
-                    if elegido { Text("✓ Elegido").font(Tema.fuerte(16)).foregroundStyle(Tema.azulHondo) }
+                if let stock = producto.stock {
+                    VStack(spacing: 4) {
+                        Text(stock.texto).font(Tema.titulo(20)).foregroundStyle(colores.texto).multilineTextAlignment(.center)
+                        if elegido { Text("✓ Elegido").font(Tema.fuerte(16)).foregroundStyle(Tema.azulHondo) }
+                    }
+                    .frame(width: 220)
+                    .frame(maxHeight: .infinity)
+                    .background(colores.fondo)
+                } else if elegido {
+                    Text("✓ Elegido").font(Tema.fuerte(16)).foregroundStyle(Tema.azulHondo).padding(.horizontal, 24)
                 }
-                .frame(width: 220)
-                .frame(maxHeight: .infinity)
-                .background(colores.fondo)
             }
             .frame(minHeight: 112)
             .background((pulsado && !elegido) || recomendado ? Tema.azulSuave : Tema.superficie)
@@ -247,7 +256,7 @@ private struct EtiquetaView: View {
         .shadow(color: Color(hex: 0x123460).opacity(0.12), radius: 18, y: 10)
             .overlay(RoundedRectangle(cornerRadius: Tema.radio).stroke(elegido ? Tema.azul : .clear, lineWidth: 3))
         }
-        .accessibilityLabel("\(producto.titulo(para: impresora)), \(producto.stock.texto)")
+        .accessibilityLabel([producto.titulo(para: impresora), producto.stock?.texto].compactMap { $0 }.joined(separator: ", "))
         .accessibilityAddTraits(elegido ? .isSelected : [])
     }
 

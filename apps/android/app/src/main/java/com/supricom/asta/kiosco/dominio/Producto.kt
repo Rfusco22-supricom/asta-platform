@@ -93,7 +93,7 @@ fun ordenarParaRecomendar(productos: List<ProductoCompatible>): List<ProductoCom
         { it.stock == EstadoStock.AGOTADO },
         { it.esPolvo },
         { !it.esAsta },
-        { it.stock.ordinal },
+        { it.stock?.ordinal ?: 0 },
     ),
 )
 

@@ -25,11 +25,20 @@ cd apps/android
    ```properties
    sdk.dir=/ruta/al/Android/sdk
    asta.apiBase=https://el-middleware
-   asta.apiKey=asta_kio_…
+   asta.apiKey=
    ```
 
-   La credencial es el **token de la tablet** (`asta_kio_…`): se da de alta en el panel, en **Kioscos** → «Registrar una tablet», eligiendo el almacén de la tienda, y sale una sola vez. Solo abre el recomendador (`/api/v1/kiosk`), y
-   las existencias son las de ese almacén. Sin `asta.apiBase`, la app
+   **La credencial: ninguna.** La versión de la tienda de apps se compila con
+   `asta.apiKey` **vacío**. Al abrirse, la tablet pide un **código de 6 dígitos**
+   (o su QR) que se saca en el panel, en **Tablets → «Añadir tablet»**: lo saca
+   un cliente para su tienda (la tablet enseña solo compatibilidades) o un
+   administrador para una tienda de Supricom (elige el almacén y enseña
+   existencias). Con él la tablet recibe su **token** (`asta_kio_…`), que guarda
+   cifrado. Solo abre el recomendador (`/api/v1/kiosk`). Desactivada en el
+   panel, vuelve a pedir un código. Para la revisión de Google hay un código de
+   12 dígitos que no caduca (Tablets → «Código para los revisores»). Para desarrollo o una tablet preparada a
+   mano, el token puede ir en `asta.apiKey` («Preparar una tablet a mano» en el
+   panel): entonces no pide nada. Sin `asta.apiBase`, la app
    apunta a `http://10.0.2.2:3001`, que es el `localhost` de la máquina
    anfitriona visto desde el emulador.
 2. **Bloquear la tablet.** La app ya va en horizontal, a pantalla completa con

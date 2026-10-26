@@ -168,7 +168,7 @@ aparece `0_init` como pendiente, el paso 2 no quedó completo: **no seguir**.
 DATABASE_URL="$MIGRADOR" ./node_modules/.bin/prisma migrate deploy --schema ../../prisma/schema.prisma
 ```
 
-Aplica lo que haya en la imagen después de la línea base. Al 5-oct-2026, en
+Aplica lo que haya en la imagen después de la línea base. Al 26-oct-2026, en
 `main`:
 
 | Migración | Qué hace |
@@ -184,6 +184,8 @@ Aplica lo que haya en la imagen después de la línea base. Al 5-oct-2026, en
 | `20261001210000_impresoras_catalogo_odoo` | Marca las impresoras que Supricom vende (#40) |
 | `20261005120000_impulsa_acciones` | Lo que el vendedor hizo con cada sugerencia de «Impulsa» (#40) |
 | `20261005150000_ventas_smartbit_fuente` | `ventas_smartbit` con `IF NOT EXISTS`: **en producción no hace nada**, la tabla ya está |
+| `20261013120000_niveles_diamante_general` | Los niveles Diamante y Cliente general (#131) |
+| `20261026120000_tablets_vinculacion` | Tablets vinculadas con un código del panel, también las de clientes |
 
 ## Paso 4 · Confirmar que no queda deriva
 
@@ -238,6 +240,7 @@ GRANT SELECT, INSERT, UPDATE ON Asta.staff_login_guards       TO 'asta_app'@'<ho
 GRANT SELECT, INSERT, UPDATE ON Asta.alert_states             TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.api_order_requests       TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.impulsa_acciones         TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.kiosk_codigos            TO 'asta_app'@'<host>';
 GRANT SELECT                 ON Asta.ventas_smartbit          TO 'asta_app'@'<host>';
 
 -- Esta tabla ya existía, pero la telemetría del recomendador (#43) completa sus
@@ -256,6 +259,7 @@ GRANT SELECT ON Asta.staff_login_guards       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.alert_states             TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.api_order_requests       TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.impulsa_acciones         TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.kiosk_codigos            TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.ventas_smartbit          TO 'asta_lectura'@'<host>';
 ```
 

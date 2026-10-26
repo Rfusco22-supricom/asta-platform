@@ -99,7 +99,7 @@ func codigosDeCartucho(_ productos: [ProductoCompatible]) -> [String] {
 func ordenarParaRecomendar(_ productos: [ProductoCompatible]) -> [ProductoCompatible] {
     func clave(_ e: (offset: Int, element: ProductoCompatible)) -> (Int, Int, Int, Int, Int) {
         let p = e.element
-        return (p.stock == .agotado ? 1 : 0, p.esPolvo ? 1 : 0, p.esAsta ? 0 : 1, p.stock.orden, e.offset)
+        return (p.stock == .agotado ? 1 : 0, p.esPolvo ? 1 : 0, p.esAsta ? 0 : 1, p.stock?.orden ?? 0, e.offset)
     }
     return productos.enumerated()
         .sorted { clave($0) < clave($1) }

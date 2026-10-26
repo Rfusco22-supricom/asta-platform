@@ -66,7 +66,7 @@ struct AtraccionView: View {
                     .foregroundStyle(Tema.superficie)
                     .lineSpacing(-4)
                     .minimumScaleFactor(0.6)
-                Text("Escribe el modelo y te decimos cuál le sirve y si lo tenemos en la tienda.")
+                Text("Escribe el modelo y te decimos qué tóner le sirve.")
                     .font(Tema.cuerpo(28))
                     .foregroundStyle(Tema.sobreAzul)
                     .frame(maxWidth: 620, alignment: .leading)

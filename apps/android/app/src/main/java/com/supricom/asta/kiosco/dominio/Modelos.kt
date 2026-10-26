@@ -33,7 +33,8 @@ data class ProductoCompatible(
     val templateId: Int,
     val sku: String? = null,
     val nombre: String,
-    val stock: EstadoStock,
+    /** `null` en las tablets sin almacén (las de clientes): solo compatibilidades. */
+    val stock: EstadoStock? = null,
     val tipo: Tipo,
     val cartuchos: List<Cartucho>,
 ) {
