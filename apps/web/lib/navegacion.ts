@@ -60,7 +60,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el
         // reporte completo» lleva al detalle.
-        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias'] },
+        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias', '/admin/sellout'] },
       ],
     },
     {
@@ -109,6 +109,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       secciones: [
         // Lo primero que ve un cliente al entrar.
         { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
+        { href: '/cuenta/sellout', titulo: 'Mi sell-out', icono: 'reportes', corto: 'Sell-out' },
         { href: '/cuenta/tablets', titulo: 'Mis tablets', icono: 'tablet', corto: 'Tablets' },
         { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
       ],

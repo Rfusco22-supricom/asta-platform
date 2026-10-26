@@ -54,6 +54,7 @@ import {
   validarLoteFabricante,
 } from '../services/recomendador/porImpresora.service.js';
 import { paresClaros, validarLoteAsta } from '../services/recomendador/loteAsta.service.js';
+import { mesDe, sellOutEmpresa, sumarMeses } from '../services/sellOut.service.js';
 import {
   almacenesDeOdoo,
   cambiarKiosco,
@@ -966,6 +967,24 @@ adminRouter.patch('/kioscos/:id', autorizar('admin.kioscos.gestionar'), async (r
       metadata: {},
     });
     res.json({ data: kiosco });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sell-out de los clientes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** El sell-out de un mes (`?mes=AAAA-MM`; sin él, el mes pasado, el último completo). */
+adminRouter.get('/sellout', autorizar('admin.sellout.ver'), async (req, res, next) => {
+  try {
+    const pedido = typeof req.query.mes === 'string' ? req.query.mes : sumarMeses(mesDe(new Date()), -1);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(pedido)) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'El mes va como AAAA-MM.' } });
+      return;
+    }
+    res.json({ data: await sellOutEmpresa(pedido) });
   } catch (error) {
     next(error);
   }

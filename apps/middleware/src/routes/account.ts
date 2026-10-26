@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { cambioKioscoSchema, nuevoCodigoClienteSchema } from '@asta/shared-types';
+import { cambioKioscoSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import {
@@ -13,6 +13,7 @@ import { auditContext } from '../middleware/auditContext.js';
 import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
+import { comprobar, guardar, plantilla, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
  * Lo que un CLIENTE gestiona de su propia cuenta (issue #28).
@@ -138,6 +139,76 @@ accountRouter.patch('/tablets/:id', gestionarTablets, async (req, res, next) => 
 accountRouter.get('/metricas', autorizar('metricas.propias.ver'), async (req, res, next) => {
   try {
     res.json({ data: await metricasDeCliente(req.identity.odooPartnerId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Su sell-out
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// El cliente sube lo que vende de ASTA (ventas del mes o inventario al cierre)
+// con la plantilla. Ver `sellOut.service`. El cliente sale del token.
+
+const sellOut = autorizar('sellout.propio.gestionar');
+
+accountRouter.get('/sellout', sellOut, async (req, res, next) => {
+  try {
+    res.json({ data: await resumenSellOut(req.identity.odooPartnerId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** El Excel para rellenar, con los productos ASTA que compra. */
+accountRouter.get('/sellout/plantilla', sellOut, async (req, res, next) => {
+  try {
+    const archivo = await plantilla(req.identity.odooPartnerId);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="sell-out-asta.xlsx"');
+    res.send(archivo);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Comprueba el archivo sin guardar nada: qué filas valen y cuáles no. */
+accountRouter.post('/sellout/comprobar', sellOut, async (req, res, next) => {
+  try {
+    const cuerpo = subirSellOutSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const { lineas: _lineas, ...validacion } = await comprobar(req.identity.odooPartnerId, cuerpo.data.mes, cuerpo.data.tipo, cuerpo.data.nombre, cuerpo.data.archivo);
+    res.json({ data: validacion });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Guarda el reporte si no tiene errores. Si los tiene, no guarda nada y los devuelve. */
+accountRouter.post('/sellout', sellOut, async (req, res, next) => {
+  try {
+    const cuerpo = subirSellOutSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await guardar(req.identity.odooPartnerId, req.identity.appUserId, cuerpo.data);
+    if (!r.reporte) {
+      res.status(422).json({ error: { code: 'VALIDATION_ERROR', message: 'El archivo tiene errores: no se guardó.' }, data: r.validacion });
+      return;
+    }
+    recordAudit({
+      action: 'sellout.subido',
+      ...auditContext(req),
+      targetType: 'sell_out_reportes',
+      targetId: r.reporte.id,
+      metadata: { mes: r.reporte.mes, tipo: r.reporte.tipo, filas: r.reporte.filas, odooPartnerId: req.identity.odooPartnerId },
+    });
+    res.status(201).json({ data: r.reporte });
   } catch (error) {
     next(error);
   }

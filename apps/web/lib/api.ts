@@ -36,6 +36,10 @@ import {
   type CodigoRevision,
   metricasClienteRespuestaSchema,
   type MetricasCliente,
+  resumenSellOutRespuestaSchema,
+  type ResumenSellOut,
+  sellOutEmpresaRespuestaSchema,
+  type SellOutEmpresa,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
   estadisticasRecomendadorRespuestaSchema,
@@ -634,6 +638,18 @@ export async function getCodigoRevision(accessToken: string): Promise<CodigoRevi
 /** «Mis métricas» del cliente con sesión: compras de ASTA, nivel y tablets. */
 export async function getMetricasCliente(accessToken: string): Promise<MetricasCliente> {
   const r = await request('/api/v1/account/metricas', metricasClienteRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Mi sell-out» del cliente con sesión. */
+export async function getSellOutCliente(accessToken: string): Promise<ResumenSellOut> {
+  const r = await request('/api/v1/account/sellout', resumenSellOutRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** El sell-out de un mes de todos los clientes. Sin mes, el último completo. */
+export async function getSellOutEmpresa(accessToken: string, mes?: string): Promise<SellOutEmpresa> {
+  const r = await request(`/api/v1/admin/sellout${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, sellOutEmpresaRespuestaSchema, accessToken);
   return r.data;
 }
 
