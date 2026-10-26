@@ -69,7 +69,7 @@ export function PiramideCategorias({ niveles }: { niveles: NivelPiramide[] }) {
           </div>
         ) : (
           <p className="piramide-pista" aria-hidden="true">
-            Pasa el ratón por un nivel · arrástrala para girarla
+            Toca un nivel
           </p>
         )}
       </div>

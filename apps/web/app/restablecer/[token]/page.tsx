@@ -110,8 +110,7 @@ export default async function RestablecerPage({ params, searchParams }: Props) {
             autoComplete="new-password"
           />
           <div className="hint">
-            Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres. Una frase que recuerdes es mejor que algo corto y
-            retorcido.
+            Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres.
           </div>
         </div>
 
@@ -134,7 +133,7 @@ export default async function RestablecerPage({ params, searchParams }: Props) {
       </form>
 
       <p style={{ marginTop: 20, marginBottom: 0, fontSize: 12.5, color: 'var(--text-3)' }}>
-        Este enlace solo funciona una vez. Al cambiarla se cerrarán las sesiones abiertas en todos tus dispositivos.
+        Este enlace solo funciona una vez.
       </p>
     </PantallaAcceso>
   );

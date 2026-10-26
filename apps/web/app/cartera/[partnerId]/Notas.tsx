@@ -90,8 +90,7 @@ export function Notas({
       <section className="panel">
         <h2>Notas del vendedor</h2>
         <div className="aviso-pendiente">
-          <strong>No se pudieron cargar las notas.</strong> La base de datos no responde.
-          Los datos de facturación de arriba vienen de Odoo y no están afectados.
+          <strong>No se pudieron cargar las notas.</strong>
         </div>
       </section>
     );

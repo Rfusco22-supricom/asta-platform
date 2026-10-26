@@ -3,7 +3,6 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { getAgentes, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAgentes } from './TablaAgentes';
 import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
@@ -71,11 +70,7 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
   const { filas, totales } = datos;
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Vendedores"
-      descripcion={`${totales.agentes} personas con cartera asignada en Odoo · solo ASTA${sede === null ? '' : `, vendido en ${nombreSede(sede)}`} · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
-    >
+    <Marco usuario={sesion.usuario} titulo="Vendedores">
       <Sedes base="/admin/agentes" sede={sede} />
       <section className="stats">
         <Metrica
@@ -89,7 +84,7 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
           icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota="histórico, sin IVA, neto de devoluciones; lo de Smartbit, por quien hizo la venta"
+          nota="histórico, sin IVA"
         />
         <Metrica
           icono="cobrar"
@@ -103,25 +98,16 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
           color="rosa"
           etiqueta="Sin acceso al panel"
           valor={String(totales.sinAcceso)}
-          nota="trabajan hoy y no pueden entrar"
+          nota="no pueden entrar"
           tono={totales.sinAcceso > 0 ? 'mal' : undefined}
         />
       </section>
 
-      {/*
-        El aviso lleva la acción, no solo el número.
-        Un contador en rojo sin nada que pulsar se convierte en parte del
-        decorado a la tercera vez que se ve.
-      */}
+      {/* El aviso lleva la acción, no solo el número. */}
       {totales.sinAcceso > 0 && (
-        <div className="notice" style={{ marginBottom: 18 }}>
-          <h2>{totales.sinAcceso} vendedores no pueden ver su cartera</h2>
-          <p>
-            Tienen clientes asignados en Odoo y trabajan hoy, pero o no tienen cuenta en el
-            panel o nadie les ha puesto contraseña. Se resuelve desde{' '}
-            <Link href="/admin/usuarios">Usuarios</Link>, generando su enlace de invitación.
-          </p>
-        </div>
+        <p className="kio-mensaje error" style={{ marginBottom: 18 }}>
+          {totales.sinAcceso} vendedores no pueden entrar · <Link href="/admin/usuarios">Invitarlos</Link>
+        </p>
       )}
 
       <TablaAgentes filas={filas} />

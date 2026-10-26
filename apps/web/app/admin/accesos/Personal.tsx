@@ -112,11 +112,9 @@ export function Personal({ conAcceso, yo }: { conAcceso: PersonaConAcceso[]; yo:
       )}
 
       <section className="panel">
-        <h2>Con acceso al panel</h2>
-        <p style={{ marginTop: -6, marginBottom: 14, fontSize: 13.5, color: 'var(--text-2)' }}>
-          <strong>{conAcceso.length}</strong> personas del equipo. Entran con su usuario y contraseña de Odoo. El
-          <strong> administrador</strong> lo ve y lo gestiona todo; el <strong>vendedor</strong>, su cartera.
-        </p>
+        <h2>
+          Con acceso <span className="pi-cuenta">{conAcceso.length}</span>
+        </h2>
         <div className="table-wrap" style={{ border: 0 }}>
           <table className="tabla-personal">
             <thead>
@@ -208,7 +206,7 @@ export function Personal({ conAcceso, yo }: { conAcceso: PersonaConAcceso[]; yo:
 
         {q.trim().length < 2 ? (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-3)' }}>
-            Escribe al menos dos letras. Salen solo usuarios internos y activos de Odoo: los clientes entran por su lado.
+            Escribe al menos dos letras.
           </p>
         ) : buscando && !resultados ? (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-3)' }}>Buscando en Odoo…</p>

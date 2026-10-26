@@ -269,10 +269,9 @@ export default async function InicioVendedorPage() {
   const token = sesion.accessToken;
 
   const nombre = nombrePersona(sesion.usuario.nombre).split(' ')[0];
-  const hoy = new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Caracas' });
 
   return (
-    <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'} descripcion={`Tu cartera hoy, ${hoy} · solo ASTA, sin IVA`}>
+    <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'}>
       <div className="dash dash-vendedor">
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} />

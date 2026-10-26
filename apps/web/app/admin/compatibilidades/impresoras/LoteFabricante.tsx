@@ -66,13 +66,12 @@ export function LoteFabricante({ lote }: { lote: Lote }) {
           Listas oficiales del fabricante: <strong>{lote.propuestas.toLocaleString('es-VE')}</strong> sin revisar
         </h2>
         <p>
-          {lote.impresoras.toLocaleString('es-VE')} impresoras y {lote.cartuchos.toLocaleString('es-VE')} tóners, sacados de las tablas que publica cada marca
+          {lote.impresoras.toLocaleString('es-VE')} impresoras y {lote.cartuchos.toLocaleString('es-VE')} tóners
           {sitios.length > 0 && (
             <>
               {' '}(<span className="lote-sitios">{sitios.slice(0, 4).join(', ')}{sitios.length > 4 ? ` y ${sitios.length - 4} más` : ''}</span>)
             </>
           )}
-          . Es lo más fiable que hay: se pueden validar todas de una vez. Lo de otras fuentes sigue en la revisión de abajo.
         </p>
         {mensaje && (
           <p className={`lote-mensaje ${mensaje.tono}`} role={mensaje.tono === 'error' ? 'alert' : 'status'}>

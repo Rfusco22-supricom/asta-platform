@@ -1,7 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { CaminoMeta, FILTROS, TablaCategorias, ventana } from '@/components/Categorias';
+import { CaminoMeta, FILTROS, TablaCategorias } from '@/components/Categorias';
 import { getCategoriasAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 
 /**
  * Categorías de ASTA de toda la empresa (#131): en qué categoría está cada
@@ -25,7 +26,8 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Categorías ASTA">
+      <Marco usuario={sesion.usuario} titulo="ASTA">
+        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/categorias" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo leer de Odoo'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -35,12 +37,9 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
   }
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Categorías ASTA"
-      descripcion={`Diamante, Oro, Plata y Bronce según lo que compra cada cliente de ASTA · promedio de ${ventana(datos.meses)}, agrupado por RIF`}
-    >
-      <CaminoMeta datos={datos} alcance="Toda la empresa" />
+    <Marco usuario={sesion.usuario} titulo="ASTA">
+      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/categorias" />
+      <CaminoMeta datos={datos} />
       <TablaCategorias datos={datos} filtro={filtro} base="/admin/categorias" conVendedor />
     </Marco>
   );

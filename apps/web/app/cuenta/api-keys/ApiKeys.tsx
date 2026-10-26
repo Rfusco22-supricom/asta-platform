@@ -180,9 +180,7 @@ export function ApiKeys({
         <div className="notice" style={{ marginBottom: 18, borderLeft: '3px solid #8a5200' }}>
           <h2 style={{ marginTop: 0 }}>Guarda este token ahora</h2>
           <p>
-            Es la única vez que se muestra. No se guarda en ningún sitio del que
-            podamos recuperarlo: si lo pierdes, hay que revocar
-            «{reciente.nombre}» y crear otra.
+            Es la única vez que se muestra.
           </p>
           <code
             style={{
@@ -320,8 +318,7 @@ export function ApiKeys({
       {/* ── Listado ───────────────────────────────────────────────────────── */}
       {filas.length === 0 && !creando && (
         <p style={{ fontSize: 14 }}>
-          Todavía no tienes ninguna. Una API key permite que tu sistema consulte
-          tus datos sin que nadie entre a este panel.
+          Todavía no tienes ninguna.
         </p>
       )}
 
@@ -388,8 +385,7 @@ export function ApiKeys({
         <div className="notice error" style={{ marginTop: 16 }}>
           <h2 style={{ marginTop: 0 }}>Revocar «{revocando.name}»</h2>
           <p>
-            Deja de funcionar al instante y no se puede deshacer. Si algún
-            sistema tuyo la está usando, dejará de recibir datos.
+            Deja de funcionar al instante y no se puede deshacer.
           </p>
           <label style={{ display: 'block', margin: '10px 0' }}>
             <span style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>
@@ -423,10 +419,6 @@ export function ApiKeys({
         </div>
       )}
 
-      <p className="sesiones-pie">
-        Trata una API key como una contraseña: quien la tenga puede consultar
-        tus datos. No la pongas en el código de una web ni en un repositorio.
-      </p>
     </section>
   );
 }

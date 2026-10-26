@@ -15,9 +15,9 @@ import { money } from '@/lib/formato';
  */
 
 const TRAMOS = {
-  procede: { texto: 'La aplicación puede salir como estaba planeado', color: 'var(--positive)' },
-  con_respaldo: { texto: 'Sale con flujo de respaldo: «no encontramos tu modelo, deja tus datos»', color: 'var(--warning)' },
-  pospuesta: { texto: 'Por debajo del 60 %: la aplicación sigue pospuesta', color: 'var(--danger)' },
+  procede: { texto: 'Cobertura suficiente', color: 'var(--positive)' },
+  con_respaldo: { texto: 'Cobertura justa', color: 'var(--warning)' },
+  pospuesta: { texto: 'Cobertura baja', color: 'var(--danger)' },
 } as const;
 
 const FALTA = {
@@ -55,14 +55,13 @@ export function Cobertura({ datos }: { datos: CoberturaTop }) {
             {totales.porcentaje} %
           </div>
           <div className="stat-sub">
-            {totales.completos} de {totales.top} con la cadena completa: impresora → cartucho → producto
+            {totales.completos} de {totales.top} completos
           </div>
         </div>
         <div className="cobertura-nota">
           <p style={{ color: tramo.color, fontWeight: 560 }}>{tramo.texto}</p>
           <p className="stat-sub">
-            {money(totales.importeCubierto)} de {money(totales.importeTop)} facturados en 12 meses ya se pueden recomendar. El umbral lo fija
-            el issue #7: más del 85 % procede, entre 60 y 85 % con respaldo.
+            {money(totales.importeCubierto)} de {money(totales.importeTop)} en 12 meses
           </p>
         </div>
       </div>

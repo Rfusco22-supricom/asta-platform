@@ -1,4 +1,5 @@
 import { requireSession } from '@/lib/session';
+import { PestanasSeccion, PESTANAS_PERSONAS } from '@/components/PestanasSeccion';
 import { Marco } from '@/components/Marco';
 import { getReconciliacion, getSinAcceso, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Invitaciones } from '../Invitaciones';
@@ -53,7 +54,8 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Usuarios">
+      <Marco usuario={sesion.usuario} titulo="Personas">
+        <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/usuarios" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -67,19 +69,10 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Usuarios"
-      descripcion="Cuentas que existen en el panel pero todavía no pueden entrar, porque nadie les ha puesto contraseña."
-    >
+    <Marco usuario={sesion.usuario} titulo="Personas">
+      <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/usuarios" />
       {total === 0 ? (
-        <div className="notice">
-          <h2>No hay nadie pendiente</h2>
-          <p>
-            Todas las cuentas activas tienen contraseña. Cuando el sync cree alguna nueva, aparecerá
-            aquí.
-          </p>
-        </div>
+        <div className="empty">Todas las cuentas tienen contraseña.</div>
       ) : (
         <Invitaciones candidatos={candidatos} total={total} coincidencias={coincidencias} busqueda={busqueda} />
       )}

@@ -4,6 +4,7 @@ import { getAstaCartera, ApiError, esRedireccion, ContractError } from '@/lib/ap
 import { moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 import { TablaAsta } from '../admin/asta/TablaAsta';
+import { PestanasSeccion, PESTANAS_ASTA_VENDEDOR } from '@/components/PestanasSeccion';
 
 /**
  * Oportunidades de ASTA en la cartera de UN vendedor.
@@ -33,7 +34,8 @@ export default async function AstaCarteraPage() {
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Oportunidades ASTA">
+      <Marco usuario={sesion.usuario} titulo="ASTA">
+        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta pantalla es para vendedores' : 'No se pudo cargar'}</h2>
           <p>
@@ -50,24 +52,16 @@ export default async function AstaCarteraPage() {
 
   if (filas.length === 0) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Oportunidades ASTA">
-        <div className="notice">
-          <h2>Ningún cliente tuyo compra consumibles todavía</h2>
-          <p>
-            Cuando alguno facture tóner o consumibles, aparecerá aquí con el reparto entre ASTA y
-            las demás marcas.
-          </p>
-        </div>
+      <Marco usuario={sesion.usuario} titulo="ASTA">
+        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
+        <div className="empty">Ningún cliente tuyo compra consumibles todavía.</div>
       </Marco>
     );
   }
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Oportunidades ASTA"
-      descripcion={`${totales.clientes} de tus clientes compran consumibles · tu cuota de ASTA es del ${totales.cuota.toFixed(1)} %`}
-    >
+    <Marco usuario={sesion.usuario} titulo="ASTA">
+      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
       <section className="stats">
         <Cifra icono="cuota" color="rosa" etiqueta="Tu cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran tus clientes" />
         <Cifra
@@ -76,7 +70,7 @@ export default async function AstaCarteraPage() {
           etiqueta="A la competencia"
           valor={moneyCompact(totales.competencia)}
           tono="alerta"
-          nota="mismo producto, otra marca"
+          nota="otras marcas"
         />
         <Cifra
           icono="diana"

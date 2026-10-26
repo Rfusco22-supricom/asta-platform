@@ -4158,4 +4158,4 @@ button.serie-col .serie-barra { display: block; }
 .kio-espera { margin: 0; }
 .kio-mano > summary { cursor: pointer; font-size: 15px; font-weight: 650; }
 .kio-mano:not([open]) { gap: 0; }
-.tab-descargas { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; margin-left: 8px; font-weight: 600; }
+.tab-descargas { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; font-weight: 600; }

@@ -95,28 +95,21 @@ export function Tablets({ inicial, descargas }: { inicial: Kiosco[]; descargas: 
       <section className="kio-alta" aria-labelledby="tab-alta-titulo">
         <div className="kio-alta-cabecera">
           <h2 id="tab-alta-titulo">Añadir una tablet</h2>
-          <ol className="kio-pasos">
-            <li>
-              Instala la aplicación <strong>ASTA</strong> en la tablet
-              {hayDescargas ? ':' : ' desde la App Store (iPad) o Google Play (Android).'}
-              {hayDescargas && (
-                <span className="tab-descargas">
-                  {descargas.ios && (
-                    <a href={descargas.ios} target="_blank" rel="noreferrer">
-                      App Store (iPad)
-                    </a>
-                  )}
-                  {descargas.android && (
-                    <a href={descargas.android} target="_blank" rel="noreferrer">
-                      Google Play (Android)
-                    </a>
-                  )}
-                </span>
+          {hayDescargas && (
+            <p className="tab-descargas">
+              Descarga la aplicación:
+              {descargas.ios && (
+                <a href={descargas.ios} target="_blank" rel="noreferrer">
+                  App Store
+                </a>
               )}
-            </li>
-            <li>Ponle un nombre aquí y pulsa «Añadir tablet»: sale un código de 6 dígitos.</li>
-            <li>Abre la aplicación en la tablet y escribe el código (o escanea el QR). Entra sola.</li>
-          </ol>
+              {descargas.android && (
+                <a href={descargas.android} target="_blank" rel="noreferrer">
+                  Google Play
+                </a>
+              )}
+            </p>
+          )}
         </div>
         <form className="kio-formulario" onSubmit={pedirCodigo}>
           <label>

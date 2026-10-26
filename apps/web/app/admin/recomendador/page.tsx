@@ -2,7 +2,6 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Periodos } from '@/components/Periodos';
 import { getEstadisticasRecomendador, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { fechaCorta } from '@/lib/formato';
 import { BusquedasSinResultado } from './BusquedasSinResultado';
 import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
 
@@ -78,25 +77,15 @@ export default async function RecomendadorPage({
   const hayAlgo = totales.busquedas > 0 || totales.consultasDirectas > 0;
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Recomendador"
-      descripcion={`Qué buscan los clientes en la aplicación ASTA · ${datos.desde} a ${datos.hasta}`}
-    >
+    <Marco usuario={sesion.usuario} titulo="Recomendador">
       <Periodos base="/admin/recomendador" periodo={{ desde: datos.desde, hasta: datos.hasta }} />
 
       {!hayAlgo ? (
-        <div className="notice">
-          <h2>No hay búsquedas en este periodo</h2>
-          <p>
-            Entre el {datos.desde} y el {datos.hasta} nadie usó el recomendador. Se registra desde que la aplicación o una
-            integración empiezan a consultarlo; prueba con un rango más amplio.
-          </p>
-        </div>
+        <div className="empty">No hay búsquedas en este periodo.</div>
       ) : (
         <>
           <section className="stats">
-            <Metrica icono="busqueda" etiqueta="Búsquedas" valor={num(totales.busquedas)} nota={`${num(totales.consultasDirectas)} consultas directas, sin buscar`} />
+            <Metrica icono="busqueda" etiqueta="Búsquedas" valor={num(totales.busquedas)} nota={`${num(totales.consultasDirectas)} consultas directas`} />
             <Metrica
               icono="cruz"
               color="ambar"
@@ -118,7 +107,7 @@ export default async function RecomendadorPage({
               color="rosa"
               etiqueta="Quiebres de stock"
               valor={num(totales.quiebres)}
-              nota="había tóner compatible y ninguno en existencia"
+              nota="compatible sin existencia"
               tono={totales.quiebres > 0 ? 'mal' : undefined}
             />
           </section>
@@ -129,10 +118,6 @@ export default async function RecomendadorPage({
           */}
           <section className="panel">
             <h2>Búsquedas sin resultado</h2>
-            <p className="formulario-nota">
-              Lo que la gente teclea y el recomendador no encuentra. Casi siempre no falta producto: falta el alias.
-              Átalo a su impresora y la misma búsqueda empieza a funcionar.
-            </p>
             {sinResultado.length === 0 ? (
               <div className="empty">Ninguna búsqueda se quedó sin resultado en este periodo.</div>
             ) : (
@@ -208,10 +193,6 @@ export default async function RecomendadorPage({
             )}
           </section>
 
-          <p className="pie-criterio">
-            Las listas traen hasta 20 filas. Última búsqueda sin resultado registrada:{' '}
-            {sinResultado[0] ? fechaCorta(sinResultado[0].ultimaVez) : '—'}.
-          </p>
         </>
       )}
     </Marco>

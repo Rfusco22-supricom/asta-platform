@@ -27,6 +27,11 @@ export interface Seccion {
   /** Marca activa también las rutas hijas: /cartera/123 resalta «Cartera». */
   prefijo?: boolean;
   /**
+   * Otras páginas de la misma sección, que se abren con pestañas: «ASTA» son
+   * /admin/asta y /admin/categorias. Encienden esta entrada del menú.
+   */
+  tambien?: string[];
+  /**
    * El nombre en la barra de pestañas de abajo, en pantallas estrechas
    * (`NavInferior`): allí caben unos diez caracteres por pestaña. Sin él, el
    * título.
@@ -53,9 +58,9 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/pendientes', titulo: 'Pendientes', icono: 'pendientes' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
-        { href: '/admin/reportes', titulo: 'Reportes', icono: 'reportes' },
-        { href: '/admin/asta', titulo: 'Marca ASTA', icono: 'marca', corto: 'ASTA' },
-        { href: '/admin/categorias', titulo: 'Categorías ASTA', icono: 'categorias', corto: 'Categorías' },
+        // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el
+        // reporte completo» lleva al detalle.
+        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias'] },
       ],
     },
     {
@@ -67,13 +72,10 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       ],
     },
     {
-      // Lo que se arregla en Odoo, no en el panel.
-      titulo: 'Datos de Odoo',
+      titulo: 'Administración',
       secciones: [
-        { href: '/admin/calidad', titulo: 'Calidad de datos', icono: 'calidad', corto: 'Calidad' },
-        { href: '/admin/duplicados', titulo: 'Duplicados', icono: 'duplicados' },
-        { href: '/admin/accesos', titulo: 'Accesos', icono: 'llave' },
-        { href: '/admin/usuarios', titulo: 'Usuarios', icono: 'usuarios' },
+        { href: '/admin/calidad', titulo: 'Datos de Odoo', icono: 'calidad', corto: 'Odoo', tambien: ['/admin/duplicados'] },
+        { href: '/admin/accesos', titulo: 'Personas', icono: 'usuarios', tambien: ['/admin/usuarios'] },
       ],
     },
     MI_CUENTA,
@@ -93,9 +95,8 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           prefijo: true,
           corto: 'Cartera',
         },
-        { href: '/asta', titulo: 'Oportunidades ASTA', icono: 'marca', corto: 'ASTA' },
-        { href: '/categorias', titulo: 'Categorías ASTA', icono: 'categorias', corto: 'Categorías' },
-        { href: '/reportes', titulo: 'Reportes', icono: 'reportes', prefijo: true },
+        { href: '/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/categorias'] },
+        // Reportes, como en administración: se llega desde el Inicio.
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],
     },

@@ -41,7 +41,6 @@ export default async function TabletsPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Mis tablets"
-      descripcion="La aplicación ASTA en las tablets de tu tienda: tus clientes buscan su impresora y ven qué tóner le sirve."
     >
       <Tablets inicial={tablets} descargas={descargas} />
     </Marco>

@@ -163,10 +163,6 @@ export function Sesiones({
         ))}
       </ul>
 
-      <p className="sesiones-pie">
-        Una sesión se cierra sola a los 30 días sin usarse. Cerrarla aquí
-        obliga a volver a escribir la contraseña en ese dispositivo.
-      </p>
     </section>
   );
 }
