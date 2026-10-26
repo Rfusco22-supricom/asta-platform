@@ -34,17 +34,21 @@ function limitesDe(rango: RangoPedido): Prisma.DateTimeFilter {
   return { gte: new Date(`${rango.desde}T00:00:00Z`), lt: fin };
 }
 
-export async function estadisticasRecomendador(rango: RangoPedido): Promise<EstadisticasRecomendador> {
-  const createdAt = limitesDe(rango);
-  const busqueda: Prisma.RecommendationEventWhereInput = { createdAt, searchQuery: { not: '' } };
+/**
+ * @param deviceIds solo lo de esas tablets: las de un cliente, para sus
+ *   métricas. Sin él, todo (el administrador).
+ */
+export async function estadisticasRecomendador(rango: RangoPedido, deviceIds?: string[]): Promise<EstadisticasRecomendador> {
+  const base: Prisma.RecommendationEventWhereInput = { createdAt: limitesDe(rango), ...(deviceIds ? { deviceId: { in: deviceIds } } : {}) };
+  const busqueda: Prisma.RecommendationEventWhereInput = { ...base, searchQuery: { not: '' } };
 
   const [busquedas, sinResultado, conImpresora, conClic, quiebres, consultasDirectas] = await Promise.all([
     prisma.recommendationEvent.count({ where: busqueda }),
     prisma.recommendationEvent.count({ where: { ...busqueda, resultsCount: 0 } }),
     prisma.recommendationEvent.count({ where: { ...busqueda, matchedPrinterId: { not: null } } }),
     prisma.recommendationEvent.count({ where: { ...busqueda, clickedProductId: { not: null } } }),
-    prisma.recommendationEvent.count({ where: { createdAt, wasOutOfStock: true } }),
-    prisma.recommendationEvent.count({ where: { createdAt, searchQuery: '' } }),
+    prisma.recommendationEvent.count({ where: { ...base, wasOutOfStock: true } }),
+    prisma.recommendationEvent.count({ where: { ...base, searchQuery: '' } }),
   ]);
 
   // ── Sin resultado ─────────────────────────────────────────────────────────
@@ -82,14 +86,14 @@ export async function estadisticasRecomendador(rango: RangoPedido): Promise<Esta
   const [porImpresora, quiebresPorImpresora] = await Promise.all([
     prisma.recommendationEvent.groupBy({
       by: ['matchedPrinterId'],
-      where: { createdAt, matchedPrinterId: { not: null } },
+      where: { ...base, matchedPrinterId: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { matchedPrinterId: 'desc' } },
       take: TOPE_FILAS,
     }),
     prisma.recommendationEvent.groupBy({
       by: ['matchedPrinterId'],
-      where: { createdAt, matchedPrinterId: { not: null }, wasOutOfStock: true },
+      where: { ...base, matchedPrinterId: { not: null }, wasOutOfStock: true },
       _count: { _all: true },
     }),
   ]);
@@ -114,7 +118,7 @@ export async function estadisticasRecomendador(rango: RangoPedido): Promise<Esta
   // ── Productos pulsados ────────────────────────────────────────────────────
   const porProducto = await prisma.recommendationEvent.groupBy({
     by: ['clickedProductId'],
-    where: { createdAt, clickedProductId: { not: null } },
+    where: { ...base, clickedProductId: { not: null } },
     _count: { _all: true },
     orderBy: { _count: { clickedProductId: 'desc' } },
     take: TOPE_FILAS,

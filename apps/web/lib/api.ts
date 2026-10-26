@@ -34,6 +34,8 @@ import {
   type AlmacenKiosco,
   codigoRevisionRespuestaSchema,
   type CodigoRevision,
+  metricasClienteRespuestaSchema,
+  type MetricasCliente,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
   estadisticasRecomendadorRespuestaSchema,
@@ -626,6 +628,12 @@ export async function getAlmacenesKiosco(accessToken: string): Promise<AlmacenKi
 /** El código para los revisores de Apple y Google: si hay uno vigente (nunca el código). */
 export async function getCodigoRevision(accessToken: string): Promise<CodigoRevision> {
   const r = await request('/api/v1/admin/kioscos/codigo-revision', codigoRevisionRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Mis métricas» del cliente con sesión: compras de ASTA, nivel y tablets. */
+export async function getMetricasCliente(accessToken: string): Promise<MetricasCliente> {
+  const r = await request('/api/v1/account/metricas', metricasClienteRespuestaSchema, accessToken);
   return r.data;
 }
 

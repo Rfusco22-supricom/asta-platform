@@ -171,18 +171,30 @@ export async function getClientProfile(
   lectorId: string,
   limiteTop = 5,
 ): Promise<ClientProfile> {
+  // En paralelo: Odoo y las notas son sistemas distintos y esperar uno para
+  // empezar el otro no tiene sentido.
+  const [compras, notas] = await Promise.all([
+    perfilDeCompras(partnerId, limiteTop),
+    listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
+  ]);
+  return { ...compras, notas, notasDisponibles: true };
+}
+
+/**
+ * Lo que el cliente compra de ASTA, sin las notas del vendedor: es lo que ve
+ * el propio cliente en «Mis métricas», y las notas son del vendedor.
+ */
+export async function perfilDeCompras(
+  partnerId: number,
+  limiteTop = 5,
+): Promise<Omit<ClientProfile, 'notas' | 'notasDisponibles'>> {
   if (!Number.isInteger(partnerId) || partnerId <= 0) {
     throw new TypeError(`partnerId inválido: ${partnerId}`);
   }
 
   // Lo de Odoo se guarda un rato (`pantallas.ts`); las notas no, que las
   // escribe el propio vendedor y tiene que verlas al volver.
-  const [{ grupos, ultimas, ventasSb }, notas] = await Promise.all([
-    dePantalla(`cliente:${partnerId}:perfil`, () => leerPerfilDeOdoo(partnerId)),
-    // En paralelo con Odoo: son sistemas distintos y esperar uno para empezar
-    // el otro no tiene sentido.
-    listarNotas(partnerId, lectorId).catch(() => [] as Nota[]),
-  ]);
+  const { grupos, ultimas, ventasSb } = await dePantalla(`cliente:${partnerId}:perfil`, () => leerPerfilDeOdoo(partnerId));
 
   const nombreProducto = new Map<number, string>();
   for (const g of grupos) if (g.product_id) nombreProducto.set(g.product_id[0], g.product_id[1]);
@@ -247,7 +259,5 @@ export async function getClientProfile(
     topProductos,
     productosDistintos: netos.length,
     montoEnProductos: Math.round(netos.reduce((s, p) => s + p.monto, 0) * 100) / 100,
-    notas,
-    notasDisponibles: true,
   };
 }

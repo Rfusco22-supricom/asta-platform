@@ -12,6 +12,7 @@ import {
 import { auditContext } from '../middleware/auditContext.js';
 import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
+import { metricasDeCliente } from '../services/metricasCliente.service.js';
 
 /**
  * Lo que un CLIENTE gestiona de su propia cuenta (issue #28).
@@ -124,6 +125,19 @@ accountRouter.patch('/tablets/:id', gestionarTablets, async (req, res, next) => 
       metadata: { odooPartnerId: req.identity.odooPartnerId },
     });
     res.json({ data: kiosco });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sus métricas
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Sus compras de ASTA, su nivel y sus tablets. El cliente sale del token. */
+accountRouter.get('/metricas', autorizar('metricas.propias.ver'), async (req, res, next) => {
+  try {
+    res.json({ data: await metricasDeCliente(req.identity.odooPartnerId) });
   } catch (error) {
     next(error);
   }

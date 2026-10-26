@@ -59,12 +59,12 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'impulsa.marcar',
     'catalogo.leer',
   ],
-  BRONCE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  PLATA: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  GOLD: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  BRONCE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  PLATA: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  GOLD: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
   // Los niveles nuevos de #131 son clientes como los demás: mismos permisos.
-  DIAMANTE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  GENERAL: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  DIAMANTE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  GENERAL: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
 };
 
 describe('#18 · La matriz completa, celda a celda', () => {

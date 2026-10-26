@@ -107,8 +107,10 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     {
       titulo: null,
       secciones: [
-        { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
+        // Lo primero que ve un cliente al entrar.
+        { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
         { href: '/cuenta/tablets', titulo: 'Mis tablets', icono: 'tablet', corto: 'Tablets' },
+        { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
       ],
     },
     MI_CUENTA,
