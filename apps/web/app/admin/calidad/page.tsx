@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { Gravedad, Revision } from '@asta/shared-types';
 import { requireSession } from '@/lib/session';
+import { PestanasSeccion, PESTANAS_ODOO } from '@/components/PestanasSeccion';
 import { Marco } from '@/components/Marco';
 import { getCalidadDatos, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { money, moneyCompact, fechaHora } from '@/lib/formato';
+import { money, moneyCompact } from '@/lib/formato';
 
 /**
  * Calidad de datos: lo que está mal en Odoo y dónde se arregla.
@@ -20,10 +21,10 @@ export const dynamic = 'force-dynamic';
 
 const ODOO_URL = process.env.ODOO_URL ?? '';
 
-const GRAVEDAD: Record<Gravedad, { etiqueta: string; resumen: string }> = {
-  alta: { etiqueta: 'Mueve dinero', resumen: 'facturación que no ve nadie' },
-  media: { etiqueta: 'Rompe algo', resumen: 'un cliente sin cuenta, un RIF que el SENIAT no reconoce' },
-  baja: { etiqueta: 'Cosmético', resumen: 'se ve feo, no rompe nada' },
+const GRAVEDAD: Record<Gravedad, { etiqueta: string }> = {
+  alta: { etiqueta: 'Mueve dinero' },
+  media: { etiqueta: 'Rompe algo' },
+  baja: { etiqueta: 'Cosmético' },
 };
 
 function modeloOdoo(r: Revision): string {
@@ -51,7 +52,8 @@ export default async function CalidadPage({ searchParams }: { searchParams: Prom
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Calidad de datos">
+      <Marco usuario={sesion.usuario} titulo="Datos de Odoo">
+        <PestanasSeccion etiqueta="Datos de Odoo" pestanas={PESTANAS_ODOO} actual="/admin/calidad" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo leer Odoo'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -60,18 +62,15 @@ export default async function CalidadPage({ searchParams }: { searchParams: Prom
     );
   }
 
-  const { revisiones, clientes, generadoEn } = datos;
+  const { revisiones } = datos;
   const porGravedad = (['alta', 'media', 'baja'] as const).map((g) => {
     const de = revisiones.filter((r) => r.gravedad === g);
     return { gravedad: g, total: de.reduce((s, r) => s + r.total, 0), pendientes: de.filter((r) => r.total > 0).length, de: de.length };
   });
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Calidad de datos"
-      descripcion={`Lo que está mal en Odoo y dónde se arregla · ${n(clientes)} clientes con compras en los últimos 12 meses · leído el ${fechaHora(generadoEn)}`}
-    >
+    <Marco usuario={sesion.usuario} titulo="Datos de Odoo">
+      <PestanasSeccion etiqueta="Datos de Odoo" pestanas={PESTANAS_ODOO} actual="/admin/calidad" />
       <section className="cd-resumen" aria-label="Resumen">
         {porGravedad.map((g) => (
           <div key={g.gravedad} className={`cd-resumen-item cd-${g.gravedad}`}>
@@ -82,7 +81,7 @@ export default async function CalidadPage({ searchParams }: { searchParams: Prom
                 {g.total === 0 ? 'Todo en orden' : `${n(g.total)} por corregir`}
               </div>
               <div className="stat-sub">
-                {g.pendientes} de {g.de} comprobaciones con algo · {GRAVEDAD[g.gravedad].resumen}
+                {g.pendientes} de {g.de} comprobaciones con algo
               </div>
             </div>
           </div>
@@ -117,28 +116,17 @@ export default async function CalidadPage({ searchParams }: { searchParams: Prom
               </summary>
 
               <div className="cd-cuerpo">
-                <div className="cd-explica">
-                  <div>
-                    <div className="cd-rotulo">Qué se rompe</div>
-                    <p>{r.porQue}</p>
-                  </div>
-                  <div>
-                    <div className="cd-rotulo">Cómo se arregla en Odoo</div>
-                    <ol className="cd-ruta">
-                      {r.comoArreglar.ruta.map((paso, i) => (
-                        <li key={i}>{paso}</li>
-                      ))}
-                    </ol>
-                    {r.comoArreglar.nota && <p className="stat-sub">{r.comoArreglar.nota}</p>}
-                  </div>
-                </div>
+                <ol className="cd-ruta" aria-label="Dónde se arregla en Odoo">
+                  {r.comoArreglar.ruta.map((paso, i) => (
+                    <li key={i}>{paso}</li>
+                  ))}
+                </ol>
 
                 <Tabla r={r} />
 
                 {r.total > r.muestra.length && (
                   <p className="stat-sub cd-mas">
-                    Se muestran los {n(r.muestra.length)} de más importe; quedan {n(r.total - r.muestra.length)}. Salen
-                    aquí según se vayan corrigiendo los de arriba.
+                    Se muestran los {n(r.muestra.length)} de más importe; quedan {n(r.total - r.muestra.length)}.
                   </p>
                 )}
               </div>

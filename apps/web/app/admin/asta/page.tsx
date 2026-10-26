@@ -2,10 +2,10 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { getAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { nombreSede } from '@asta/shared-types';
 import { moneyCompact } from '@/lib/formato';
 import { TablaAsta } from './TablaAsta';
 import { Cifra } from '@/components/Cifras';
+import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 
 /**
  * Marca ASTA: cuánto del consumible que compran nuestros clientes es nuestro.
@@ -39,7 +39,8 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Marca ASTA">
+      <Marco usuario={sesion.usuario} titulo="ASTA">
+        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -55,16 +56,13 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
   const { filas, totales } = datos;
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Marca ASTA"
-      descripcion={`${sede === null ? '' : `${nombreSede(sede)} · `}Consumibles facturados a ${totales.clientes.toLocaleString('es-VE')} clientes, comparando ASTA con HP, Canon, Epson y Brother · leído en ${(datos.duracionMs / 1000).toFixed(1)} s`}
-    >
+    <Marco usuario={sesion.usuario} titulo="ASTA">
+      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
       <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
         <Cifra icono="cuota" color="rosa" etiqueta="Cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran nuestros clientes" />
         <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} tono="sube" nota="marca propia" />
-        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="mismo tipo de producto, otra marca" />
+        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="otras marcas" />
         <Cifra
           icono="diana"
           color="violeta"
@@ -74,24 +72,6 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
           nota={`clientes · ${moneyCompact(totales.sinAstaImporte)} fuera`}
         />
       </section>
-
-      {/*
-        El aviso dice qué hacer, no solo cuánto se pierde.
-        Un número grande en rojo sin siguiente paso se convierte en parte del
-        decorado a la tercera vez que se ve.
-      */}
-      {totales.sinAsta > 0 && (
-        <div className="notice" style={{ marginBottom: 18 }}>
-          <h2>
-            {totales.sinAsta} clientes compran consumibles y no han probado ASTA
-          </h2>
-          <p>
-            Se llevan {moneyCompact(totales.sinAstaImporte)} a otras marcas. Cada uno tiene su
-            vendedor asignado en la tabla: es la conversación más fácil de tener, porque no hay
-            que convencer de cambiar sino de probar una vez.
-          </p>
-        </div>
-      )}
 
       <TablaAsta filas={filas} conVendedor />
     </Marco>

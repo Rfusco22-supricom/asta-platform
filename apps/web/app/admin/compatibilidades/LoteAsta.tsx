@@ -7,14 +7,10 @@ import type { ParAstaClaro } from '@asta/shared-types';
 const TEXTOS = {
   ASTA: {
     titulo: 'Productos ASTA con el código exacto en el nombre',
-    explica: (productos: number) =>
-      `${productos.toLocaleString('es-VE')} productos ASTA a la venta cuyo nombre trae el código del cartucho tal cual, como «ASTA TONER CF258A CON CHIP» → CF258A, o con el color pegado («GI-16Y» → GI-16). Sin polvo ni chips sueltos. Es lo que ofrece la aplicación.`,
     columna: 'Producto ASTA de Odoo',
   },
   ORIGINAL: {
     titulo: 'Originales de marca con su código',
-    explica: (productos: number) =>
-      `${productos.toLocaleString('es-VE')} productos originales a la venta con la marca en el nombre y el código del cartucho en el nombre o en la referencia del fabricante, como «CANON CARTUCHO DE TINTA PG-145 XL» → PG-145XL o «EPSON L3110 BLACK» con referencia T544120-AL → T544. Si salen dos códigos, son el mismo cartucho con dos nombres («HP 105A» y W1105A, con las mismas impresoras en la lista de HP). Sin kits ni combos. No cambia lo que recomienda la aplicación, pero son lo que más se vende: suben la cobertura.`,
     columna: 'Producto original de Odoo',
   },
 } as const;
@@ -36,7 +32,6 @@ export function LoteAsta({ tipo, pares }: { tipo: 'ASTA' | 'ORIGINAL'; pares: Pa
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tono: 'ok' | 'error'; texto: string } | null>(null);
-  const productos = new Set(pares.map((p) => p.templateId)).size;
 
   async function validar() {
     setEnviando(true);
@@ -69,9 +64,6 @@ export function LoteAsta({ tipo, pares }: { tipo: 'ASTA' | 'ORIGINAL'; pares: Pa
         <h2 id={`lote-${tipo}-titulo`}>
           {t.titulo}: <strong>{pares.length.toLocaleString('es-VE')}</strong> sin revisar
         </h2>
-        <p>
-          {t.explica(productos)} Revisa la lista y, si está bien, valídalos todos de una vez.
-        </p>
         <button type="button" className="btn-link lote-ver" aria-expanded={abierta} onClick={() => setAbierta((a) => !a)}>
           {abierta ? 'Ocultar la lista' : `Ver la lista (${pares.length})`}
         </button>

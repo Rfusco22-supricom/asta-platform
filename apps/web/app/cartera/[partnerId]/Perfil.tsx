@@ -17,7 +17,7 @@ const RECENCIA_TEXTO: Record<ClientProfile['estadoRecencia'], string> = {
 };
 
 export function Perfil({ perfil }: { perfil: ClientProfile }) {
-  const { estadoRecencia: estado, diasSinComprar: dias, umbrales } = perfil;
+  const { estadoRecencia: estado, diasSinComprar: dias } = perfil;
   const maxMonto = perfil.topProductos[0]?.monto ?? 0;
 
   return (
@@ -38,12 +38,6 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
           </span>
         </div>
 
-        {/* Los umbrales se muestran para que el color no parezca arbitrario.
-            Si el vendedor no sabe por qué algo está en rojo, deja de mirarlo. */}
-        <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
-          Se marca en ámbar a partir de {umbrales.atencion} días y en rojo a partir de{' '}
-          {umbrales.inactivo}. Umbrales pendientes de confirmar con el área comercial.
-        </p>
       </section>
 
       <section className="panel">
@@ -89,11 +83,6 @@ export function Perfil({ perfil }: { perfil: ClientProfile }) {
               </table>
             </div>
 
-            <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
-              Top {perfil.topProductos.length} de {perfil.productosDistintos} productos ASTA
-              distintos · {money(perfil.montoEnProductos)} <strong>sin impuestos</strong>, de todo su
-              historial: si arriba hay un periodo elegido, las cifras no tienen por qué cuadrar.
-            </p>
           </>
         )}
       </section>

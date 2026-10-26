@@ -3,7 +3,6 @@ import { Marco } from '@/components/Marco';
 import { VistaReporte } from '@/components/Reporte';
 import { sedeDeParams } from '@/components/Sedes';
 import { getReporteEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { nombreSede } from '@asta/shared-types';
 
 /**
  * Reportes de facturación de toda la empresa.
@@ -59,7 +58,6 @@ export default async function ReportesAdminPage({
     <Marco
       usuario={sesion.usuario}
       titulo="Reportes"
-      descripcion={`${sede === null ? 'Toda la empresa' : nombreSede(sede)} · solo ASTA, sin IVA · ${datos.periodo.desde} a ${datos.periodo.hasta}`}
     >
       <VistaReporte datos={datos} base="/admin/reportes" soloAsta sede={sede} />
     </Marco>

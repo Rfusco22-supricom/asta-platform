@@ -44,7 +44,7 @@ export function ventana(meses: string[]): string {
  * Cuánto se compra al mes frente a la meta, y cada categoría frente a la suya.
  * `titulo` y `enlace` cambian entre el inicio y la página de categorías.
  */
-export function CaminoMeta({ datos, enlace, alcance }: { datos: CategoriasAsta; enlace?: { href: string; texto: string }; alcance: string }) {
+export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: { href: string; texto: string } }) {
   const avance = datos.meta > 0 ? Math.min(100, (datos.compraMensual / datos.meta) * 100) : 0;
   const enPrograma = datos.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
   return (
@@ -52,9 +52,7 @@ export function CaminoMeta({ datos, enlace, alcance }: { datos: CategoriasAsta; 
       <div className="cat-meta-cabeza">
         <div>
           <h2>Camino a {moneyEntero(datos.meta)} USD/mes</h2>
-          <p className="panel-nota">
-            {alcance} · promedio de ASTA de {ventana(datos.meses)}, sin IVA · {n(enPrograma)} clientes en el programa
-          </p>
+          <p className="panel-nota">{n(enPrograma)} clientes en el programa</p>
         </div>
         {enlace && (
           <Link className="dash-mas" href={enlace.href}>

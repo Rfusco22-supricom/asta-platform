@@ -57,21 +57,9 @@ export default async function CarteraPage() {
           <h2>
             {esPermiso
               ? 'Esta pantalla es para vendedores'
-              : esContrato
-                ? 'El panel y la API no se entienden'
-                : 'No se pudieron cargar los datos'}
+              : 'No se pudieron cargar los datos'}
           </h2>
           <p>{mensaje}</p>
-          {esPermiso ? null : esContrato ? (
-            <p style={{ marginTop: 10 }}>
-              Es un fallo de programación, no de conexión: el middleware está devolviendo una forma
-              distinta a la que declara el contrato.
-            </p>
-          ) : (
-            <p style={{ marginTop: 10 }}>
-              Puede que Odoo no esté respondiendo en este momento. Vuelve a intentarlo en unos minutos.
-            </p>
-          )}
         </div>
       </Marco>
     );
@@ -89,7 +77,6 @@ export default async function CarteraPage() {
     <Marco
       usuario={sesion.usuario}
       titulo="Mi cartera"
-      descripcion={`${meta.clientes} clientes asignados · solo ASTA, sin IVA y neto de devoluciones · Odoo y, antes de abril de 2026, Smartbit`}
     >
       <section className="stats">
         <Cifra icono="ventas" etiqueta="Vendido en ASTA" valor={moneyCompact(meta.totalCartera)} nota={money(meta.totalCartera)} />

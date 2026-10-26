@@ -10,7 +10,6 @@ import {
   getDuplicados,
   ApiError,
   esRedireccion,
-  ContractError,
 } from '@/lib/api';
 import { money, fecha } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
@@ -88,7 +87,6 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     // ocultarlo detrás de un 404 genérico solo confunde a quien se equivocó de
     // enlace, y el intento ya quedó registrado en audit_logs del middleware.
     const esPermiso = error instanceof ApiError && error.status === 403;
-    const esContrato = error instanceof ContractError;
 
     return (
       <Marco usuario={sesion.usuario} titulo="Cliente">
@@ -96,9 +94,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <h2>
             {esPermiso
               ? 'Este cliente no está en tu cartera'
-              : esContrato
-                ? 'El panel y la API no se entienden'
-                : 'No se pudieron cargar los datos'}
+              : 'No se pudieron cargar los datos'}
           </h2>
           <p>{error instanceof Error ? error.message : 'Error inesperado.'}</p>
           <p style={{ marginTop: 12 }}>
@@ -185,11 +181,6 @@ export default async function FichaCliente({ params, searchParams }: Props) {
               </li>
             ))}
           </ul>
-          <p style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-3)' }}>
-            Se detectan por {duplicados.hermanos[0].motivo === 'rif' ? 'RIF' : 'nombre'} idéntico.
-            Unirlos se hace en Odoo (Contactos → Acción → Fusionar), y mueve la facturación de
-            una cartera a otra: no es una decisión del panel.
-          </p>
         </div>
       )}
 

@@ -92,10 +92,8 @@ export function VistaReporte({
   const t = soloAsta
     ? {
         vacio: 'No hay ventas de ASTA en este periodo',
-        vacioTexto: 'ninguna factura con productos ASTA',
         facturado: 'Vendido en ASTA',
         facturas: `${totales.facturas.toLocaleString('es-VE')} facturas con ASTA · sin IVA`,
-        fuente: 'Odoo y Smartbit (antes de abril de 2026)',
         deuda: 'en las facturas con ASTA',
         ticket: 'de ASTA por factura',
         clientes: 'con al menos una compra de ASTA',
@@ -105,10 +103,8 @@ export function VistaReporte({
       }
     : {
         vacio: 'No hay facturas en este periodo',
-        vacioTexto: 'ninguna factura contabilizada',
         facturado: 'Facturado',
         facturas: `${totales.facturas.toLocaleString('es-VE')} facturas`,
-        fuente: 'Odoo',
         deuda: `${pctDeuda.toFixed(0)} % de lo facturado`,
         ticket: 'por factura',
         clientes: 'con al menos una factura',
@@ -125,10 +121,7 @@ export function VistaReporte({
       {!hayAlgo ? (
         <div className="notice">
           <h2>{t.vacio}</h2>
-          <p>
-            Entre el {datos.periodo.desde} y el {datos.periodo.hasta} no hay {t.vacioTexto}. Prueba con un rango más
-            amplio.
-          </p>
+          <p>Prueba con un rango más amplio.</p>
         </div>
       ) : (
         <>
@@ -170,15 +163,9 @@ export function VistaReporte({
 
           <section className="panel">
             <h2>ASTA frente a las demás marcas</h2>
-            <p className="panel-nota">
-              Solo consumibles: las categorías donde ASTA tiene producto. Fuera de ellas no hay
-              nada que comparar.
-              {soloAsta &&
-                ' Lo de otras marcas es lo que todavía se le puede pasar a ASTA. Solo con lo facturado en Odoo, desde abril de 2026: Smartbit trae ASTA, pero no las otras marcas.'}
-            </p>
             {asta.asta + asta.competencia === 0 ? (
               <div className="empty" style={{ padding: '20px' }}>
-                Sin consumibles facturados en Odoo en este periodo: no hay cuota que medir.
+                Sin consumibles en este periodo.
               </div>
             ) : (
               <div className="cuota">
@@ -200,12 +187,6 @@ export function VistaReporte({
           {datos.porVendedor && datos.porVendedor.length > 0 && (
             <section className="panel">
               <h2>Por vendedor</h2>
-              {soloAsta && (
-                <p className="panel-nota">
-                  Lo de Odoo, por el comercial asignado a cada cliente; lo de Smartbit (antes de abril de 2026), por quien hizo
-                  la venta. Los vendedores de Smartbit sin usuario en Odoo salen con su nombre.
-                </p>
-              )}
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -261,17 +242,6 @@ export function VistaReporte({
         </>
       )}
 
-      {/*
-        El criterio, escrito donde se lee el número (#26): lo que no puede pasar
-        es que el panel dé una cifra distinta del ERP y nadie sepa por qué.
-      */}
-      <p className="pie-criterio">
-        Solo facturas contabilizadas
-        {datos.criterio.incluyeNotasDeCredito
-          ? ', restando las notas de crédito'
-          : ', sin restar notas de crédito'}
-        . Leído de {t.fuente} en {(datos.duracionMs / 1000).toFixed(1)} s.
-      </p>
     </>
   );
 }

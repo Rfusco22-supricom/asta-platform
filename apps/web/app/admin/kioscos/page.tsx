@@ -43,12 +43,11 @@ export default async function KioscosPage() {
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Tablets" descripcion="Las tablets con la aplicación ASTA: las de Supricom y las de los clientes. Cada una se vincula con un código de 6 dígitos.">
+    <Marco usuario={sesion.usuario} titulo="Tablets">
       <Kioscos
         inicial={datos.kioscos.data}
         revisionInicial={datos.revision}
         almacenes={datos.almacenes}
-        odooDisponible={datos.kioscos.meta.odooDisponible}
       />
     </Marco>
   );

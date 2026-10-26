@@ -22,10 +22,6 @@ function Bienvenida({ nombre, rol }: { nombre: string; rol: string }) {
       <div className="bienvenida-texto">
         <span className="hero-etiqueta">Portal de clientes ASTA</span>
         <h2>Hola, {limpiarEspacios(nombre)}</h2>
-        <p>
-          Con una API key, tu sistema consulta el catálogo de ASTA, tus precios y tus facturas por su cuenta, sin que nadie tenga que
-          entrar a este panel.
-        </p>
         {losa !== null && (
           <span className="bienvenida-nivel" style={{ '--c': COLORES_CATEGORIAS[losa] } as React.CSSProperties}>
             <i aria-hidden="true" />
@@ -82,10 +78,6 @@ export default async function ApiKeysPage() {
         <Marco usuario={sesion.usuario} titulo="Mis API keys">
           <div className="notice">
             <h2>Esta pantalla es para clientes</h2>
-            <p>
-              Las API keys sirven para que un cliente conecte su propio sistema con ASTA. Los datos
-              que necesitas los tienes en el panel.
-            </p>
           </div>
         </Marco>
       );

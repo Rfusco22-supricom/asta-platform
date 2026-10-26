@@ -13,10 +13,10 @@ export function Pestanas({ actual }: { actual: 'impresoras' | 'productos' }) {
   return (
     <nav className="pestanas" aria-label="Tramo de la compatibilidad">
       <Link href="/admin/compatibilidades/impresoras" aria-current={actual === 'impresoras' ? 'page' : undefined}>
-        Impresoras <span>qué cartucho le sirve a cada impresora</span>
+        Impresoras
       </Link>
       <Link href="/admin/compatibilidades" aria-current={actual === 'productos' ? 'page' : undefined}>
-        Productos <span>qué producto de Odoo es cada cartucho</span>
+        Productos
       </Link>
     </nav>
   );

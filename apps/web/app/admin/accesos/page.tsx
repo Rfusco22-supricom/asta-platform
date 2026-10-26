@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { requireSession } from '@/lib/session';
+import { PestanasSeccion, PESTANAS_PERSONAS } from '@/components/PestanasSeccion';
 import { Marco } from '@/components/Marco';
 import { getReconciliacion, getPersonal, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
@@ -58,21 +58,6 @@ function Metrica({
   );
 }
 
-function Pestanas({ activa }: { activa: 'personal' | 'clientes' }) {
-  return (
-    <nav className="pestanas-reporte" aria-label="Accesos">
-      {/* Sin precarga: la de Clientes pide a Odoo el informe de reconciliación,
-          y precargarla en cada visita a Personal era gastarlo sin que nadie lo mirara. */}
-      <Link href="/admin/accesos" prefetch={false} className={activa === 'personal' ? 'activa' : undefined} aria-current={activa === 'personal' ? 'page' : undefined}>
-        Personal
-      </Link>
-      <Link href="/admin/accesos?pestana=clientes" prefetch={false} className={activa === 'clientes' ? 'activa' : undefined} aria-current={activa === 'clientes' ? 'page' : undefined}>
-        Clientes
-      </Link>
-    </nav>
-  );
-}
-
 async function PestanaPersonal({ sesion }: { sesion: Awaited<ReturnType<typeof requireSession>> }) {
   let conAcceso;
   try {
@@ -81,8 +66,8 @@ async function PestanaPersonal({ sesion }: { sesion: Awaited<ReturnType<typeof r
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Accesos">
-        <Pestanas activa="personal" />
+      <Marco usuario={sesion.usuario} titulo="Personas">
+        <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/accesos" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo leer quién tiene acceso'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -91,8 +76,8 @@ async function PestanaPersonal({ sesion }: { sesion: Awaited<ReturnType<typeof r
     );
   }
   return (
-    <Marco usuario={sesion.usuario} titulo="Accesos" descripcion="Quién del equipo entra al panel y con qué rol. Entran con su usuario y contraseña de Odoo.">
-      <Pestanas activa="personal" />
+    <Marco usuario={sesion.usuario} titulo="Personas">
+      <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/accesos" />
       <Personal conAcceso={conAcceso} yo={sesion.usuario.id} />
     </Marco>
   );
@@ -111,8 +96,8 @@ export default async function AccesosPage({ searchParams }: { searchParams: Prom
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Accesos">
-        <Pestanas activa="clientes" />
+      <Marco usuario={sesion.usuario} titulo="Personas">
+        <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/accesos?pestana=clientes" />
         <div className="notice error">
           <h2>
             {esPermiso
@@ -179,12 +164,8 @@ export default async function AccesosPage({ searchParams }: { searchParams: Prom
     .sort((a, b) => b.total - a.total);
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Accesos"
-      descripcion={`Qué clientes de Odoo tienen cuenta en el panel, y cuáles no pueden entrar · generado en ${(rec.duracionMs / 1000).toFixed(1)} s · ${new Date(rec.generadoEn).toLocaleString("es-VE")}`}
-    >
-      <Pestanas activa="clientes" />
+    <Marco usuario={sesion.usuario} titulo="Personas">
+      <PestanasSeccion etiqueta="Personas" pestanas={PESTANAS_PERSONAS} actual="/admin/accesos?pestana=clientes" />
       <section className="stats">
         <Metrica icono="clientes" etiqueta="Clientes en Odoo" valor={rec.odoo.clientesActivos} nota="activos" />
         <Metrica
@@ -232,8 +213,7 @@ export default async function AccesosPage({ searchParams }: { searchParams: Prom
                   <td style={{ color: 'var(--text-3)', fontSize: 12.5 }}>
                     {m.motivo === 'SIN_EMAIL' && 'Añadir correo en Odoo, o dejarlos sin acceso'}
                     {m.motivo === 'EMAIL_INVALIDO' && 'Corregir la dirección en Odoo'}
-                    {m.motivo === 'EMAIL_COMPARTIDO' &&
-                      'Suelen ser grupos de empresas. Hoy solo uno puede tener cuenta'}
+                    {m.motivo === 'EMAIL_COMPARTIDO' && 'Solo uno puede tener cuenta'}
                     {m.motivo === 'DESCONOCIDO' && 'Revisar: debería haberse creado'}
                   </td>
                 </tr>
@@ -246,16 +226,6 @@ export default async function AccesosPage({ searchParams }: { searchParams: Prom
       {rec.sinCuenta.muestra.filter((m) => m.motivo === 'EMAIL_INVALIDO').length > 0 && (
         <section className="panel">
           <h2>Correos mal escritos en Odoo</h2>
-          <p
-            style={{
-              marginTop: -6,
-              marginBottom: 12,
-              fontSize: 13,
-              color: 'var(--text-2)',
-            }}
-          >
-            Cada uno es un cliente que no puede entrar por una errata de captura.
-          </p>
           <div className="table-wrap" style={{ border: 0 }}>
             <table>
               <thead>
@@ -337,14 +307,6 @@ export default async function AccesosPage({ searchParams }: { searchParams: Prom
         </section>
       )}
 
-      <section className="panel">
-        <h2>Cómo se arregla</h2>
-        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-2)' }}>
-          La sincronización corre sola cada 15 minutos. Para lanzarla a mano:{' '}
-          <code>pnpm sync:partners</code>. Los datos se corrigen <strong>en Odoo</strong>, nunca
-          aquí: este panel es un espejo, y editarlo a mano crearía dos verdades.
-        </p>
-      </section>
     </Marco>
   );
 }

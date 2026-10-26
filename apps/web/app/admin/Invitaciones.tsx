@@ -80,14 +80,9 @@ export function Invitaciones({
 
   return (
     <section className="panel">
-      <h2>Invitar a un usuario</h2>
-
-      <p style={{ marginTop: -6, marginBottom: 14, fontSize: 13.5, color: 'var(--text-2)' }}>
-        <strong>{total.toLocaleString('es-VE')}</strong> cuentas activas todavía no pueden
-        entrar. Si el correo está configurado, la invitación les llega sola; si no, aquí se
-        genera el enlace y <strong>lo entregas tú</strong>. Al invitar, el aviso dice cuál de las
-        dos pasó.
-      </p>
+      <h2>
+        Sin contraseña <span className="pi-cuenta">{total.toLocaleString('es-VE')}</span>
+      </h2>
 
       {generada && (
         <div className="notice" style={{ marginBottom: 16, borderColor: 'var(--positive)' }}>
@@ -97,13 +92,11 @@ export function Invitaciones({
           <p style={{ marginBottom: 10 }}>
             {generada.enviadoPorCorreo ? (
               <>
-                El enlace también está aquí por si el correo no llega. Caduca el {fechaCorta(generada.expiraEl)} y{' '}
-                <strong>solo sirve una vez</strong>.
+                Caduca el {fechaCorta(generada.expiraEl)}.
               </>
             ) : (
               <>
-                <strong>No se ha enviado ningún correo.</strong> Cópialo y entrégalo tú. Caduca el{' '}
-                {fechaCorta(generada.expiraEl)}, <strong>solo sirve una vez</strong> y no vuelve a mostrarse.
+                <strong>No se envió por correo:</strong> cópialo y entrégalo tú. Caduca el {fechaCorta(generada.expiraEl)}.
               </>
             )}
           </p>
@@ -204,11 +197,6 @@ export function Invitaciones({
           </table>
         </div>
       )}
-
-      <p style={{ margin: '14px 0 0', fontSize: 12, color: 'var(--text-3)' }}>
-        Regenerar invalida el enlace anterior. Esto sirve para dar de alta a unos pocos
-        clientes a mano; para los {total.toLocaleString('es-VE')} hace falta SMTP (issue #53).
-      </p>
     </section>
   );
 }

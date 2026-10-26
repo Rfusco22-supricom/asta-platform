@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
-import { estaCerca, ventana } from '@/components/Categorias';
+import { estaCerca } from '@/components/Categorias';
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, type Reporte } from '@/lib/api';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
@@ -143,7 +143,7 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
               y <strong>{n(cerca)}</strong> {cerca === 1 ? 'está' : 'están'} cerca de subir de categoría
             </>
           )}
-          . Promedio de ASTA de {ventana(r.meses)}, sin IVA.
+          .
         </p>
 
         <div className="hero-acciones">

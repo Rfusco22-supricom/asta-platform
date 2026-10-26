@@ -91,7 +91,6 @@ export function CodigoTablet({
       {conectada ? (
         <>
           <h2 id="kio-codigo-titulo" className="kio-conectada">✓ Tablet conectada{estado.tablet ? `: ${estado.tablet.nombre}` : ''}</h2>
-          <p className="kio-token-aviso">Ya está lista: en la tablet aparece la pantalla de inicio de la aplicación ASTA.</p>
         </>
       ) : (
         <>
@@ -112,20 +111,12 @@ export function CodigoTablet({
               ) : urlEstado ? (
                 <>
                   <p className="kio-token-aviso">
-                    Caduca en <strong className="kio-reloj">{reloj}</strong> y sirve para una sola tablet.
+                    Escríbelo en la tablet o escanea el QR · caduca en <strong className="kio-reloj">{reloj}</strong>
                   </p>
-                  <ol className="kio-pasos">
-                    <li>En la tablet, abre la aplicación ASTA: la primera vez pide un código.</li>
-                    <li>
-                      Escribe estos 6 dígitos, o pulsa <strong>Escanear el código</strong> y apunta la cámara a este QR.
-                    </li>
-                    <li>La tablet entra sola, y aquí verás «Tablet conectada».</li>
-                  </ol>
                 </>
               ) : (
                 <p className="kio-token-aviso">
-                  <strong>Cópialo ahora: no se vuelve a mostrar.</strong> No caduca y sirve para varias tablets, que verán solo
-                  compatibilidades. Ponlo en «App access» (Google Play) y en las notas para la revisión (App Store). Revócalo cuando ya no haga falta.
+                  <strong>Cópialo ahora: no se vuelve a mostrar.</strong>
                 </p>
               )}
             </div>

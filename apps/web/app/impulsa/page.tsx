@@ -1,7 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { getImpulsa, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { fecha, money, moneyCompact } from '@/lib/formato';
+import { moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 import { ListaImpulsa } from './ListaImpulsa';
 
@@ -35,14 +35,10 @@ export default async function ImpulsaPage() {
     );
   }
 
-  const { pendientes, ventana, reglas } = datos.meta;
+  const { pendientes } = datos.meta;
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Impulsa a tus clientes"
-      descripcion={`Qué ofrecer hoy · compras del ${fecha(ventana.desde)} al ${fecha(ventana.hasta)}`}
-    >
+    <Marco usuario={sesion.usuario} titulo="Impulsa a tus clientes">
       <section className="stats">
         <Cifra icono="clientes" color="verde" etiqueta="Clientes para pasar a ASTA" valor={pendientes.clientes} nota="con sugerencias pendientes" />
         <Cifra
@@ -52,13 +48,9 @@ export default async function ImpulsaPage() {
           valor={pendientes.sugerencias}
           nota={datos.meta.atendidas > 0 ? `${datos.meta.atendidas} ya atendidas` : 'ninguna atendida todavía'}
         />
-        <Cifra icono="juego" color="ambar" etiqueta="En juego" valor={moneyCompact(pendientes.enJuego)} nota={`${money(pendientes.enJuego)} en otras marcas, sin IVA`} />
+        <Cifra icono="juego" color="ambar" etiqueta="En juego" valor={moneyCompact(pendientes.enJuego)} nota="en otras marcas" />
       </section>
 
-      <p className="panel-nota">
-        Clientes que compran un consumible de otra marca, {money(reglas.montoMinimo)} o más en el año y la última vez en los
-        últimos {reglas.diasDesdeUltimaCompra} días, para el que hay un ASTA equivalente con existencias en su almacén.
-      </p>
 
       <ListaImpulsa clientes={datos.data} />
     </Marco>

@@ -9,12 +9,8 @@
 export function AvisoOdoo({ cobertura = false }: { cobertura?: boolean }) {
   return (
     <div className="notice" style={{ marginBottom: 18 }}>
-      <h2>Odoo no responde: se puede seguir revisando</h2>
-      <p>
-        Las compatibilidades están en nuestra base y las decisiones se guardan con normalidad. Lo que falta mientras tanto viene de Odoo:
-        la lista no está ordenada por ventas, algunos productos salen sin nombre
-        {cobertura ? ' y la cobertura del top no se puede calcular, porque sin ventas no hay top' : ''}.
-      </p>
+      <h2>Odoo no responde</h2>
+      <p>Se puede seguir revisando: la lista sale sin ordenar por ventas{cobertura ? ' y sin cobertura' : ''}.</p>
     </div>
   );
 }

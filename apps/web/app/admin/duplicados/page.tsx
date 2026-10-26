@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
+import { PestanasSeccion, PESTANAS_ODOO } from '@/components/PestanasSeccion';
 import { Marco } from '@/components/Marco';
 import { getDuplicadosInforme, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { money, moneyCompact, fechaHora } from '@/lib/formato';
+import { money, moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 
 /**
@@ -59,7 +60,8 @@ export default async function DuplicadosPage({
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Clientes duplicados">
+      <Marco usuario={sesion.usuario} titulo="Datos de Odoo">
+        <PestanasSeccion etiqueta="Datos de Odoo" pestanas={PESTANAS_ODOO} actual="/admin/duplicados" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -72,7 +74,7 @@ export default async function DuplicadosPage({
     );
   }
 
-  const { grupos, resumen, fusionesPara, generadoEn } = datos;
+  const { grupos, resumen, fusionesPara } = datos;
   const pct =
     resumen.montoTotalFacturado > 0
       ? (resumen.montoPartido / resumen.montoTotalFacturado) * 100
@@ -80,14 +82,10 @@ export default async function DuplicadosPage({
   const inofensivos = resumen.sinFacturas + resumen.inocuos;
   const todos = ver === 'todos';
   const visibles = todos ? grupos : grupos.slice(0, POR_DEFECTO);
-  const objetivo = fusionesPara.find((f) => f.porcentaje === 90);
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Clientes duplicados"
-      descripcion={`${resumen.registros.toLocaleString('es-VE')} clientes examinados, comparados dentro de cada compañía · leído de Odoo el ${fechaHora(generadoEn)}`}
-    >
+    <Marco usuario={sesion.usuario} titulo="Datos de Odoo">
+      <PestanasSeccion etiqueta="Datos de Odoo" pestanas={PESTANAS_ODOO} actual="/admin/duplicados" />
       <section className="stats">
         <Cifra
           icono="juego"
@@ -95,54 +93,32 @@ export default async function DuplicadosPage({
           etiqueta="Facturación mal repartida"
           valor={moneyCompact(resumen.montoPartido)}
           tono={resumen.montoPartido > 0 ? 'alerta' : undefined}
-          nota={`${pct.toFixed(1)} % de lo facturado, en cifras que nadie ve completas`}
+          nota={`${pct.toFixed(1)} % de lo facturado`}
         />
-        <Cifra icono="copias" color="violeta" etiqueta="Fusiones pendientes" valor={resumen.partidos.toLocaleString('es-VE')} nota="grupos con la facturación partida en varios registros" />
+        <Cifra icono="copias" color="violeta" etiqueta="Fusiones pendientes" valor={resumen.partidos.toLocaleString('es-VE')} nota="grupos" />
         <Cifra
           icono="clientes"
           color="ambar"
           etiqueta="Cruzan carteras"
           valor={resumen.partidosEntreVendedores.toLocaleString('es-VE')}
           tono={resumen.partidosEntreVendedores > 0 ? 'atencion' : undefined}
-          nota="fusionarlos mueve facturación entre vendedores"
+          nota="entre vendedores"
         />
         <Cifra
           icono="check"
           color="verde"
           etiqueta="Duplicados inofensivos"
           valor={inofensivos.toLocaleString('es-VE')}
-          nota={`${resumen.sinFacturas} sin facturas y ${resumen.inocuos} con todo en un registro: el panel muestra bien`}
+          nota="no afectan a las cifras"
         />
       </section>
 
       {resumen.partidos === 0 ? (
-        <div className="notice">
-          <h2>No hay ningún cliente con la facturación repartida</h2>
-          <p>
-            Quedan {inofensivos} grupos de nombres o RIF repetidos, pero ninguno distorsiona las
-            cifras del panel: o no tienen facturas, o las tienen todas en un mismo registro.
-            Nada que fusionar por este motivo.
-          </p>
-        </div>
+        <div className="empty">Nada que fusionar.</div>
       ) : (
         <>
-          {/*
-            El número que convierte el issue en una tarea con final.
-            «Hay 139 grupos rotos» no mueve a nadie; «con 20 fusiones arreglas el
-            90 % del dinero» sí, porque se puede terminar en una tarde.
-          */}
           <section className="panel">
             <h2>Por dónde empezar</h2>
-            <p className="panel-nota">
-              La lista va ordenada por dinero en juego, no por número de registros.
-              {objetivo && objetivo.fusiones > 0 && (
-                <>
-                  {' '}
-                  Con las <strong>{objetivo.fusiones} primeras</strong> se arregla el 90 % de la
-                  facturación mal repartida.
-                </>
-              )}
-            </p>
             <ul className="duplicados-escalera">
               {fusionesPara.map((f) => (
                 <li key={f.porcentaje}>
@@ -151,12 +127,12 @@ export default async function DuplicadosPage({
                 </li>
               ))}
             </ul>
-            <p className="panel-nota">
-              Cada fusión se hace en Odoo: <strong>Contactos → selecciona los registros → Acción →
-              Fusionar contactos</strong>, dejando como destino el marcado aquí. Odoo reasigna
-              facturas y pedidos al superviviente. Esta lista se recalcula en cada carga, así que
-              lo fusionado desaparece de ella.
-            </p>
+            <ol className="cd-ruta" aria-label="Dónde se fusiona en Odoo">
+              <li>Contactos</li>
+              <li>Seleccionar</li>
+              <li>Acción</li>
+              <li>Fusionar contactos</li>
+            </ol>
           </section>
 
           <div className="toolbar">
@@ -257,22 +233,6 @@ export default async function DuplicadosPage({
             </nav>
           )}
 
-          {/*
-            Lo que esta pantalla NO puede arreglar.
-
-            Sin regla de unicidad en Odoo, cada semana entran duplicados nuevos y
-            la lista vuelve a crecer sola. Decirlo aquí es lo que evita que
-            alguien fusione 139 grupos y dé el problema por cerrado.
-          */}
-          <div className="notice" style={{ marginTop: 18 }}>
-            <h2>Fusionar no evita que vuelvan</h2>
-            <p>
-              Mientras en Odoo se pueda crear un cliente con un RIF que ya existe, la lista vuelve
-              a llenarse. La prevención es del lado de Odoo: subir el documento fiscal a{' '}
-              <code>res.partner</code> y hacerlo único. Es el punto 3 del issue #50 y no se puede
-              hacer desde el panel.
-            </p>
-          </div>
         </>
       )}
     </Marco>

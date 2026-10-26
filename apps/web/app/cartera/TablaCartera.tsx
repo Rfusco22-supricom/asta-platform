@@ -291,7 +291,7 @@ function Clasificacion({
   if (res && !res.ok) {
     return (
       <div className="notice error clasificacion-error">
-        <p>No se pudo calcular cómo está cada cliente: {res.mensaje} La tabla de abajo sí está al día.</p>
+        <p>No se pudo calcular el estado de cada cliente: {res.mensaje}</p>
       </div>
     );
   }
@@ -310,11 +310,6 @@ function Clasificacion({
       <div className="panel clasificacion-bloque">
         <div className="clasificacion-titulo">
           <h2>Estado de compra</h2>
-          {datos && (
-            <span>
-              Activo: compró ASTA hace menos de {datos.meta.umbrales.enRiesgo} días · dormido: más de {datos.meta.umbrales.dormido}
-            </span>
-          )}
         </div>
         {datos ? (
           <>

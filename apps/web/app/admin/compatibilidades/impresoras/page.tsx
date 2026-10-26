@@ -82,7 +82,7 @@ export default async function ImpresorasPage({
   };
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Compatibilidades" descripcion="Qué tóner le sirve a cada impresora. La aplicación solo recomienda lo validado, y solo ofrece ASTA.">
+    <Marco usuario={sesion.usuario} titulo="Compatibilidades">
       <Pestanas actual="impresoras" />
 
       {!odooDisponible && <AvisoOdoo />}

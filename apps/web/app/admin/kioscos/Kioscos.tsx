@@ -51,12 +51,10 @@ async function enviar(url: string, metodo: 'POST' | 'PUT' | 'PATCH' | 'DELETE', 
 export function Kioscos({
   inicial,
   almacenes,
-  odooDisponible,
   revisionInicial,
 }: {
   inicial: Kiosco[];
   almacenes: AlmacenKiosco[] | null;
-  odooDisponible: boolean;
   revisionInicial: CodigoRevision | null;
 }) {
   const [kioscos, setKioscos] = useState(inicial);
@@ -197,14 +195,10 @@ export function Kioscos({
       <section className="kio-alta" aria-labelledby="kio-alta-titulo">
         <div className="kio-alta-cabecera">
           <h2 id="kio-alta-titulo">Añadir una tablet de Supricom</h2>
-          <p>
-            Para una tienda de Supricom: elige su almacén y enseñará existencias. Sale un código de 6 dígitos (y su QR) que se escribe en la
-            tablet. Los clientes añaden las suyas desde su cuenta.
-          </p>
         </div>
         {!almacenes ? (
           <div className="notice error" style={{ margin: 0 }}>
-            <p>Odoo no responde ahora mismo, y hace falta para elegir el almacén. Las tablets de abajo siguen funcionando.</p>
+            <p>Odoo no responde: no se puede elegir el almacén.</p>
           </div>
         ) : (
           <form className="kio-formulario" onSubmit={pedirCodigo}>
@@ -234,7 +228,6 @@ export function Kioscos({
         <h2 id="kio-lista-titulo" className="kio-lista-titulo">
           Tablets <span className="pi-cuenta">{kioscos.length}</span>
         </h2>
-        {!odooDisponible && kioscos.length > 0 && <p className="kio-nota">Sin Odoo no se ven los nombres de los almacenes; las tablets funcionan igual.</p>}
         {kioscos.length === 0 ? (
           <div className="table-wrap">
             <div className="empty">Todavía no hay ninguna tablet. Añade la primera arriba.</div>
@@ -288,16 +281,12 @@ export function Kioscos({
       <section className="kio-alta" aria-labelledby="kio-revision-titulo">
         <div className="kio-alta-cabecera">
           <h2 id="kio-revision-titulo">Código para los revisores de Apple y Google</h2>
-          <p>
-            Para publicar la aplicación, Apple y Google tienen que poder entrar. Este código no caduca, sirve para varias tablets y solo enseña
-            compatibilidades. Revócalo cuando la revisión termine.
-          </p>
         </div>
         <div className="kio-revision">
           <p className="kio-nota kio-espera">
             {revision
-              ? `Hay uno vigente desde el ${new Date(revision.creadoEn).toLocaleDateString('es-VE')}. Usado ${revision.usos} ${revision.usos === 1 ? 'vez' : 'veces'}.`
-              : 'No hay ninguno vigente.'}
+              ? `Vigente desde el ${new Date(revision.creadoEn).toLocaleDateString('es-VE')} · usado ${revision.usos} ${revision.usos === 1 ? 'vez' : 'veces'}`
+              : 'Ninguno vigente'}
           </p>
           <div className="kio-tablet-acciones">
             {revision && (
@@ -314,13 +303,9 @@ export function Kioscos({
 
       <details className="kio-alta kio-mano">
         <summary>Preparar una tablet a mano</summary>
-        <p className="kio-nota">
-          Solo para una aplicación compilada con el token dentro (desarrollo, o una tablet preparada a mano). Las que instalan la aplicación
-          desde la tienda de apps se añaden arriba con un código.
-        </p>
         {!almacenes ? (
           <div className="notice error" style={{ margin: 0 }}>
-            <p>Odoo no responde ahora mismo, y hace falta para elegir el almacén.</p>
+            <p>Odoo no responde: no se puede elegir el almacén.</p>
           </div>
         ) : (
           <form className="kio-formulario" onSubmit={registrar}>
