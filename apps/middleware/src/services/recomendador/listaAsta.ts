@@ -73,8 +73,11 @@ export const LISTA_ASTA: ListaFabricante[] = [
   lista('HP', ['Q7553A', '53A'], ['LaserJet P2014', 'LaserJet P2015', 'LaserJet M2727']),
   lista('HP', ['Q5949A', '49A'], ['LaserJet 1160', 'LaserJet 1320', 'LaserJet M3390mfp', 'LaserJet M3392mfp']),
   lista('HP', ['Q7551A', '51A'], ['LaserJet P3005', 'LaserJet M3027']),
-  // «Q5942X/Q5945»: un ASTA para los dos; cada original, con lo suyo.
-  lista('HP', ['Q5942X', '42X'], ['LaserJet 4240', 'LaserJet 4250', 'LaserJet 4350']),
+  // «Q5942X/Q5945»: un ASTA para las cuatro. El original de la 4345 es el
+  // Q5945A, que no está en el sistema; el ASTA 42X le sirve (lo confirmó
+  // Supricom el 2026-10-26), así que va también con el Q5942X para que el
+  // kiosco la recomiende. Cuando exista el Q5945A, se enlaza con el suyo.
+  lista('HP', ['Q5942X', '42X'], ['LaserJet 4240', 'LaserJet 4250', 'LaserJet 4350', 'LaserJet 4345']),
   lista('HP', ['Q5945A', '45A'], ['LaserJet 4345']),
   lista('HP', ['CF283A', '83A'], ['LaserJet Pro MFP M125', 'LaserJet Pro MFP M127', 'LaserJet Pro M201', 'LaserJet Pro MFP M225']),
   lista('HP', ['CF280A', '80A'], ['LaserJet Pro 400 M401', 'LaserJet Pro 400 MFP M425']),
