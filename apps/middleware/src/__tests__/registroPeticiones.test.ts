@@ -4,6 +4,7 @@ import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey, revokeApiKey } from '../services/apiKey.service.js';
 import { regla401PorKey, reglaNMasUno, UMBRALES } from '../services/alerts.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Issue #29 — bitácora de la API pública en `api_request_logs`.
@@ -96,6 +97,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => server?.close(() => resolve()));
+  await esperarBitacora(INICIO);
   // Las filas de este fichero, para no contaminar las reglas de otros tests.
   // Solo las de este fichero: por su key, o sin key (las de un 401, que también
   // caerían en la ventana de las alertas). Antes borraba TODO lo escrito desde

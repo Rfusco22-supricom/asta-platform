@@ -6,6 +6,7 @@ import { prisma } from '../config/prisma.js';
 import { emitirAccessToken } from '../auth/jwt.js';
 import { caducaEnDias, hashSecreto } from '../auth/tokens.js';
 import { olvidarVistos } from '../services/kioscos.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #120 · Las tablets del kiosco, dadas de alta desde el panel.
@@ -85,6 +86,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
+  await esperarBitacora(INICIO);
   // La bitácora de lo que pidieron las tablets: la regla de 5xx de las alertas
   // cuenta todas las filas de los últimos 15 min, y estas falsearían su test.
   await prisma.apiRequestLog.deleteMany({ where: { createdAt: { gte: INICIO }, userAgent: AGENTE } });

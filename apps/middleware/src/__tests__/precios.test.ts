@@ -16,6 +16,7 @@ import {
   validarTarifa,
   type Regla,
 } from '../services/pricing.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #31 — `GET /api/v1/public/pricing`, con el gate de aislamiento heredado de #36.
@@ -253,6 +254,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   quitarSink?.();
+  await esperarBitacora(INICIO);
   // Solo las de este fichero: por su key, o sin key (las de un 401, que también
   // caerían en la ventana de las alertas). Antes borraba TODO lo escrito desde
   // `INICIO`, y los ficheros corren en paralelo: esta limpieza se llevaba por

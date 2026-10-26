@@ -8,6 +8,7 @@ import { emitirAccessToken } from '../auth/jwt.js';
 import { caducaEnDias, hashSecreto } from '../auth/tokens.js';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Revisión de #111/#112 · Lo que se crea sin revisar no es público.
@@ -29,6 +30,8 @@ let server: Server;
 let base = '';
 let comprobado = false;
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuarios: string[] = [];
 const keys: string[] = [];
 const tokens = { admin: '', vendedor: '' };
@@ -107,6 +110,7 @@ afterAll(async () => {
     await prisma.cartridge.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
+    await esperarBitacora(INICIO);
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
     // Telemetría (#43): solo la de sus usuarios. Por id se llevaba también la de
     // otra batería contra la misma base. Y antes de borrarlos: la FK pone user_id

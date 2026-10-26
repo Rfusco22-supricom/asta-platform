@@ -9,6 +9,7 @@ import { construirOpenApi, OPERACIONES, urlDeEjemplo } from '../openapi/especifi
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
 import { leerTarifas } from '../services/tarifas.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #35 · Los ejemplos de la documentación funcionan.
@@ -27,6 +28,8 @@ import { leerTarifas } from '../services/tarifas.service.js';
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 let idTelemetriaInicial = 0n;
 /** El dueño de la key: puede ser un cliente que ya existía, y entonces no está en `usuariosCreados`. */
 let usuarioDelEjemplo: string | undefined;
@@ -177,6 +180,7 @@ afterAll(async () => {
       await prisma.printerBrand.deleteMany({ where: { id: fixture.marcaCreada, cartridges: { none: {} }, printerModels: { none: {} } } });
     }
   }
+  await esperarBitacora(INICIO);
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
   // Solo las del usuario del ejemplo: por id a secas se llevaba también las de
   // otra batería contra la misma base. La tabla no guarda la key, así que si el

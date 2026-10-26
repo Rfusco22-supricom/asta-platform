@@ -14,6 +14,7 @@ import { issueApiKey } from '../services/apiKey.service.js';
 import { vaciarCachesInventario } from '../services/inventory.service.js';
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #39 · Endpoints del recomendador, contra el servidor, MySQL y Odoo reales.
@@ -45,6 +46,8 @@ const CODIGOS = ['zzrec1', 'zzrec2', 'zzrec3', 'zzrec4'];
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 let key = '';
@@ -164,6 +167,7 @@ afterAll(async () => {
     await prisma.cartridge.deleteMany({ where: { codeNormalized: { in: CODIGOS }, brand: { name: MARCA } } });
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
+    await esperarBitacora(INICIO);
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
     // Telemetría (#43): solo la de sus usuarios. Por id se llevaba también la de
     // otra batería contra la misma base. Y antes de borrarlos: la FK pone user_id
