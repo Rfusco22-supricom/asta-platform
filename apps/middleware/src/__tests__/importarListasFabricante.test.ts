@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma.js';
 import { importarListasFabricante, type ListaFabricante } from '../services/recomendador/importarListasFabricante.js';
 import { LISTAS_FABRICANTE } from '../services/recomendador/listasFabricante.js';
+import { LISTA_ASTA } from '../services/recomendador/listaAsta.js';
 
 /**
  * #56 · Listas de impresoras del fabricante, contra MySQL de verdad.
@@ -172,8 +173,24 @@ describe('#56 · Los datos', () => {
     for (const l of LISTAS_FABRICANTE) expect(l.fuentes[0].length).toBeLessThanOrEqual(255);
   });
 
+  it('la lista ASTA dice de qué documento sale, con fecha, y cabe en `source_ref`', () => {
+    for (const l of LISTA_ASTA) {
+      expect(l.fuentes[0]).toMatch(/^Lista ASTA/);
+      expect(l.fuentes[0].length).toBeLessThanOrEqual(255);
+      expect(l.consultado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(l.impresoras.length, `${l.marca} ${l.cartuchos.join('/')}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('un universal ASTA no junta las impresoras de sus originales: cada código, con las suyas', () => {
+    const de = (codigo: string) => LISTA_ASTA.find((l) => l.cartuchos.includes(codigo))!.impresoras;
+    expect(de('CB435A')).toContain('LaserJet P1006');
+    expect(de('CE285A')).not.toContain('LaserJet P1006');
+    expect(de('CE285A')).toContain('LaserJet Pro M1132');
+  });
+
   it('ninguna impresora lleva la marca delante: «Canon PIXMA…» no encontraría la «PIXMA…» que ya hubiera', () => {
-    for (const l of LISTAS_FABRICANTE) {
+    for (const l of [...LISTAS_FABRICANTE, ...LISTA_ASTA]) {
       for (const i of l.impresoras) expect(i.toLowerCase().startsWith(l.marca.toLowerCase())).toBe(false);
     }
   });
