@@ -535,13 +535,21 @@ export function minutosAbiertos(desde: Date, hasta: Date, tope: number, h: Horar
  * Una alerta POR KIOSCO, no una para todos: si cae una segunda tablet mientras
  * la primera sigue caída, es un aviso nuevo; y cada una avisa por su lado
  * cuando vuelve. Las tablets que nunca se conectaron (recién dadas de alta) no
- * cuentan: todavía no están instaladas.
+ * cuentan: todavía no están instaladas. Y solo las de Supricom: las tablets de
+ * los clientes son de su tienda.
  */
 export async function reglaKioscos(ahora = new Date()): Promise<Alerta[]> {
   const h = horarioTienda();
   const umbral = UMBRALES.kioscoMin;
   const candidatos = await prisma.kioskDevice.findMany({
-    where: { isActive: true, lastSeenAt: { lt: new Date(ahora.getTime() - umbral * 60_000) } },
+    // Solo las de las tiendas de Supricom: con almacén y sin cliente dueño. Las
+    // de los clientes y las de los revisores no son asunto nuestro si se apagan.
+    where: {
+      isActive: true,
+      odooPartnerId: null,
+      odooWarehouseId: { not: null },
+      lastSeenAt: { lt: new Date(ahora.getTime() - umbral * 60_000) },
+    },
     select: { id: true, label: true, storeLocation: true, lastSeenAt: true },
     orderBy: { label: 'asc' },
     take: 50,

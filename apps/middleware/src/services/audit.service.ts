@@ -67,6 +67,11 @@ export type AuditAction =
   | 'kiosco.token_renovado'
   | 'kiosco.activado'
   | 'kiosco.desactivado'
+  /// Los códigos con los que se vincula una tablet: quién pidió uno (y para qué
+  /// almacén), y el de los revisores de las tiendas de apps.
+  | 'kiosco.codigo_creado'
+  | 'kiosco.codigo_revision_creado'
+  | 'kiosco.codigo_revision_revocado'
   | 'user.invitado'
   | 'user.invitacion_aceptada'
   /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin

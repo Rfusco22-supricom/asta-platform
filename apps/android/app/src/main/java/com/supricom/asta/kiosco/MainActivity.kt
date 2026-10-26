@@ -2,6 +2,7 @@ package com.supricom.asta.kiosco
 
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -42,8 +43,9 @@ import kotlinx.coroutines.delay
  * Eso NO impide salirse de la app: para eso, fijar la pantalla o el modo
  * dispositivo dedicado. Ver `apps/android/README.md`.
  *
- * Sin código de tablet compilado, la primera vez pide uno (`Activacion`): así la
- * misma app sirve para todas las tablets cuando se instala desde la tienda.
+ * Sin token compilado, la primera vez pide el código de 6 dígitos que da el
+ * panel (`Activacion`): así la misma app sirve para todas las tablets cuando se
+ * instala desde la tienda de apps.
  */
 private const val LATIDO_MS = 10 * 60 * 1000L
 
@@ -64,11 +66,13 @@ class MainActivity : ComponentActivity() {
         activacion = Activacion(
             claveCompilada = BuildConfig.ASTA_API_KEY,
             almacen = AlmacenCodigoSeguro(getSharedPreferences("asta.activacion", MODE_PRIVATE)),
-            crearApi = ::api,
+            base = BuildConfig.ASTA_API_BASE,
+            version = BuildConfig.VERSION_NAME,
+            modelo = "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}",
         )
         setContent {
             when (val estado = activacion.estado) {
-                // Un código distinto es otra tablet: se empieza de cero.
+                // Un token distinto es otra tablet: se empieza de cero.
                 is EstadoActivacion.Activa -> key(estado.apiKey) { KioscoActivo(estado.apiKey) }
                 EstadoActivacion.Pendiente -> PantallaActivacion(activacion)
             }
@@ -89,8 +93,8 @@ class MainActivity : ComponentActivity() {
         }
         // Señal de vida cada 10 min mientras la app está abierta (#46): menos que el
         // umbral de la alerta «kiosco mudo» (30 min), con margen para un latido
-        // perdido. Y de paso dice si el código sigue valiendo: un 401 es que la
-        // desactivaron en el panel (o se renovó), y la tablet vuelve a pedirlo.
+        // perdido. Y de paso dice si el token sigue valiendo: un 401 es que la
+        // desactivaron en el panel (o se renovó), y la tablet vuelve a pedir un código.
         LaunchedEffect(clave) {
             while (true) {
                 if (clave.startsWith("asta_kio_")) {

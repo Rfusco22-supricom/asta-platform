@@ -63,6 +63,7 @@ export const accionSchema = z.enum([
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
+  'tablets.propias.gestionar',
   'catalogo.leer',
   'precios.propios.leer',
   'facturas.propias.leer',
@@ -189,6 +190,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Dar de alta, desactivar y renovar el token de las tablets del kiosco',
+  },
+  'tablets.propias.gestionar': {
+    // El cliente vincula las tablets de SU tienda. Solo enseñan
+    // compatibilidades: sin almacén no hay existencias, y no puede elegir uno.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Vincular y desactivar las tablets de su propia tienda',
   },
   'admin.compatibilidades.revisar': {
     // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).

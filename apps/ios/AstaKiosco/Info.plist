@@ -30,7 +30,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>La cámara se usa una sola vez, para leer el código QR que activa esta tablet.</string>
+	<string>La cámara se usa solo para leer el código QR que vincula esta tablet.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Sora_400Regular.ttf</string>

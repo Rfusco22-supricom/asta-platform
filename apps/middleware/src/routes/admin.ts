@@ -54,7 +54,18 @@ import {
   validarLoteFabricante,
 } from '../services/recomendador/porImpresora.service.js';
 import { paresClaros, validarLoteAsta } from '../services/recomendador/loteAsta.service.js';
-import { almacenesDeOdoo, cambiarKiosco, listarKioscos, nuevoTokenKiosco, registrarKiosco } from '../services/kioscos.service.js';
+import {
+  almacenesDeOdoo,
+  cambiarKiosco,
+  codigoParaSupricom,
+  codigoRevision,
+  estadoCodigo,
+  listarKioscos,
+  nuevoCodigoRevision,
+  nuevoTokenKiosco,
+  registrarKiosco,
+  revocarCodigoRevision,
+} from '../services/kioscos.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
@@ -826,7 +837,80 @@ adminRouter.get('/kioscos/almacenes', autorizar('admin.kioscos.gestionar'), asyn
   }
 });
 
-/** Da de alta una tablet. El token en claro sale aquí y no se vuelve a ver. */
+/**
+ * Un código para vincular una tablet de una tienda de Supricom, con su almacén.
+ * Sale una vez y caduca en minutos: se escribe (o se escanea) en la tablet.
+ */
+adminRouter.post('/kioscos/codigos', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const cuerpo = nuevoKioscoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const r = await codigoParaSupricom(cuerpo.data, req.identity.appUserId);
+    recordAudit({
+      action: 'kiosco.codigo_creado',
+      ...auditContext(req),
+      targetType: 'kiosk_codigos',
+      targetId: r.id,
+      metadata: { nombre: cuerpo.data.nombre, tienda: cuerpo.data.tienda, odooWarehouseId: cuerpo.data.odooWarehouseId },
+    });
+    res.status(201).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Si la tablet ya usó el código: el panel lo pregunta mientras lo enseña. */
+adminRouter.get('/kioscos/codigos/:id', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const id = idKiosco.safeParse(req.params.id);
+    if (!id.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Código no válido.' } });
+      return;
+    }
+    res.json({ data: await estadoCodigo(id.data, req.identity.appUserId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** El código para los revisores de Apple y Google, sin el código (solo se ve al crearlo). */
+adminRouter.get('/kioscos/codigo-revision', autorizar('admin.kioscos.gestionar'), async (_req, res, next) => {
+  try {
+    res.json({ data: await codigoRevision() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Uno nuevo para los revisores. El anterior deja de valer. */
+adminRouter.post('/kioscos/codigo-revision', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const r = await nuevoCodigoRevision(req.identity.appUserId);
+    recordAudit({ action: 'kiosco.codigo_revision_creado', ...auditContext(req), targetType: 'kiosk_codigos', targetId: r.id, metadata: {} });
+    res.status(201).json({ data: r });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Revoca el código de los revisores. Las tablets que ya entraron siguen hasta desactivarlas. */
+adminRouter.post('/kioscos/codigo-revision/revocar', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
+  try {
+    const revocados = await revocarCodigoRevision();
+    recordAudit({ action: 'kiosco.codigo_revision_revocado', ...auditContext(req), targetType: 'kiosk_codigos', targetId: null, metadata: { revocados } });
+    res.json({ data: { revocados } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Da de alta una tablet a mano: para una app compilada con el token dentro. El
+ * token en claro sale aquí y no se vuelve a ver.
+ */
 adminRouter.post('/kioscos', autorizar('admin.kioscos.gestionar'), async (req, res, next) => {
   try {
     const cuerpo = nuevoKioscoSchema.safeParse(req.body);

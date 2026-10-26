@@ -105,7 +105,10 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
   BRONCE: [
     {
       titulo: null,
-      secciones: [{ href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' }],
+      secciones: [
+        { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
+        { href: '/cuenta/tablets', titulo: 'Mis tablets', icono: 'tablet', corto: 'Tablets' },
+      ],
     },
     MI_CUENTA,
   ],

@@ -58,11 +58,12 @@ targets:
           - DMMono_400Regular.ttf
           - DMMono_500Medium.ttf
         # Del xcconfig: ver Config/Kiosco.example.xcconfig. Sin AstaApiKey (la
-        # versión de la tienda de apps), la tablet pide su código al abrirse.
+        # versión de la tienda de apps), la tablet pide al abrirse el código
+        # de 6 dígitos que da el panel.
         AstaApiBase: $(ASTA_API_BASE)
         AstaApiKey: $(ASTA_API_KEY)
-        # La cámara solo se usa para leer el QR de activación que da el panel.
-        NSCameraUsageDescription: La cámara se usa una sola vez, para leer el código QR que activa esta tablet.
+        # La cámara solo se usa para leer el QR del código que da el panel.
+        NSCameraUsageDescription: La cámara se usa solo para leer el código QR que vincula esta tablet.
         # El middleware de desarrollo es http://localhost; producción va por https.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
