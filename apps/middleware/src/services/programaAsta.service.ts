@@ -11,6 +11,7 @@ import {
   mesesDelTrimestre,
   subir,
   trimestreAnterior,
+  trimestreDe,
   type ClaveCategoria,
   type ClientePrograma,
   type EvaluacionTrimestre,
@@ -20,6 +21,7 @@ import { executeKw, readGroup, searchRead } from '../odoo/client.js';
 import { MARCA_ASTA } from './asta.service.js';
 import { categoriasAsta } from './categoriasAsta.service.js';
 import { normalizarRif, rifUtilizable } from './duplicados.js';
+import { dePantalla } from './pantallas.js';
 import { LINEAS_ASTA } from './ventasAsta.service.js';
 
 /**
@@ -442,3 +444,46 @@ export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
   const filas = await prisma.programaTrimestre.findMany({ where: { trimestre: ultimo._max.trimestre }, select: { clave: true, nivelFin: true } });
   return new Map(filas.map((f) => [f.clave, f.nivelFin]));
 }
+
+/**
+ * El programa de UN cliente en el trimestre en curso, para «Mis métricas».
+ *
+ * Sale de la misma evaluación de todos (`evaluarTrimestre`, guardada un rato):
+ * así el cliente ve lo mismo que Supricom. Si no está en ella —Cliente general
+ * que no ha comprado este trimestre— se le evalúa con cero, contra Bronce, con
+ * el sell-out que sí haya reportado.
+ */
+export async function programaDeCliente(partnerId: number, hoy = new Date()): Promise<{ saldoTokens: number; evaluacion: EvaluacionTrimestre }> {
+  const trimestre = trimestreDe(hoy);
+  const meses = mesesDelTrimestre(trimestre);
+  const [todos, [ficha]] = await Promise.all([
+    dePantalla(`programa:${trimestre}`, () => evaluarTrimestre(trimestre, hoy)),
+    searchRead<{ vat: string | false; commercial_partner_id: [number, string] | false }>('res.partner', [['id', 'in', [partnerId]]], ['vat', 'commercial_partner_id'], {
+      context: { active_test: false },
+    }),
+  ]);
+  // La misma clave que las cuentas (`claveDeFicha`): el RIF, o la ficha comercial.
+  const rif = normalizarRif(ficha?.vat || null);
+  const clave = rifUtilizable(rif) ? rif! : `p${ficha?.commercial_partner_id ? ficha.commercial_partner_id[0] : partnerId}`;
+  const suyo = todos.find((c) => c.clave === clave);
+  if (suyo) return { saldoTokens: suyo.saldoTokens, evaluacion: suyo.evaluacion };
+
+  const [reportes, saldo, total] = await Promise.all([
+    prisma.sellOutReporte.findMany({ where: { odooPartnerId: partnerId, mes: { in: meses } }, select: { mes: true, createdAt: true } }),
+    prisma.programaTrimestre.aggregate({ where: { clave }, _sum: { tokens: true } }),
+    todos[0] ? Promise.resolve(todos[0].evaluacion.referencias.total) : referenciasAsta(),
+  ]);
+  const enPlazo = new Set(reportes.filter((r) => r.createdAt <= limiteSellout(r.mes)).map((r) => r.mes));
+  const evaluacion = evaluar({
+    trimestre,
+    nivel: 'GENERAL',
+    compras: [0, 0, 0],
+    mesesTerminados: meses.map((m) => terminoElMes(m, hoy)) as EntradaEvaluacion['mesesTerminados'],
+    sellout: meses.map((m) => (enPlazo.has(m) ? true : hoy > limiteSellout(m) ? false : null)) as EntradaEvaluacion['sellout'],
+    referenciasCompradas: 0,
+    referenciasTotal: total,
+    anteriorSinFallos: null,
+  });
+  return { saldoTokens: saldo._sum.tokens ?? 0, evaluacion };
+}
+

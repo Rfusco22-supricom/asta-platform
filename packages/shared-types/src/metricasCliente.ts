@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { invoicingSummarySchema } from './invoicing.js';
 import { clientProfileSchema } from './partners.js';
-import { clienteCategoriaSchema } from './categoriasAsta.js';
+import { evaluacionTrimestreSchema } from './programaAsta.js';
 
 /**
  * «Mis métricas»: lo que un CLIENTE ve de sí mismo en el panel, con datos que
@@ -17,13 +17,14 @@ export const metricasClienteSchema = z.object({
   /** Qué compra (de todo su historial) y cuánto hace que no compra. Sin las notas del vendedor. */
   perfil: clientProfileSchema.omit({ notas: true, notasDisponibles: true }).nullable(),
   /**
-   * Su nivel en el programa ASTA. `cliente: null` si no compra ASTA en los
-   * meses de la ventana: no está en el programa todavía.
+   * Su nivel en el programa ASTA (`programaAsta.ts`): cómo va en el trimestre
+   * en curso y los tokens que lleva de los ya cerrados. Su nivel de ahora es
+   * `evaluacion.nivel`.
    */
-  nivel: z
+  programa: z
     .object({
-      meses: z.array(z.string().regex(/^\d{4}-\d{2}$/)),
-      cliente: clienteCategoriaSchema.nullable(),
+      saldoTokens: z.number().int().nonnegative(),
+      evaluacion: evaluacionTrimestreSchema,
     })
     .nullable(),
   /** Lo que se busca en SUS tablets. `null` si no tiene ninguna. */

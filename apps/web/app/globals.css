@@ -4130,10 +4130,33 @@ button.serie-col .serie-barra { display: block; }
 
 /* Mis métricas del cliente. */
 .met-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
-.met-nivel { display: grid; gap: 8px; justify-items: start; }
-.met-nivel strong { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.met-subir { display: grid; gap: 4px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 14px; }
-.met-subir strong { font-size: inherit; font-weight: 650; }
+/* El programa de ASTA del cliente: nivel, tokens y el trimestre. */
+.prog { display: grid; gap: 12px; }
+.prog-cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; }
+.prog-nivel { display: grid; gap: 8px; justify-items: start; }
+.prog-nivel h2 { margin: 0; }
+.prog-saldo { display: grid; justify-items: end; text-align: right; }
+.prog-saldo b { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.prog-saldo span { font-size: 12px; color: var(--text-2); }
+.prog-veredicto { margin: 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 14px; }
+.prog-veredicto.ok { border-color: color-mix(in srgb, var(--pi-ok) 45%, var(--border)); background: color-mix(in srgb, var(--pi-ok) 8%, transparent); }
+.prog-veredicto.no { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.prog-sub { margin: 6px 0 0; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.prog-lista, .prog-extras { list-style: none; margin: 0; padding: 0; display: grid; }
+.prog-fila, .prog-extras li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.prog-fila:first-child, .prog-extras li:first-child { border-top: 0; }
+.prog-texto, .prog-extras li > span:nth-child(2) { display: grid; gap: 4px; min-width: 0; }
+.prog-marca { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 13px; font-weight: 700; border: 1px solid var(--border); color: var(--text-3); }
+.prog-marca.ok { color: var(--pi-ok); border-color: color-mix(in srgb, var(--pi-ok) 55%, var(--border)); background: color-mix(in srgb, var(--pi-ok) 12%, transparent); }
+.prog-marca.no { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.prog-tokens-fila { font-size: 13px; font-weight: 650; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.prog-meses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.prog-mes { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.prog-mes.ok { color: var(--pi-ok); border-color: color-mix(in srgb, var(--pi-ok) 45%, var(--border)); }
+.prog-mes.no { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.prog-avance { display: flex; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.prog-avance .proporcion-barra { display: block; flex: 1; max-width: 260px; }
+.prog-pie { margin: 2px 0 0; }
 .met-listas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 14px; }
 .met-listas h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; color: var(--text-2); }
 .met-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
