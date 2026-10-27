@@ -485,7 +485,7 @@ export const OPERACIONES: Operacion[] = [
             nombre: 'TÓNER NEGRO DE EJEMPLO',
             stock: 'disponible',
             tipo: 'original',
-            cartuchos: [{ marca: 'HP', codigo: 'CF258A', tipo: 'toner', color: 'negro', rendimientoPaginas: 3000 }],
+            cartuchos: [{ marca: 'HP', codigo: 'CF258A', tipo: 'toner', color: 'negro', rendimientoPaginas: 3000, botella: false }],
           },
         ],
         meta: { impresora: { id: 42, marca: 'HP', nombre: 'LaserJet Pro M404dn' }, sinCompatibilidadesCargadas: false, desdeCache: false },

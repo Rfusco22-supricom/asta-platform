@@ -25,6 +25,8 @@ data class Cartucho(
     val tipo: String,
     val color: String? = null,
     val rendimientoPaginas: Int? = null,
+    /** Botella de tinta (EcoTank, Smart Tank…) y no cartucho. `false` si el servidor no lo dice. */
+    val botella: Boolean = false,
 )
 
 @Serializable

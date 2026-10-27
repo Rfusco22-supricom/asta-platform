@@ -31,8 +31,8 @@ import Testing
 
     @Test func noLlamaTonerAUnaTintaNiAUnTambor() {
         let brother = Impresora(id: 9, marca: "Brother", nombre: "HL-L2350DW")
-        func cartucho(_ codigo: String, _ tipo: String, marca: String = "Brother") -> Cartucho {
-            Cartucho(marca: marca, codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil)
+        func cartucho(_ codigo: String, _ tipo: String, marca: String = "Brother", botella: Bool? = nil) -> Cartucho {
+            Cartucho(marca: marca, codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil, botella: botella)
         }
         func con(_ id: Int, _ nombre: String, _ cartuchos: [Cartucho], tipo: ProductoCompatible.Tipo = .compatible) -> ProductoCompatible {
             ProductoCompatible(id: id, templateId: id, sku: nil, nombre: nombre, stock: .disponible, tipo: tipo, cartuchos: cartuchos)
@@ -41,7 +41,11 @@ import Testing
         let tambor = con(1, "BROTHER DRUM DR2370 ORIGINAL", [cartucho("DR-2370", "tambor")], tipo: .original)
         #expect(tambor.clase == .tambor)
         #expect(tambor.titulo(para: brother) == "Tambor original Brother")
-        #expect(con(2, "EPSON TINTA T544 NEGRO", [cartucho("T544", "tinta", marca: "Epson")], tipo: .original).titulo(para: brother) == "Tinta original Epson")
+        #expect(con(2, "EPSON TINTA T544 NEGRO", [cartucho("T544", "tinta", marca: "Epson", botella: true)], tipo: .original).titulo(para: brother) == "Tinta original Epson")
+        // Una botella catalogada como «otro» sigue siendo tinta; un cartucho de tinta, cartucho.
+        #expect(con(7, "ASTA TINTA T544", [cartucho("T544", "otro", marca: "Epson", botella: true)]).clase == .tinta)
+        #expect(con(8, "HP CARTUCHO 667 NEGRO", [cartucho("667", "tinta", marca: "HP", botella: false)], tipo: .original).titulo(para: brother) == "Cartucho de tinta original HP")
+        #expect(con(9, "HP CARTUCHO 667 NEGRO", [cartucho("667", "tinta", marca: "HP")]).clase == .cartuchoDeTinta)
 
         // Tóner y tambor en el mismo producto, o un tipo que no conocemos: no se afirma ninguno.
         #expect(con(3, "ASTA KIT TN2370 + DR2370", [cartucho("TN-2370", "toner"), cartucho("DR-2370", "tambor")]).titulo(para: brother) == "Consumible compatible Asta")
@@ -57,12 +61,15 @@ import Testing
     }
 
     @Test func diceTintaCuandoEsTintaYCartuchoCuandoNo() {
-        func con(_ id: Int, _ codigo: String, _ tipo: String) -> ProductoCompatible {
+        func con(_ id: Int, _ codigo: String, _ tipo: String, botella: Bool? = true) -> ProductoCompatible {
             ProductoCompatible(id: id, templateId: id, sku: nil, nombre: "x", stock: .disponible, tipo: .compatible,
-                               cartuchos: [Cartucho(marca: "Epson", codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil)])
+                               cartuchos: [Cartucho(marca: "Epson", codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil, botella: botella)])
         }
         #expect(encabezadoDeCodigos([con(1, "T544", "tinta")]) == "USA LA TINTA")
         #expect(encabezadoDeCodigos([con(1, "T544", "tinta"), con(2, "T664", "tinta")]) == "USA LAS TINTAS")
+        // Un cartucho de tinta es un cartucho, y sin el dato del servidor también.
+        #expect(encabezadoDeCodigos([con(1, "667", "tinta", botella: false)]) == "USA EL CARTUCHO")
+        #expect(encabezadoDeCodigos([con(1, "T544", "tinta", botella: nil)]) == "USA EL CARTUCHO")
         #expect(encabezadoDeCodigos([producto(1, "ASTA TONER CB435A")]) == "USA EL CARTUCHO")
         #expect(encabezadoDeCodigos([producto(1, "a"), producto(2, "b", codigo: "CE285A")]) == "USA LOS CARTUCHOS")
         // Tinta y tóner juntos: no se afirma que todo sea tinta.

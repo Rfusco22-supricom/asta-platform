@@ -4,10 +4,10 @@ import { Bienvenida } from '@/components/Bienvenida';
 import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
-import { InsigniaCategoria } from '@/components/Categorias';
+import { InsigniaCategoria, loQueFalta } from '@/components/Categorias';
 import { getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { fecha, money, moneyCompact } from '@/lib/formato';
-import type { MetricasCliente } from '@asta/shared-types';
+import { fecha, money, moneyCompact, moneyEntero } from '@/lib/formato';
+import { reglaDe, type MetricasCliente } from '@asta/shared-types';
 
 /**
  * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
@@ -16,8 +16,8 @@ import type { MetricasCliente } from '@asta/shared-types';
  * compra y lo que se busca en sus tablets. Con datos que ya existen: no tiene
  * que subir nada. Cada bloque sale aunque otro no se haya podido leer.
  *
- * Su nivel sí; lo que le falta para el siguiente, no: las reglas de cada nivel
- * las comunica Marketing.
+ * De su nivel, cuál es y lo que le falta para el siguiente, con la regla de
+ * ese nivel: lo mismo que ve su vendedor.
  */
 
 export const dynamic = 'force-dynamic';
@@ -79,6 +79,18 @@ function Nivel({ m }: { m: MetricasCliente }) {
           <div className="stat-sub">
             {n(c.mesesConCompra)} de {n(m.nivel.meses.length)} meses con compra
           </div>
+          {c.siguiente ? (
+            <div className="met-subir">
+              <span>
+                Para subir a <InsigniaCategoria categoria={c.siguiente.categoria} /> te falta <strong>{loQueFalta(c.siguiente)}</strong>.
+              </span>
+              <span className="stat-sub">
+                {reglaDe(c.siguiente.categoria).nombre}: desde {moneyEntero(reglaDe(c.siguiente.categoria).minimoMensual)} al mes de media, comprando {n(reglaDe(c.siguiente.categoria).minimoMeses)} de {n(m.nivel.meses.length)} meses.
+              </span>
+            </div>
+          ) : (
+            <div className="met-subir">Estás en el nivel más alto.</div>
+          )}
         </div>
       ) : (
         <div className="empty">Todavía no estás en el programa.</div>

@@ -19,23 +19,27 @@ extension ProductoCompatible {
         nombre.range(of: #"\b(POLVO|POWDER)\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    enum Clase: Equatable { case toner, polvo, tinta, tambor, otro }
+    enum Clase: Equatable { case toner, polvo, tinta, cartuchoDeTinta, tambor, otro }
 
-    /// Qué es: tóner, polvo de recarga, tinta, tambor u otra cosa.
+    /// Qué es: tóner, polvo de recarga, tinta en botella, cartucho de tinta,
+    /// tambor u otra cosa.
     ///
     /// El polvo sale del nombre (`esPolvo`), y manda: en el catálogo de
-    /// cartuchos el polvo es «tóner». Lo demás, del tipo de los cartuchos que
-    /// manda el servidor. Una botella de tinta o un tambor no son tóner, y
+    /// cartuchos el polvo es «tóner». La botella, de lo que diga el servidor de
+    /// cada cartucho: el de una EcoTank pide «la tinta», el de una DeskJet «el
+    /// cartucho», aunque los dos sean tinta. Lo demás, del tipo de los cartuchos
+    /// que manda el servidor. Una botella de tinta o un tambor no son tóner, y
     /// llamarlos así es la misma confusión que con el polvo: el cliente pide el
     /// tambor creyendo que es el tóner. Si el tipo no es uno solo, o no se
     /// conoce, no se afirma nada: `.otro`.
     var clase: Clase {
         if esPolvo { return .polvo }
+        if !cartuchos.isEmpty && cartuchos.allSatisfy({ $0.botella == true }) { return .tinta }
         let tipos = Set(cartuchos.map(\.tipo))
         guard tipos.count == 1, let tipo = tipos.first else { return .otro }
         switch tipo {
         case "toner": return .toner
-        case "tinta": return .tinta
+        case "tinta": return .cartuchoDeTinta
         case "tambor": return .tambor
         default: return .otro
         }
@@ -49,6 +53,7 @@ extension ProductoCompatible {
         case .polvo: return "Polvo de recarga \(marca)"
         case .toner: return "Tóner \(origen) \(marca)"
         case .tinta: return "Tinta \(origen) \(marca)"
+        case .cartuchoDeTinta: return "Cartucho de tinta \(origen) \(marca)"
         case .tambor: return "Tambor \(origen) \(marca)"
         case .otro: return "Consumible \(origen) \(marca)"
         }
@@ -81,11 +86,13 @@ func codigosDeCartucho(_ productos: [ProductoCompatible]) -> [String] {
 }
 
 /// Lo que va encima de los códigos: «USA EL CARTUCHO» o «USA LA TINTA». Una
-/// botella de tinta no es un cartucho, así que si todo lo que se ofrece es
-/// tinta se dice tinta; si hay de todo, o no se sabe, cartucho.
+/// botella de tinta no es un cartucho, así que si todo lo que se ofrece son
+/// botellas se dice tinta; si hay cartuchos (de tinta también), o no se sabe,
+/// cartucho.
 func encabezadoDeCodigos(_ productos: [ProductoCompatible]) -> String {
     let varios = codigosDeCartucho(productos).count > 1
-    if Set(productos.flatMap { $0.cartuchos.map(\.tipo) }) == ["tinta"] {
+    let cartuchos = productos.flatMap(\.cartuchos)
+    if !cartuchos.isEmpty && cartuchos.allSatisfy({ $0.botella == true }) {
         return varios ? "USA LAS TINTAS" : "USA LA TINTA"
     }
     return varios ? "USA LOS CARTUCHOS" : "USA EL CARTUCHO"

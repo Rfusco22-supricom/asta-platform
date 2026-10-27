@@ -2499,6 +2499,10 @@
                                     }
                                   ],
                                   "description": "Páginas que declara el fabricante, si se conocen."
+                                },
+                                "botella": {
+                                  "type": "boolean",
+                                  "description": "`true` si es una botella de tinta (EcoTank, Smart Tank, GI…) y no un cartucho."
                                 }
                               },
                               "required": [
@@ -2506,7 +2510,8 @@
                                 "codigo",
                                 "tipo",
                                 "color",
-                                "rendimientoPaginas"
+                                "rendimientoPaginas",
+                                "botella"
                               ]
                             },
                             "description": "Los cartuchos de esta impresora a los que corresponde el producto."
@@ -2586,7 +2591,8 @@
                           "codigo": "CF258A",
                           "tipo": "toner",
                           "color": "negro",
-                          "rendimientoPaginas": 3000
+                          "rendimientoPaginas": 3000,
+                          "botella": false
                         }
                       ]
                     }
