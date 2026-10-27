@@ -307,9 +307,10 @@ if (
     : null;
   if (sync) console.log(`  sync      cada ${Number(process.env.SYNC_CADA_MIN ?? 15)} min, desde este proceso`);
 
-  // El nivel de cada cliente es su categoría de ASTA (#131): una pasada al día,
-  // la primera a los cinco minutos de arrancar (después del primer sync, que
-  // crea las cuentas nuevas en GENERAL). `NIVELES_INTERNOS` manda, como arriba.
+  // El nivel de cada cliente es el de su último trimestre cerrado del programa de
+  // ASTA: una pasada al día, la primera a los cinco minutos de arrancar (después
+  // del primer sync, que crea las cuentas nuevas en GENERAL). Solo cambia de
+  // verdad al cerrar un trimestre. `NIVELES_INTERNOS` manda, como arriba.
   const niveles = encendido('NIVELES_INTERNOS')
     ? programarCada(
         'niveles',
