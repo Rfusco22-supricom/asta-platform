@@ -1042,36 +1042,6 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
 .nav-item svg { flex: none; width: 18px; height: 18px; }
 .nav-texto { overflow: hidden; text-overflow: ellipsis; }
 
-/* ── Pie del lateral: de dónde salen los datos ────────────────────────────── */
-
-.lateral-pie {
-  display: flex;
-  gap: 10px;
-  margin: 0 12px 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: var(--vidrio-fuerte);
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--text-3);
-}
-.lateral-pie strong { display: block; color: var(--text); font-weight: 600; font-size: 12px; }
-.en-vivo {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 4px;
-  border-radius: 50%;
-  background: #22c98a;
-  box-shadow: 0 0 0 0 rgba(34, 201, 138, 0.6);
-  animation: en-vivo 2.4s ease-out infinite;
-}
-@keyframes en-vivo {
-  0% { box-shadow: 0 0 0 0 rgba(34, 201, 138, 0.55); }
-  70% { box-shadow: 0 0 0 8px rgba(34, 201, 138, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 201, 138, 0); }
-}
-
 /* ── Plegado: solo iconos ─────────────────────────────────────────────────── */
 
 .app[data-menu='plegado'] .lateral-marca { flex-direction: column; gap: 14px; padding: 22px 0 16px; }
@@ -1083,8 +1053,6 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
 .app[data-menu='plegado'] .nav-titulo { height: 1px; padding: 0; margin: 4px 10px 12px; overflow: hidden; color: transparent; background: var(--border); }
 .app[data-menu='plegado'] .nav-item { justify-content: center; padding: 12px 0; }
 .app[data-menu='plegado'] .nav-texto { display: none; }
-.app[data-menu='plegado'] .lateral-pie { justify-content: center; margin: 0 14px 14px; padding: 14px 0; }
-.app[data-menu='plegado'] .lateral-pie > span:last-child { display: none; }
 
 /* ── Contenido y cabecera ─────────────────────────────────────────────────── */
 
@@ -1377,7 +1345,7 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
   .app[data-menu='plegado'] .marca-logo { width: 96px; height: 37.7px; }
   .app[data-menu='plegado'] .marca-logo img { width: 100.6px; left: -2.44px; top: -16.9px; }
   .app[data-menu='plegado'] .marca-ambito { display: inline; }
-  .lateral .nav, .lateral-pie, .plegar { display: none; }
+  .lateral .nav, .plegar { display: none; }
 
   .cabecera { flex-wrap: wrap; padding: 4px 2px 16px; }
   .cabecera h1 { font-size: 23px; }
@@ -1598,7 +1566,7 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
 
 @media (prefers-reduced-motion: reduce) {
   .app, .nav-item, .plegar, .pestana, .pestana-icono, .hoja-fondo, .hoja { transition: none; }
-  .en-vivo, .paleta, .paleta-fondo, .menu-desplegable { animation: none; }
+  .paleta, .paleta-fondo, .menu-desplegable { animation: none; }
 }
 
 /* ── Reportes ──────────────────────────────────────────────────────────────
