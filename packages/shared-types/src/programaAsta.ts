@@ -133,9 +133,25 @@ export const clienteProgramaSchema = z.object({
   clave: z.string(),
   partnerId: odooIdSchema,
   nombre: z.string(),
+  /** El vendedor de la ficha principal, para filtrar por cartera. */
+  vendedor: z.string().nullable(),
+  vendedorOdooUserId: odooIdSchema.nullable(),
   evaluacion: evaluacionTrimestreSchema,
   /** Tokens acumulados de los trimestres ya cerrados. */
   saldoTokens: z.number().int().nonnegative(),
 });
 
 export type ClientePrograma = z.infer<typeof clienteProgramaSchema>;
+
+/** El trimestre en curso de todos los clientes del programa (o de una cartera). */
+export const programaEmpresaSchema = z.object({
+  trimestre: trimestreSchema,
+  clientes: z.array(clienteProgramaSchema),
+});
+
+export type ProgramaEmpresa = z.infer<typeof programaEmpresaSchema>;
+
+export const programaEmpresaRespuestaSchema = z.object({
+  data: programaEmpresaSchema,
+  meta: z.object({ generadoEn: z.iso.datetime(), duracionMs: z.number().int().nonnegative() }),
+});

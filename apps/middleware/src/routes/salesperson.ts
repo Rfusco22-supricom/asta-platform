@@ -17,10 +17,10 @@ import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { dePantalla } from '../services/pantallas.js';
 import { z } from 'zod';
-import { marcarImpulsaSchema, nuevaCompatibilidadSchema } from '@asta/shared-types';
+import { marcarImpulsaSchema, nuevaCompatibilidadSchema, trimestreDe } from '@asta/shared-types';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
-import { categoriasAsta } from '../services/categoriasAsta.service.js';
+import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
 /**
@@ -168,9 +168,8 @@ salespersonRouter.delete(
  * una consulta sin filtro, que en Odoo devolvería la empresa entera.
  */
 /**
- * Las categorías de ASTA de los clientes de la PROPIA cartera (#131): en qué
- * categoría está cada uno y cuánto le falta para subir. La cartera sale del
- * token, como en `/asta`.
+ * El avance hacia la meta de ASTA de la PROPIA cartera (#131), con el nivel de
+ * cada cliente en el programa. La cartera sale del token, como en `/asta`.
  */
 salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (req, res, next) => {
   try {
@@ -180,8 +179,8 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
       return;
     }
     const t0 = Date.now();
-    // Se calcula una vez para todos y se filtra: la categoría no depende de quién mira.
-    const todas = await dePantalla('admin:asta:categorias', () => categoriasAsta());
+    // Se calcula una vez para todos y se filtra: el nivel no depende de quién mira.
+    const todas = await categoriasDelPrograma();
     const clientes = todas.clientes.filter((c) => c.vendedorOdooUserId === odooUserId);
     const data = {
       ...todas,
@@ -193,6 +192,23 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
       clientes,
     };
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** El programa de ASTA de la PROPIA cartera: cómo va cada cliente en el trimestre en curso. */
+salespersonRouter.get('/asta/programa', autorizar('asta.propias.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
+      return;
+    }
+    const t0 = Date.now();
+    const hoy = new Date();
+    const clientes = (await programaEnCurso(hoy)).filter((c) => c.vendedorOdooUserId === odooUserId);
+    res.json({ data: { trimestre: trimestreDe(hoy), clientes }, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
   }

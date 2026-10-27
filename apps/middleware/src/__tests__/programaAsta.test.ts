@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { bajar, mesesDelTrimestre, subir, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
-import { CierreNoPermitido, cerrarTrimestre, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
+import { CierreNoPermitido, cerrarTrimestre, conNivelesDelPrograma, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
 
 /**
  * El programa de ASTA por trimestres.
@@ -106,6 +106,8 @@ describe('El cierre, contra MySQL', () => {
     clave,
     partnerId: 3_990_000_001,
     nombre: clave,
+    vendedor: null,
+    vendedorOdooUserId: null,
     saldoTokens: 0,
     evaluacion: {
       ...evaluar(entrada({ trimestre: T })),
@@ -157,4 +159,28 @@ describe('El cierre, contra MySQL', () => {
     expect(de('ZZPROG1')).toMatchObject({ saldoTokens: 12, evaluacion: { nivel: 'ORO', nivelFinal: 'PLATA', definitiva: false } });
     expect(de('ZZPROG2')).toMatchObject({ saldoTokens: 4, evaluacion: { nivel: 'PLATA' } });
   }, 120_000);
+
+  it('la meta y la pirámide cuentan a cada cliente en su nivel del programa, no en su categoría de compra', async () => {
+    const base = { porMes: [0, 0, 0, 0], mesesConCompra: 4, rif: null, vendedor: null, vendedorOdooUserId: null, siguiente: null };
+    const r = await conNivelesDelPrograma({
+      meses: ['2099-01', '2099-02', '2099-03', '2099-04'],
+      compraMensual: 3000,
+      meta: 100000,
+      porCategoria: ['DIAMANTE', 'ORO', 'PLATA', 'BRONCE', 'GENERAL'].map((categoria) => ({
+        categoria: categoria as 'ORO',
+        clientes: 0,
+        compraMensual: 0,
+        metaClientes: null,
+        metaCompraMensual: 0,
+      })),
+      clientes: [
+        { ...base, clave: 'ZZPROG1', partnerId: 1, nombre: 'uno', compraMensual: 2000, categoria: 'DIAMANTE' },
+        { ...base, clave: 'ZZPROG2', partnerId: 2, nombre: 'dos', compraMensual: 700, categoria: 'PLATA' },
+        { ...base, clave: 'ZZPROG3', partnerId: 3, nombre: 'tres', compraMensual: 300, categoria: 'BRONCE' },
+      ],
+    });
+    expect(r.clientes.map((c) => c.categoria)).toEqual(['ORO', 'PLATA', 'GENERAL']);
+    const de = (k: string) => r.porCategoria.find((p) => p.categoria === k)!;
+    expect([de('ORO').clientes, de('ORO').compraMensual, de('DIAMANTE').clientes, de('GENERAL').clientes]).toEqual([1, 2000, 0, 1]);
+  });
 });

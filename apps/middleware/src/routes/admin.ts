@@ -16,7 +16,7 @@ import { claveSede, sedeDeLaPeticion } from '../services/sede.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
-import { categoriasAsta } from '../services/categoriasAsta.service.js';
+import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -35,6 +35,7 @@ import {
   revisionQuerySchema,
   tipoCartuchoCambioSchema,
   clientTierSchema,
+  trimestreDe,
 } from '@asta/shared-types';
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
@@ -226,16 +227,29 @@ adminRouter.get('/asta', autorizar('admin.asta.ver'), async (req, res, next) => 
 });
 
 /**
- * La categoría de ASTA de cada cliente y el avance hacia la meta (#131).
+ * El avance hacia la meta de ASTA (#131), con el nivel de cada cliente en el
+ * programa (`categoriasDelPrograma`).
  *
- * De toda la empresa y sin sede: la categoría es del cliente, compre donde
- * compre. Cuatro lecturas de Odoo; se guarda un rato como el resto de pantallas.
+ * De toda la empresa y sin sede: el nivel es del cliente, compre donde compre.
+ * Cuatro lecturas de Odoo; se guarda un rato como el resto de pantallas.
  */
 adminRouter.get('/asta/categorias', autorizar('admin.asta.ver'), async (_req, res, next) => {
   try {
     const t0 = Date.now();
-    const data = await dePantalla('admin:asta:categorias', () => categoriasAsta());
+    const data = await categoriasDelPrograma();
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** El programa de ASTA: cómo va cada cliente en el trimestre en curso. De toda la empresa. */
+adminRouter.get('/asta/programa', autorizar('admin.asta.ver'), async (_req, res, next) => {
+  try {
+    const t0 = Date.now();
+    const hoy = new Date();
+    const clientes = await programaEnCurso(hoy);
+    res.json({ data: { trimestre: trimestreDe(hoy), clientes }, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
   }

@@ -54,7 +54,9 @@ import {
   type InformeDuplicados,
   calidadDatosRespuestaSchema,
   categoriasAstaRespuestaSchema,
+  programaEmpresaRespuestaSchema,
   type CategoriasAsta,
+  type ProgramaEmpresa,
   type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
@@ -515,6 +517,16 @@ export async function getCategoriasAstaEmpresa(accessToken: string): Promise<Cat
 /** Las categorías de ASTA de los clientes de la propia cartera. */
 export async function getCategoriasAstaCartera(accessToken: string): Promise<CategoriasAsta> {
   return (await request('/api/v1/salesperson/asta/categorias', categoriasAstaRespuestaSchema, accessToken)).data;
+}
+
+/** El programa de ASTA de toda la empresa: cómo va cada cliente en el trimestre en curso. */
+export async function getProgramaEmpresa(accessToken: string): Promise<ProgramaEmpresa> {
+  return (await request('/api/v1/admin/asta/programa', programaEmpresaRespuestaSchema, accessToken)).data;
+}
+
+/** El programa de ASTA de la propia cartera. */
+export async function getProgramaCartera(accessToken: string): Promise<ProgramaEmpresa> {
+  return (await request('/api/v1/salesperson/asta/programa', programaEmpresaRespuestaSchema, accessToken)).data;
 }
 
 /** Los productos ASTA de toda la empresa, por categoría y producto: el inicio del administrador. */
