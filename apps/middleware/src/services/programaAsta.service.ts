@@ -9,9 +9,11 @@ import {
   cuotasDe,
   limpiarEspacios,
   mesesDelTrimestre,
+  nombrePersona,
   subir,
   trimestreAnterior,
   trimestreDe,
+  type CategoriasAsta,
   type ClaveCategoria,
   type ClientePrograma,
   type EvaluacionTrimestre,
@@ -139,6 +141,7 @@ interface Ficha {
   id: number;
   name: string | false;
   vat: string | false;
+  user_id: [number, string] | false;
 }
 
 /** Las fichas de Odoo, en lotes, para saber su RIF y su nombre. */
@@ -146,7 +149,7 @@ async function fichas(ids: number[]): Promise<Map<number, Ficha>> {
   const r = new Map<number, Ficha>();
   const unicos = [...new Set(ids)];
   for (let i = 0; i < unicos.length; i += 1000) {
-    const lote = await searchRead<Ficha>('res.partner', [['id', 'in', unicos.slice(i, i + 1000)]], ['name', 'vat'], { context: { active_test: false } });
+    const lote = await searchRead<Ficha>('res.partner', [['id', 'in', unicos.slice(i, i + 1000)]], ['name', 'vat', 'user_id'], { context: { active_test: false } });
     for (const f of lote) r.set(f.id, f);
   }
   return r;
@@ -310,10 +313,13 @@ export async function evaluarTrimestre(trimestre: string, hoy = new Date()): Pro
       referenciasTotal: total,
       anteriorSinFallos: p?.sinFallos ?? null,
     });
+    const f = ficha.get(principal);
     clientes.push({
       clave,
       partnerId: principal,
-      nombre: limpiarEspacios(ficha.get(principal)?.name || `Cliente #${principal}`),
+      nombre: limpiarEspacios(f?.name || `Cliente #${principal}`),
+      vendedor: f?.user_id ? nombrePersona(f.user_id[1]) : null,
+      vendedorOdooUserId: f?.user_id ? f.user_id[0] : null,
       evaluacion,
       saldoTokens: saldo.get(clave) ?? 0,
     });
@@ -457,7 +463,7 @@ export async function programaDeCliente(partnerId: number, hoy = new Date()): Pr
   const trimestre = trimestreDe(hoy);
   const meses = mesesDelTrimestre(trimestre);
   const [todos, [ficha]] = await Promise.all([
-    dePantalla(`programa:${trimestre}`, () => evaluarTrimestre(trimestre, hoy)),
+    programaEnCurso(hoy),
     searchRead<{ vat: string | false; commercial_partner_id: [number, string] | false }>('res.partner', [['id', 'in', [partnerId]]], ['vat', 'commercial_partner_id'], {
       context: { active_test: false },
     }),
@@ -485,5 +491,39 @@ export async function programaDeCliente(partnerId: number, hoy = new Date()): Pr
     anteriorSinFallos: null,
   });
   return { saldoTokens: saldo._sum.tokens ?? 0, evaluacion };
+}
+
+/** El trimestre en curso de todos, guardado un rato: lo leen el cliente, el administrador y el vendedor. */
+export function programaEnCurso(hoy = new Date()): Promise<ClientePrograma[]> {
+  const trimestre = trimestreDe(hoy);
+  return dePantalla(`programa:${trimestre}`, () => evaluarTrimestre(trimestre, hoy));
+}
+
+/**
+ * Las categorías de compra (`categoriasAsta`) con el NIVEL del programa: la
+ * compra mensual y la meta siguen siendo las de los cuatro meses, pero en qué
+ * nivel está cada cliente —y cuántos hay en cada uno— es el del programa. Así
+ * la pirámide, la meta y la tabla dicen lo mismo que el cliente ve.
+ *
+ * Un cliente con nivel que no compró en esos cuatro meses no sale aquí (no
+ * aporta a la meta); en la tabla del programa sí.
+ */
+export async function conNivelesDelPrograma(categorias: CategoriasAsta): Promise<CategoriasAsta> {
+  const niveles = await nivelesActuales();
+  const clientes = categorias.clientes.map((c) => ({ ...c, categoria: niveles.get(c.clave) ?? ('GENERAL' as const) }));
+  const redondo = (x: number) => Math.round(x * 100) / 100;
+  return {
+    ...categorias,
+    clientes,
+    porCategoria: categorias.porCategoria.map((p) => {
+      const de = clientes.filter((c) => c.categoria === p.categoria);
+      return { ...p, clientes: de.length, compraMensual: redondo(de.reduce((s, c) => s + c.compraMensual, 0)) };
+    }),
+  };
+}
+
+/** Las categorías con el nivel del programa, guardadas un rato: las leen la meta, la pirámide y el sell-out. */
+export function categoriasDelPrograma(): Promise<CategoriasAsta> {
+  return dePantalla('admin:asta:categorias', async () => conNivelesDelPrograma(await categoriasAsta()));
 }
 

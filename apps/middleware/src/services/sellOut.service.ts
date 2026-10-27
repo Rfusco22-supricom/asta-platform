@@ -4,7 +4,7 @@ import { prisma } from '../config/prisma.js';
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheConRefresco } from '../utils/cacheConRefresco.js';
 import { MARCA_ASTA } from './asta.service.js';
-import { categoriasAsta } from './categoriasAsta.service.js';
+import { categoriasDelPrograma } from './programaAsta.service.js';
 import { TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 import { normalizarRif, rifUtilizable } from './duplicados.js';
 import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
@@ -656,7 +656,7 @@ export async function sellOutEmpresa(mes: string, hoy = new Date()): Promise<Sel
 
   const [{ porId }, categorias, fichas] = await Promise.all([
     catalogoAsta(),
-    dePantalla('admin:asta:categorias', () => categoriasAsta()).catch(() => null),
+    categoriasDelPrograma().catch(() => null),
     partners.length
       ? searchRead<{ id: number; name: string; vat: string | false }>('res.partner', [['id', 'in', partners]], ['name', 'vat'], { context: { active_test: false } })
       : Promise.resolve([]),

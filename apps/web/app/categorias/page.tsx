@@ -1,21 +1,37 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { CaminoMeta, FILTROS, TablaCategorias } from '@/components/Categorias';
-import { getCategoriasAstaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { CaminoMeta } from '@/components/Categorias';
+import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
+import { getCategoriasAstaCartera, getProgramaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { PestanasSeccion, PESTANAS_ASTA_VENDEDOR } from '@/components/PestanasSeccion';
 
 /**
- * Las categorías de ASTA de los clientes del vendedor (#131): quién es Oro,
- * Plata o Bronce, y sobre todo «Cerca de subir», la lista para llamar.
+ * El programa de ASTA de los clientes del vendedor: quién es Oro, Plata o
+ * Bronce, y sobre todo «En juego», los que todavía pueden cumplir este
+ * trimestre: la lista para llamar.
  */
 
 export const dynamic = 'force-dynamic';
 
+function Tabla({ programa, ...resto }: { programa: Awaited<ReturnType<typeof getProgramaCartera>> | null; filtro: string; base: string; conVendedor: boolean }) {
+  if (!programa) {
+    return (
+      <section className="panel">
+        <h2>El trimestre</h2>
+        <div className="empty">No se pudo leer ahora.</div>
+      </section>
+    );
+  }
+  return <TablaPrograma datos={programa} {...resto} />;
+}
+
 export default async function CategoriasVendedorPage({ searchParams }: { searchParams: Promise<{ ver?: string }> }) {
   const sesion = await requireSession();
   const { ver } = await searchParams;
-  const filtro = FILTROS.some((f) => f.valor === ver) ? ver! : 'cerca';
+  const filtro = FILTROS_PROGRAMA.some((f) => f.valor === ver) ? ver! : 'juego';
 
+  // La tabla va aparte: si falla, la meta sale igual.
+  const programa = getProgramaCartera(sesion.accessToken).catch(() => null);
   let datos;
   try {
     datos = await getCategoriasAstaCartera(sesion.accessToken);
@@ -37,7 +53,7 @@ export default async function CategoriasVendedorPage({ searchParams }: { searchP
     <Marco usuario={sesion.usuario} titulo="ASTA">
       <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/categorias" />
       <CaminoMeta datos={datos} />
-      <TablaCategorias datos={datos} filtro={filtro} base="/categorias" conVendedor={false} />
+      <Tabla programa={await programa} filtro={filtro} base="/categorias" conVendedor={false} />
     </Marco>
   );
 }

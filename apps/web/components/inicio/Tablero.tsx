@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
-import { estaCerca } from '@/components/Categorias';
+import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, type Reporte } from '@/lib/api';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
@@ -74,7 +73,6 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
   const enCartera = alcance === 'cartera';
   const avance = r.meta > 0 ? Math.min(100, (r.compraMensual / r.meta) * 100) : 0;
   const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
-  const cerca = r.clientes.filter(estaCerca).length;
   const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
   // En la cartera, la barra es el 100 % de lo que compra; en la empresa, la meta.
   const total = enCartera ? r.compraMensual : r.meta;
@@ -93,9 +91,9 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
       compra: `${corto(c?.compraMensual ?? 0)} USD/mes`,
       meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} USD/mes`,
       regla:
-        regla.minimoMensual > 0
-          ? `≥ ${moneyEntero(regla.minimoMensual)}/mes y ${regla.minimoMeses} de 4 meses`
-          : `< ${moneyEntero(reglaDe('BRONCE').minimoMensual)}/mes`,
+        clave === 'GENERAL'
+          ? `sube a Bronce con ${moneyEntero(cuotasDe('BRONCE').mensual)}/mes`
+          : `cuota ${moneyEntero(cuotasDe(clave).mensual)}/mes y ${moneyEntero(cuotasDe(clave).trimestral)}/trimestre`,
       avance: enCartera ? (r.compraMensual > 0 ? Math.min(100, parte) : null) : metaClientes ? Math.min(100, (clientes / metaClientes) * 100) : null,
       href: `${base}?ver=${clave}`,
     };
@@ -136,22 +134,15 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
               Faltan <strong>{moneyCompact(Math.max(0, r.meta - r.compraMensual))}</strong> al mes.
             </>
           )}{' '}
-          {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa
-          {cerca > 0 && (
-            <>
-              {' '}
-              y <strong>{n(cerca)}</strong> {cerca === 1 ? 'está' : 'están'} cerca de subir de categoría
-            </>
-          )}
-          .
+          {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa.
         </p>
 
         <div className="hero-acciones">
-          <Link className="btn btn-inline" href={`${base}?ver=cerca`}>
-            Ver quién está cerca de subir
+          <Link className="btn btn-inline" href={`${base}?ver=juego`}>
+            Ver quién está en juego este trimestre
           </Link>
           <Link className="dash-mas" href={base}>
-            Todas las categorías →
+            Todo el programa →
           </Link>
         </div>
       </div>
