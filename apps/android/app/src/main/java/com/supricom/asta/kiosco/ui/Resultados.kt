@@ -50,6 +50,7 @@ import com.supricom.asta.kiosco.dominio.Impresora
 import com.supricom.asta.kiosco.dominio.MotivoFallo
 import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
+import com.supricom.asta.kiosco.dominio.encabezadoDeCodigos
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
 import com.supricom.asta.kiosco.dominio.ParaEnsenar
@@ -167,7 +168,7 @@ private fun Respuesta(productos: List<ProductoCompatible>, sugerido: ProductoCom
     // Una tablet sin almacén (la de un cliente) no sabe qué hay en tienda: no lo dice.
     val conExistencias = productos.all { it.stock != null }
     Column(Modifier.width(340.dp).tarjeta().background(Tema.degradado, RoundedCornerShape(Tema.radio)).padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (codigos.size == 1) "USA EL CARTUCHO" else "USA LOS CARTUCHOS", style = Tema.fuerte(16, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
+        Text(encabezadoDeCodigos(productos), style = Tema.fuerte(16, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
         codigos.forEach { Text(it, style = Tema.codigo(56, Tema.superficie), maxLines = 1) }
         Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.28f)))
         Text(

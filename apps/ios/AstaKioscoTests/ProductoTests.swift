@@ -56,6 +56,19 @@ import Testing
         #expect(codigosDeCartucho([producto(1, "a"), producto(2, "b"), producto(3, "c", codigo: "CE285A")]) == ["CE278A", "CE285A"])
     }
 
+    @Test func diceTintaCuandoEsTintaYCartuchoCuandoNo() {
+        func con(_ id: Int, _ codigo: String, _ tipo: String) -> ProductoCompatible {
+            ProductoCompatible(id: id, templateId: id, sku: nil, nombre: "x", stock: .disponible, tipo: .compatible,
+                               cartuchos: [Cartucho(marca: "Epson", codigo: codigo, tipo: tipo, color: nil, rendimientoPaginas: nil)])
+        }
+        #expect(encabezadoDeCodigos([con(1, "T544", "tinta")]) == "USA LA TINTA")
+        #expect(encabezadoDeCodigos([con(1, "T544", "tinta"), con(2, "T664", "tinta")]) == "USA LAS TINTAS")
+        #expect(encabezadoDeCodigos([producto(1, "ASTA TONER CB435A")]) == "USA EL CARTUCHO")
+        #expect(encabezadoDeCodigos([producto(1, "a"), producto(2, "b", codigo: "CE285A")]) == "USA LOS CARTUCHOS")
+        // Tinta y tóner juntos: no se afirma que todo sea tinta.
+        #expect(encabezadoDeCodigos([con(1, "T544", "tinta"), producto(2, "a")]) == "USA LOS CARTUCHOS")
+    }
+
     @Test func poneLoQueHayPrimeroSinDesordenarElResto() {
         let lista = [producto(1, "a", stock: .agotado), producto(2, "b"), producto(3, "c", stock: .bajo), producto(4, "d", stock: .agotado), producto(5, "e")]
         #expect(ordenarParaRecomendar(lista).map(\.id) == [2, 5, 3, 1, 4])

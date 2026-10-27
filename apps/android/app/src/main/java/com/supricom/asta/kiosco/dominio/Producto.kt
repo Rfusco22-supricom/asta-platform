@@ -71,6 +71,19 @@ val EstadoStock.texto: String
 fun codigosDeCartucho(productos: List<ProductoCompatible>): List<String> = productos.flatMap { p -> p.cartuchos.map { it.codigo } }.distinct()
 
 /**
+ * Lo que va encima de los códigos: «USA EL CARTUCHO» o «USA LA TINTA». Una
+ * botella de tinta no es un cartucho, así que si todo lo que se ofrece es tinta
+ * se dice tinta; si hay de todo, o no se sabe, cartucho.
+ */
+fun encabezadoDeCodigos(productos: List<ProductoCompatible>): String {
+    val varios = codigosDeCartucho(productos).size > 1
+    if (productos.flatMap { p -> p.cartuchos.map { it.tipo } }.toSet() == setOf("tinta")) {
+        return if (varios) "USA LAS TINTAS" else "USA LA TINTA"
+    }
+    return if (varios) "USA LOS CARTUCHOS" else "USA EL CARTUCHO"
+}
+
+/**
  * En qué orden se le ofrece al cliente lo que le sirve (#40). La misma regla que
  * `ordenarParaRecomendar` en iOS (`Dominio/Producto.swift`).
  *

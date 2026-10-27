@@ -80,6 +80,17 @@ func codigosDeCartucho(_ productos: [ProductoCompatible]) -> [String] {
     return productos.flatMap { $0.cartuchos.map(\.codigo) }.filter { vistos.insert($0).inserted }
 }
 
+/// Lo que va encima de los códigos: «USA EL CARTUCHO» o «USA LA TINTA». Una
+/// botella de tinta no es un cartucho, así que si todo lo que se ofrece es
+/// tinta se dice tinta; si hay de todo, o no se sabe, cartucho.
+func encabezadoDeCodigos(_ productos: [ProductoCompatible]) -> String {
+    let varios = codigosDeCartucho(productos).count > 1
+    if Set(productos.flatMap { $0.cartuchos.map(\.tipo) }) == ["tinta"] {
+        return varios ? "USA LAS TINTAS" : "USA LA TINTA"
+    }
+    return varios ? "USA LOS CARTUCHOS" : "USA EL CARTUCHO"
+}
+
 /// En qué orden se le ofrece al cliente lo que le sirve (#40). La misma regla que
 /// `ordenarParaRecomendar` en Android.
 ///

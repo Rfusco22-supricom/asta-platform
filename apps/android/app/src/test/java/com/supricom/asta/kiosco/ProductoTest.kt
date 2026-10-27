@@ -7,6 +7,7 @@ import com.supricom.asta.kiosco.dominio.EstadoStock
 import com.supricom.asta.kiosco.dominio.Impresora
 import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
+import com.supricom.asta.kiosco.dominio.encabezadoDeCodigos
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
 import com.supricom.asta.kiosco.dominio.ParaEnsenar
@@ -68,6 +69,17 @@ class ProductoTest {
 
     @Test fun juntaLosCodigosSinRepetir() {
         assertEquals(listOf("CE278A", "CE285A"), codigosDeCartucho(listOf(producto(1, "a"), producto(2, "b"), producto(3, "c", codigo = "CE285A"))))
+    }
+
+    @Test fun diceTintaCuandoEsTintaYCartuchoCuandoNo() {
+        fun con(id: Int, codigo: String, tipo: String) =
+            ProductoCompatible(id, id, null, "x", EstadoStock.DISPONIBLE, ProductoCompatible.Tipo.COMPATIBLE, listOf(Cartucho("Epson", codigo, tipo)))
+        assertEquals("USA LA TINTA", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"))))
+        assertEquals("USA LAS TINTAS", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"), con(2, "T664", "tinta"))))
+        assertEquals("USA EL CARTUCHO", encabezadoDeCodigos(listOf(producto(1, "ASTA TONER CB435A"))))
+        assertEquals("USA LOS CARTUCHOS", encabezadoDeCodigos(listOf(producto(1, "a"), producto(2, "b", codigo = "CE285A"))))
+        // Tinta y tóner juntos: no se afirma que todo sea tinta.
+        assertEquals("USA LOS CARTUCHOS", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"), producto(2, "a"))))
     }
 
     @Test fun poneLoQueHayPrimeroSinDesordenarElResto() {
