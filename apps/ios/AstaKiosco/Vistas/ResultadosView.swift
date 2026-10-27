@@ -105,7 +105,7 @@ struct ResultadosView: View {
         // Una tablet sin almacén (la de un cliente) no sabe qué hay en tienda: no lo dice.
         let conExistencias = productos.allSatisfy { $0.stock != nil }
         return VStack(alignment: .leading, spacing: 8) {
-            Text(codigos.count == 1 ? "USA EL CARTUCHO" : "USA LOS CARTUCHOS").font(Tema.fuerte(16)).kerning(2.5).foregroundStyle(Tema.sobreAzul)
+            Text(encabezadoDeCodigos(productos)).font(Tema.fuerte(16)).kerning(2.5).foregroundStyle(Tema.sobreAzul)
             ForEach(codigos, id: \.self) { c in
                 Text(c).font(Tema.codigo(56)).foregroundStyle(Tema.superficie).lineLimit(1).minimumScaleFactor(0.5)
             }
