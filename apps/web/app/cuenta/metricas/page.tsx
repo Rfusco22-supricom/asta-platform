@@ -195,7 +195,8 @@ export default async function MetricasPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mis métricas">
-      <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} />
+      {/* Sin ficha en el programa, Cliente general; si no se pudo leer, el rol de la cuenta. */}
+      <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.nivel ? (m.nivel.cliente?.categoria ?? 'GENERAL') : null} />
       <Compras m={m} />
       <div className="met-rejilla">
         <Nivel m={m} />
