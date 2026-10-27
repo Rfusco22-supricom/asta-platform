@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { cambioKioscoSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
+import { cambioKioscoSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import {
@@ -13,7 +13,7 @@ import { auditContext } from '../middleware/auditContext.js';
 import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
-import { comprobar, guardar, plantilla, resumenSellOut } from '../services/sellOut.service.js';
+import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
  * Lo que un CLIENTE gestiona de su propia cuenta (issue #28).
@@ -156,6 +156,34 @@ const sellOut = autorizar('sellout.propio.gestionar');
 accountRouter.get('/sellout', sellOut, async (req, res, next) => {
   try {
     res.json({ data: await resumenSellOut(req.identity.odooPartnerId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** «Lo que te vendimos»: lo que nos compró, lo marcado como vendido y lo que le queda. */
+accountRouter.get('/sellout/marcar', sellOut, async (req, res, next) => {
+  try {
+    const mes = req.query.mes === undefined ? mesDe(new Date()) : mesSchema.safeParse(req.query.mes).data;
+    if (!mes) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'El mes va como AAAA-MM.' } });
+      return;
+    }
+    res.json({ data: await porMarcar(req.identity.odooPartnerId, mes) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Cuántas vendió de un producto en el mes. Devuelve la lista otra vez, ya al día. */
+accountRouter.post('/sellout/marcar', sellOut, async (req, res, next) => {
+  try {
+    const cuerpo = marcarVendidoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    res.json({ data: await marcarVendido(req.identity.odooPartnerId, req.identity.appUserId, cuerpo.data) });
   } catch (error) {
     next(error);
   }

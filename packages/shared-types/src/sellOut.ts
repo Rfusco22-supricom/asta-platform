@@ -130,3 +130,49 @@ export const sellOutEmpresaSchema = z.object({
 export type SellOutEmpresa = z.infer<typeof sellOutEmpresaSchema>;
 
 export const sellOutEmpresaRespuestaSchema = z.object({ data: sellOutEmpresaSchema });
+
+/**
+ * «Lo que te vendimos»: los productos ASTA que el cliente nos compró, con lo
+ * que ha marcado como vendido y lo que le queda. Lo que marca es su reporte de
+ * VENTAS del mes, el mismo que si subiera el Excel.
+ */
+export const productoPorMarcarSchema = z.object({
+  productId: odooIdSchema,
+  sku: z.string().nullable(),
+  nombre: z.string(),
+  /** Lo que tenía en su último conteo de inventario, si lo hay. */
+  base: z.number(),
+  /** Lo que nos compró desde `desde`. */
+  compradas: z.number(),
+  /** Lo vendido desde `desde`, reportado o calculado. */
+  vendidas: z.number(),
+  /** base + compradas − vendidas, nunca menos de 0. */
+  quedan: z.number(),
+  /** Lo vendido en `mes`, el que se está marcando. */
+  vendidasMes: z.number(),
+});
+
+export type ProductoPorMarcar = z.infer<typeof productoPorMarcarSchema>;
+
+export const porMarcarSchema = z.object({
+  /** El mes que se marca: el actual o el anterior. */
+  mes: mesSchema,
+  /** Primer mes que se cuenta. */
+  desde: mesSchema,
+  /** El mes del conteo de inventario del que se parte, si se parte de uno. */
+  inventario: mesSchema.nullable(),
+  productos: z.array(productoPorMarcarSchema),
+});
+
+export type PorMarcar = z.infer<typeof porMarcarSchema>;
+
+export const porMarcarRespuestaSchema = z.object({ data: porMarcarSchema });
+
+/** Cuántas vendió de un producto en el mes: el total, no lo que suma. */
+export const marcarVendidoSchema = z.object({
+  mes: mesSchema,
+  productId: odooIdSchema,
+  cantidad: z.number().min(0).max(1_000_000),
+});
+
+export type MarcarVendido = z.infer<typeof marcarVendidoSchema>;
