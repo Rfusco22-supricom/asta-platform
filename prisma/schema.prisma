@@ -784,6 +784,54 @@ model SellOutReporte {
   @@map("sell_out_reportes")
 }
 
+/// La categoría de ASTA de un cliente, como `ClaveCategoria` de shared-types.
+/// Oro es ORO aquí, no GOLD: esto es la categoría, no el rol de la cuenta.
+enum CategoriaAsta {
+  GENERAL
+  BRONCE
+  PLATA
+  ORO
+  DIAMANTE
+}
+
+/// El cierre de un trimestre de un cliente en el programa de ASTA (reglas en
+/// `packages/shared-types/src/programaAsta.ts`).
+///
+/// Una fila por cliente y trimestre cerrado: con qué nivel empezó, qué cumplió,
+/// los tokens que ganó y con qué nivel acaba. El nivel actual de un cliente es
+/// el `nivelFin` de su último trimestre; su saldo de tokens, la suma. Se
+/// escribe una vez, al cerrar, y no se toca: sin UPDATE ni DELETE.
+///
+/// El cliente es su grupo por RIF (`clave`), como en las categorías: dos fichas
+/// con el mismo RIF son un cliente.
+model ProgramaTrimestre {
+  id               String        @id @default(uuid()) @db.Char(36)
+  /// RIF normalizado, o «p<id>» si la ficha no tiene un RIF utilizable.
+  clave            String        @db.VarChar(20)
+  /// La ficha que más compró del grupo, para enlazar a ella.
+  odooPartnerId    Int           @map("odoo_partner_id") @db.UnsignedInt
+  /// «AAAA-Qn».
+  trimestre        String        @db.Char(7)
+  nivelInicio      CategoriaAsta @map("nivel_inicio")
+  nivelFin         CategoriaAsta @map("nivel_fin")
+  /// Lo que compró de ASTA en el trimestre, en USD sin IVA.
+  compra           Decimal       @db.Decimal(14, 2)
+  cumpleMensual    Boolean       @map("cumple_mensual")
+  cumpleTrimestral Boolean       @map("cumple_trimestral")
+  cumpleSellout    Boolean       @map("cumple_sellout")
+  excedente        Boolean
+  racha            Boolean
+  variedad         Boolean
+  tokens           Int           @db.UnsignedSmallInt
+  cerradoEn        DateTime      @default(now()) @map("cerrado_en") @db.DateTime(3)
+  /// Quién lanzó el cierre (app_users.id), si fue desde el panel. Null desde la consola.
+  cerradoPor       String?       @map("cerrado_por") @db.Char(36)
+
+  @@unique([clave, trimestre], map: "uq_programa_trimestres_cliente")
+  @@index([trimestre], map: "ix_programa_trimestres_trimestre")
+  @@map("programa_trimestres")
+}
+
 /// Una línea del reporte: un producto ASTA de Odoo y su cantidad.
 model SellOutLinea {
   id            BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
