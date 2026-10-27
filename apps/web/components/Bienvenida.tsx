@@ -12,10 +12,10 @@ const DEL_ROL: Partial<Record<AppRole, ClaveCategoria>> = { GENERAL: 'GENERAL', 
  * La bienvenida del portal de clientes: quién es y su nivel de ASTA (#131) en
  * la pirámide en relieve.
  *
- * El nivel es la `categoria` calculada con sus compras, la misma del bloque
- * «Tu nivel ASTA» de más abajo. El rol de la cuenta solo cambia cuando se corre
- * `aplicar-niveles`, y entre una vez y otra los dos decían cosas distintas en la
- * misma pantalla. El rol queda para cuando el cálculo no se pudo leer.
+ * El nivel es el del programa (`categoria`), el mismo del bloque «Tu nivel
+ * ASTA» de más abajo. El rol de la cuenta lo pone una pasada diaria, y entre una
+ * vez y otra los dos podían decir cosas distintas en la misma pantalla. El rol
+ * queda para cuando el programa no se pudo leer.
  */
 export function Bienvenida({ nombre, rol, categoria }: { nombre: string; rol: string; categoria: ClaveCategoria | null }) {
   const nivel = categoria ?? DEL_ROL[rol as AppRole] ?? null;

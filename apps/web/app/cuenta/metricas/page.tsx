@@ -4,20 +4,17 @@ import { Bienvenida } from '@/components/Bienvenida';
 import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
-import { InsigniaCategoria, loQueFalta } from '@/components/Categorias';
+import { ProgramaCliente } from '@/components/ProgramaCliente';
 import { getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { fecha, money, moneyCompact, moneyEntero } from '@/lib/formato';
-import { reglaDe, type MetricasCliente } from '@asta/shared-types';
+import { fecha, money, moneyCompact } from '@/lib/formato';
+import type { MetricasCliente } from '@asta/shared-types';
 
 /**
  * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
  *
- * Sus compras de ASTA de los últimos doce meses, su nivel en el programa, qué
- * compra y lo que se busca en sus tablets. Con datos que ya existen: no tiene
- * que subir nada. Cada bloque sale aunque otro no se haya podido leer.
- *
- * De su nivel, cuál es y lo que le falta para el siguiente, con la regla de
- * ese nivel: lo mismo que ve su vendedor.
+ * Su nivel en el programa de ASTA y cómo va en el trimestre, sus compras de
+ * ASTA de los últimos doce meses, qué compra y lo que se busca en sus tablets.
+ * Cada bloque sale aunque otro no se haya podido leer.
  */
 
 export const dynamic = 'force-dynamic';
@@ -61,41 +58,6 @@ function Compras({ m }: { m: MetricasCliente }) {
         </section>
       )}
     </>
-  );
-}
-
-function Nivel({ m }: { m: MetricasCliente }) {
-  if (!m.nivel) return <NoSePudo titulo="Tu nivel ASTA" />;
-  const c = m.nivel.cliente;
-  return (
-    <section className="panel">
-      <h2>Tu nivel ASTA</h2>
-      {c ? (
-        <div className="met-nivel">
-          <InsigniaCategoria categoria={c.categoria} />
-          <div>
-            <strong>{moneyCompact(c.compraMensual)}</strong> <span className="stat-sub">al mes de media</span>
-          </div>
-          <div className="stat-sub">
-            {n(c.mesesConCompra)} de {n(m.nivel.meses.length)} meses con compra
-          </div>
-          {c.siguiente ? (
-            <div className="met-subir">
-              <span>
-                Para subir a <InsigniaCategoria categoria={c.siguiente.categoria} /> te falta <strong>{loQueFalta(c.siguiente)}</strong>.
-              </span>
-              <span className="stat-sub">
-                {reglaDe(c.siguiente.categoria).nombre}: desde {moneyEntero(reglaDe(c.siguiente.categoria).minimoMensual)} al mes de media, comprando {n(reglaDe(c.siguiente.categoria).minimoMeses)} de {n(m.nivel.meses.length)} meses.
-              </span>
-            </div>
-          ) : (
-            <div className="met-subir">Estás en el nivel más alto.</div>
-          )}
-        </div>
-      ) : (
-        <div className="empty">Todavía no estás en el programa.</div>
-      )}
-    </section>
   );
 }
 
@@ -195,13 +157,11 @@ export default async function MetricasPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mis métricas">
-      {/* Sin ficha en el programa, Cliente general; si no se pudo leer, el rol de la cuenta. */}
-      <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.nivel ? (m.nivel.cliente?.categoria ?? 'GENERAL') : null} />
+      {/* Su nivel del programa; si no se pudo leer, el rol de la cuenta. */}
+      <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
+      <ProgramaCliente programa={m.programa} />
       <Compras m={m} />
-      <div className="met-rejilla">
-        <Nivel m={m} />
-        <QueCompras m={m} />
-      </div>
+      <QueCompras m={m} />
       <Tablets m={m} />
     </Marco>
   );

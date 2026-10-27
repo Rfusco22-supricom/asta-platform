@@ -114,6 +114,12 @@ describe('Mis métricas del cliente', () => {
     }
   }, 120_000);
 
+  it('su programa: sin compras este trimestre, Cliente general medido contra Bronce, sin tokens', async () => {
+    const r = await pedir<{ data: MetricasCliente }>('/api/v1/account/metricas', 'cliente');
+    expect(r.body.data.programa).toMatchObject({ saldoTokens: 0, evaluacion: { nivel: 'GENERAL', cuotaMensual: 250, compraTrimestre: 0 } });
+    expect(r.body.data.programa!.evaluacion.meses).toHaveLength(3);
+  }, 120_000);
+
   it('sus tablets cuentan solo lo suyo', async () => {
     const r = await pedir<{ data: MetricasCliente }>('/api/v1/account/metricas', 'cliente');
     expect(r.body.data.tablets).toMatchObject({ cuantas: 1, busquedas: 3, sinResultado: 1 });
