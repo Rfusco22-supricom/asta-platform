@@ -1,17 +1,19 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Cifra } from '@/components/Cifras';
-import { getSellOutCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getPorMarcar, getSellOutCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { etiquetaMes, nombreMes } from '@/lib/meses';
 import { fecha } from '@/lib/formato';
 import { SubirSellOut } from './SubirSellOut';
+import { LoQueTeVendimos } from './LoQueTeVendimos';
 
 /**
  * «Mi sell-out»: lo que el cliente vende de ASTA (fase 2).
  *
- * Sube sus ventas del mes o su inventario al cierre con la plantilla; aquí ve,
- * mes a mes, lo que compró a Supricom frente a lo que vendió, y por producto
- * para cuántos días le alcanza la existencia.
+ * Marca lo que vende de lo que le vendimos («Lo que te vendimos»), o sube sus
+ * ventas del mes o su inventario al cierre con la plantilla; aquí ve, mes a
+ * mes, lo que compró a Supricom frente a lo que vendió, y por producto para
+ * cuántos días le alcanza la existencia.
  */
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +24,9 @@ export default async function SellOutPage() {
   const sesion = await requireSession();
 
   let r;
+  // «Lo que te vendimos» va aparte: si falla, el resto de la página sale igual.
+  // Una sesión caducada la detecta la otra llamada, que sí redirige.
+  const marcar = getPorMarcar(sesion.accessToken).catch(() => null);
   try {
     r = await getSellOutCliente(sesion.accessToken);
   } catch (error) {
@@ -37,6 +42,7 @@ export default async function SellOutPage() {
     );
   }
 
+  const porMarcar = await marcar;
   const ultimo = r.mesProductos ? r.meses.find((m) => m.mes === r.mesProductos) : undefined;
   const reponer = r.productos.filter((p) => p.reponer).length;
 
@@ -48,6 +54,15 @@ export default async function SellOutPage() {
           <Cifra icono="caja" color="violeta" etiqueta={`Comprado · ${etiquetaMes(ultimo.mes)}`} valor={n(ultimo.compradas)} nota="unidades" />
           <Cifra icono="caja" color="verde" etiqueta="Existencia" valor={n(ultimo.existencia)} nota="unidades al cierre" />
           <Cifra icono="alerta" color="ambar" etiqueta="Para reponer" valor={reponer} tono={reponer > 0 ? 'atencion' : undefined} nota="menos de 30 días" />
+        </section>
+      )}
+
+      {porMarcar ? (
+        <LoQueTeVendimos inicial={porMarcar} />
+      ) : (
+        <section className="panel">
+          <h2>Lo que te vendimos</h2>
+          <div className="empty">No se pudo leer ahora.</div>
         </section>
       )}
 

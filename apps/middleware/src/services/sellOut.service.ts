@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { ErrorCode, ReporteSellOut, ResumenSellOut, SellOutEmpresa, TipoSellOut, ValidacionSellOut } from '@asta/shared-types';
+import type { ErrorCode, PorMarcar, ReporteSellOut, ResumenSellOut, SellOutEmpresa, TipoSellOut, ValidacionSellOut } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheConRefresco } from '../utils/cacheConRefresco.js';
@@ -25,6 +25,10 @@ import { LINEA_ASTA } from './ventasAsta.service.js';
  *                   vendido(M) = existencia(M−1) + comprado(M) − existencia(M).
  *
  * Si un mes tiene los dos, mandan las ventas.
+ *
+ * Y una tercera, sin archivo: «Lo que te vendimos». El cliente ve lo que nos
+ * compró y marca, producto a producto, cuántas vendió en el mes. Eso es su
+ * reporte de VENTAS de ese mes (ver `marcarVendido`).
  *
  * ── Qué se guarda ────────────────────────────────────────────────────────────
  *
@@ -499,6 +503,145 @@ export async function resumenSellOut(partnerId: number, hoy = new Date()): Promi
 
     return { meses: filasMeses, mesProductos, productos, reportes: historial.map(aReporte) };
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// «Lo que te vendimos»: marcar lo vendido, producto a producto
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** El nombre del reporte que se va llenando al marcar, para distinguirlo de un archivo. */
+export const MARCADO_EN_PANEL = 'Marcado en el panel';
+
+/** Lo que le queda se cuenta, como poco, desde hace estos meses. */
+const MESES_POR_MARCAR = 3;
+
+/** Se marca el mes en curso o el anterior: lo de antes, con el Excel. */
+export function comprobarMesMarcable(mes: string, hoy = new Date()): void {
+  const actual = mesDe(hoy);
+  if (mes !== actual && mes !== sumarMeses(actual, -1)) throw new SellOutNoValido('Solo se marca lo vendido de este mes o del anterior.');
+}
+
+/**
+ * Lo que nos compró, lo que ha marcado como vendido y lo que le queda.
+ *
+ * Lo que le queda = lo que tenía + lo que nos compró − lo que vendió. «Lo que
+ * tenía» solo se sabe si subió un conteo de inventario: entonces se cuenta
+ * desde ese mes. Si no, desde hace `MESES_POR_MARCAR` meses (o desde su primer
+ * reporte, si es anterior), y lo que tuviera de antes no cuenta: no lo sabemos.
+ * Todo dentro de los últimos `MESES_RESUMEN` meses.
+ */
+export async function porMarcar(partnerId: number, mes: string, hoy = new Date()): Promise<PorMarcar> {
+  comprobarMesMarcable(mes, hoy);
+  const actual = mesDe(hoy);
+  const meses = Array.from({ length: MESES_RESUMEN }, (_, i) => sumarMeses(actual, i - MESES_RESUMEN + 1));
+  const [de, comprado, { porId }] = await Promise.all([
+    reportado(partnerId, [sumarMeses(meses[0]!, -1), ...meses]),
+    // Lo comprado no cambia al marcar: se guarda aparte del resumen.
+    dePantalla(`cliente:${partnerId}:sellout:comprado:${actual}`, () => compradoPorMes(partnerId, meses)),
+    catalogoAsta(),
+  ]);
+
+  const inventario = [...meses].reverse().find((m) => de.INVENTARIO.has(m)) ?? null;
+  const primero = meses.find((m) => de.VENTAS.has(m) || de.INVENTARIO.has(m));
+  const minimo = sumarMeses(actual, -(MESES_POR_MARCAR - 1));
+  // Con inventario, desde el mes siguiente al conteo: ese mes ya está en la existencia.
+  const desde = inventario ? sumarMeses(inventario, 1) : primero && primero < minimo ? primero : minimo;
+  const base = inventario ? de.INVENTARIO.get(inventario)! : new Map<number, number>();
+
+  const compradas = new Map<number, number>();
+  const vendidas = new Map<number, number>();
+  const sumar = (m: Map<number, number>, id: number, n: number) => m.set(id, (m.get(id) ?? 0) + n);
+  for (const m of meses.filter((x) => x >= desde)) {
+    for (const [id, n] of comprado.get(m) ?? []) sumar(compradas, id, n);
+    for (const [id, n] of vendidoDelMes(m, de, comprado)?.porProducto ?? []) sumar(vendidas, id, n);
+  }
+  const delMes = de.VENTAS.get(mes);
+
+  const redondo = (n: number) => Math.round(n * 100) / 100;
+  const ids = new Set([...base.keys(), ...compradas.keys(), ...vendidas.keys(), ...(delMes?.keys() ?? [])]);
+  const productos = [...ids]
+    .filter((id) => porId.has(id))
+    .map((id) => {
+      const p = porId.get(id)!;
+      const b = base.get(id) ?? 0;
+      const c = compradas.get(id) ?? 0;
+      const v = vendidas.get(id) ?? 0;
+      return {
+        productId: id,
+        sku: p.sku,
+        nombre: p.nombre,
+        base: redondo(b),
+        compradas: redondo(c),
+        vendidas: redondo(v),
+        quedan: redondo(Math.max(0, b + c - v)),
+        vendidasMes: redondo(delMes?.get(id) ?? 0),
+      };
+    })
+    // Lo que le queda, primero; lo agotado, al final.
+    .filter((p) => p.base > 0 || p.compradas > 0 || p.vendidas > 0)
+    .sort((a, b) => Number(b.quedan > 0) - Number(a.quedan > 0) || b.compradas - a.compradas || a.nombre.localeCompare(b.nombre));
+
+  return { mes, desde: inventario ? sumarMeses(inventario, 1) : desde, inventario, productos };
+}
+
+/**
+ * Guarda cuántas vendió de un producto en el mes (el total del mes, no lo que
+ * suma: marcar dos veces lo mismo no lo duplica).
+ *
+ * Si el reporte de ventas vivo del mes ya es el de marcar, se cambia esa línea:
+ * marcar veinte veces no deja veinte reportes en su historial. Si es un Excel,
+ * o no hay, se crea uno nuevo con sus líneas y el cambio, y el Excel queda de
+ * historial, como cuando se sube otro archivo.
+ */
+export async function marcarVendido(
+  partnerId: number,
+  subidoPor: string,
+  datos: { mes: string; productId: number; cantidad: number },
+  hoy = new Date(),
+): Promise<PorMarcar> {
+  comprobarMesMarcable(datos.mes, hoy);
+  const { porId } = await catalogoAsta();
+  const producto = porId.get(datos.productId);
+  if (!producto) throw new SellOutNoValido('No es un producto ASTA.');
+  const cantidad = Math.round(datos.cantidad * 100) / 100;
+  const sku = (producto.sku ?? String(producto.id)).slice(0, 64);
+
+  await prisma.$transaction(async (tx) => {
+    const vivo = await tx.sellOutReporte.findFirst({
+      where: { odooPartnerId: partnerId, mes: datos.mes, tipo: 'VENTAS', reemplazadoEn: null },
+      include: { lineas: true },
+    });
+    if (vivo && vivo.archivo === MARCADO_EN_PANEL) {
+      const linea = vivo.lineas.find((l) => l.odooProductId === datos.productId);
+      if (linea) await tx.sellOutLinea.update({ where: { id: linea.id }, data: { cantidad } });
+      else await tx.sellOutLinea.create({ data: { reporteId: vivo.id, odooProductId: datos.productId, sku, cantidad } });
+      const lineas = await tx.sellOutLinea.findMany({ where: { reporteId: vivo.id }, select: { cantidad: true } });
+      await tx.sellOutReporte.update({
+        where: { id: vivo.id },
+        data: { filas: lineas.filter((l) => Number(l.cantidad) > 0).length, unidades: lineas.reduce((s, l) => s + Number(l.cantidad), 0), subidoPor },
+      });
+      return;
+    }
+    const lineas = new Map((vivo?.lineas ?? []).map((l) => [l.odooProductId, { odooProductId: l.odooProductId, sku: l.sku, cantidad: Number(l.cantidad) }]));
+    lineas.set(datos.productId, { odooProductId: datos.productId, sku, cantidad });
+    if (vivo) await tx.sellOutReporte.update({ where: { id: vivo.id }, data: { reemplazadoEn: hoy } });
+    const todas = [...lineas.values()];
+    await tx.sellOutReporte.create({
+      data: {
+        odooPartnerId: partnerId,
+        mes: datos.mes,
+        tipo: 'VENTAS',
+        archivo: MARCADO_EN_PANEL,
+        filas: todas.filter((l) => l.cantidad > 0).length,
+        unidades: todas.reduce((s, l) => s + l.cantidad, 0),
+        subidoPor,
+        createdAt: hoy,
+        lineas: { create: todas },
+      },
+    });
+  });
+  olvidarPantalla(`cliente:${partnerId}:sellout`);
+  return porMarcar(partnerId, datos.mes, hoy);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -2,9 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
 import ExcelJS from 'exceljs';
 import {
+  porMarcarRespuestaSchema,
   resumenSellOutRespuestaSchema,
   sellOutEmpresaRespuestaSchema,
   validacionSellOutRespuestaSchema,
+  type PorMarcar,
   type ReporteSellOut,
   type ResumenSellOut,
   type SellOutEmpresa,
@@ -40,6 +42,7 @@ const AGENTE = 'asta-test-sellout';
 const MES = sumarMeses(mesDe(new Date()), -1);
 const ANTES = sumarMeses(MES, -1);
 let codigos: [string, string];
+let ids: [number, number];
 
 async function pedir<B>(metodo: 'GET' | 'POST', ruta: string, quien: keyof typeof tokens, cuerpo?: unknown) {
   const res = await fetch(`${base}${ruta}`, {
@@ -82,6 +85,7 @@ beforeAll(async () => {
   const dos = [...porCodigo.values()].filter((p) => p.sku).slice(0, 2);
   if (dos.length < 2) throw new Error('El catálogo ASTA de Odoo no trae dos productos con código');
   codigos = [dos[0]!.sku!, dos[1]!.sku!];
+  ids = [dos[0]!.id, dos[1]!.id];
 }, 120_000);
 
 afterAll(async () => {
@@ -190,4 +194,51 @@ describe('Subir el sell-out', () => {
     expect(sellOutEmpresaRespuestaSchema.safeParse(r.body).success).toBe(true);
     expect(r.body.data.clientes.find((c) => c.partnerId === PARTNER)).toMatchObject({ vendidas: 7, fuente: 'VENTAS' });
   }, 120_000);
+});
+
+describe('Marcar lo vendido («Lo que te vendimos»)', () => {
+  const ACTUAL = mesDe(new Date());
+  const marcar = (mes: string, productId: number, cantidad: number, quien: keyof typeof tokens = 'cliente') =>
+    pedir<{ data: PorMarcar }>('POST', '/api/v1/account/sellout/marcar', quien, { mes, productId, cantidad });
+  const de = (r: { body: { data: PorMarcar } }, id: number) => r.body.data.productos.find((p) => p.productId === id)!;
+
+  it('parte del último conteo de inventario: lo que tenía menos lo vendido', async () => {
+    // Del test de arriba: inventario de ANTES (12 y 4) y ventas de MES (7 del primero).
+    const r = await pedir<{ data: PorMarcar }>('GET', '/api/v1/account/sellout/marcar', 'cliente');
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(porMarcarRespuestaSchema.safeParse(r.body).success).toBe(true);
+    expect(r.body.data).toMatchObject({ mes: ACTUAL, inventario: ANTES, desde: MES });
+    expect(de(r, ids[0])).toMatchObject({ base: 12, vendidas: 7, quedan: 5, vendidasMes: 0 });
+    expect(de(r, ids[1])).toMatchObject({ base: 4, vendidas: 0, quedan: 4 });
+  }, 60_000);
+
+  it('marcar es el total del mes: repetirlo no suma, y no llena el historial', async () => {
+    expect(de(await marcar(ACTUAL, ids[0], 2), ids[0])).toMatchObject({ vendidasMes: 2, quedan: 3 });
+    const otra = await marcar(ACTUAL, ids[0], 3);
+    expect(de(otra, ids[0])).toMatchObject({ vendidasMes: 3, vendidas: 10, quedan: 2 });
+    const vivos = await prisma.sellOutReporte.findMany({ where: { odooPartnerId: PARTNER, mes: ACTUAL, tipo: 'VENTAS' } });
+    expect(vivos).toHaveLength(1);
+    expect(vivos[0]).toMatchObject({ archivo: 'Marcado en el panel', filas: 1, reemplazadoEn: null });
+  }, 60_000);
+
+  it('marcar el mes pasado sobre un Excel: el Excel queda de historial y sus líneas se conservan', async () => {
+    const r = await marcar(MES, ids[1], 1);
+    expect(de(r, ids[1])).toMatchObject({ vendidasMes: 1, quedan: 3 });
+    expect(de(r, ids[0])).toMatchObject({ quedan: 2 });
+    const del = await prisma.sellOutReporte.findMany({ where: { odooPartnerId: PARTNER, mes: MES, tipo: 'VENTAS' }, include: { lineas: true }, orderBy: { createdAt: 'asc' } });
+    expect(del.map((x) => [x.archivo, x.reemplazadoEn === null])).toEqual([
+      ['ventas.csv', false],
+      ['ventas.csv', false],
+      ['Marcado en el panel', true],
+    ]);
+    expect(del[2]!.lineas.map((l) => [l.odooProductId, Number(l.cantidad)]).sort()).toEqual([[ids[0], 7], [ids[1], 1]].sort());
+  }, 60_000);
+
+  it('solo este mes o el anterior, solo productos ASTA, y solo el cliente', async () => {
+    expect((await marcar(ANTES, ids[0], 1)).status).toBe(400);
+    expect((await marcar(ACTUAL, 1, 1)).status).toBe(400);
+    expect((await marcar(ACTUAL, ids[0], -1)).status).toBe(400);
+    expect((await marcar(ACTUAL, ids[0], 1, 'vendedor')).status).toBe(403);
+    expect((await pedir('GET', `/api/v1/account/sellout/marcar?mes=${ANTES}`, 'cliente')).status).toBe(400);
+  }, 60_000);
 });

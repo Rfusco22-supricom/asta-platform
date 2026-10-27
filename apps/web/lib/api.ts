@@ -37,7 +37,9 @@ import {
   metricasClienteRespuestaSchema,
   type MetricasCliente,
   resumenSellOutRespuestaSchema,
+  porMarcarRespuestaSchema,
   type ResumenSellOut,
+  type PorMarcar,
   sellOutEmpresaRespuestaSchema,
   type SellOutEmpresa,
   propuestasPropiasRespuestaSchema,
@@ -644,6 +646,12 @@ export async function getMetricasCliente(accessToken: string): Promise<MetricasC
 /** «Mi sell-out» del cliente con sesión. */
 export async function getSellOutCliente(accessToken: string): Promise<ResumenSellOut> {
   const r = await request('/api/v1/account/sellout', resumenSellOutRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Lo que te vendimos»: lo que el cliente nos compró, lo marcado y lo que le queda. Sin mes, el actual. */
+export async function getPorMarcar(accessToken: string, mes?: string): Promise<PorMarcar> {
+  const r = await request(`/api/v1/account/sellout/marcar${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, porMarcarRespuestaSchema, accessToken);
   return r.data;
 }
 
