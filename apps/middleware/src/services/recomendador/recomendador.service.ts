@@ -7,6 +7,7 @@ import { anotarCacheHit } from '../../utils/contextoPeticion.js';
 import { estadoDeStock, TTL_CACHE_INVENTARIO_MS, umbralStockBajo, type AlmacenCliente } from '../inventory.service.js';
 import { normalizarCodigoCartucho } from './normalizar.js';
 import { buscarModelos, type ModeloBuscable } from './buscarModelos.js';
+import { esBotella } from './botella.js';
 
 /**
  * Endpoints del recomendador (#39): de "qué impresora tienes" a "qué tóner le
@@ -351,6 +352,7 @@ export async function compatiblesDe(printerId: number, almacen: AlmacenCliente |
       tipo: TIPO_CARTUCHO[f.cartridge.kind],
       color: f.cartridge.color,
       rendimientoPaginas: f.cartridge.yieldPages,
+      botella: esBotella(f.cartridge.brand.name, f.cartridge.code),
     });
     porPlantilla.set(f.odooProductTmplId, p);
   }

@@ -109,14 +109,19 @@ export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: 
   );
 }
 
+/** «+$500/mes y 1 mes más con compra»: lo que le falta para la categoría siguiente. */
+export function loQueFalta(siguiente: NonNullable<ClienteCategoria['siguiente']>): string {
+  const partes: string[] = [];
+  if (siguiente.faltaMensual > 0) partes.push(`+${moneyEntero(siguiente.faltaMensual)}/mes`);
+  if (siguiente.faltanMeses > 0) partes.push(`${siguiente.faltanMeses} ${siguiente.faltanMeses === 1 ? 'mes' : 'meses'} más con compra`);
+  return partes.join(' y ');
+}
+
 function ParaSubir({ c }: { c: ClienteCategoria }) {
   if (!c.siguiente) return <span className="stat-sub">en lo más alto</span>;
-  const partes: string[] = [];
-  if (c.siguiente.faltaMensual > 0) partes.push(`+${moneyEntero(c.siguiente.faltaMensual)}/mes`);
-  if (c.siguiente.faltanMeses > 0) partes.push(`${c.siguiente.faltanMeses} ${c.siguiente.faltanMeses === 1 ? 'mes' : 'meses'} más con compra`);
   return (
     <span className="cat-subir">
-      {partes.join(' y ')} <span className="stat-sub">para {reglaDe(c.siguiente.categoria).nombre}</span>
+      {loQueFalta(c.siguiente)} <span className="stat-sub">para {reglaDe(c.siguiente.categoria).nombre}</span>
     </span>
   );
 }
