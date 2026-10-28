@@ -12,11 +12,10 @@ import { deSede } from '../services/smartbit.service.js';
  */
 
 describe('sedes · cuáles hay', () => {
-  it('Valencia, Caracas y Panamá, con sus compañías de Odoo', () => {
+  it('Valencia y Caracas, con sus compañías de Odoo; Panamá no vende ASTA', () => {
     expect(SEDES.map((s) => [s.id, s.nombre])).toEqual([
       [9, 'Valencia'],
       [10, 'Caracas'],
-      [7, 'Panamá'],
     ]);
     expect(nombreSede(null)).toBe('Todas las sedes');
   });
@@ -31,12 +30,11 @@ describe('sedes · lo que llega en la URL', () => {
   it.each([
     ['9', 9],
     ['10', 10],
-    ['7', 7],
   ])('«%s» es la sede %i', (valor, id) => {
     expect(sedeDeLaPeticion({ sede: valor })).toBe(id);
   });
 
-  it.each(['1', '3', 'valencia', '9.5', '-9'])('«%s» es un 400, no «todas»', (valor) => {
+  it.each(['1', '3', '7', 'valencia', '9.5', '-9'])('«%s» es un 400, no «todas»', (valor) => {
     expect(sedeDe(valor)).toBeUndefined();
     expect(() => sedeDeLaPeticion({ sede: valor })).toThrow(SedeInvalida);
     try {
@@ -48,15 +46,16 @@ describe('sedes · lo que llega en la URL', () => {
 });
 
 describe('sedes · cómo filtra', () => {
-  it('en Odoo, por la compañía; sin sede, nada', () => {
+  it('en Odoo, por la compañía; sin sede, todas menos Panamá', () => {
     expect(enSede(9)).toEqual([['company_id', '=', 9]]);
-    expect(enSede(null)).toEqual([]);
+    expect(enSede(null)).toEqual([['company_id', 'not in', [7]]]);
   });
 
   it('en Smartbit, por el company_id de la fila', () => {
     expect(deSede({ companyId: 9 }, 9)).toBe(true);
     expect(deSede({ companyId: 10 }, 9)).toBe(false);
     expect(deSede({ companyId: 10 }, null)).toBe(true);
+    expect(deSede({ companyId: 7 }, null)).toBe(false);
   });
 
   it('la clave de cache distingue cada sede de «todas»', () => {

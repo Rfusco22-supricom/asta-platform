@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
 import { requireSession } from '@/lib/session';
+import { nombrePeriodo } from '@/lib/meses';
 import { Marco } from '@/components/Marco';
 import {
   getClientInvoicing,
@@ -111,6 +112,9 @@ export default async function FichaCliente({ params, searchParams }: Props) {
   // factura, no de su parte ASTA (ver `ventasAsta.service`).
   const pctCobrado = f.cobrado + f.porCobrar > 0 ? (f.cobrado / (f.cobrado + f.porCobrar)) * 100 : 0;
   const hayFiltro = Boolean(desde || hasta);
+  // Sin filtro, las cifras son de siempre; con él, de esas fechas.
+  const periodoFicha =
+    desde && hasta ? `en ${nombrePeriodo(desde, hasta)}` : desde ? `desde ${fecha(desde)}` : hasta ? `hasta ${fecha(hasta)}` : 'histórico';
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre}>
@@ -218,7 +222,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           icono="ventas"
           etiqueta="Vendido en ASTA, sin IVA"
           valor={money(f.totalFacturado)}
-          nota={`${f.numeroFacturas} ${f.numeroFacturas === 1 ? 'factura' : 'facturas'} con ASTA · neto de devoluciones`}
+          nota={`${periodoFicha} · ${f.numeroFacturas} ${f.numeroFacturas === 1 ? 'factura' : 'facturas'} con ASTA, neto de devoluciones`}
           tendencia={(f.serieMensual ?? []).map((p) => p.monto)}
         />
         <Cifra
@@ -229,7 +233,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           tono={f.porCobrar > 0 ? 'alerta' : undefined}
           nota={f.cobrado + f.porCobrar > 0 ? `${pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA` : 'sin facturas con ASTA en Odoo'}
         />
-        <Cifra icono="ticket" color="violeta" etiqueta="Ticket promedio" valor={money(f.ticketPromedio)} pequena nota="de ASTA por factura" />
+        <Cifra icono="ticket" color="violeta" etiqueta="Ticket promedio" valor={money(f.ticketPromedio)} pequena nota={`${periodoFicha} · de ASTA por factura`} />
         <Cifra
           icono="mes"
           color="verde"

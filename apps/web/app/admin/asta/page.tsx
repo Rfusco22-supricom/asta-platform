@@ -61,15 +61,15 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
       <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
         <Cifra icono="cuota" color="rosa" etiqueta="Cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran nuestros clientes" />
-        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} tono="sube" nota="marca propia" />
-        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="otras marcas" />
+        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} tono="sube" nota="histórico · marca propia" />
+        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="histórico · otras marcas" />
         <Cifra
           icono="diana"
           color="violeta"
           etiqueta="Sin probar ASTA"
           valor={totales.sinAsta.toLocaleString('es-VE')}
           tono="atencion"
-          nota={`clientes · ${moneyCompact(totales.sinAstaImporte)} fuera`}
+          nota={`clientes · ${moneyCompact(totales.sinAstaImporte)} fuera, histórico`}
         />
       </section>
 

@@ -79,14 +79,14 @@ export default async function CarteraPage() {
       titulo="Mi cartera"
     >
       <section className="stats">
-        <Cifra icono="ventas" etiqueta="Vendido en ASTA" valor={moneyCompact(meta.totalCartera)} nota={money(meta.totalCartera)} />
+        <Cifra icono="ventas" etiqueta="Vendido en ASTA" valor={moneyCompact(meta.totalCartera)} nota={`histórico · ${money(meta.totalCartera)}`} />
         <Cifra
           icono="cobrar"
           color="ambar"
           etiqueta="Por cobrar"
           valor={moneyCompact(meta.porCobrarCartera)}
           tono={meta.porCobrarCartera > 0 ? 'alerta' : undefined}
-          nota={`${conDeuda} clientes con saldo en facturas con ASTA`}
+          nota={`a hoy · ${conDeuda} clientes con saldo en facturas con ASTA`}
         />
         <Cifra icono="clientes" color="verde" etiqueta="Compran ASTA" valor={conHistorial} nota={`${filas.length - conHistorial} todavía sin comprar ASTA`} />
         <Cifra
@@ -95,7 +95,7 @@ export default async function CarteraPage() {
           etiqueta="Mayor cliente"
           valor={moneyCompact(mayor)}
           pequena
-          nota={meta.totalCartera > 0 ? `${((mayor / meta.totalCartera) * 100).toFixed(0)} % de la cartera` : '—'}
+          nota={meta.totalCartera > 0 ? `histórico · ${((mayor / meta.totalCartera) * 100).toFixed(0)} % de la cartera` : '—'}
         />
       </section>
 

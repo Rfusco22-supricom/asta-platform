@@ -296,7 +296,7 @@ export async function reporteProductos(
   // el de Odoo cuando está en los dos.
   // Toda la empresa: todos los clientes a los que Smartbit sabe atribuir una venta.
   const clientes = cartera ?? [...sb.indice.porRif.values()].flat().map((c) => c.id);
-  const sbDeSede = sede === null ? sb : { ...sb, ventas: sb.ventas.filter((v) => deSede(v, sede)) };
+  const sbDeSede = { ...sb, ventas: sb.ventas.filter((v) => deSede(v, sede)) };
   const grupos = [...gruposOdoo, ...gruposSmartbit(ventasDeClientes(sbDeSede, clientes), rango)];
 
   const ids = [...new Set(grupos.map((g) => (g.product_id ? g.product_id[0] : 0)).filter(Boolean))];

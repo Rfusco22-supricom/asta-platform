@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Reporte } from '@/lib/api';
 import { Periodos } from '@/components/Periodos';
+import { nombrePeriodo } from '@/lib/meses';
 import { Sedes } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
 import { money, moneyCompact } from '@/lib/formato';
@@ -130,7 +131,7 @@ export function VistaReporte({
               icono="ventas"
               etiqueta={t.facturado}
               valor={moneyCompact(totales.facturado)}
-              nota={t.facturas}
+              nota={`en ${nombrePeriodo(datos.periodo.desde, datos.periodo.hasta)} · ${t.facturas}`}
             />
             <Metrica
               icono="cobrar"

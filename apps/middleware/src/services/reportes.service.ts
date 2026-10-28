@@ -2,6 +2,7 @@ import { searchRead, readGroup, type OdooDomain } from '../odoo/client.js';
 import { productosEnCompetencia } from './asta.service.js';
 import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, plegarPorTipo } from './criterioFacturacion.js';
 import { SIN_INTERCOMPANIA_LINEA } from './intercompania.js';
+import { enSede } from './sede.js';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
 
 /**
@@ -222,7 +223,7 @@ export async function totalDeProductos(
       SIN_INTERCOMPANIA_LINEA,
     ];
     if (cartera) dominio.push(['partner_id', 'in', cartera]);
-    if (sede !== null) dominio.push(['company_id', '=', sede]);
+    dominio.push(...enSede(sede));
 
     // Agrupado solo por `move_type`: el agregado del lote entero, que es lo único
     // que necesita el reporte, separado en facturas y notas de crédito porque

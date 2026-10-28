@@ -3,6 +3,7 @@ import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@as
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, type Reporte } from '@/lib/api';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
+import { mediaDe } from '@/lib/meses';
 import { PiramideCategorias, type NivelPiramide } from './PiramideCategorias';
 
 /**
@@ -107,6 +108,7 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
           <strong>{corto(r.compraMensual)}</strong>
           <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
         </div>
+        <p className="hero-periodo">{mediaDe(r.meses)}</p>
 
         {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
         <div

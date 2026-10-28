@@ -70,14 +70,14 @@ export default async function AstaCarteraPage() {
           etiqueta="A la competencia"
           valor={moneyCompact(totales.competencia)}
           tono="alerta"
-          nota="otras marcas"
+          nota="histórico · otras marcas"
         />
         <Cifra
           icono="diana"
           color="violeta"
           etiqueta="Sin probar ASTA"
           valor={totales.sinAsta}
-          nota={`clientes tuyos · ${moneyCompact(totales.sinAstaImporte)} fuera`}
+          nota={`clientes tuyos · ${moneyCompact(totales.sinAstaImporte)} fuera, histórico`}
         />
       </section>
 
