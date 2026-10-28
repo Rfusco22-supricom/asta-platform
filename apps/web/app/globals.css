@@ -10,8 +10,8 @@
  * Paneles de vidrio claro sobre un fondo con las luces de la marca: el cian del
  * logo, un violeta y un rosa. La profundidad sale de tres cosas a la vez —la
  * transparencia, la línea blanca de arriba que devuelve el brillo y una sombra
- * larga y suave—, no de una sombra grande sola. Las cifras van en DM Mono para
- * que se alineen columna con columna.
+ * larga y suave—, no de una sombra grande sola. Todo en Inter, y las cifras con
+ * números de ancho fijo (`tnum`) para que se alineen columna con columna.
  *
  * Es la herramienta que un vendedor mira varias horas al día: el brillo y el
  * movimiento se quedan en el marco, el acceso y el Inicio. Las tablas siguen
@@ -79,8 +79,9 @@
   --radius-card: 22px;
   --radius-pill: 999px;
 
-  --fuente: var(--fuente-sora), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: var(--fuente-mono), ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --fuente: var(--fuente-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Las cifras y los códigos: la misma Inter, con números de ancho fijo. */
+  --mono: var(--fuente-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 /*
@@ -165,6 +166,9 @@ html, body {
   color: var(--text);
   font: 14px/1.55 var(--fuente);
   -webkit-font-smoothing: antialiased;
+  /* Números de ancho fijo en todo el panel: los importes de una columna o de
+     una tarjeta junto a otra se alinean cifra con cifra. */
+  font-variant-numeric: tabular-nums;
 }
 
 /*

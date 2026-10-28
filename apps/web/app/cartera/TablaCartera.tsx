@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ROLE_LABEL } from '@asta/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente, PortfolioRow } from '@asta/shared-types';
-import { money, moneyCompact } from '@/lib/formato';
+import { money, moneyCompact, moneyEntero } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
 import { CargandoEnlace } from '@/components/CargandoEnlace';
 
@@ -251,7 +251,9 @@ export function TablaCartera({ filas, actividad }: { filas: PortfolioRow[]; acti
                     ) : a && datos ? (
                       <div className="serie-celda">
                         <MiniSerie serie={a.serie} meses={datos.meta.meses} />
-                        <span className={a.facturado12m === 0 ? 'zero' : ''}>{a.facturado12m === 0 ? '—' : moneyCompact(a.facturado12m)}</span>
+                        <span className={a.facturado12m === 0 ? 'zero' : ''} title={a.facturado12m === 0 ? undefined : money(a.facturado12m)}>
+                          {a.facturado12m === 0 ? '—' : moneyEntero(a.facturado12m)}
+                        </span>
                       </div>
                     ) : (
                       <span className="zero">—</span>

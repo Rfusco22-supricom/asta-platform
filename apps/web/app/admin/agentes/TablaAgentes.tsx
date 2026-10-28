@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { Agente } from '@asta/shared-types';
-import { money, moneyCompact } from '@/lib/formato';
+import { money, moneyEntero } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
 
 /**
@@ -170,15 +170,15 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
                     </div>
                   </td>
 
-                  <td className="num">
-                    {moneyCompact(a.facturado)}
-                    <div className="cliente-contacto" title={money(a.facturado)}>
+                  <td className="num" title={money(a.facturado)}>
+                    {moneyEntero(a.facturado)}
+                    <div className="cliente-contacto">
                       {a.facturas.toLocaleString('es-VE')} facturas
                     </div>
                   </td>
 
-                  <td className="num">
-                    {moneyCompact(a.porCobrar)}
+                  <td className="num" title={money(a.porCobrar)}>
+                    {moneyEntero(a.porCobrar)}
                     {/* El saldo es de las facturas con ASTA enteras: como % de lo
                         vendido en ASTA mezclaría las dos cosas. */}
                   </td>
