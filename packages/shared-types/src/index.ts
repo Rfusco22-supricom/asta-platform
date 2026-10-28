@@ -42,3 +42,4 @@ export * from './sessions.js';
 export * from './metricasCliente.js';
 export * from './sellOut.js';
 export * from './alertasTablero.js';
+export * from './cotizaciones.js';

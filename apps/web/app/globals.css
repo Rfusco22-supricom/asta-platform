@@ -4357,3 +4357,12 @@ button.serie-col .serie-barra { display: block; }
   .semana-barras { height: 90px; }
   .panel.alerta { padding: 16px; }
 }
+
+/* ── Cotizaciones (/admin/cotizaciones y /cotizaciones) ───────────────────── */
+
+.tabla-cotizaciones .stat-sub { display: block; }
+.cot-folio { display: block; font-weight: 560; font-variant-numeric: tabular-nums; }
+.cot-espera { display: block; font-weight: 560; font-variant-numeric: tabular-nums; }
+.cot-espera-larga { color: var(--warning); }
+.cot-vencida { color: var(--danger); }
+.cot-pie { margin: 12px 0 0; }

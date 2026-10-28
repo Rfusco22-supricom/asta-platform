@@ -144,6 +144,14 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M10 20.5a2 2 0 0 0 4 0" />
         </svg>
       );
+    case 'cotizaciones':
+      // Una hoja con su precio: lo que se le ofreció al cliente.
+      return (
+        <svg {...comun}>
+          <path d="M6 3h9l4 4v14H6z" />
+          <path d="M15 3v4h4M9 11h4M9 15h3M15.5 13v6M14 14.2c0-.7.7-1.2 1.5-1.2s1.5.4 1.5 1-.7.9-1.5 1-1.5.5-1.5 1.1.7 1 1.5 1 1.5-.4 1.5-1.1" />
+        </svg>
+      );
     case 'alertas':
       // Un radar: lo que se ve venir antes de que llegue al cierre.
       return (

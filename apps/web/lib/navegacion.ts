@@ -53,6 +53,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/pendientes', titulo: 'Pendientes', icono: 'pendientes' },
         { href: '/admin/alertas', titulo: 'Alertas', icono: 'alertas' },
+        { href: '/admin/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el
         // reporte completo» lleva al detalle.
@@ -91,6 +92,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           corto: 'Cartera',
         },
         { href: '/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/categorias'] },
+        { href: '/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza' },
         // Reportes, como en administración: se llega desde el Inicio.
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],
