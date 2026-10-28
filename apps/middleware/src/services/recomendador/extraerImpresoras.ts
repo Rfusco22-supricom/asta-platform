@@ -192,7 +192,7 @@ function buscarTanda(nombre: string, excluidos: Set<string>): { marca: MarcaImpr
  * del modelo. Se convierte solo entre dos códigos, y por eso el lado izquierdo
  * tiene que empezar por letra: "LaserJet 1010/1012 M1005" no se toca.
  */
-const separadoresABarra = (texto: string) =>
+export const separadoresABarra = (texto: string) =>
   texto
     .replace(/([A-Za-z]\d{3,4}[A-Za-z]{0,4})[\s-]+(?=[A-Za-z]{1,4}\s?[A-Za-z]?\d)/g, '$1/')
     // Una cifra suelta seguida de otro codigo son dos modelos, no uno: en

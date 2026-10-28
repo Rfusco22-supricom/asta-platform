@@ -21,6 +21,7 @@ import { prisma } from '../config/prisma.js';
 import { importarListasFabricante } from '../services/recomendador/importarListasFabricante.js';
 import { LISTAS_FABRICANTE } from '../services/recomendador/listasFabricante.js';
 import { LISTA_ASTA } from '../services/recomendador/listaAsta.js';
+import { TABLA_ASTA } from '../services/recomendador/tablaAsta.js';
 
 const n = (x: number) => String(x).padStart(5);
 
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
   const aplicar = process.argv.includes('--aplicar');
   console.log(`\n  listas del fabricante → recomendador${aplicar ? ' — APLICANDO' : ' — SIMULACRO (nada se escribe)'}\n`);
 
-  const r = await importarListasFabricante([...LISTAS_FABRICANTE, ...LISTA_ASTA], { aplicar });
+  const r = await importarListasFabricante([...LISTAS_FABRICANTE, ...LISTA_ASTA, ...TABLA_ASTA], { aplicar });
   const v = (hecho: string, futuro: string) => (aplicar ? hecho : futuro);
 
   console.log(`  ${n(r.listas)}  listas`);
