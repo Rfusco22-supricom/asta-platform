@@ -76,8 +76,7 @@ export async function Marco({
         </div>
 
         {/*
-          El chip del usuario ABRE un menú: tema, sesiones activas y cerrar
-          sesión. A su izquierda, el buscador que abre la paleta ⌘K.
+          El chip del usuario ABRE un menú: tema y cerrar sesión. A su izquierda, el buscador que abre la paleta ⌘K.
         */}
         <div className="cabecera-acciones">
           {acciones}

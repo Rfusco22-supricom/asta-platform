@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
-  sesionesRespuestaSchema,
-  type SesionActiva,
   portfolioRowSchema,
   portfolioMetaSchema,
   actividadCarteraRespuestaSchema,
@@ -396,18 +394,6 @@ export interface MisApiKeys {
 export async function getApiKeys(accessToken: string): Promise<MisApiKeys> {
   const r = await request('/api/v1/account/api-keys', apiKeysSchema, accessToken);
   return { filas: r.data, vivas: r.meta.vivas, maximo: r.meta.maximo };
-}
-
-export interface Sesiones {
-  filas: SesionActiva[];
-  total: number;
-  otras: number;
-}
-
-/** Sesiones activas del usuario que pide (issue #52). */
-export async function getSesiones(accessToken: string): Promise<Sesiones> {
-  const r = await request('/api/v1/auth/sessions', sesionesRespuestaSchema, accessToken);
-  return { filas: r.data, total: r.meta.total, otras: r.meta.otras };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
