@@ -152,13 +152,6 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M9 4V2.8h6V4M9 12.5l2 2 4-4" />
         </svg>
       );
-    case 'sesiones':
-      return (
-        <svg {...comun}>
-          <rect x="2.5" y="4" width="19" height="13" rx="2" />
-          <path d="M8 21h8M12 17v4" />
-        </svg>
-      );
     default:
       return (
         <svg {...comun}>
@@ -176,8 +169,8 @@ export function Icono({ nombre }: { nombre: string }) {
  * cliente apaga la única entrada encendida y parece que te has salido de la
  * aplicación.
  *
- * Con comparación exacta para el resto, porque `/cuenta/sesiones` y
- * `/cuenta/api-keys` comparten prefijo y se encenderían las dos a la vez.
+ * Con comparación exacta para el resto, porque las de `/cuenta/…` comparten
+ * prefijo y se encenderían varias a la vez.
  */
 function estaActiva(ruta: string, href: string, prefijo?: boolean, tambien?: string[]): boolean {
   if (tambien?.includes(ruta)) return true;

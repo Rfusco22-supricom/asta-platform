@@ -1,7 +1,6 @@
 'use client';
 
 import { ROLE_LABEL, type AppRole } from '@asta/shared-types';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { aplicarTema, temaActual, type Tema } from '@/lib/tema';
 
@@ -131,11 +130,6 @@ export function MenuUsuario({
               ))}
             </div>
           </div>
-
-          {/* Cerrar al navegar: si no, el menú sigue abierto en la página nueva. */}
-          <Link href="/cuenta/sesiones" role="menuitem" onClick={() => setAbierto(false)}>
-            Sesiones activas
-          </Link>
 
           <form action={salir}>
             <button type="submit" role="menuitem" className="menu-peligro">

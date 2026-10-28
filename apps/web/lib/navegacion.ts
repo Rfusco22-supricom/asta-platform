@@ -45,11 +45,6 @@ export interface GrupoNav {
   secciones: Seccion[];
 }
 
-const MI_CUENTA: GrupoNav = {
-  titulo: 'Mi cuenta',
-  secciones: [{ href: '/cuenta/sesiones', titulo: 'Sesiones activas', icono: 'sesiones', corto: 'Sesiones' }],
-};
-
 const POR_ROL: Record<Rol, GrupoNav[]> = {
   SUPERADMIN: [
     {
@@ -78,7 +73,6 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/accesos', titulo: 'Personas', icono: 'usuarios', tambien: ['/admin/usuarios'] },
       ],
     },
-    MI_CUENTA,
   ],
 
   VENDEDOR: [
@@ -100,7 +94,6 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],
     },
-    MI_CUENTA,
   ],
 
   BRONCE: [
@@ -114,7 +107,6 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
       ],
     },
-    MI_CUENTA,
   ],
   get PLATA() {
     return this.BRONCE;
@@ -141,7 +133,7 @@ export function navegacionDe(rol: string): GrupoNav[] {
  * pierde su primera sección, lo que falla es esto y no una pantalla al azar.
  */
 export function destinoPara(rol: string): string {
-  return navegacionDe(rol)[0]?.secciones[0]?.href ?? '/cuenta/sesiones';
+  return navegacionDe(rol)[0]?.secciones[0]?.href ?? '/login';
 }
 
 /** Cómo se llama el sitio donde está, para la cabecera. */
