@@ -17,6 +17,7 @@ import { oportunidadesAsta } from '../services/asta.service.js';
 import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
 import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
+import { alertasTablero } from '../services/alertasTablero.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -250,6 +251,21 @@ adminRouter.get('/asta/programa', autorizar('admin.asta.ver'), async (_req, res,
     const hoy = new Date();
     const clientes = await programaEnCurso(hoy);
     res.json({ data: { trimestre: trimestreDe(hoy), clientes }, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Las alertas del tablero de ASTA: ritmo del mes, concentración y cobertura, y
+ * tendencia temprana (ver `alertasTablero.service`). De toda la empresa, sin
+ * Panamá; se guarda un rato como el resto de pantallas.
+ */
+adminRouter.get('/alertas', autorizar('admin.asta.ver'), async (_req, res, next) => {
+  try {
+    const t0 = Date.now();
+    const data = await dePantalla('admin:alertas', () => alertasTablero());
+    res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
   }

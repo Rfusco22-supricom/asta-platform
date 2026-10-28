@@ -144,6 +144,16 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M10 20.5a2 2 0 0 0 4 0" />
         </svg>
       );
+    case 'alertas':
+      // Un radar: lo que se ve venir antes de que llegue al cierre.
+      return (
+        <svg {...comun}>
+          <circle cx="12" cy="12" r="8.5" />
+          <circle cx="12" cy="12" r="4.5" />
+          <path d="M12 12l5.5-5.5" />
+          <circle cx="16.2" cy="14.6" r="0.9" fill="currentColor" />
+        </svg>
+      );
     case 'calidad':
       // Una hoja de comprobaciones con su visto bueno.
       return (
