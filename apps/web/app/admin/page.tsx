@@ -8,7 +8,9 @@ import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
-import { getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa } from '@/lib/api';
+import { getAlertasTablero, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa } from '@/lib/api';
+import { BarraAlertas } from '@/components/alertas/BarraAlertas';
+import { Concentracion, Ritmo, Tendencia, resumenAlertas } from '@/components/alertas/DetalleAlertas';
 import { money, moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 
@@ -258,6 +260,48 @@ async function Meta({ token }: { token: string }) {
   return <HeroMeta datos={r} alcance="empresa" base="/admin/categorias" />;
 }
 
+/**
+ * Las alertas del tablero, lo primero de la portada: tres tarjetas de color y el
+ * detalle de cada una en una ventana (`BarraAlertas`). No dependen de la sede ni
+ * del periodo elegidos: miran el mes en curso de toda la empresa.
+ */
+async function Alertas({ token }: { token: string }) {
+  const r = await intentar(() => getAlertasTablero(token));
+  if (!r) {
+    return (
+      <section className="alertas-barra dash-fallo">
+        <p className="panel-nota">No se pudieron calcular las alertas ahora. Recarga en un momento.</p>
+      </section>
+    );
+  }
+  return (
+    <BarraAlertas
+      resumen={resumenAlertas(r)}
+      detalles={{
+        ritmo: <Ritmo r={r.ritmo} />,
+        concentracion: <Concentracion c={r.concentracion} ritmo={r.ritmo.estado} />,
+        tendencia: <Tendencia t={r.tendencia} />,
+      }}
+    />
+  );
+}
+
+function EsqueletoAlertas() {
+  return (
+    <section className="alertas-barra" aria-busy="true">
+      <div className="alertas-barra-cabeza">
+        <h2>Alertas</h2>
+        <span className="alertas-barra-nota">Calculando…</span>
+      </div>
+      <div className="alertas-resumen">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="alerta-tarjeta dash-esqueleto" style={{ minHeight: 76 }} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function InicioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
   const params = await searchParams;
@@ -267,6 +311,9 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
 
   return (
     <Marco usuario={sesion.usuario} titulo="Inicio">
+      <Suspense fallback={<EsqueletoAlertas />}>
+        <Alertas token={token} />
+      </Suspense>
       <Sedes base="/admin" sede={sede} periodo={rango} />
       <Periodos base="/admin" periodo={rango} sede={sede} />
 

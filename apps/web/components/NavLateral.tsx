@@ -152,16 +152,6 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M15 3v4h4M9 11h4M9 15h3M15.5 13v6M14 14.2c0-.7.7-1.2 1.5-1.2s1.5.4 1.5 1-.7.9-1.5 1-1.5.5-1.5 1.1.7 1 1.5 1 1.5-.4 1.5-1.1" />
         </svg>
       );
-    case 'alertas':
-      // Un radar: lo que se ve venir antes de que llegue al cierre.
-      return (
-        <svg {...comun}>
-          <circle cx="12" cy="12" r="8.5" />
-          <circle cx="12" cy="12" r="4.5" />
-          <path d="M12 12l5.5-5.5" />
-          <circle cx="16.2" cy="14.6" r="0.9" fill="currentColor" />
-        </svg>
-      );
     case 'calidad':
       // Una hoja de comprobaciones con su visto bueno.
       return (
