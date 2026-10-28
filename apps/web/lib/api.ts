@@ -54,6 +54,9 @@ import {
   categoriasAstaRespuestaSchema,
   programaEmpresaRespuestaSchema,
   alertasTableroRespuestaSchema,
+  cotizacionesRespuestaSchema,
+  type Cotizaciones,
+  type EstadoCotizacion,
   type AlertasTablero,
   type CategoriasAsta,
   type ProgramaEmpresa,
@@ -515,6 +518,21 @@ export async function getProgramaEmpresa(accessToken: string): Promise<ProgramaE
 /** Las alertas del tablero de ASTA: ritmo del mes, concentración y cobertura, y tendencia temprana. */
 export async function getAlertasTablero(accessToken: string): Promise<AlertasTablero> {
   return (await request('/api/v1/admin/alertas', alertasTableroRespuestaSchema, accessToken)).data;
+}
+
+function consultaCotizaciones(rango: { desde: string; hasta: string }, estado: EstadoCotizacion, sede: number | null): string {
+  const q = consulta(rango, sede);
+  return `${q}${q ? '&' : '?'}estado=${estado}`;
+}
+
+/** Las cotizaciones de ASTA de toda la empresa, en un periodo, una sede y un estado. */
+export async function getCotizacionesEmpresa(accessToken: string, rango: { desde: string; hasta: string }, estado: EstadoCotizacion, sede: number | null = null): Promise<Cotizaciones> {
+  return (await request(`/api/v1/admin/cotizaciones${consultaCotizaciones(rango, estado, sede)}`, cotizacionesRespuestaSchema, accessToken)).data;
+}
+
+/** Las cotizaciones de ASTA de la propia cartera. */
+export async function getCotizacionesCartera(accessToken: string, rango: { desde: string; hasta: string }, estado: EstadoCotizacion): Promise<Cotizaciones> {
+  return (await request(`/api/v1/salesperson/cotizaciones${consultaCotizaciones(rango, estado, null)}`, cotizacionesRespuestaSchema, accessToken)).data;
 }
 
 /** El programa de ASTA de la propia cartera. */

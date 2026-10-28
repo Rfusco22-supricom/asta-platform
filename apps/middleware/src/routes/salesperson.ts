@@ -15,6 +15,7 @@ import { hermanosDe } from '../services/hermanos.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
+import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { z } from 'zod';
 import { marcarImpulsaSchema, nuevaCompatibilidadSchema, trimestreDe } from '@asta/shared-types';
@@ -262,6 +263,30 @@ salespersonRouter.get('/reportes', autorizar('reportes.propios.ver'), async (req
     // Solo ASTA (ver `ventasAsta.service`). Se guarda un rato, por vendedor y
     // periodo: ver `pantallas.ts`.
     res.json(await dePantalla(`vendedor:${odooUserId}:reportes:${rango.desde}:${rango.hasta}`, () => reporteAstaDelVendedor(odooUserId, rango)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Las cotizaciones de ASTA de los clientes de la PROPIA cartera. La cartera
+ * sale del token: no hay parámetro con el que pedir la de otro.
+ */
+salespersonRouter.get('/cotizaciones', autorizar('reportes.propios.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
+      return;
+    }
+    const t0 = Date.now();
+    const query = req.query as Record<string, unknown>;
+    const rango = rangoDeLaPeticion(query);
+    const estado = estadoDeLaPeticion(query);
+    const data = await dePantalla(`vendedor:${odooUserId}:cotizaciones:${rango.desde}:${rango.hasta}:${estado}`, () =>
+      cotizaciones({ rango, estado, odooUserId }),
+    );
+    res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
   }

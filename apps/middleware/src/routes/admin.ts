@@ -18,6 +18,7 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
 import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
 import { alertasTablero } from '../services/alertasTablero.service.js';
+import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import {
@@ -265,6 +266,27 @@ adminRouter.get('/alertas', autorizar('admin.asta.ver'), async (_req, res, next)
   try {
     const t0 = Date.now();
     const data = await dePantalla('admin:alertas', () => alertasTablero());
+    res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Las cotizaciones de ASTA de toda la empresa (ver `cotizaciones.service`), por
+ * periodo, sede y estado. La versión de la propia cartera vive en
+ * `/salesperson/cotizaciones`, con su propia acción.
+ */
+adminRouter.get('/cotizaciones', autorizar('admin.reportes.ver'), async (req, res, next) => {
+  try {
+    const t0 = Date.now();
+    const query = req.query as Record<string, unknown>;
+    const rango = rangoDeLaPeticion(query);
+    const sede = sedeDeLaPeticion(query);
+    const estado = estadoDeLaPeticion(query);
+    const data = await dePantalla(`admin:cotizaciones:${claveSede(sede)}:${rango.desde}:${rango.hasta}:${estado}`, () =>
+      cotizaciones({ rango, sede, estado, odooUserId: null }),
+    );
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
     next(error);
