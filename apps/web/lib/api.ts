@@ -53,6 +53,8 @@ import {
   calidadDatosRespuestaSchema,
   categoriasAstaRespuestaSchema,
   programaEmpresaRespuestaSchema,
+  alertasTableroRespuestaSchema,
+  type AlertasTablero,
   type CategoriasAsta,
   type ProgramaEmpresa,
   type CalidadDatos,
@@ -508,6 +510,11 @@ export async function getCategoriasAstaCartera(accessToken: string): Promise<Cat
 /** El programa de ASTA de toda la empresa: cómo va cada cliente en el trimestre en curso. */
 export async function getProgramaEmpresa(accessToken: string): Promise<ProgramaEmpresa> {
   return (await request('/api/v1/admin/asta/programa', programaEmpresaRespuestaSchema, accessToken)).data;
+}
+
+/** Las alertas del tablero de ASTA: ritmo del mes, concentración y cobertura, y tendencia temprana. */
+export async function getAlertasTablero(accessToken: string): Promise<AlertasTablero> {
+  return (await request('/api/v1/admin/alertas', alertasTableroRespuestaSchema, accessToken)).data;
 }
 
 /** El programa de ASTA de la propia cartera. */

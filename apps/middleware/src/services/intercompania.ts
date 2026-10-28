@@ -54,6 +54,12 @@ export const SIN_INTERCOMPANIA: Clausula = ['commercial_partner_id', 'not any', 
 /** Lo mismo para `account.move.line`, por el cliente comercial de su factura. */
 export const SIN_INTERCOMPANIA_LINEA: Clausula = ['move_id.commercial_partner_id', 'not any', ES_DEL_GRUPO];
 
+/** Para `sale.order`: el pedido no es de una empresa del grupo. */
+export const SIN_INTERCOMPANIA_PEDIDO: Clausula = ['partner_id.commercial_partner_id', 'not any', ES_DEL_GRUPO];
+
+/** Lo mismo para `sale.order.line`, por el cliente de su pedido. */
+export const SIN_INTERCOMPANIA_LINEA_PEDIDO: Clausula = ['order_id.partner_id.commercial_partner_id', 'not any', ES_DEL_GRUPO];
+
 /**
  * La misma regla para lo que no viene de Odoo (Smartbit), por el nombre y el
  * RIF que trae la fila. `ilike` es «contiene, sin mayúsculas»; el RIF se compara

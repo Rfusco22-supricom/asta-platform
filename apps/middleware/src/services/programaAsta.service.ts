@@ -160,6 +160,12 @@ function claveDe(id: number, ficha: Map<number, Ficha>): string {
   return rifUtilizable(rif) ? rif! : `p${id}`;
 }
 
+/** La clave de cada ficha: su RIF, o la propia ficha. La misma con la que se agrupa el programa. */
+export async function clavesDe(ids: number[]): Promise<Map<number, string>> {
+  const ficha = await fichas(ids);
+  return new Map([...new Set(ids)].map((id) => [id, claveDe(id, ficha)]));
+}
+
 /** clave → lo comprado cada mes, y cuánto compró cada ficha (la que más, da nombre). */
 async function comprasPorMes(meses: string[]): Promise<Map<number, number>[]> {
   const grupos = await Promise.all(

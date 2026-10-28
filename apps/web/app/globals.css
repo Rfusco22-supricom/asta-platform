@@ -4230,3 +4230,130 @@ button.serie-col .serie-barra { display: block; }
 
 /* De qué meses es la media de la meta: «media de jun – sep 2026». */
 .hero-periodo { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); }
+
+/* ── Alertas del tablero (/admin/alertas) ─────────────────────────────────── */
+
+/*
+ * Cada alerta lleva su color en `--tono`: verde en orden, ámbar en advertencia,
+ * rojo si es prioritaria y gris mientras es pronto para juzgar. El borde de la
+ * izquierda y el estado lo usan; el resto de la tarjeta es la de siempre.
+ */
+.alerta-ok { --tono: var(--positive); --tono-suave: color-mix(in srgb, var(--positive) 12%, transparent); }
+.alerta-advertencia { --tono: var(--warning); --tono-suave: color-mix(in srgb, var(--warning) 14%, transparent); }
+.alerta-prioritaria { --tono: var(--danger); --tono-suave: color-mix(in srgb, var(--danger) 13%, transparent); }
+.alerta-pronto { --tono: var(--text-3); --tono-suave: color-mix(in srgb, var(--text-3) 12%, transparent); }
+
+.alertas-intro { margin: 0 0 14px; color: var(--text-2); font-size: 14px; }
+.alertas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.alerta-tarjeta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--tono);
+  border-radius: var(--radius);
+  color: var(--text);
+  box-shadow: var(--sombra-card);
+}
+.alerta-tarjeta:hover { text-decoration: none; border-color: color-mix(in srgb, var(--tono) 45%, var(--border)); border-left-color: var(--tono); }
+.alerta-tarjeta-titulo { font-weight: 600; font-size: 14px; }
+.alerta-tarjeta-cifra { grid-column: 1 / -1; color: var(--text-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.alerta-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--tono-suave);
+  color: var(--tono);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.alerta-estado::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.alerta-estado-ok { --tono: var(--positive); --tono-suave: color-mix(in srgb, var(--positive) 12%, transparent); }
+.alerta-estado-advertencia { --tono: var(--warning); --tono-suave: color-mix(in srgb, var(--warning) 14%, transparent); }
+.alerta-estado-prioritaria { --tono: var(--danger); --tono-suave: color-mix(in srgb, var(--danger) 13%, transparent); }
+.alerta-estado-pronto { --tono: var(--text-3); --tono-suave: color-mix(in srgb, var(--text-3) 12%, transparent); }
+
+.panel.alerta { border-left: 4px solid var(--tono); padding: 20px 22px; scroll-margin-top: 80px; }
+.alerta-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.alerta-cabeza > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.alerta-cabeza h2 { margin: 0; }
+.alerta-numero {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tono-suave);
+  color: var(--tono);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.alerta-mensaje { margin: 0 0 18px; max-width: 72ch; font-size: 15px; line-height: 1.6; color: var(--text); text-wrap: pretty; }
+.alerta-mensaje strong { font-weight: 650; }
+.alerta-subtitulo { margin: 22px 0 10px; font-size: 13px; font-weight: 620; color: var(--text-2); }
+.alerta-pie { margin: 10px 0 0; }
+.alerta-agotado { color: var(--danger); font-weight: 600; }
+/* Los nombres de producto de Odoo traen listas de modelos sin espacios: se parten donde haga falta. */
+.alerta-producto { min-width: 160px; overflow-wrap: anywhere; }
+.panel.alerta table { font-size: 13px; }
+.panel.alerta thead th, .panel.alerta tbody td { padding-inline: 12px; }
+.alerta-cayendo { display: block; font-size: 11.5px; color: var(--warning); }
+
+/* Ritmo: lo que llevan, lo que se proyecta, y dos rayas, hoy y el objetivo. */
+.ritmo-barra { position: relative; height: 16px; margin: 6px 0 14px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px solid var(--border); }
+.ritmo-proyeccion,
+.ritmo-ejecucion { position: absolute; inset: 0 auto 0 0; border-radius: var(--radius-pill); }
+.ritmo-proyeccion { background: repeating-linear-gradient(-45deg, var(--tono-suave) 0 6px, transparent 6px 10px); border: 1px dashed color-mix(in srgb, var(--tono) 50%, transparent); }
+.ritmo-ejecucion { background: var(--tono); }
+.ritmo-marca { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; }
+.ritmo-esperado { background: var(--text-3); }
+.ritmo-objetivo { background: var(--text); }
+.ritmo-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 0 0 16px; }
+.ritmo-cifras div { display: grid; gap: 2px; }
+.ritmo-cifras dt { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.ritmo-cifras dd { margin: 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Concentración: cada medida contra su umbral. */
+.medidores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.medidor { display: grid; gap: 8px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); --tono: var(--positive); }
+.medidor-dispara { --tono: var(--danger); }
+.medidor-cabeza { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.medidor-titulo { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.medidor-cabeza strong { font-size: 20px; font-weight: 650; color: var(--tono); font-variant-numeric: tabular-nums; }
+.medidor-barra { position: relative; height: 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.medidor-relleno { position: absolute; inset: 0 auto 0 0; border-radius: var(--radius-pill); background: var(--tono); }
+.medidor-umbral { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; }
+.medidor-detalle { margin: 0; font-size: 12.5px; color: var(--text-2); }
+
+/* Tendencia: ocho semanas, cotizado y facturado lado a lado. */
+.semanas { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+.semana { display: grid; gap: 4px; justify-items: center; min-width: 0; text-align: center; }
+.semana-barras { position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 100%; height: 120px; border-bottom: 1px solid var(--border); }
+.semana-barras > .barra-cotizado,
+.semana-barras > .barra-facturado { display: block; width: min(16px, 40%); min-height: 2px; border-radius: 4px 4px 0 0; }
+.barra-cotizado { background: var(--cian); }
+.barra-facturado { background: var(--violeta); opacity: 0.75; }
+.semana-media { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--text-3); pointer-events: none; }
+.semana-ultima .semana-barras { background: var(--tono-suave); border-radius: 6px 6px 0 0; }
+.semana-cifra { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.semana-conversion { font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.semana-fecha { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.semanas-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 14px; font-size: 12px; color: var(--text-2); }
+.semanas-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.semanas-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.semanas-leyenda .l-cotizado { background: var(--cian); }
+.semanas-leyenda .l-facturado { background: var(--violeta); opacity: 0.75; }
+.semanas-leyenda .l-media { height: 0; border-top: 2px dashed var(--text-3); border-radius: 0; }
+@media (max-width: 640px) {
+  .semanas { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 16px; }
+  .semana-barras { height: 90px; }
+  .panel.alerta { padding: 16px; }
+}
