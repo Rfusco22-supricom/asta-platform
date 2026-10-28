@@ -4,6 +4,7 @@ import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey } from '../services/apiKey.service.js';
 import type { ApiScope } from '@asta/shared-types';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Issue #29 — rate limiting de la API pública.
@@ -71,6 +72,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await esperarBitacora(INICIO);
   // Sin esto, los 401, 429 y 400 de este fichero quedarían en la ventana de las
   // alertas y harían saltar —o callar— las reglas de alerts.test.ts.
   // Solo las de este fichero: por su key, o sin key (las de un 401, que también

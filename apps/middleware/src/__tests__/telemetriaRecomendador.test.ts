@@ -8,6 +8,7 @@ import { issueApiKey } from '../services/apiKey.service.js';
 import { vaciarCachesInventario } from '../services/inventory.service.js';
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #43 · Telemetría del recomendador, contra servidor, MySQL y Odoo reales.
@@ -32,6 +33,8 @@ let server: Server;
 let base = '';
 let comprobado = false;
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuarios: string[] = [];
 const keys: string[] = [];
 
@@ -159,6 +162,7 @@ afterAll(async () => {
     await prisma.cartridge.deleteMany({ where: { codeNormalized: { in: CODIGOS }, brand: { name: MARCA } } });
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
+    await esperarBitacora(INICIO);
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
     await prisma.apiKey.deleteMany({ where: { id: { in: keys } } });
     await prisma.appUser.deleteMany({ where: { id: { in: usuarios } } });

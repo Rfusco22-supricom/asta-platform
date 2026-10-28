@@ -18,6 +18,7 @@ import {
   type FichaConsumible,
   type GrupoConsumible,
 } from '../services/impulsa/pasaleAAsta.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * «Impulsa a tus clientes» · «Pásale a ASTA».
@@ -130,6 +131,8 @@ let server: Server;
 let baseUrl = '';
 let comprobado = false;
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuarios: string[] = [];
 const tokens = { vendedor: '', admin: '' };
 let vendedorOdoo = 0;
@@ -206,6 +209,7 @@ afterAll(async () => {
   if (comprobado) {
     if (vendedorLocal) await prisma.impulsaAccion.deleteMany({ where: { userId: vendedorLocal.id } });
     await prisma.userSession.deleteMany({ where: { id: { in: sesiones } } });
+    await esperarBitacora(INICIO);
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
     await prisma.auditLog.deleteMany({ where: { actorId: { in: usuarios } } });
     await prisma.appUser.deleteMany({ where: { id: { in: usuarios } } });

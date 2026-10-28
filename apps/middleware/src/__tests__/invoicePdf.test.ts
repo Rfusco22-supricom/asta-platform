@@ -8,6 +8,7 @@ import { prisma } from '../config/prisma.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 import { issueApiKey, revokeApiKey } from '../services/apiKey.service.js';
 import { firmarEnlace } from '../services/enlacesFirmados.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Issue #32 — enlace firmado al PDF de una factura, contra servidor, MySQL y
@@ -30,6 +31,8 @@ import { firmarEnlace } from '../services/enlacesFirmados.js';
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 const auditados: AuditEvent[] = [];
@@ -222,6 +225,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   quitarSink?.();
+  await esperarBitacora(INICIO);
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });

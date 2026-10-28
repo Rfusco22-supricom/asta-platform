@@ -6,6 +6,7 @@ import { readGroup, searchRead } from '../odoo/client.js';
 import { registerAuditSink, type AuditEvent } from '../services/audit.service.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey } from '../services/apiKey.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Issue #36 — GATE DE SEGURIDAD: aislamiento entre clientes de la API pública.
@@ -207,6 +208,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   quitarSink?.();
+  await esperarBitacora(INICIO);
   // Las filas de bitácora de este fichero, para no contaminar las reglas de
   // alerts.test.ts.
   // Solo las de este fichero: por su key, o sin key (las de un 401, que también

@@ -6,6 +6,7 @@ import { prisma } from '../config/prisma.js';
 import { apiErrorSchema, isClientRole, clientTierSchema } from '@asta/shared-types';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { estadoDeStock, vaciarCachesInventario } from '../services/inventory.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * Issue #30 — `GET /api/v1/public/inventory`, contra el servidor, MySQL y Odoo
@@ -34,6 +35,8 @@ import { estadoDeStock, vaciarCachesInventario } from '../services/inventory.ser
 let server: Server;
 let base = '';
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 
@@ -220,6 +223,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
+  await esperarBitacora(INICIO);
   await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
   await prisma.apiKey.deleteMany({ where: { id: { in: keysCreadas } } });
   await prisma.appUser.deleteMany({ where: { id: { in: usuariosCreados } } });

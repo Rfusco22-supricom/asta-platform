@@ -8,6 +8,7 @@ import { issueApiKey } from '../services/apiKey.service.js';
 import { vaciarCachesInventario } from '../services/inventory.service.js';
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { dominioCompatibles, vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
+import { esperarBitacora } from './soportes/esperarBitacora.js';
 
 /**
  * #39 · Revisión cruzada de #108: lo que `recomendador.test.ts` no vigilaba.
@@ -40,6 +41,8 @@ let server: Server;
 let base = '';
 let comprobado = false;
 let idBitacoraInicial = 0n;
+/** Para `esperarBitacora`: la bitácora se escribe después de responder. */
+const INICIO = new Date(Date.now() - 1000);
 const usuariosCreados: string[] = [];
 const keysCreadas: string[] = [];
 
@@ -178,6 +181,7 @@ afterAll(async () => {
     await prisma.cartridge.deleteMany({ where: { codeNormalized: CODIGO, brand: { name: MARCA } } });
     await prisma.printerModel.deleteMany({ where: { brand: { name: MARCA } } });
     await prisma.printerBrand.deleteMany({ where: { name: MARCA } });
+    await esperarBitacora(INICIO);
     await prisma.apiRequestLog.deleteMany({ where: { id: { gt: idBitacoraInicial } } });
     // Telemetría (#43): solo la de sus usuarios. Por id se llevaba también la de
     // otra batería contra la misma base. Y antes de borrarlos: la FK pone user_id
