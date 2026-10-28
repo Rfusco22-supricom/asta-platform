@@ -4,7 +4,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
-import { nombreSede, type SedeId } from '@asta/shared-types';
+import type { SedeId } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
 import { getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa } from '@/lib/api';
@@ -109,7 +109,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota={`${facturas(totales.facturas)} · sin IVA, neto de devoluciones`}
+          nota={facturas(totales.facturas)}
           tendencia={r.serieMensual.map((p) => p.monto)}
         />
         {mes ? (
@@ -135,7 +135,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           color="rosa"
           etiqueta="Cuota de ASTA"
           valor={pct(asta.cuota)}
-          nota={`del consumible que compran los clientes · ${moneyCompact(asta.competencia)} se va a otras marcas`}
+          nota={`${moneyCompact(asta.competencia)} en otras marcas`}
         />
         <Cifra
           className="dash-kpi"
@@ -161,7 +161,6 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
       <Ranking
         area="vendedores"
         titulo="Vendedores"
-        nota="Por el comercial de cada cliente."
         filas={(r.porVendedor ?? []).slice(0, 8)}
         nombre={(v) => v.nombre}
         valor={(v) => v.facturado}
@@ -210,7 +209,7 @@ async function Productos({ token, rango, sede }: { token: string; rango: Rango; 
     <Ranking
       area="productos"
       titulo="Productos"
-      nota={`${n(r.totales.productos)} productos ASTA distintos vendidos en el periodo.`}
+      nota={`${n(r.totales.productos)} distintos`}
       filas={productos}
       nombre={(p) => p.nombre.replace(/^ASTA\s+/i, '')}
       valor={(p) => p.monto}
@@ -234,7 +233,7 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
           <span>{pct(t.cuota)}</span>
         </div>
         <div className="stat-sub">
-          {moneyCompact(t.asta)} en ASTA frente a {moneyCompact(t.competencia)} en otras marcas, en los {n(t.clientes)} clientes que compran consumibles.
+          {moneyCompact(t.asta)} en ASTA · {moneyCompact(t.competencia)} en otras marcas
         </div>
       </div>
       <div className="dash-oport-dato">
@@ -263,10 +262,9 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
   const rango = rangoDe(params) ?? fechasDe('12m');
   const sede = sedeDeParams(params);
   const token = sesion.accessToken;
-  const donde = sede === null ? 'ASTA en toda la empresa' : `ASTA en ${nombreSede(sede)}`;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Inicio" descripcion={`${donde} · sin IVA · ${rango.desde} a ${rango.hasta}`}>
+    <Marco usuario={sesion.usuario} titulo="Inicio">
       <Sedes base="/admin" sede={sede} periodo={rango} />
       <Periodos base="/admin" periodo={rango} sede={sede} />
 

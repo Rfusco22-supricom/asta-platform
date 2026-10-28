@@ -123,8 +123,7 @@ export default async function InvitacionPage({ params, searchParams }: Props) {
           />
           {/* Se dice la regla ANTES de escribir, no después de rechazarla. */}
           <div className="hint">
-            Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres. Una frase que recuerdes es
-            mejor que algo corto y retorcido.
+            Al menos {LONGITUD_MINIMA_CONTRASENA} caracteres.
           </div>
         </div>
 
@@ -147,8 +146,7 @@ export default async function InvitacionPage({ params, searchParams }: Props) {
       </form>
 
       <p style={{ marginTop: 20, marginBottom: 0, fontSize: 12.5, color: 'var(--text-3)' }}>
-        Este enlace solo funciona una vez. Si ya tenías sesión abierta en algún
-        dispositivo, se cerrará.
+        Este enlace solo funciona una vez.
       </p>
     </PantallaAcceso>
   );

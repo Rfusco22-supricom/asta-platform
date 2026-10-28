@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GrupoNav } from '@/lib/navegacion';
 import { aplicarTema } from '@/lib/tema';
+import { moneyEntero } from '@/lib/formato';
 import { Icono } from './NavLateral';
 
 /**
@@ -84,8 +85,6 @@ function guardarReciente(r: Reciente) {
     // Sin almacenamiento (ventana privada, bloqueado): la paleta funciona igual.
   }
 }
-
-const usd = new Intl.NumberFormat('es-VE', { maximumFractionDigits: 0 });
 
 /** El botón de la cabecera que abre la paleta. */
 export function BuscadorCabecera() {
@@ -245,7 +244,7 @@ export function Paleta({
           grupo: 'Clientes' as const,
           titulo: c.nombre,
           subtitulo: nivel,
-          dato: c.facturado > 0 ? `${usd.format(c.facturado)} USD` : undefined,
+          dato: c.facturado > 0 ? moneyEntero(c.facturado) : undefined,
           icono: 'cartera',
           href,
           ejecutar: () => ir({ titulo: c.nombre, subtitulo: nivel, href, icono: 'cartera' }),

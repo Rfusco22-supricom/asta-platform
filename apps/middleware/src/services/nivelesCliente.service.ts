@@ -2,22 +2,24 @@ import { clientTierSchema, type ClaveCategoria, type ClientTier } from '@asta/sh
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { normalizarRif, rifUtilizable } from './duplicados.js';
-import { categoriasAsta } from './categoriasAsta.service.js';
+import { nivelesActuales } from './programaAsta.service.js';
 
 /**
- * El nivel de cada cuenta de cliente es su categoría de ASTA (#131).
+ * El nivel de cada cuenta de cliente es su nivel en el programa de ASTA.
  *
  * Hasta el 2026-10-13 el nivel salía de la tarifa de Odoo (`tier_pricelist_map`),
- * y como nadie decidió qué tarifa era qué nivel, todos eran Bronce. Desde aquí lo
- * decide lo que el cliente compra de ASTA (`categoriasAsta.service`).
+ * y como nadie decidió qué tarifa era qué nivel, todos eran Bronce. Luego, de su
+ * categoría de los cuatro últimos meses (#131). Desde el programa trimestral, del
+ * cierre de su último trimestre (`programaAsta.service`, `nivelesActuales`): el
+ * nivel solo cambia al cerrar un trimestre.
  *
  * ── Una pasada aparte, una vez al día ────────────────────────────────────────
  *
  * No puede hacerlo el sync de clientes: solo relee los que cambiaron en Odoo, y
  * la categoría cambia porque cambian las facturas, no la ficha. Esta pasada lee
  * TODAS las cuentas de cliente, su RIF en Odoo, y les pone el nivel de su grupo.
- * La ventana son meses completos, así que de verdad solo cambia al empezar el
- * mes; pasar a diario cubre las cuentas nuevas, que nacen en GENERAL.
+ * De verdad solo cambia al cerrar un trimestre; pasar a diario cubre las cuentas
+ * nuevas, que nacen en GENERAL, y aplica el cierre en cuanto se hace.
  *
  * Solo cambia el nivel. No toca precios (la API sirve la tarifa real de Odoo)
  * ni permisos (todos los niveles son clientes con los mismos permisos).
@@ -52,9 +54,8 @@ interface Ficha {
   commercial_partner_id: [number, string] | false;
 }
 
-export async function aplicarNiveles(opciones: { aplicar: boolean; hoy?: Date }): Promise<ResumenNiveles> {
-  const categorias = await categoriasAsta({ hoy: opciones.hoy });
-  const categoriaDeClave = new Map(categorias.clientes.map((c) => [c.clave, c.categoria]));
+export async function aplicarNiveles(opciones: { aplicar: boolean }): Promise<ResumenNiveles> {
+  const categoriaDeClave = await nivelesActuales();
 
   const cuentas = await prisma.appUser.findMany({
     where: { role: { in: clientTierSchema.options } },

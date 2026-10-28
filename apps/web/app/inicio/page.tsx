@@ -1,17 +1,17 @@
 import { cache, Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { nombrePersona, reglaDe } from '@asta/shared-types';
+import { nombrePersona, nombreTrimestre, reglaDe } from '@asta/shared-types';
 import { requireSession } from '@/lib/session';
 import { destinoPara } from '@/lib/navegacion';
 import { Marco } from '@/components/Marco';
 import { Avatar } from '@/components/Avatar';
 import { Cifra } from '@/components/Cifras';
-import { estaCerca } from '@/components/Categorias';
+import { alCerrar, loQueLeFalta } from '@/components/ProgramaStaff';
 import { Serie, etiquetaMes } from '@/components/Reporte';
 import { Esqueleto, Fallo, HeroMeta, corto, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
-import { getActividadCartera, getCategoriasAstaCartera, getImpulsa, getPortfolio, getReporteCartera } from '@/lib/api';
-import { money, moneyCompact, moneyEntero } from '@/lib/formato';
+import { getActividadCartera, getCategoriasAstaCartera, getImpulsa, getPortfolio, getProgramaCartera, getReporteCartera } from '@/lib/api';
+import { money, moneyCompact } from '@/lib/formato';
 
 /**
  * Inicio del vendedor: cómo va su cartera y qué hacer hoy.
@@ -23,12 +23,12 @@ import { money, moneyCompact, moneyEntero } from '@/lib/formato';
  *     compran sus clientes al mes y cuánto aporta a la meta de la empresa.
  *   · Sus cifras de los últimos doce meses y la serie mes a mes.
  *   · «Para hoy»: los clientes de Impulsa con más dinero en otras marcas.
- *   · «Cerca de subir»: a quién le falta poco para la siguiente categoría.
+ *   · «En juego este trimestre»: los del programa que todavía pueden subir, y
+ *     qué les falta.
  *   · «Se están enfriando»: los que compraban y llevan tiempo sin comprar.
  *
  * Cada bloque es una lectura aparte con su `Suspense`, como en el Inicio del
- * administrador. Las categorías se leen UNA vez para los dos bloques que las
- * usan (`cache`), aunque cada uno llegue por su lado.
+ * administrador.
  */
 
 export const dynamic = 'force-dynamic';
@@ -158,47 +158,41 @@ async function Hoy({ token }: { token: string }) {
   );
 }
 
-// ── Cerca de subir de categoría ────────────────────────────────────────────────
+// ── En juego: pueden subir este trimestre si cumplen lo que les falta ───────────
 
-async function Cerca({ token }: { token: string }) {
-  const r = await intentar(() => categorias(token));
-  if (!r) return <Fallo area="cerca" titulo="Cerca de subir" />;
+async function EnJuego({ token }: { token: string }) {
+  const r = await intentar(() => getProgramaCartera(token));
+  if (!r) return <Fallo area="cerca" titulo="En juego este trimestre" />;
+  // Primero a los que menos les falta del trimestre: son las llamadas que más rinden.
+  const falta = (c: (typeof r.clientes)[number]) => c.evaluacion.cuotaTrimestral - c.evaluacion.compraTrimestre;
   const lista = r.clientes
-    .filter(estaCerca)
-    .sort((a, b) => (a.siguiente?.faltaMensual ?? 0) - (b.siguiente?.faltaMensual ?? 0))
+    .filter((c) => alCerrar(c.evaluacion) === 'juego')
+    .sort((a, b) => falta(a) - falta(b))
     .slice(0, 5);
 
   return (
     <section className="panel dash-cerca">
-      <h2>Cerca de subir</h2>
-      <p className="panel-nota">Les falta poco para la siguiente categoría de ASTA.</p>
+      <h2>En juego este trimestre</h2>
+      <p className="panel-nota">Si cumplen lo que les falta antes de que cierre {nombreTrimestre(r.trimestre)}, suben de nivel.</p>
       {lista.length > 0 ? (
         <ul className="lista-inicio">
-          {lista.map((c) => {
-            const s = c.siguiente!;
-            const falta: string[] = [];
-            if (s.faltaMensual > 0) falta.push(`+${moneyEntero(s.faltaMensual)}/mes`);
-            if (s.faltanMeses > 0) falta.push(`${s.faltanMeses} ${s.faltanMeses === 1 ? 'mes' : 'meses'} más con compra`);
-            return (
-              <li key={c.clave}>
-                <Link href={`/cartera/${c.partnerId}`}>
-                  <Avatar nombre={c.nombre} tamano="s" />
-                  <span className="lista-texto">
-                    <strong>{c.nombre}</strong>
-                    <small>
-                      {falta.join(' y ')} para {reglaDe(s.categoria).nombre}
-                    </small>
-                  </span>
-                  <span className="lista-dato">{corto(c.compraMensual)}/mes</span>
-                </Link>
-              </li>
-            );
-          })}
+          {lista.map((c) => (
+            <li key={c.clave}>
+              <Link href={`/cartera/${c.partnerId}`}>
+                <Avatar nombre={c.nombre} tamano="s" />
+                <span className="lista-texto">
+                  <strong>{c.nombre}</strong>
+                  <small>{loQueLeFalta(c.evaluacion)}</small>
+                </span>
+                <span className="lista-dato">{reglaDe(c.evaluacion.nivel).nombre}</span>
+              </Link>
+            </li>
+          ))}
         </ul>
       ) : (
-        <div className="empty">Nadie está a un paso de subir ahora mismo.</div>
+        <div className="empty">Nadie de tu cartera está en juego ahora mismo.</div>
       )}
-      <Link className="dash-mas" href="/categorias?ver=cerca">
+      <Link className="dash-mas" href="/categorias?ver=juego">
         Ver todos →
       </Link>
     </section>
@@ -269,10 +263,9 @@ export default async function InicioVendedorPage() {
   const token = sesion.accessToken;
 
   const nombre = nombrePersona(sesion.usuario.nombre).split(' ')[0];
-  const hoy = new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Caracas' });
 
   return (
-    <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'} descripcion={`Tu cartera hoy, ${hoy} · solo ASTA, sin IVA`}>
+    <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'}>
       <div className="dash dash-vendedor">
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} />
@@ -284,7 +277,7 @@ export default async function InicioVendedorPage() {
           <Hoy token={token} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="cerca" alto={300} />}>
-          <Cerca token={token} />
+          <EnJuego token={token} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="enfriando" alto={300} />}>
           <Enfriando token={token} />

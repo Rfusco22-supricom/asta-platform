@@ -102,7 +102,7 @@ fun Atraccion(estado: EstadoConexion, alEmpezar: () -> Unit) {
                         Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             Text("¿Qué tóner necesita tu impresora?", style = Tema.titulo(72, Tema.superficie).copy(lineHeight = 74.sp, letterSpacing = (-1.5).sp))
                             Text(
-                                "Escribe el modelo y te decimos cuál le sirve y si lo tenemos en la tienda.",
+                                "Escribe el modelo y te decimos qué tóner le sirve.",
                                 style = Tema.cuerpo(28, Tema.sobreAzul).copy(lineHeight = 36.sp),
                                 modifier = Modifier.widthIn(max = 620.dp),
                             )

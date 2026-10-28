@@ -100,7 +100,7 @@ function Cargando({ titulo }: { titulo: string }) {
 
 function SinDatos({ titulo, href }: { titulo: string; href: string }) {
   return (
-    <Tarjeta titulo={titulo} estado="pendiente" cifra="—" detalle="No se pudo leer ahora. Dentro de la sección se ve el motivo." href={href} accion="Abrir" />
+    <Tarjeta titulo={titulo} estado="pendiente" cifra="—" detalle="No se pudo leer ahora." href={href} accion="Abrir" />
   );
 }
 
@@ -128,7 +128,7 @@ async function ImpresorasListas({ token }: { token: string }) {
       estado={listas === 0 ? 'alerta' : pct < 50 ? 'pendiente' : 'ok'}
       cifra={`${n(listas)} de ${n(todas)}`}
       progreso={pct}
-      detalle={listas === 0 ? 'Ninguna tiene un tóner validado: la aplicación manda a todos al mostrador.' : 'Con al menos un tóner validado.'}
+      detalle={listas === 0 ? 'Ninguna tiene un tóner validado.' : 'Con al menos un tóner validado.'}
       href={href}
       accion="Ver impresoras"
     />
@@ -157,7 +157,7 @@ async function PorValidar({ token }: { token: string }) {
           'No queda ningún caso claro pendiente.'
         ) : (
           <>
-            Casos claros que se validan con un clic: {n(f)} de listas oficiales, {cuantos(a, 'producto', 'productos')} ASTA y {cuantos(o, 'original', 'originales')}.
+            {n(f)} de listas oficiales, {cuantos(a, 'producto', 'productos')} ASTA y {cuantos(o, 'original', 'originales')}.
           </>
         )
       }
@@ -178,7 +178,7 @@ async function Cobertura({ token }: { token: string }) {
       estado={tramo === 'procede' ? 'ok' : tramo === 'con_respaldo' ? 'pendiente' : 'alerta'}
       cifra={`${porcentaje} %`}
       progreso={porcentaje}
-      detalle={`${n(completos)} de los ${n(top)} productos más vendidos se pueden recomendar. El objetivo es pasar del 85 %.`}
+      detalle={`${n(completos)} de los ${n(top)} más vendidos.`}
       href={href}
       accion="Ver cobertura"
     />
@@ -226,7 +226,7 @@ async function SinResultado({ token }: { token: string }) {
       detalle={
         busquedas === 0
           ? 'Nadie ha buscado en la aplicación en los últimos 30 días.'
-          : `Búsquedas en la aplicación que no encontraron impresora: ${n(sinResultado)} de ${n(busquedas)} en 30 días. Cada una es un alias que falta o una impresora que no está.`
+          : `${n(sinResultado)} de ${n(busquedas)} búsquedas en 30 días.`
       }
       href={href}
       accion="Añadir alias"
@@ -251,7 +251,7 @@ async function Calidad({ token }: { token: string }) {
       detalle={
         alta + media === 0
           ? 'Nada que mueva dinero ni rompa nada.'
-          : `${n(alta)} ${alta === 1 ? 'mueve' : 'mueven'} dinero (clientes o facturas sin vendedor) y ${n(media)} ${media === 1 ? 'rompe' : 'rompen'} algo (RIF, correos).`
+          : `${n(alta)} ${alta === 1 ? 'mueve' : 'mueven'} dinero y ${n(media)} ${media === 1 ? 'rompe' : 'rompen'} algo.`
       }
       href={href}
       accion="Corregir en Odoo"
@@ -264,7 +264,6 @@ async function Duplicados({ token }: { token: string }) {
   const href = '/admin/duplicados';
   if (!r) return <SinDatos titulo="Clientes duplicados" href={href} />;
   const { partidos, montoPartido } = r.resumen;
-  const noventa = r.fusionesPara.find((f) => f.porcentaje === 90);
   return (
     <Tarjeta
       titulo="Clientes duplicados"
@@ -273,7 +272,7 @@ async function Duplicados({ token }: { token: string }) {
       detalle={
         partidos === 0
           ? 'Ningún cliente tiene la facturación repartida.'
-          : `${moneyCompact(montoPartido)} repartidos entre fichas.${noventa && noventa.fusiones > 0 ? ` Con ${cuantos(noventa.fusiones, 'fusión', 'fusiones')} se arregla el 90 %.` : ''}`
+          : `${moneyCompact(montoPartido)} repartidos entre fichas.`
       }
       href={href}
       accion="Ver por dónde empezar"
@@ -294,8 +293,8 @@ async function Accesos({ token }: { token: string }) {
       cifra={vendedores > 0 ? cuantos(vendedores, 'vendedor', 'vendedores') : n(clientes)}
       detalle={
         vendedores > 0
-          ? `${vendedores === 1 ? 'Trabaja hoy y no puede' : 'Trabajan hoy y no pueden'} ver su cartera. Además, ${cuantos(clientes, 'cuenta de cliente espera', 'cuentas de cliente esperan')} su invitación.`
-          : `${cuantos(clientes, 'cuenta de cliente espera', 'cuentas de cliente esperan')} su invitación.`
+          ? `Y ${cuantos(clientes, 'cliente', 'clientes')} sin invitar.`
+          : `${cuantos(clientes, 'cliente', 'clientes')} sin invitar.`
       }
       href={vendedores > 0 ? '/admin/agentes' : href}
       accion="Invitar"
@@ -303,12 +302,11 @@ async function Accesos({ token }: { token: string }) {
   );
 }
 
-function Grupo({ titulo, nota, children }: { titulo: string; nota: string; children: React.ReactNode }) {
+function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="ini-grupo" aria-label={titulo}>
       <div className="ini-grupo-cabeza">
         <h2>{titulo}</h2>
-        <p>{nota}</p>
       </div>
       <div className="ini-rejilla">{children}</div>
     </section>
@@ -322,14 +320,14 @@ export default async function PendientesPage() {
   const conCarga = (titulo: string, tarjeta: React.ReactNode) => <Suspense fallback={<Cargando titulo={titulo} />}>{tarjeta}</Suspense>;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Pendientes" descripcion="Lo que hay por hacer hoy, sección por sección. Cada tarjeta lleva a donde se resuelve.">
+    <Marco usuario={sesion.usuario} titulo="Pendientes">
       <div className="ini-leyenda" aria-hidden="true">
         <span className="ini-alerta"><i /> Urgente</span>
         <span className="ini-pendiente"><i /> Pendiente</span>
         <span className="ini-ok"><i /> Al día</span>
       </div>
 
-      <Grupo titulo="Aplicación ASTA" nota="Lo que hace falta para que la tablet recomiende tóner ASTA.">
+      <Grupo titulo="Aplicación ASTA">
         {conCarga('Listo para validar', <PorValidar token={token} />)}
         {conCarga('Impresoras listas', <ImpresorasListas token={token} />)}
         {conCarga('Cobertura del top', <Cobertura token={token} />)}
@@ -337,7 +335,7 @@ export default async function PendientesPage() {
         {conCarga('Sin resultado', <SinResultado token={token} />)}
       </Grupo>
 
-      <Grupo titulo="Datos de Odoo" nota="Se arregla en Odoo; aquí solo se ve qué y dónde.">
+      <Grupo titulo="Datos de Odoo">
         {conCarga('Calidad de datos', <Calidad token={token} />)}
         {conCarga('Clientes duplicados', <Duplicados token={token} />)}
         {conCarga('Sin acceso', <Accesos token={token} />)}

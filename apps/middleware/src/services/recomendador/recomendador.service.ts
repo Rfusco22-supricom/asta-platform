@@ -1,12 +1,13 @@
 import type { CartridgeKind, ProductRelation } from '@prisma/client';
 import type { ErrorCode, PublicCompatibleItem, PublicPrinter } from '@asta/shared-types';
 import { prisma } from '../../config/prisma.js';
-import { searchRead, type OdooDomain } from '../../odoo/client.js';
+import { getUid, searchRead, type OdooDomain } from '../../odoo/client.js';
 import { CacheTtl } from '../../utils/cacheTtl.js';
 import { anotarCacheHit } from '../../utils/contextoPeticion.js';
 import { estadoDeStock, TTL_CACHE_INVENTARIO_MS, umbralStockBajo, type AlmacenCliente } from '../inventory.service.js';
 import { normalizarCodigoCartucho } from './normalizar.js';
 import { buscarModelos, type ModeloBuscable } from './buscarModelos.js';
+import { esBotella } from './botella.js';
 
 /**
  * Endpoints del recomendador (#39): de "qué impresora tienes" a "qué tóner le
@@ -52,7 +53,14 @@ const cacheCatalogo = new CacheTtl<ModeloBuscable[]>(TTL_CATALOGO_IMPRESORAS_MS,
 /** Qué impresoras usan cada cartucho, por su código normalizado: la búsqueda por tóner. */
 const cachePorCartucho = new CacheTtl<Map<string, number[]>>(TTL_CATALOGO_IMPRESORAS_MS, 1);
 /** El mismo TTL que el inventario: la guía promete "hasta 60 s" para las existencias. */
-const cacheCompatibles = new CacheTtl<{ impresora: PublicPrinter; items: PublicCompatibleItem[]; sinCompatibilidadesCargadas: boolean }>(
+/**
+ * Un producto compatible tal como sale de aquí. `stock: null` en las tablets sin
+ * almacén (las de clientes y revisores): enseñan solo compatibilidades. La API
+ * pública siempre tiene almacén, así que allí nunca es `null`.
+ */
+export type ItemCompatible = Omit<PublicCompatibleItem, 'stock'> & { stock: PublicCompatibleItem['stock'] | null };
+
+const cacheCompatibles = new CacheTtl<{ impresora: PublicPrinter; items: ItemCompatible[]; sinCompatibilidadesCargadas: boolean }>(
   TTL_CACHE_INVENTARIO_MS,
   2_000,
 );
@@ -268,28 +276,47 @@ const TIPO_CARTUCHO: Record<CartridgeKind, PublicCompatibleItem['cartuchos'][num
 
 const ORDEN_STOCK = { disponible: 0, bajo: 1, agotado: 2 } as const;
 
-export function dominioCompatibles(templateIds: number[], companyId: number, soloDisponibles: boolean): OdooDomain {
+export function dominioCompatibles(templateIds: number[], companyId: number | null, soloDisponibles: boolean): OdooDomain {
   // Las mismas tres condiciones que `dominioInventario`: lo que no se ve en
-  // `/inventory` tampoco se recomienda.
+  // `/inventory` tampoco se recomienda. Sin compañía (tablet sin almacén), las
+  // de todas: ahí solo importa qué producto le sirve a la impresora.
   const dominio: OdooDomain = [
     ['product_tmpl_id', 'in', templateIds],
     ['sale_ok', '=', true],
     ['detailed_type', '=', 'product'],
-    ['company_id', 'in', [false, companyId]],
   ];
+  if (companyId !== null) dominio.push(['company_id', 'in', [false, companyId]]);
   if (soloDisponibles) dominio.push(['free_qty', '>', 0]);
   return dominio;
 }
 
 export interface Compatibles {
   impresora: PublicPrinter;
-  items: PublicCompatibleItem[];
+  items: ItemCompatible[];
   sinCompatibilidadesCargadas: boolean;
   desdeCache: boolean;
 }
 
-export async function compatiblesDe(printerId: number, almacen: AlmacenCliente, soloDisponibles: boolean): Promise<Compatibles> {
-  const clave = JSON.stringify([almacen.companyId, almacen.warehouseId, umbralStockBajo(), printerId, soloDisponibles]);
+const cacheCompanias = new CacheTtl<number[]>(10 * 60_000, 1);
+
+/** Las compañías del usuario de servicio: para leer productos sin un almacén concreto. */
+async function companiasDelServicio(): Promise<number[]> {
+  const enCache = cacheCompanias.get('todas');
+  if (enCache) return enCache;
+  const [usuario] = await searchRead<{ company_ids: number[] }>('res.users', [['id', '=', await getUid()]], ['company_ids']);
+  const companias = usuario?.company_ids ?? [];
+  cacheCompanias.set('todas', companias);
+  return companias;
+}
+
+/**
+ * Los productos que le sirven a una impresora. Con `almacen`, con su
+ * existencia en ese almacén. Sin él (tablets de clientes y revisores), los
+ * mismos productos con `stock: null` y `soloDisponibles` no aplica.
+ */
+export async function compatiblesDe(printerId: number, almacen: AlmacenCliente | null, soloDisponibles: boolean): Promise<Compatibles> {
+  if (!almacen) soloDisponibles = false;
+  const clave = JSON.stringify([almacen?.companyId ?? null, almacen?.warehouseId ?? null, umbralStockBajo(), printerId, soloDisponibles]);
   const enCache = cacheCompatibles.get(clave);
   if (enCache) {
     anotarCacheHit();
@@ -325,17 +352,21 @@ export async function compatiblesDe(printerId: number, almacen: AlmacenCliente, 
       tipo: TIPO_CARTUCHO[f.cartridge.kind],
       color: f.cartridge.color,
       rendimientoPaginas: f.cartridge.yieldPages,
+      botella: esBotella(f.cartridge.brand.name, f.cartridge.code),
     });
     porPlantilla.set(f.odooProductTmplId, p);
   }
 
-  let items: PublicCompatibleItem[] = [];
+  let items: ItemCompatible[] = [];
   if (porPlantilla.size > 0) {
+    const contexto = almacen
+      ? { warehouse: almacen.warehouseId, allowed_company_ids: [almacen.companyId] }
+      : { allowed_company_ids: await companiasDelServicio() };
     const productos = await searchRead<FilaProducto>(
       'product.product',
-      dominioCompatibles([...porPlantilla.keys()], almacen.companyId, soloDisponibles),
+      dominioCompatibles([...porPlantilla.keys()], almacen?.companyId ?? null, soloDisponibles),
       [...CAMPOS],
-      { order: 'default_code, id', context: { warehouse: almacen.warehouseId, allowed_company_ids: [almacen.companyId] } },
+      { order: 'default_code, id', context: contexto },
     );
     items = productos.map((fila) => {
       const p = porPlantilla.get(fila.product_tmpl_id[0])!;
@@ -344,14 +375,14 @@ export async function compatiblesDe(printerId: number, almacen: AlmacenCliente, 
         templateId: fila.product_tmpl_id[0],
         sku: fila.default_code || null,
         nombre: fila.name,
-        stock: estadoDeStock(fila.free_qty),
+        stock: almacen ? estadoDeStock(fila.free_qty) : null,
         // Ante la duda, compatible: ver `publicCompatibleItemSchema`.
         tipo: p.relaciones.has('COMPATIBLE') ? 'compatible' : 'original',
         cartuchos: [...p.cartuchos].sort((a, b) => a.codigo.localeCompare(b.codigo)),
       };
     });
     // `sort` es estable: dentro del mismo estado queda el orden de Odoo, por referencia.
-    items.sort((a, b) => ORDEN_STOCK[a.stock] - ORDEN_STOCK[b.stock]);
+    if (almacen) items.sort((a, b) => ORDEN_STOCK[a.stock!] - ORDEN_STOCK[b.stock!]);
   }
 
   const resultado = { impresora, items, sinCompatibilidadesCargadas: porPlantilla.size === 0 };

@@ -530,8 +530,11 @@ export async function compatiblesHandler(
       return;
     }
 
-    let almacen = kioscoDe(res)?.almacen ?? null;
-    if (!almacen) {
+    // La tablet trae su almacén, o `null` si enseña solo compatibilidades. El
+    // cliente con API key, el de su compañía.
+    const kiosco = kioscoDe(res);
+    let almacen = kiosco ? kiosco.almacen : null;
+    if (!kiosco) {
       const partnerId = partnerDelToken(req);
       almacen = await almacenDelCliente(partnerId);
       if (!almacen) {

@@ -220,6 +220,14 @@ GRANT SELECT ON asta.tier_pricelist_map TO 'asta_app'@'localhost';
 -- -----------------------------------------------------------------------------
 GRANT SELECT, INSERT, UPDATE ON asta.kiosk_devices  TO 'asta_app'@'localhost';
 GRANT SELECT, INSERT, UPDATE ON asta.kiosk_sessions TO 'asta_app'@'localhost';
+-- Los códigos con los que se vincula una tablet. Sin DELETE: caducan o se revocan.
+GRANT SELECT, INSERT, UPDATE ON asta.kiosk_codigos TO 'asta_app'@'localhost';
+-- El sell-out que reportan los clientes. Sin DELETE: un reporte nuevo del mismo
+-- mes marca el anterior como reemplazado.
+GRANT SELECT, INSERT, UPDATE ON asta.sell_out_reportes TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON asta.sell_out_lineas TO 'asta_app'@'localhost';
+-- El cierre de cada trimestre del programa de ASTA. Solo se inserta, al cerrar.
+GRANT SELECT, INSERT ON asta.programa_trimestres TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
 -- LOS TESTS NO PUEDEN CORRER CON ESTE USUARIO, y está bien así.
@@ -310,6 +318,10 @@ GRANT SELECT ON asta.tier_pricelist_map    TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.odoo_entity_cache     TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.kiosk_devices         TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.kiosk_sessions        TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.kiosk_codigos         TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.sell_out_reportes     TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.sell_out_lineas       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.programa_trimestres   TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.recommendation_events TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_usage_monthly     TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.printer_brands           TO 'asta_lectura'@'localhost';

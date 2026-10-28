@@ -563,8 +563,14 @@ model KioskDevice {
   /// recomendador es la del almacén que vende (#30, #108), y una tablet no tiene
   /// cliente del que sacarlo: atiende a quien entre. Sin FK hacia Odoo, como
   /// `odoo_partner_id` en el resto del esquema.
-  odooCompanyId   Int @map("odoo_company_id") @db.UnsignedInt
-  odooWarehouseId Int @map("odoo_warehouse_id") @db.UnsignedInt
+  ///
+  /// Sin almacén, la tablet enseña solo compatibilidades, sin existencias: las
+  /// de los clientes y las de los revisores de las tiendas de apps.
+  odooCompanyId   Int? @map("odoo_company_id") @db.UnsignedInt
+  odooWarehouseId Int? @map("odoo_warehouse_id") @db.UnsignedInt
+  /// El cliente dueño de la tablet, que la vinculó desde su cuenta del panel.
+  /// `null`: una tablet de Supricom.
+  odooPartnerId   Int? @map("odoo_partner_id") @db.UnsignedInt
 
   /// HMAC del device token, igual que las API keys.
   tokenHash         String    @unique(map: "uq_kiosk_devices_token") @map("token_hash") @db.Char(64)
@@ -588,8 +594,56 @@ model KioskDevice {
 
   sessions             KioskSession[]
   recommendationEvents RecommendationEvent[]
+  codigos              KioskCodigo[]
 
+  @@index([odooPartnerId], map: "ix_kiosk_devices_partner")
   @@map("kiosk_devices")
+}
+
+/// Un código para vincular una tablet: lo da el panel y se escribe (o se
+/// escanea como QR) en la tablet.
+///
+/// La aplicación de la tienda de apps es la misma para todas las tablets y no
+/// lleva token. Al abrirse por primera vez pide un código. Lo genera, en el
+/// panel, un cliente para su tienda o un administrador para una tienda de
+/// Supricom, y caduca a los pocos minutos. Con él, la tablet recibe su propio
+/// token (`POST /api/v1/kiosk/vincular`) y queda dada de alta con lo que se
+/// eligió al crearlo.
+///
+/// `reutilizable` es el código para los revisores de Apple y Google: no caduca,
+/// sirve varias veces y crea tablets de solo compatibilidades. Se revoca desde
+/// el panel.
+///
+/// Nunca se borran: caducan, se usan o se revocan, y se quedan como historial.
+model KioskCodigo {
+  id         String @id @default(uuid()) @db.Char(36)
+  /// HMAC del código, igual que los tokens. El código en claro sale una vez.
+  codigoHash String @map("codigo_hash") @db.Char(64)
+
+  /// Lo que tendrá la tablet al vincularse.
+  nombre          String @db.VarChar(100)
+  tienda          String @db.VarChar(150)
+  odooPartnerId   Int?   @map("odoo_partner_id") @db.UnsignedInt
+  odooCompanyId   Int?   @map("odoo_company_id") @db.UnsignedInt
+  odooWarehouseId Int?   @map("odoo_warehouse_id") @db.UnsignedInt
+
+  reutilizable Boolean @default(false)
+  /// Quién lo creó: un cliente solo ve el estado de los suyos.
+  creadoPor    String? @map("creado_por") @db.Char(36)
+
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  /// `null` solo en el reutilizable: no caduca, se revoca.
+  expiresAt  DateTime? @map("expires_at") @db.DateTime(3)
+  revocadoEn DateTime? @map("revocado_en") @db.DateTime(3)
+  usadoEn    DateTime? @map("usado_en") @db.DateTime(3)
+  usos       Int       @default(0) @db.UnsignedInt
+  /// La última tablet que se vinculó con él.
+  deviceId   String?      @map("device_id") @db.Char(36)
+  device     KioskDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_kiosk_codigos_device")
+
+  @@index([codigoHash], map: "ix_kiosk_codigos_hash")
+  @@index([deviceId], map: "ix_kiosk_codigos_device")
+  @@map("kiosk_codigos")
 }
 
 /// Sesión efímera de un cliente frente a la tablet.
@@ -695,6 +749,104 @@ model ClientNote {
 ///
 /// Una fila por vendedor, cliente, tipo de sugerencia y clave (el producto
 /// original, en «Pásale a ASTA»).
+enum TipoSellOut {
+  /// Unidades vendidas en el mes.
+  VENTAS
+  /// Existencia al cierre del mes. Con dos seguidos, lo vendido se calcula:
+  /// existencia anterior + lo que compró a Supricom − existencia actual.
+  INVENTARIO
+}
+
+/// Lo que un cliente reporta de un mes: sus ventas de ASTA o su inventario al
+/// cierre (fase 2 del sell-out). Lo sube él desde «Mi sell-out» con la
+/// plantilla del panel.
+///
+/// Uno vivo por cliente, mes y tipo: subir otra vez el mismo mes marca el
+/// anterior con `reemplazadoEn` y se queda como historial. Nunca se borran.
+model SellOutReporte {
+  id            String      @id @default(uuid()) @db.Char(36)
+  odooPartnerId Int         @map("odoo_partner_id") @db.UnsignedInt
+  /// «AAAA-MM».
+  mes           String      @db.Char(7)
+  tipo          TipoSellOut
+  archivo       String      @db.VarChar(200)
+  filas         Int         @db.UnsignedInt
+  unidades      Decimal     @db.Decimal(14, 2)
+  /// Quién lo subió (app_users.id). Sin FK: el reporte se queda aunque se borre la cuenta.
+  subidoPor     String?     @map("subido_por") @db.Char(36)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.DateTime(3)
+  reemplazadoEn DateTime?   @map("reemplazado_en") @db.DateTime(3)
+
+  lineas SellOutLinea[]
+
+  @@index([odooPartnerId, mes, tipo], map: "ix_sell_out_reportes_cliente")
+  @@index([mes, tipo], map: "ix_sell_out_reportes_mes")
+  @@map("sell_out_reportes")
+}
+
+/// La categoría de ASTA de un cliente, como `ClaveCategoria` de shared-types.
+/// Oro es ORO aquí, no GOLD: esto es la categoría, no el rol de la cuenta.
+enum CategoriaAsta {
+  GENERAL
+  BRONCE
+  PLATA
+  ORO
+  DIAMANTE
+}
+
+/// El cierre de un trimestre de un cliente en el programa de ASTA (reglas en
+/// `packages/shared-types/src/programaAsta.ts`).
+///
+/// Una fila por cliente y trimestre cerrado: con qué nivel empezó, qué cumplió,
+/// los tokens que ganó y con qué nivel acaba. El nivel actual de un cliente es
+/// el `nivelFin` de su último trimestre; su saldo de tokens, la suma. Se
+/// escribe una vez, al cerrar, y no se toca: sin UPDATE ni DELETE.
+///
+/// El cliente es su grupo por RIF (`clave`), como en las categorías: dos fichas
+/// con el mismo RIF son un cliente.
+model ProgramaTrimestre {
+  id               String        @id @default(uuid()) @db.Char(36)
+  /// RIF normalizado, o «p<id>» si la ficha no tiene un RIF utilizable.
+  clave            String        @db.VarChar(20)
+  /// La ficha que más compró del grupo, para enlazar a ella.
+  odooPartnerId    Int           @map("odoo_partner_id") @db.UnsignedInt
+  /// «AAAA-Qn».
+  trimestre        String        @db.Char(7)
+  nivelInicio      CategoriaAsta @map("nivel_inicio")
+  nivelFin         CategoriaAsta @map("nivel_fin")
+  /// Lo que compró de ASTA en el trimestre, en USD sin IVA.
+  compra           Decimal       @db.Decimal(14, 2)
+  cumpleMensual    Boolean       @map("cumple_mensual")
+  cumpleTrimestral Boolean       @map("cumple_trimestral")
+  cumpleSellout    Boolean       @map("cumple_sellout")
+  excedente        Boolean
+  racha            Boolean
+  variedad         Boolean
+  tokens           Int           @db.UnsignedSmallInt
+  cerradoEn        DateTime      @default(now()) @map("cerrado_en") @db.DateTime(3)
+  /// Quién lanzó el cierre (app_users.id), si fue desde el panel. Null desde la consola.
+  cerradoPor       String?       @map("cerrado_por") @db.Char(36)
+
+  @@unique([clave, trimestre], map: "uq_programa_trimestres_cliente")
+  @@index([trimestre], map: "ix_programa_trimestres_trimestre")
+  @@map("programa_trimestres")
+}
+
+/// Una línea del reporte: un producto ASTA de Odoo y su cantidad.
+model SellOutLinea {
+  id            BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  reporteId     String         @map("reporte_id") @db.Char(36)
+  reporte       SellOutReporte @relation(fields: [reporteId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_sell_out_lineas_reporte")
+  odooProductId Int            @map("odoo_product_id") @db.UnsignedInt
+  /// La referencia tal como la escribió el cliente, para poder rastrearla.
+  sku           String         @db.VarChar(64)
+  cantidad      Decimal        @db.Decimal(14, 2)
+
+  @@index([reporteId], map: "ix_sell_out_lineas_reporte")
+  @@index([odooProductId], map: "ix_sell_out_lineas_producto")
+  @@map("sell_out_lineas")
+}
+
 model ImpulsaAccion {
   id String @id @default(uuid()) @db.Char(36)
 

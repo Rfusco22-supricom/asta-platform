@@ -56,6 +56,7 @@ export const accionSchema = z.enum([
   'reportes.propios.ver',
   'admin.compatibilidades.revisar',
   'admin.kioscos.gestionar',
+  'admin.sellout.ver',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
   'admin.duplicados.ver',
@@ -63,6 +64,9 @@ export const accionSchema = z.enum([
 
   // ── API pública del cliente ───────────────────────────────────────────────
   'apikeys.propias.gestionar',
+  'tablets.propias.gestionar',
+  'metricas.propias.ver',
+  'sellout.propio.gestionar',
   'catalogo.leer',
   'precios.propios.leer',
   'facturas.propias.leer',
@@ -189,6 +193,30 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Dar de alta, desactivar y renovar el token de las tablets del kiosco',
+  },
+  'tablets.propias.gestionar': {
+    // El cliente vincula las tablets de SU tienda. Solo enseñan
+    // compatibilidades: sin almacén no hay existencias, y no puede elegir uno.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Vincular y desactivar las tablets de su propia tienda',
+  },
+  'metricas.propias.ver': {
+    // Sus compras de ASTA, su nivel y sus tablets: solo de sí mismo.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Ver sus propias métricas: compras de ASTA, nivel y tablets',
+  },
+  'sellout.propio.gestionar': {
+    // Reportar lo que vende de ASTA y ver su sell-out: solo lo suyo.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Subir su sell-out (ventas o inventario del mes) y verlo',
+  },
+  'admin.sellout.ver': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver el sell-out que reportan todos los clientes',
   },
   'admin.compatibilidades.revisar': {
     // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).

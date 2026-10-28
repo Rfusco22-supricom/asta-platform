@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
-  sesionesRespuestaSchema,
-  type SesionActiva,
   portfolioRowSchema,
   portfolioMetaSchema,
   actividadCarteraRespuestaSchema,
@@ -32,6 +30,16 @@ import {
   type KioscosRespuesta,
   almacenesKioscoRespuestaSchema,
   type AlmacenKiosco,
+  codigoRevisionRespuestaSchema,
+  type CodigoRevision,
+  metricasClienteRespuestaSchema,
+  type MetricasCliente,
+  resumenSellOutRespuestaSchema,
+  porMarcarRespuestaSchema,
+  type ResumenSellOut,
+  type PorMarcar,
+  sellOutEmpresaRespuestaSchema,
+  type SellOutEmpresa,
   propuestasPropiasRespuestaSchema,
   type PropuestaPropia,
   estadisticasRecomendadorRespuestaSchema,
@@ -44,7 +52,9 @@ import {
   type InformeDuplicados,
   calidadDatosRespuestaSchema,
   categoriasAstaRespuestaSchema,
+  programaEmpresaRespuestaSchema,
   type CategoriasAsta,
+  type ProgramaEmpresa,
   type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
@@ -386,18 +396,6 @@ export async function getApiKeys(accessToken: string): Promise<MisApiKeys> {
   return { filas: r.data, vivas: r.meta.vivas, maximo: r.meta.maximo };
 }
 
-export interface Sesiones {
-  filas: SesionActiva[];
-  total: number;
-  otras: number;
-}
-
-/** Sesiones activas del usuario que pide (issue #52). */
-export async function getSesiones(accessToken: string): Promise<Sesiones> {
-  const r = await request('/api/v1/auth/sessions', sesionesRespuestaSchema, accessToken);
-  return { filas: r.data, total: r.meta.total, otras: r.meta.otras };
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface Agentes {
@@ -505,6 +503,16 @@ export async function getCategoriasAstaEmpresa(accessToken: string): Promise<Cat
 /** Las categorías de ASTA de los clientes de la propia cartera. */
 export async function getCategoriasAstaCartera(accessToken: string): Promise<CategoriasAsta> {
   return (await request('/api/v1/salesperson/asta/categorias', categoriasAstaRespuestaSchema, accessToken)).data;
+}
+
+/** El programa de ASTA de toda la empresa: cómo va cada cliente en el trimestre en curso. */
+export async function getProgramaEmpresa(accessToken: string): Promise<ProgramaEmpresa> {
+  return (await request('/api/v1/admin/asta/programa', programaEmpresaRespuestaSchema, accessToken)).data;
+}
+
+/** El programa de ASTA de la propia cartera. */
+export async function getProgramaCartera(accessToken: string): Promise<ProgramaEmpresa> {
+  return (await request('/api/v1/salesperson/asta/programa', programaEmpresaRespuestaSchema, accessToken)).data;
 }
 
 /** Los productos ASTA de toda la empresa, por categoría y producto: el inicio del administrador. */
@@ -619,6 +627,41 @@ export async function getKioscos(accessToken: string): Promise<KioscosRespuesta>
 export async function getAlmacenesKiosco(accessToken: string): Promise<AlmacenKiosco[]> {
   const r = await request('/api/v1/admin/kioscos/almacenes', almacenesKioscoRespuestaSchema, accessToken);
   return r.data;
+}
+
+/** El código para los revisores de Apple y Google: si hay uno vigente (nunca el código). */
+export async function getCodigoRevision(accessToken: string): Promise<CodigoRevision> {
+  const r = await request('/api/v1/admin/kioscos/codigo-revision', codigoRevisionRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Mis métricas» del cliente con sesión: compras de ASTA, nivel y tablets. */
+export async function getMetricasCliente(accessToken: string): Promise<MetricasCliente> {
+  const r = await request('/api/v1/account/metricas', metricasClienteRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Mi sell-out» del cliente con sesión. */
+export async function getSellOutCliente(accessToken: string): Promise<ResumenSellOut> {
+  const r = await request('/api/v1/account/sellout', resumenSellOutRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** «Lo que te vendimos»: lo que el cliente nos compró, lo marcado y lo que le queda. Sin mes, el actual. */
+export async function getPorMarcar(accessToken: string, mes?: string): Promise<PorMarcar> {
+  const r = await request(`/api/v1/account/sellout/marcar${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, porMarcarRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** El sell-out de un mes de todos los clientes. Sin mes, el último completo. */
+export async function getSellOutEmpresa(accessToken: string, mes?: string): Promise<SellOutEmpresa> {
+  const r = await request(`/api/v1/admin/sellout${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, sellOutEmpresaRespuestaSchema, accessToken);
+  return r.data;
+}
+
+/** Las tablets de la tienda del cliente con sesión. */
+export async function getTabletsPropias(accessToken: string): Promise<KioscosRespuesta> {
+  return request('/api/v1/account/tablets', kioscosRespuestaSchema, accessToken);
 }
 
 /** Qué buscan los clientes en el recomendador y dónde se pierden ventas (#43). */

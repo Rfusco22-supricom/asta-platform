@@ -10,7 +10,8 @@
  *
  *   node dist/cli/importar-listas-fabricante.js [--aplicar]
  *
- * Las listas están en `listasFabricante.ts`, cada una con su página oficial.
+ * Las listas están en `listasFabricante.ts`, cada una con su página oficial, y
+ * en `listaAsta.ts` la que la marca ASTA da de sus tóners (un PDF).
  * Todo entra como PROPUESTA y se revisa en el panel, en Compatibilidades →
  * Impresoras. Se puede repetir: nunca pisa lo ya revisado.
  *
@@ -19,6 +20,7 @@
 import { prisma } from '../config/prisma.js';
 import { importarListasFabricante } from '../services/recomendador/importarListasFabricante.js';
 import { LISTAS_FABRICANTE } from '../services/recomendador/listasFabricante.js';
+import { LISTA_ASTA } from '../services/recomendador/listaAsta.js';
 
 const n = (x: number) => String(x).padStart(5);
 
@@ -26,7 +28,7 @@ async function main(): Promise<void> {
   const aplicar = process.argv.includes('--aplicar');
   console.log(`\n  listas del fabricante → recomendador${aplicar ? ' — APLICANDO' : ' — SIMULACRO (nada se escribe)'}\n`);
 
-  const r = await importarListasFabricante(LISTAS_FABRICANTE, { aplicar });
+  const r = await importarListasFabricante([...LISTAS_FABRICANTE, ...LISTA_ASTA], { aplicar });
   const v = (hecho: string, futuro: string) => (aplicar ? hecho : futuro);
 
   console.log(`  ${n(r.listas)}  listas`);

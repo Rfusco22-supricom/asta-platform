@@ -42,6 +42,7 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'admin.reportes.ver',
     'admin.compatibilidades.revisar',
     'admin.kioscos.gestionar',
+    'admin.sellout.ver',
     'admin.recomendador.ver',
     'admin.duplicados.ver',
     'admin.calidad.ver',
@@ -59,12 +60,12 @@ const ESPERADO: Record<AppRole, Accion[]> = {
     'impulsa.marcar',
     'catalogo.leer',
   ],
-  BRONCE: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  PLATA: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  GOLD: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  BRONCE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'sellout.propio.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  PLATA: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'sellout.propio.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  GOLD: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'sellout.propio.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
   // Los niveles nuevos de #131 son clientes como los demás: mismos permisos.
-  DIAMANTE: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
-  GENERAL: ['apikeys.propias.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  DIAMANTE: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'sellout.propio.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
+  GENERAL: ['apikeys.propias.gestionar', 'tablets.propias.gestionar', 'metricas.propias.ver', 'sellout.propio.gestionar', 'catalogo.leer', 'precios.propios.leer', 'facturas.propias.leer'],
 };
 
 describe('#18 · La matriz completa, celda a celda', () => {

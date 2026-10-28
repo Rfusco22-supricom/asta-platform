@@ -69,13 +69,12 @@ export default async function OlvideContrasenaPage({ searchParams }: Props) {
             </p>
           </div>
           <p style={{ fontSize: 13.5, color: 'var(--text-2)' }}>
-            Si no llega en unos minutos, mira en la carpeta de spam. ¿Sigue sin llegar? Pide acceso a tu contacto en
-            ASTA.
+            ¿No llega? Mira en la carpeta de spam.
           </p>
         </>
       ) : (
         <>
-          <p>Escribe el correo de tu cuenta y te mandamos un enlace para elegir una contraseña nueva.</p>
+          <p>Te mandamos un enlace para elegir una contraseña nueva.</p>
 
           {error && (
             <div className="notice error" style={{ marginBottom: 16 }}>

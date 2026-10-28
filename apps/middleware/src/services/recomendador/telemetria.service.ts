@@ -1,4 +1,4 @@
-import type { PublicCompatibleItem } from '@asta/shared-types';
+import type { ItemCompatible } from './recomendador.service.js';
 import { prisma } from '../../config/prisma.js';
 
 /**
@@ -94,7 +94,7 @@ export async function registrarBusqueda(
  * Quiebre de venta: había productos compatibles y NINGUNO con existencia.
  * Sin productos no hay quiebre, hay falta de datos (`sinCompatibilidadesCargadas`).
  */
-export function hayQuiebre(items: PublicCompatibleItem[]): boolean {
+export function hayQuiebre(items: ItemCompatible[]): boolean {
   return items.length > 0 && items.every((i) => i.stock === 'agotado');
 }
 
@@ -106,11 +106,13 @@ export function hayQuiebre(items: PublicCompatibleItem[]): boolean {
  * no se afirma quiebre ni ausencia de quiebre: se deja lo que hubiera.
  */
 export async function registrarConsulta(
-  datos: Quien & { busquedaId: bigint | null; printerId: number; items: PublicCompatibleItem[]; soloDisponibles: boolean },
+  datos: Quien & { busquedaId: bigint | null; printerId: number; items: ItemCompatible[]; soloDisponibles: boolean },
   log?: Log,
   ahora = new Date(),
 ): Promise<void> {
-  const quiebre = datos.soloDisponibles ? undefined : hayQuiebre(datos.items);
+  // Sin existencias (tablet sin almacén) tampoco se sabe si hay quiebre.
+  const sinExistencias = datos.items.some((i) => i.stock === null);
+  const quiebre = datos.soloDisponibles || sinExistencias ? undefined : hayQuiebre(datos.items);
   try {
     if (datos.busquedaId !== null) {
       const { count } = await prisma.recommendationEvent.updateMany({

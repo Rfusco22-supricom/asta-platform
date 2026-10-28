@@ -43,8 +43,8 @@ export function ListaImpulsa({ clientes }: { clientes: ClienteImpulsa[] }) {
         <div className="empty imp-vacio">
           {vista === 'pendientes'
             ? clientes.length === 0
-              ? 'Hoy no hay ningún cliente al que pasarle a ASTA: o ya compran ASTA, o no hay existencias del equivalente.'
-              : 'Has atendido todas las sugerencias. Las hechas vuelven si el cliente compra otra vez el original.'
+              ? 'Hoy no hay sugerencias.'
+              : 'Has atendido todas las sugerencias.'
             : 'Todavía no has marcado ninguna.'}
         </div>
       ) : (

@@ -19,6 +19,8 @@ struct Cartucho: Codable, Hashable, Sendable {
     let tipo: String
     let color: String?
     let rendimientoPaginas: Int?
+    /// Botella de tinta (EcoTank, Smart Tank…) y no cartucho. `nil` si el servidor no lo dice.
+    var botella: Bool? = nil
 }
 
 struct ProductoCompatible: Codable, Hashable, Identifiable, Sendable {
@@ -28,7 +30,8 @@ struct ProductoCompatible: Codable, Hashable, Identifiable, Sendable {
     let templateId: Int
     let sku: String?
     let nombre: String
-    let stock: EstadoStock
+    /// `nil` en las tablets sin almacén (las de clientes): solo compatibilidades.
+    let stock: EstadoStock?
     let tipo: Tipo
     let cartuchos: [Cartucho]
 }

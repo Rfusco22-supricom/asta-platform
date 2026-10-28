@@ -7,6 +7,7 @@ import com.supricom.asta.kiosco.dominio.EstadoStock
 import com.supricom.asta.kiosco.dominio.Impresora
 import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
+import com.supricom.asta.kiosco.dominio.encabezadoDeCodigos
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
 import com.supricom.asta.kiosco.dominio.ParaEnsenar
@@ -48,14 +49,17 @@ class ProductoTest {
 
     @Test fun noLlamaTonerAUnaTintaNiAUnTambor() {
         val brother = Impresora(9, "Brother", "HL-L2350DW")
-        fun cartucho(codigo: String, tipo: String, marca: String = "Brother") = Cartucho(marca, codigo, tipo)
+        fun cartucho(codigo: String, tipo: String, marca: String = "Brother", botella: Boolean = false) = Cartucho(marca, codigo, tipo, botella = botella)
         fun con(id: Int, nombre: String, cartuchos: List<Cartucho>, tipo: ProductoCompatible.Tipo = ProductoCompatible.Tipo.COMPATIBLE) =
             ProductoCompatible(id, id, null, nombre, EstadoStock.DISPONIBLE, tipo, cartuchos)
 
         val tambor = con(1, "BROTHER DRUM DR2370 ORIGINAL", listOf(cartucho("DR-2370", "tambor")), ProductoCompatible.Tipo.ORIGINAL)
         assertEquals(Clase.TAMBOR, tambor.clase)
         assertEquals("Tambor original Brother", tambor.titulo(brother))
-        assertEquals("Tinta original Epson", con(2, "EPSON TINTA T544 NEGRO", listOf(cartucho("T544", "tinta", "Epson")), ProductoCompatible.Tipo.ORIGINAL).titulo(brother))
+        assertEquals("Tinta original Epson", con(2, "EPSON TINTA T544 NEGRO", listOf(cartucho("T544", "tinta", "Epson", botella = true)), ProductoCompatible.Tipo.ORIGINAL).titulo(brother))
+        // Una botella catalogada como «otro» sigue siendo tinta; un cartucho de tinta, cartucho.
+        assertEquals(Clase.TINTA, con(7, "ASTA TINTA T544", listOf(cartucho("T544", "otro", "Epson", botella = true))).clase)
+        assertEquals("Cartucho de tinta original HP", con(8, "HP CARTUCHO 667 NEGRO", listOf(cartucho("667", "tinta", "HP")), ProductoCompatible.Tipo.ORIGINAL).titulo(brother))
 
         // Tóner y tambor en el mismo producto, o un tipo que no conocemos: no se afirma ninguno.
         assertEquals("Consumible compatible Asta", con(3, "ASTA KIT TN2370 + DR2370", listOf(cartucho("TN-2370", "toner"), cartucho("DR-2370", "tambor"))).titulo(brother))
@@ -68,6 +72,19 @@ class ProductoTest {
 
     @Test fun juntaLosCodigosSinRepetir() {
         assertEquals(listOf("CE278A", "CE285A"), codigosDeCartucho(listOf(producto(1, "a"), producto(2, "b"), producto(3, "c", codigo = "CE285A"))))
+    }
+
+    @Test fun diceTintaCuandoEsTintaYCartuchoCuandoNo() {
+        fun con(id: Int, codigo: String, tipo: String, botella: Boolean = true) =
+            ProductoCompatible(id, id, null, "x", EstadoStock.DISPONIBLE, ProductoCompatible.Tipo.COMPATIBLE, listOf(Cartucho("Epson", codigo, tipo, botella = botella)))
+        assertEquals("USA LA TINTA", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"))))
+        assertEquals("USA LAS TINTAS", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"), con(2, "T664", "tinta"))))
+        // Un cartucho de tinta es un cartucho.
+        assertEquals("USA EL CARTUCHO", encabezadoDeCodigos(listOf(con(1, "667", "tinta", botella = false))))
+        assertEquals("USA EL CARTUCHO", encabezadoDeCodigos(listOf(producto(1, "ASTA TONER CB435A"))))
+        assertEquals("USA LOS CARTUCHOS", encabezadoDeCodigos(listOf(producto(1, "a"), producto(2, "b", codigo = "CE285A"))))
+        // Tinta y tóner juntos: no se afirma que todo sea tinta.
+        assertEquals("USA LOS CARTUCHOS", encabezadoDeCodigos(listOf(con(1, "T544", "tinta"), producto(2, "a"))))
     }
 
     @Test fun poneLoQueHayPrimeroSinDesordenarElResto() {

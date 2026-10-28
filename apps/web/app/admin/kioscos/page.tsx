@@ -1,6 +1,6 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { getAlmacenesKiosco, getKioscos, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getAlmacenesKiosco, getCodigoRevision, getKioscos, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Kioscos } from './Kioscos';
 
 /**
@@ -18,8 +18,9 @@ export default async function KioscosPage() {
 
   let datos;
   try {
-    const [kioscos, almacenes] = await Promise.all([
+    const [kioscos, revision, almacenes] = await Promise.all([
       getKioscos(sesion.accessToken),
+      getCodigoRevision(sesion.accessToken),
       // Sin Odoo no se puede dar de alta (hay que elegir el almacén), pero la
       // lista de tablets se ve igual.
       getAlmacenesKiosco(sesion.accessToken).catch((e) => {
@@ -27,7 +28,7 @@ export default async function KioscosPage() {
         return null;
       }),
     ]);
-    datos = { kioscos, almacenes };
+    datos = { kioscos, revision, almacenes };
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -42,8 +43,12 @@ export default async function KioscosPage() {
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Tablets" descripcion="Las tablets de las tiendas con la aplicación ASTA. Cada una con su token y su almacén.">
-      <Kioscos inicial={datos.kioscos.data} almacenes={datos.almacenes} odooDisponible={datos.kioscos.meta.odooDisponible} />
+    <Marco usuario={sesion.usuario} titulo="Tablets">
+      <Kioscos
+        inicial={datos.kioscos.data}
+        revisionInicial={datos.revision}
+        almacenes={datos.almacenes}
+      />
     </Marco>
   );
 }

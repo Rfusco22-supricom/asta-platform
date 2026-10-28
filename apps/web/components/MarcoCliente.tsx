@@ -73,19 +73,6 @@ export function MarcoCliente({
         </div>
 
         <NavLateral grupos={grupos} plegado={plegado} contadores={contadores} />
-
-        {/*
-          El pie dice de dónde salen los datos, no adorna. En una herramienta que
-          lee un ERP en vivo, «¿esto está actualizado?» es la pregunta que más se
-          repite, y tenerla contestada en un sitio fijo ahorra preguntarlo.
-        */}
-        <div className="lateral-pie" title={plegado ? 'Odoo en vivo: se renueva cada minuto' : undefined}>
-          <span className="en-vivo" aria-hidden="true" />
-          <span>
-            <strong>Odoo en vivo</strong>
-            Facturas y cartera se renuevan cada minuto.
-          </span>
-        </div>
       </aside>
 
       {/* En estrecho el menú baja a pestañas fijas; en ancho, el CSS lo oculta. */}

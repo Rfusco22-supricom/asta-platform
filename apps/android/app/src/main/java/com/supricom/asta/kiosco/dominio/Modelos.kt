@@ -25,6 +25,8 @@ data class Cartucho(
     val tipo: String,
     val color: String? = null,
     val rendimientoPaginas: Int? = null,
+    /** Botella de tinta (EcoTank, Smart Tank…) y no cartucho. `false` si el servidor no lo dice. */
+    val botella: Boolean = false,
 )
 
 @Serializable
@@ -33,7 +35,8 @@ data class ProductoCompatible(
     val templateId: Int,
     val sku: String? = null,
     val nombre: String,
-    val stock: EstadoStock,
+    /** `null` en las tablets sin almacén (las de clientes): solo compatibilidades. */
+    val stock: EstadoStock? = null,
     val tipo: Tipo,
     val cartuchos: List<Cartucho>,
 ) {

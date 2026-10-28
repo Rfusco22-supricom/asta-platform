@@ -84,6 +84,7 @@ export const publicCartridgeSchema = z.object({
   tipo: cartridgeKindSchema.describe('`toner`, `tinta`, `tambor` u `otro`. Puede recibir valores nuevos: trata cualquier otro como `otro`.'),
   color: z.string().nullable().describe('Color, si se conoce.'),
   rendimientoPaginas: z.number().int().positive().nullable().describe('Páginas que declara el fabricante, si se conocen.'),
+  botella: z.boolean().describe('`true` si es una botella de tinta (EcoTank, Smart Tank, GI…) y no un cartucho.'),
 });
 
 export const publicCompatibleItemSchema = z.object({

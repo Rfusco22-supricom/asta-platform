@@ -47,7 +47,7 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
   const { totales, periodo } = datos;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Reportes" descripcion={`Tu cartera · productos ASTA, sin IVA · ${periodo.desde} a ${periodo.hasta}`}>
+    <Marco usuario={sesion.usuario} titulo="Reportes">
       <PestanasReportes actual="productos" periodo={periodo} />
       <Periodos base="/reportes/productos" periodo={periodo} />
 
@@ -56,12 +56,6 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
         <Cifra icono="clientes" color="verde" etiqueta="Clientes que compraron ASTA" valor={totales.clientes} nota="en el periodo" />
         <Cifra icono="caja" color="violeta" etiqueta="Productos ASTA distintos" valor={totales.productos} nota={`en ${datos.categorias.length} categorías`} />
       </section>
-
-      {datos.apartados.map((a) => (
-        <p key={a.sku} className="panel-nota">
-          No se cuentan {money(a.monto)} de «{a.nombre}» ({a.clientes} {a.clientes === 1 ? 'cliente' : 'clientes'}): son saldos de apertura cargados como factura, no ventas de un producto.
-        </p>
-      ))}
 
       <VistaProductos categorias={datos.categorias} clientes={datos.clientes} />
     </Marco>

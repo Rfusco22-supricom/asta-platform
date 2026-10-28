@@ -9,9 +9,10 @@
 // El middleware. En el simulador, `localhost` es este Mac.
 ASTA_API_BASE = http:/$()/localhost:3001
 
-// El código de la tablet (asta_kio_…). VACÍO en la versión de la tienda de
-// apps: la tablet lo pide la primera vez que se abre (escaneando el QR del
-// panel, Aplicación ASTA → Tablets → «Registrar una tablet») y lo guarda en su
-// llavero. Ponerlo aquí solo para desarrollo o una tablet preparada a mano:
-// entonces manda lo compilado y no se pide nada. No se commitea.
+// El token de la tablet (asta_kio_…). VACÍO en la versión de la tienda de
+// apps: la tablet pide la primera vez que se abre el código de 6 dígitos que
+// da el panel (Tablets → «Añadir tablet») y recibe su token, que guarda en su
+// llavero. Ponerlo aquí solo para desarrollo o una tablet preparada a mano
+// («Preparar una tablet a mano» en el panel): entonces manda lo compilado y no
+// se pide nada. No se commitea.
 ASTA_API_KEY =

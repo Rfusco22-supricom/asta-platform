@@ -11,22 +11,27 @@ import SwiftUI
 /// Eso NO impide salirse de la app: para eso, «Acceso guiado» en la tablet o el
 /// modo de app única de un MDM. Ver `apps/ios/README.md`.
 ///
-/// Sin código de tablet compilado, la primera vez pide uno (`Activacion`): así
-/// la misma app sirve para todas las tablets cuando se instala desde la tienda.
+/// Sin token compilado, la primera vez pide el código que da el panel
+/// (`Activacion`): así la misma app sirve para todas las tablets cuando se
+/// instala desde la tienda de apps.
 @main
 struct AstaKioscoApp: App {
     /// Cada cuánto la tablet dice que sigue viva (#46). Menos que el umbral de
     /// la alerta «kiosco mudo» (30 min), con margen para un latido perdido.
     static let latido: Duration = .seconds(600)
 
-    @State private var activacion = Activacion(base: .delBundle(), almacen: LlaveroCodigo())
+    @State private var activacion = Activacion(
+        base: .delBundle(),
+        almacen: LlaveroCodigo(),
+        modelo: "\(UIDevice.current.model) · iPadOS \(UIDevice.current.systemVersion)"
+    )
 
     var body: some Scene {
         WindowGroup {
             Group {
                 switch activacion.estado {
                 case let .activa(config):
-                    // Un código distinto es otra tablet: se empieza de cero.
+                    // Un token distinto es otra tablet: se empieza de cero.
                     KioscoActivo(config: config) { activacion.rechazado() }
                         .id(config.apiKey)
                 case .pendiente:
@@ -58,8 +63,8 @@ private struct KioscoActivo: View {
         RaizView(kiosco: kiosco)
             .task {
                 // El latido dice al panel que la tablet sigue viva y, de paso, si
-                // el código sigue valiendo: un 401 es que la desactivaron (o se
-                // renovó el token) y la tablet vuelve a pedir el código.
+                // el token sigue valiendo: un 401 es que la desactivaron (o se
+                // renovó el token) y la tablet vuelve a pedir un código.
                 while !Task.isCancelled {
                     if api.config.esTablet, await api.comprobar() == .rechazado {
                         alRechazar()

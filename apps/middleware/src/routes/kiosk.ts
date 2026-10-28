@@ -2,11 +2,14 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import rateLimit from 'express-rate-limit';
 import { crearLimitadoresPublicos } from '../middleware/rateLimitPublico.js';
 import { registroPeticiones } from '../middleware/registroPeticiones.js';
-import { verificarTokenKiosco, type KioscoAutenticado } from '../services/kioscos.service.js';
+import { z } from 'zod';
+import { vincularTabletSchema } from '@asta/shared-types';
+import { MENSAJE_CODIGO_NO_VALIDO, verificarTokenKiosco, vincularTablet, type KioscoAutenticado } from '../services/kioscos.service.js';
 import { buscarImpresorasHandler, clicRecomendadorHandler, compatiblesHandler } from '../controllers/public.controller.js';
 
 /**
  * Las rutas de las tablets del kiosco (#40, #120): el recomendador y nada más.
+ * Y, sin token, la de vincular una tablet recién instalada con el código del panel.
  *
  * Se autentican con el token de la tablet (`kiosk_devices`), no con una API key
  * de cliente. Son los mismos handlers que `/api/v1/public/recommender/...`; lo
@@ -23,6 +26,12 @@ import { buscarImpresorasHandler, clicRecomendadorHandler, compatiblesHandler } 
 
 /** Una tablet hace una búsqueda cada pocos segundos como mucho. */
 const PETICIONES_POR_MINUTO = 120;
+/**
+ * Códigos que no sirven, por IP. Quien instala tablets se equivoca unas pocas
+ * veces; probar el millón de códigos de 6 dígitos, no se puede.
+ */
+const FALLOS_VINCULAR_POR_IP = 10;
+const VENTANA_VINCULAR_MS = 15 * 60_000;
 
 function authKiosco() {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -52,6 +61,34 @@ export function crearKioskRouter(): Router {
 
   router.use(registroPeticiones());
   router.use(preAuth);
+
+  // Sin token: la tablet recién instalada se vincula con el código que da el
+  // panel (ver `kioscos.service`). Va antes de `authKiosco`.
+  const limiteVincular = rateLimit({
+    windowMs: VENTANA_VINCULAR_MS,
+    limit: FALLOS_VINCULAR_POR_IP,
+    // Solo cuentan los códigos que no sirven.
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-6',
+    legacyHeaders: false,
+    message: { error: { code: 'RATE_LIMITED', message: 'Demasiados códigos equivocados desde esta red. Espera unos minutos.' } },
+  });
+
+  router.post('/vincular', limiteVincular, async (req, res, next) => {
+    try {
+      const cuerpo = vincularTabletSchema.safeParse(req.body ?? {});
+      const r = cuerpo.success ? await vincularTablet(cuerpo.data) : null;
+      if (!r) {
+        // Mal escrito, caducado, usado o revocado: lo mismo.
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: MENSAJE_CODIGO_NO_VALIDO } });
+        return;
+      }
+      res.status(201).json({ data: r });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.use(authKiosco());
   router.use(
     rateLimit({

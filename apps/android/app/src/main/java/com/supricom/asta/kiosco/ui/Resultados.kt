@@ -50,6 +50,7 @@ import com.supricom.asta.kiosco.dominio.Impresora
 import com.supricom.asta.kiosco.dominio.MotivoFallo
 import com.supricom.asta.kiosco.dominio.ProductoCompatible
 import com.supricom.asta.kiosco.dominio.codigosDeCartucho
+import com.supricom.asta.kiosco.dominio.encabezadoDeCodigos
 import com.supricom.asta.kiosco.dominio.esAsta
 import com.supricom.asta.kiosco.dominio.esPolvo
 import com.supricom.asta.kiosco.dominio.ParaEnsenar
@@ -164,14 +165,16 @@ private fun Cabecera(impresora: Impresora, alVolver: () -> Unit) {
 private fun Respuesta(productos: List<ProductoCompatible>, sugerido: ProductoCompatible?, impresora: Impresora) {
     val codigos = codigosDeCartucho(productos)
     val enTienda = productos.count { it.stock != EstadoStock.AGOTADO }
+    // Una tablet sin almacén (la de un cliente) no sabe qué hay en tienda: no lo dice.
+    val conExistencias = productos.all { it.stock != null }
     Column(Modifier.width(340.dp).tarjeta().background(Tema.degradado, RoundedCornerShape(Tema.radio)).padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(if (codigos.size == 1) "USA EL CARTUCHO" else "USA LOS CARTUCHOS", style = Tema.fuerte(16, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
+        Text(encabezadoDeCodigos(productos), style = Tema.fuerte(16, Tema.sobreAzul).copy(letterSpacing = 2.5.sp))
         codigos.forEach { Text(it, style = Tema.codigo(56, Tema.superficie), maxLines = 1) }
         Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.28f)))
         Text(
             buildAnnotatedString {
                 withStyle(Tema.titulo(20, Tema.superficie).toSpanStyle()) { append("${productos.size} ${if (productos.size == 1) "opción" else "opciones"}") }
-                append(if (enTienda > 0) " · $enTienda en tienda" else " · ninguna en tienda ahora: se puede encargar")
+                if (conExistencias) append(if (enTienda > 0) " · $enTienda en tienda" else " · ninguna en tienda ahora: se puede encargar")
             },
             style = Tema.cuerpo(20, Tema.sobreAzul),
         )
@@ -183,7 +186,7 @@ private fun Respuesta(productos: List<ProductoCompatible>, sugerido: ProductoCom
             ) {
                 Text("TE RECOMENDAMOS", style = Tema.fuerte(14, Tema.azulHondo).copy(letterSpacing = 2.sp))
                 Text(sugerido.titulo(impresora), style = Tema.titulo(22))
-                Text(sugerido.stock.texto, style = Tema.fuerte(18, Tema.disponible))
+                sugerido.stock?.let { Text(it.texto, style = Tema.fuerte(18, Tema.disponible)) }
             }
         }
     }
@@ -263,8 +266,9 @@ private fun SinTonerCargado(impresora: Impresora) {
 /** Un producto, con la forma de la etiqueta de una caja de tóner. */
 @Composable
 private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boolean, recomendado: Boolean, alPulsar: () -> Unit) {
-    val (color, fondo) = Tema.colores(p.stock)
-    Pulsable(alPulsar, Modifier.fillMaxWidth().semantics { contentDescription = "${p.titulo(impresora)}, ${p.stock.texto}" }) { pulsado ->
+    // Sin existencia (tablet de un cliente), la franja va en el azul de la marca y no hay columna de estado.
+    val (color, fondo) = p.stock?.let { Tema.colores(it) } ?: (Tema.azul to Tema.superficie)
+    Pulsable(alPulsar, Modifier.fillMaxWidth().semantics { contentDescription = listOfNotNull(p.titulo(impresora), p.stock?.texto).joinToString(", ") }) { pulsado ->
         Row(
             Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 112.dp)
                 .tarjeta().background(if ((pulsado && !elegido) || recomendado) Tema.azulSuave else Tema.superficie, RoundedCornerShape(Tema.radio))
@@ -288,9 +292,16 @@ private fun Etiqueta(p: ProductoCompatible, impresora: Impresora, elegido: Boole
                 Text(p.titulo(impresora), style = Tema.titulo(24), maxLines = 1)
                 Text(p.nombre, style = Tema.codigoCuerpo(16, Tema.tintaTenue), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Column(Modifier.width(220.dp).fillMaxHeight().background(fondo), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(p.stock.texto, style = Tema.titulo(20, color))
-                if (elegido) Text("✓ Elegido", style = Tema.fuerte(16, Tema.azulHondo))
+            val stock = p.stock
+            if (stock != null) {
+                Column(Modifier.width(220.dp).fillMaxHeight().background(fondo), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stock.texto, style = Tema.titulo(20, color))
+                    if (elegido) Text("✓ Elegido", style = Tema.fuerte(16, Tema.azulHondo))
+                }
+            } else if (elegido) {
+                Box(Modifier.fillMaxHeight().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+                    Text("✓ Elegido", style = Tema.fuerte(16, Tema.azulHondo))
+                }
             }
         }
     }

@@ -152,13 +152,6 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M9 4V2.8h6V4M9 12.5l2 2 4-4" />
         </svg>
       );
-    case 'sesiones':
-      return (
-        <svg {...comun}>
-          <rect x="2.5" y="4" width="19" height="13" rx="2" />
-          <path d="M8 21h8M12 17v4" />
-        </svg>
-      );
     default:
       return (
         <svg {...comun}>
@@ -176,10 +169,11 @@ export function Icono({ nombre }: { nombre: string }) {
  * cliente apaga la única entrada encendida y parece que te has salido de la
  * aplicación.
  *
- * Con comparación exacta para el resto, porque `/cuenta/sesiones` y
- * `/cuenta/api-keys` comparten prefijo y se encenderían las dos a la vez.
+ * Con comparación exacta para el resto, porque las de `/cuenta/…` comparten
+ * prefijo y se encenderían varias a la vez.
  */
-function estaActiva(ruta: string, href: string, prefijo?: boolean): boolean {
+function estaActiva(ruta: string, href: string, prefijo?: boolean, tambien?: string[]): boolean {
+  if (tambien?.includes(ruta)) return true;
   return prefijo ? ruta === href || ruta.startsWith(`${href}/`) : ruta === href;
 }
 
@@ -250,7 +244,7 @@ export function NavLateral({
         <div key={g.titulo ?? `grupo-${i}`} className="nav-grupo">
           {g.titulo && <div className="nav-titulo">{g.titulo}</div>}
           {g.secciones.map((s) => {
-            const activa = estaActiva(ruta, s.href, s.prefijo);
+            const activa = estaActiva(ruta, s.href, s.prefijo, s.tambien);
             const cuenta = contadores[s.href] ?? 0;
             return (
               <Link
@@ -311,10 +305,10 @@ export function NavInferior({ grupos, contadores = {} }: { grupos: GrupoNav[]; c
   const caben = todas.length <= MAX_PESTANAS;
   const fijas = caben ? todas : todas.slice(0, MAX_PESTANAS - 1);
   const resto = caben ? [] : todas.slice(MAX_PESTANAS - 1);
-  const masActiva = resto.some((s) => estaActiva(ruta, s.href, s.prefijo));
+  const masActiva = resto.some((s) => estaActiva(ruta, s.href, s.prefijo, s.tambien));
 
   const pestana = (s: Seccion) => {
-    const activa = estaActiva(ruta, s.href, s.prefijo);
+    const activa = estaActiva(ruta, s.href, s.prefijo, s.tambien);
     return (
       <Link key={s.href} href={s.href} className={activa ? 'pestana activa' : 'pestana'} aria-current={activa ? 'page' : undefined}>
         <span className="pestana-icono">
@@ -356,7 +350,7 @@ export function NavInferior({ grupos, contadores = {} }: { grupos: GrupoNav[]; c
           <div id="hoja-mas" className="hoja" role="dialog" aria-label="Más secciones" onClick={(e) => e.stopPropagation()}>
             <span className="hoja-asa" aria-hidden="true" />
             {resto.map((s) => {
-              const activa = estaActiva(ruta, s.href, s.prefijo);
+              const activa = estaActiva(ruta, s.href, s.prefijo, s.tambien);
               return (
                 <Link key={s.href} href={s.href} className={activa ? 'hoja-item activa' : 'hoja-item'} aria-current={activa ? 'page' : undefined} tabIndex={abierta ? 0 : -1}>
                   <Icono nombre={s.icono} />

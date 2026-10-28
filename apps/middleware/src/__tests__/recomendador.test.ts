@@ -246,8 +246,8 @@ describe('#39 · Productos compatibles', () => {
     expect(ta.tipo).toBe('compatible');
     expect(te.tipo).toBe('original');
     expect(ta.cartuchos).toEqual([
-      { marca: MARCA, codigo: 'ZZREC1', tipo: 'toner', color: 'negro', rendimientoPaginas: 3000 },
-      { marca: MARCA, codigo: 'ZZREC3', tipo: 'toner', color: null, rendimientoPaginas: null },
+      { marca: MARCA, codigo: 'ZZREC1', tipo: 'toner', color: 'negro', rendimientoPaginas: 3000, botella: false },
+      { marca: MARCA, codigo: 'ZZREC3', tipo: 'toner', color: null, rendimientoPaginas: null, botella: false },
     ]);
   });
 

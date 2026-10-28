@@ -160,6 +160,13 @@ function etiquetaMes(fecha: string): string {
   return `${MESES[m - 1]} ${y}`;
 }
 
+/** La inversa de `etiquetaMes`: «mayo 2026» → «2026-05». `null` si no la reconoce. */
+export function periodoDeEtiqueta(etiqueta: string): string | null {
+  const [mes, anio] = etiqueta.trim().split(' ');
+  const i = MESES.indexOf(mes as (typeof MESES)[number]);
+  return i >= 0 && /^\d{4}$/.test(anio ?? '') ? `${anio}-${String(i + 1).padStart(2, '0')}` : null;
+}
+
 interface FacturaLeida {
   id: number;
   name: string;

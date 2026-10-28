@@ -22,13 +22,16 @@ val ProductoCompatible.esAsta: Boolean get() = ASTA.containsMatchIn(nombre.trim(
  */
 val ProductoCompatible.esPolvo: Boolean get() = POLVO.containsMatchIn(nombre)
 
-enum class Clase { TONER, POLVO, TINTA, TAMBOR, OTRO }
+enum class Clase { TONER, POLVO, TINTA, CARTUCHO_DE_TINTA, TAMBOR, OTRO }
 
 /**
- * Qué es: tóner, polvo de recarga, tinta, tambor u otra cosa.
+ * Qué es: tóner, polvo de recarga, tinta en botella, cartucho de tinta, tambor u
+ * otra cosa.
  *
  * El polvo sale del nombre (`esPolvo`), y manda: en el catálogo de cartuchos el
- * polvo es «tóner». Lo demás, del tipo de los cartuchos que manda el servidor.
+ * polvo es «tóner». La botella, de lo que diga el servidor de cada cartucho: el
+ * de una EcoTank pide «la tinta», el de una DeskJet «el cartucho», aunque los
+ * dos sean tinta. Lo demás, del tipo de los cartuchos que manda el servidor.
  * Una botella de tinta o un tambor no son tóner, y llamarlos así es la misma
  * confusión que con el polvo: el cliente pide el tambor creyendo que es el
  * tóner. Si el tipo no es uno solo, o no se conoce, no se afirma nada: `OTRO`.
@@ -36,11 +39,12 @@ enum class Clase { TONER, POLVO, TINTA, TAMBOR, OTRO }
 val ProductoCompatible.clase: Clase
     get() {
         if (esPolvo) return Clase.POLVO
+        if (cartuchos.isNotEmpty() && cartuchos.all { it.botella }) return Clase.TINTA
         val tipos = cartuchos.map { it.tipo }.toSet()
         if (tipos.size != 1) return Clase.OTRO
         return when (tipos.single()) {
             "toner" -> Clase.TONER
-            "tinta" -> Clase.TINTA
+            "tinta" -> Clase.CARTUCHO_DE_TINTA
             "tambor" -> Clase.TAMBOR
             else -> Clase.OTRO
         }
@@ -54,6 +58,7 @@ fun ProductoCompatible.titulo(impresora: Impresora): String {
         Clase.POLVO -> "Polvo de recarga $marca"
         Clase.TONER -> "Tóner $origen $marca"
         Clase.TINTA -> "Tinta $origen $marca"
+        Clase.CARTUCHO_DE_TINTA -> "Cartucho de tinta $origen $marca"
         Clase.TAMBOR -> "Tambor $origen $marca"
         Clase.OTRO -> "Consumible $origen $marca"
     }
@@ -69,6 +74,21 @@ val EstadoStock.texto: String
 
 /** Los códigos de cartucho distintos, en el orden en que aparecen. */
 fun codigosDeCartucho(productos: List<ProductoCompatible>): List<String> = productos.flatMap { p -> p.cartuchos.map { it.codigo } }.distinct()
+
+/**
+ * Lo que va encima de los códigos: «USA EL CARTUCHO» o «USA LA TINTA». Una
+ * botella de tinta no es un cartucho, así que si todo lo que se ofrece son
+ * botellas se dice tinta; si hay cartuchos (de tinta también), o no se sabe,
+ * cartucho.
+ */
+fun encabezadoDeCodigos(productos: List<ProductoCompatible>): String {
+    val varios = codigosDeCartucho(productos).size > 1
+    val cartuchos = productos.flatMap { it.cartuchos }
+    if (cartuchos.isNotEmpty() && cartuchos.all { it.botella }) {
+        return if (varios) "USA LAS TINTAS" else "USA LA TINTA"
+    }
+    return if (varios) "USA LOS CARTUCHOS" else "USA EL CARTUCHO"
+}
 
 /**
  * En qué orden se le ofrece al cliente lo que le sirve (#40). La misma regla que
@@ -93,7 +113,7 @@ fun ordenarParaRecomendar(productos: List<ProductoCompatible>): List<ProductoCom
         { it.stock == EstadoStock.AGOTADO },
         { it.esPolvo },
         { !it.esAsta },
-        { it.stock.ordinal },
+        { it.stock?.ordinal ?: 0 },
     ),
 )
 

@@ -38,7 +38,11 @@ type Estado = { tipo: 'cargando' } | { tipo: 'listo'; datos: DetalleMes } | { ti
 
 const n = (x: number) => x.toLocaleString('es-VE');
 
-export function Serie({ puntos, sede = null }: { puntos: Punto[]; sede?: number | null }) {
+/**
+ * @param detalle si al pulsar un mes se abre su detalle. Sin él, solo las
+ *   barras: el detalle es del personal (el cliente ve sus métricas sin él).
+ */
+export function Serie({ puntos, sede = null, detalle = true }: { puntos: Punto[]; sede?: number | null; detalle?: boolean }) {
   const maximo = Math.max(...puntos.map((p) => p.monto), 1);
   const [abierto, setAbierto] = useState<string | null>(null);
   const cache = useRef(new Map<string, DetalleMes>());
@@ -48,15 +52,8 @@ export function Serie({ puntos, sede = null }: { puntos: Punto[]; sede?: number 
       <div className="serie">
         {puntos.map((p) => {
           const alto = Math.max((p.monto / maximo) * 100, p.monto > 0 ? 2 : 0);
-          return (
-            <button
-              type="button"
-              className="serie-col"
-              key={p.periodo}
-              onClick={() => setAbierto(p.periodo)}
-              aria-label={`Ver el detalle de ${nombreMes(p.periodo)}: ${money(p.monto)}`}
-              aria-haspopup="dialog"
-            >
+          const columna = (
+            <>
               <span className="serie-monto">{p.monto > 0 ? moneyCompact(p.monto) : '—'}</span>
               <span className="serie-pista">
                 <span
@@ -66,7 +63,23 @@ export function Serie({ puntos, sede = null }: { puntos: Punto[]; sede?: number 
                 />
               </span>
               <span className="serie-mes">{etiquetaMes(p.periodo)}</span>
+            </>
+          );
+          return detalle ? (
+            <button
+              type="button"
+              className="serie-col"
+              key={p.periodo}
+              onClick={() => setAbierto(p.periodo)}
+              aria-label={`Ver el detalle de ${nombreMes(p.periodo)}: ${money(p.monto)}`}
+              aria-haspopup="dialog"
+            >
+              {columna}
             </button>
+          ) : (
+            <div className="serie-col" key={p.periodo} aria-label={`${nombreMes(p.periodo)}: ${money(p.monto)}`}>
+              {columna}
+            </div>
           );
         })}
       </div>

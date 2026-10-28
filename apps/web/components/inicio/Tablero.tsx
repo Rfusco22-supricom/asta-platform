@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
-import { estaCerca, ventana } from '@/components/Categorias';
+import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, type Reporte } from '@/lib/api';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
@@ -74,7 +73,6 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
   const enCartera = alcance === 'cartera';
   const avance = r.meta > 0 ? Math.min(100, (r.compraMensual / r.meta) * 100) : 0;
   const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
-  const cerca = r.clientes.filter(estaCerca).length;
   const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
   // En la cartera, la barra es el 100 % de lo que compra; en la empresa, la meta.
   const total = enCartera ? r.compraMensual : r.meta;
@@ -90,12 +88,12 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
       nombre: regla.nombre,
       color: COLORES_CATEGORIAS[i]!,
       clientes: enCartera || metaClientes === null ? `${n(clientes)} ${clientes === 1 ? 'cliente' : 'clientes'}` : `${n(clientes)} de ${n(metaClientes)} clientes`,
-      compra: `${corto(c?.compraMensual ?? 0)} USD/mes`,
-      meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} USD/mes`,
+      compra: `${corto(c?.compraMensual ?? 0)} al mes`,
+      meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} al mes`,
       regla:
-        regla.minimoMensual > 0
-          ? `≥ ${moneyEntero(regla.minimoMensual)}/mes y ${regla.minimoMeses} de 4 meses`
-          : `< ${moneyEntero(reglaDe('BRONCE').minimoMensual)}/mes`,
+        clave === 'GENERAL'
+          ? `sube a Bronce con ${moneyEntero(cuotasDe('BRONCE').mensual)}/mes`
+          : `cuota ${moneyEntero(cuotasDe(clave).mensual)}/mes y ${moneyEntero(cuotasDe(clave).trimestral)}/trimestre`,
       avance: enCartera ? (r.compraMensual > 0 ? Math.min(100, parte) : null) : metaClientes ? Math.min(100, (clientes / metaClientes) * 100) : null,
       href: `${base}?ver=${clave}`,
     };
@@ -104,7 +102,7 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
   return (
     <section className="panel dash-meta hero-meta">
       <div className="hero-texto">
-        <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} USD/mes`}</span>
+        <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} al mes`}</span>
         <div className="hero-cifra">
           <strong>{corto(r.compraMensual)}</strong>
           <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
@@ -129,29 +127,22 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
         <p className="hero-nota">
           {enCartera ? (
             <>
-              Aporta el <strong>{pct(avance)}</strong> de la meta de la empresa, {moneyEntero(r.meta)} USD al mes.
+              Aporta el <strong>{pct(avance)}</strong> de la meta de la empresa, {moneyEntero(r.meta)} al mes.
             </>
           ) : (
             <>
               Faltan <strong>{moneyCompact(Math.max(0, r.meta - r.compraMensual))}</strong> al mes.
             </>
           )}{' '}
-          {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa
-          {cerca > 0 && (
-            <>
-              {' '}
-              y <strong>{n(cerca)}</strong> {cerca === 1 ? 'está' : 'están'} cerca de subir de categoría
-            </>
-          )}
-          . Promedio de ASTA de {ventana(r.meses)}, sin IVA.
+          {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa.
         </p>
 
         <div className="hero-acciones">
-          <Link className="btn btn-inline" href={`${base}?ver=cerca`}>
-            Ver quién está cerca de subir
+          <Link className="btn btn-inline" href={`${base}?ver=juego`}>
+            Ver quién está en juego este trimestre
           </Link>
           <Link className="dash-mas" href={base}>
-            Todas las categorías →
+            Todo el programa →
           </Link>
         </div>
       </div>
