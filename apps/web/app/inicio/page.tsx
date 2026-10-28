@@ -9,6 +9,9 @@ import { Avatar } from '@/components/Avatar';
 import { Cifra } from '@/components/Cifras';
 import { alCerrar, loQueLeFalta } from '@/components/ProgramaStaff';
 import { Serie, etiquetaMes } from '@/components/Reporte';
+import { Periodos, fechasDe } from '@/components/Periodos';
+import { urlCon } from '@/components/Sedes';
+import { nombrePeriodo } from '@/lib/meses';
 import { Esqueleto, Fallo, HeroMeta, corto, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
 import { getActividadCartera, getCategoriasAstaCartera, getImpulsa, getPortfolio, getProgramaCartera, getReporteCartera } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
@@ -43,10 +46,11 @@ async function Meta({ token }: { token: string }) {
   return <HeroMeta datos={r} alcance="cartera" base="/categorias" />;
 }
 
-// ── Cifras y serie: su reporte de los últimos doce meses ───────────────────────
+// ── Cifras y serie: su reporte del periodo elegido ─────────────────────────────
 
-async function Ventas({ token }: { token: string }) {
-  const r = await intentar(() => getReporteCartera(token));
+async function Ventas({ token, rango }: { token: string; rango: { desde: string; hasta: string } }) {
+  const r = await intentar(() => getReporteCartera(token, rango));
+  const periodo = nombrePeriodo(rango.desde, rango.hasta);
   if (!r) {
     return (
       <>
@@ -66,7 +70,7 @@ async function Ventas({ token }: { token: string }) {
           icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota={`${facturas(totales.facturas)} · últimos 12 meses, sin IVA`}
+          nota={`en ${periodo} · ${facturas(totales.facturas)}, sin IVA`}
           tendencia={r.serieMensual.map((p) => p.monto)}
         />
         {mes ? (
@@ -93,15 +97,22 @@ async function Ventas({ token }: { token: string }) {
           etiqueta="Por cobrar"
           valor={moneyCompact(totales.porCobrar)}
           tono={totales.porCobrar > 0 ? 'atencion' : undefined}
-          nota="en las facturas con ASTA"
+          nota={`a hoy, de las facturas con ASTA de ${periodo}`}
         />
-        <Cifra className="dash-kpi" icono="clientes" color="verde" etiqueta="Clientes que compraron" valor={n(totales.clientes)} nota={`ticket promedio ${money(totales.ticketPromedio)}`} />
+        <Cifra
+          className="dash-kpi"
+          icono="clientes"
+          color="verde"
+          etiqueta="Clientes que compraron"
+          valor={n(totales.clientes)}
+          nota={`en ${periodo} · ticket promedio ${money(totales.ticketPromedio)}`}
+        />
       </section>
 
       <section className="panel dash-serie">
         <div className="dash-cabeza">
           <h2>Tu ASTA mes a mes</h2>
-          <Link className="dash-mas" href="/reportes">
+          <Link className="dash-mas" href={urlCon('/reportes', { periodo: rango, sede: null })}>
             Ver tus reportes →
           </Link>
         </div>
@@ -256,8 +267,11 @@ function EsqueletoVentas() {
   );
 }
 
-export default async function InicioVendedorPage() {
+export default async function InicioVendedorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
+  const params = await searchParams;
+  const rango =
+    typeof params.desde === 'string' && typeof params.hasta === 'string' ? { desde: params.desde, hasta: params.hasta } : fechasDe('12m');
   // Es la portada del vendedor: el administrador tiene la suya y un cliente no tiene cartera.
   if (sesion.usuario.role !== 'VENDEDOR') redirect(destinoPara(sesion.usuario.role));
   const token = sesion.accessToken;
@@ -266,12 +280,13 @@ export default async function InicioVendedorPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'}>
+      <Periodos base="/inicio" periodo={rango} />
       <div className="dash dash-vendedor">
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} />
         </Suspense>
         <Suspense fallback={<EsqueletoVentas />}>
-          <Ventas token={token} />
+          <Ventas token={token} rango={rango} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="hoy" alto={420} />}>
           <Hoy token={token} />

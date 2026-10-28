@@ -91,7 +91,7 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
           color="ambar"
           etiqueta="Por cobrar"
           valor={moneyCompact(totales.porCobrar)}
-          nota="en las facturas con ASTA"
+          nota="a hoy, en las facturas con ASTA"
         />
         <Metrica
           icono="candado"

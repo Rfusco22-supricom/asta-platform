@@ -1578,12 +1578,20 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
    las fechas, así que un reporte se puede guardar en favoritos o pasarle el
    enlace a alguien y los dos ven exactamente lo mismo. */
 
+.periodos-bloque { margin-bottom: 18px; }
 .periodos {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 18px;
 }
+/* Un mes o un año concretos, con el mismo aspecto que los chips. */
+.periodos-elegir { display: flex; flex-wrap: wrap; gap: 8px; }
+.periodo-select { width: auto; height: auto; padding: 8px 32px 8px 15px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+.periodo-select.periodo--activo { background-color: var(--text); color: var(--bg); border-color: var(--text); }
+/* El periodo que se está viendo, con palabras. */
+.periodos-texto { margin: 10px 2px 0; font-size: 13px; color: var(--text-2); }
+.periodos-texto strong { color: var(--text); font-weight: 600; }
 
 .periodo {
   display: inline-block;
@@ -4208,3 +4216,6 @@ button.serie-col .serie-barra { display: block; }
 .so-historial { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
 .so-reemplazado { opacity: 0.55; }
 .met-lista li > :last-child { flex: none; align-self: center; }
+
+/* De qué meses es la media de la meta: «media de jun – sep 2026». */
+.hero-periodo { margin: 4px 0 0; font-size: 12.5px; color: var(--text-2); }

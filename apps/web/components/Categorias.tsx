@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
+import { mediaDe } from '@/lib/meses';
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 
 /** El color de cada categoría, el mismo que su lámina en la pirámide 3D del Inicio. */
@@ -58,7 +59,7 @@ export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: 
         <div className="cat-avance-cifras">
           <strong>{moneyCompact(datos.compraMensual)}</strong>
           <span>
-            de {moneyCompact(datos.meta)} al mes · faltan {moneyCompact(Math.max(0, datos.meta - datos.compraMensual))}
+            de {moneyCompact(datos.meta)} al mes · faltan {moneyCompact(Math.max(0, datos.meta - datos.compraMensual))} · {mediaDe(datos.meses)}
           </span>
         </div>
         {/* Un tramo por categoría, del ancho de lo que pone: se ve quién empuja. */}

@@ -1,3 +1,4 @@
+import { companiaCuenta } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { CacheConRefresco } from '../utils/cacheConRefresco.js';
@@ -284,7 +285,7 @@ async function leerSmartbit(): Promise<Smartbit> {
  * usa los ids de compañía de Odoo (9 Valencia, 10 Caracas, 7 Panamá).
  */
 export function deSede(v: Pick<VentaSmartbit, 'companyId'>, sede: number | null): boolean {
-  return sede === null || v.companyId === sede;
+  return sede === null ? companiaCuenta(v.companyId) : v.companyId === sede;
 }
 
 export function enRango(v: Pick<VentaSmartbit, 'fecha'>, rango: { desde?: string; hasta?: string }): boolean {

@@ -157,7 +157,7 @@ export async function estadisticasAgentes(sede: SedeId | null = null): Promise<R
       },
     }),
 
-    smartbit().then((todo) => (sede === null ? todo : { ...todo, ventas: todo.ventas.filter((v) => deSede(v, sede)) })),
+    smartbit().then((todo) => ({ ...todo, ventas: todo.ventas.filter((v) => deSede(v, sede)) })),
   ]);
 
   // Smartbit, lo de antes del 1-abr-2026 (`smartbit.service`): lo vendido y

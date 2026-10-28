@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
+import { nombrePeriodo } from '@/lib/meses';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
 import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
@@ -97,6 +98,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
       </>
     );
   }
+  const periodo = nombrePeriodo(rango.desde, rango.hasta);
   const { totales, asta } = r;
   const mes = ultimoMes(r.serieMensual);
   const reportes = urlCon('/admin/reportes', { periodo: rango, sede });
@@ -109,7 +111,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           icono="ventas"
           etiqueta="Vendido en ASTA"
           valor={moneyCompact(totales.facturado)}
-          nota={facturas(totales.facturas)}
+          nota={`en ${periodo} · ${facturas(totales.facturas)}`}
           tendencia={r.serieMensual.map((p) => p.monto)}
         />
         {mes ? (
@@ -135,7 +137,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           color="rosa"
           etiqueta="Cuota de ASTA"
           valor={pct(asta.cuota)}
-          nota={`${moneyCompact(asta.competencia)} en otras marcas`}
+          nota={`en ${periodo} · ${moneyCompact(asta.competencia)} en otras marcas`}
         />
         <Cifra
           className="dash-kpi"
@@ -143,9 +145,9 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
           color="verde"
           etiqueta="Clientes que compran ASTA"
           valor={n(totales.clientes)}
-          nota={`ticket promedio ${money(totales.ticketPromedio)}`}
+          nota={`en ${periodo} · ticket promedio ${money(totales.ticketPromedio)}`}
         />
-        <Cifra className="dash-kpi" icono="cobrar" color="ambar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota="en las facturas con ASTA" />
+        <Cifra className="dash-kpi" icono="cobrar" color="ambar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota={`a hoy, de las facturas con ASTA de ${periodo}`} />
       </section>
 
       <section className="panel dash-serie">

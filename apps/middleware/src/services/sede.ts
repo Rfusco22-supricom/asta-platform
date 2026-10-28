@@ -1,10 +1,10 @@
-import { SEDES, sedeDe, type SedeId } from '@asta/shared-types';
+import { COMPANIAS_FUERA, SEDES, sedeDe, type SedeId } from '@asta/shared-types';
 
 /**
  * La sede que pide una pantalla del administrador, validada.
  *
  * Cada sede es una compañía de Odoo (ver `SEDES` en shared-types). Sin `sede`,
- * son todas. Una sede que no existe es un 400 y no «todas»: un enlace mal
+ * son todas las de Venezuela: Panamá no cuenta (`COMPANIAS_FUERA`). Una sede que no existe es un 400 y no «todas»: un enlace mal
  * escrito que enseñara la empresa entera con el nombre de una sede diría una
  * cifra falsa sin que nada lo avisara.
  */
@@ -25,11 +25,11 @@ export function sedeDeLaPeticion(query: Record<string, unknown>): SedeId | null 
 
 /**
  * La condición de dominio de una sede, para `account.move` y `account.move.line`
- * (en la línea, `company_id` es un relacionado almacenado de su factura). Vacía
- * para todas las sedes.
+ * (en la línea, `company_id` es un relacionado almacenado de su factura). Para
+ * todas las sedes, todas menos las que no cuentan (Panamá).
  */
 export function enSede(sede: number | null): Array<[string, string, unknown]> {
-  return sede === null ? [] : [['company_id', '=', sede]];
+  return sede === null ? [['company_id', 'not in', [...COMPANIAS_FUERA]]] : [['company_id', '=', sede]];
 }
 
 /** Para claves de cache: `todas` o el id. */

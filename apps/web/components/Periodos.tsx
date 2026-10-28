@@ -1,10 +1,15 @@
 import Link from 'next/link';
 import type { SedeId } from '@asta/shared-types';
+import { nombrePeriodo } from '@/lib/meses';
 import { CargandoEnlace } from './CargandoEnlace';
+import { ElegirPeriodo } from './ElegirPeriodo';
 import { urlCon } from './Sedes';
 
 /**
- * El selector de periodo, compartido por reportes y recomendador.
+ * El selector de periodo, compartido por los Inicios, los reportes y el
+ * recomendador: cuatro atajos, un mes o un año concretos (`ElegirPeriodo`), y
+ * debajo el periodo que se está viendo, con palabras, para que ninguna cifra
+ * de la pantalla quede sin su «en cuánto tiempo».
  *
  * Los botones llevan las FECHAS en la URL, no un `?preset=anio`: así un enlace
  * guardado o pasado a otra persona enseña lo mismo que enseñaba. Un `preset`
@@ -47,6 +52,7 @@ export function Periodos({
   sede?: SedeId | null;
 }) {
   return (
+    <div className="periodos-bloque">
     <div className="periodos">
       {PRESETS.map((p) => {
         const { desde, hasta } = fechasDe(p.clave);
@@ -58,6 +64,11 @@ export function Periodos({
           </Link>
         );
       })}
+      <ElegirPeriodo base={base} periodo={periodo} sede={sede} />
+    </div>
+    <p className="periodos-texto">
+      Cifras de <strong>{nombrePeriodo(periodo.desde, periodo.hasta)}</strong>
+    </p>
     </div>
   );
 }

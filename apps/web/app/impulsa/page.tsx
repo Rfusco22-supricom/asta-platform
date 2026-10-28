@@ -48,7 +48,7 @@ export default async function ImpulsaPage() {
           valor={pendientes.sugerencias}
           nota={datos.meta.atendidas > 0 ? `${datos.meta.atendidas} ya atendidas` : 'ninguna atendida todavía'}
         />
-        <Cifra icono="juego" color="ambar" etiqueta="En juego" valor={moneyCompact(pendientes.enJuego)} nota="en otras marcas" />
+        <Cifra icono="juego" color="ambar" etiqueta="En juego" valor={moneyCompact(pendientes.enJuego)} nota="en otras marcas, últimos 12 meses" />
       </section>
 
 
