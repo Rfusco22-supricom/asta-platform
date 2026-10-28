@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
+import { Suspense } from 'react';
+import { CargaGlobal } from '@/components/CargaGlobal';
 import { COOKIE_TEMA, temaValido } from '@/lib/tema';
 import './globals.css';
 
@@ -35,7 +37,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="es" className={inter.variable} data-theme={tema === 'sistema' ? undefined : tema}>
-      <body>{children}</body>
+      <body>
+        {/* El aviso de «cargando» de todo el panel: ver CargaGlobal. */}
+        <Suspense fallback={null}>
+          <CargaGlobal />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

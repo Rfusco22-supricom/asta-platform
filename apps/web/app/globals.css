@@ -3559,10 +3559,12 @@ a.enlace-ficha:hover { color: var(--primario); }
    ══════════════════════════════════════════════════════════════════════════
  *
  * `components/CargandoEnlace.tsx` pinta `.enlace-cargando` dentro del enlace
- * pulsado mientras la pantalla nueva se prepara en el servidor. Con eso basta:
- * el indicador gira en el enlace, y `body:has(...)` pone la barra de arriba y
- * atenúa el contenido. El atenuado espera 150 ms para que una pantalla que
- * abre al instante no parpadee.
+ * pulsado mientras la pantalla nueva se prepara en el servidor: el indicador
+ * gira en el enlace, y `body:has(...)` pone la barra de arriba y atenúa el
+ * contenido. Para los enlaces sin él, los formularios y los botones que llaman
+ * al panel, `components/CargaGlobal.tsx` marca `<html data-cargando>` y aquí se
+ * pinta lo mismo. El atenuado espera 150 ms para que una pantalla que abre al
+ * instante no parpadee.
  */
 .enlace-cargando {
   display: inline-block;
@@ -3586,8 +3588,10 @@ a.enlace-ficha:hover { color: var(--primario); }
 
 @keyframes enlace-gira { to { transform: rotate(360deg); } }
 
-body:has(.enlace-cargando) { cursor: progress; }
-body:has(.enlace-cargando)::before {
+body:has(.enlace-cargando),
+html[data-cargando] body { cursor: progress; }
+body:has(.enlace-cargando)::before,
+html[data-cargando] body::before {
   content: '';
   position: fixed;
   top: 0;
@@ -3603,7 +3607,12 @@ body:has(.enlace-cargando)::before {
 }
 @keyframes enlace-barra { from { transform: scaleX(0); } to { transform: scaleX(0.92); } }
 
-body:has(.enlace-cargando) .contenido {
+/* El enlace o el formulario pulsado (`CargaGlobal`): se atenúa y deja de
+   aceptar clics, para que nadie lo pulse dos veces mientras abre. */
+[data-pulsado] { opacity: 0.6; pointer-events: none; transition: opacity 0.15s ease; }
+
+body:has(.enlace-cargando) .contenido,
+html[data-cargando='navegando'] .contenido {
   opacity: 0.55;
   pointer-events: none;
   transition: opacity 0.2s ease 0.15s;
@@ -3611,8 +3620,10 @@ body:has(.enlace-cargando) .contenido {
 
 @media (prefers-reduced-motion: reduce) {
   .enlace-cargando { animation-duration: 1.6s; }
-  body:has(.enlace-cargando)::before { animation: none; transform: scaleX(0.6); }
-  body:has(.enlace-cargando) .contenido { transition: none; }
+  body:has(.enlace-cargando)::before,
+  html[data-cargando] body::before { animation: none; transform: scaleX(0.6); }
+  body:has(.enlace-cargando) .contenido,
+  html[data-cargando='navegando'] .contenido { transition: none; }
 }
 
 /* ── Categorías de ASTA (#131) ────────────────────────────────────────────── */

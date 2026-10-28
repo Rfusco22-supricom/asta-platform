@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import type { SedeId } from '@asta/shared-types';
 import { nombreMes, rangoDelAnio, rangoDelMes, ultimosMeses } from '@/lib/meses';
+import { empezarCarga } from './CargaGlobal';
 import { urlCon } from './Sedes';
 
 /**
@@ -31,7 +32,10 @@ export function ElegirPeriodo({ base, periodo, sede }: { base: string; periodo: 
     return r.desde === periodo.desde && r.hasta === periodo.hasta;
   });
 
-  const ir = (rango: { desde: string; hasta: string }) => iniciar(() => router.push(urlCon(base, { periodo: rango, sede })));
+  const ir = (rango: { desde: string; hasta: string }) => {
+    empezarCarga();
+    iniciar(() => router.push(urlCon(base, { periodo: rango, sede })));
+  };
 
   return (
     <div className="periodos-elegir" aria-busy={cargando}>
