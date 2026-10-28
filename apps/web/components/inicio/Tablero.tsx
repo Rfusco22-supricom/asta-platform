@@ -88,8 +88,8 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
       nombre: regla.nombre,
       color: COLORES_CATEGORIAS[i]!,
       clientes: enCartera || metaClientes === null ? `${n(clientes)} ${clientes === 1 ? 'cliente' : 'clientes'}` : `${n(clientes)} de ${n(metaClientes)} clientes`,
-      compra: `${corto(c?.compraMensual ?? 0)} USD/mes`,
-      meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} USD/mes`,
+      compra: `${corto(c?.compraMensual ?? 0)} al mes`,
+      meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} al mes`,
       regla:
         clave === 'GENERAL'
           ? `sube a Bronce con ${moneyEntero(cuotasDe('BRONCE').mensual)}/mes`
@@ -102,7 +102,7 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
   return (
     <section className="panel dash-meta hero-meta">
       <div className="hero-texto">
-        <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} USD/mes`}</span>
+        <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} al mes`}</span>
         <div className="hero-cifra">
           <strong>{corto(r.compraMensual)}</strong>
           <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
@@ -127,7 +127,7 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
         <p className="hero-nota">
           {enCartera ? (
             <>
-              Aporta el <strong>{pct(avance)}</strong> de la meta de la empresa, {moneyEntero(r.meta)} USD al mes.
+              Aporta el <strong>{pct(avance)}</strong> de la meta de la empresa, {moneyEntero(r.meta)} al mes.
             </>
           ) : (
             <>

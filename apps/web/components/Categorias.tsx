@@ -44,7 +44,7 @@ export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: 
     <section className="panel cat-meta">
       <div className="cat-meta-cabeza">
         <div>
-          <h2>Camino a {moneyEntero(datos.meta)} USD/mes</h2>
+          <h2>Camino a {moneyEntero(datos.meta)} al mes</h2>
           <p className="panel-nota">{n(enPrograma)} clientes en el programa</p>
         </div>
         {enlace && (

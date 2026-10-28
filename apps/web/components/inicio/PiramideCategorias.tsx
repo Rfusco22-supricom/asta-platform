@@ -25,9 +25,9 @@ export interface NivelPiramide {
   color: string;
   /** «4 de 12», o «260» sin meta. */
   clientes: string;
-  /** «7.053 USD/mes». */
+  /** «$7.053 al mes». */
   compra: string;
-  /** «meta 24.000 USD/mes». */
+  /** «meta $24 mil al mes». */
   meta: string;
   /** «≥ 1.500/mes y 3 de 4 meses». */
   regla: string;

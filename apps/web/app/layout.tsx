@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { DM_Mono, Sora } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { COOKIE_TEMA, temaValido } from '@/lib/tema';
 import './globals.css';
 
 /**
- * Tipografía de la marca: Sora para todo y DM Mono para las cifras.
+ * Tipografía del panel: Inter para todo, también las cifras, con números de
+ * ancho fijo para que las columnas cuadren (`globals.css`). Hasta octubre de
+ * 2026 eran Sora y DM Mono; la aplicación de las tablets sigue con Sora.
  *
- * Con `next/font` las fuentes se descargan al CONSTRUIR y se sirven desde el
- * propio panel: el navegador no habla con Google, no hay salto de tipografía al
- * cargar y funciona igual en la red de la tienda. Cada una deja su familia en
- * una variable CSS, y `globals.css` decide dónde va cada cual.
+ * Con `next/font` la fuente se descarga al CONSTRUIR y se sirve desde el propio
+ * panel: el navegador no habla con Google, no hay salto de tipografía al cargar
+ * y funciona igual en la red de la tienda. Deja su familia en una variable CSS.
  */
-const sora = Sora({ subsets: ['latin'], variable: '--fuente-sora', display: 'swap' });
-const dmMono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--fuente-mono', display: 'swap' });
+const inter = Inter({ subsets: ['latin'], variable: '--fuente-inter', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'ASTA',
@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const tema = temaValido((await cookies()).get(COOKIE_TEMA)?.value);
 
   return (
-    <html lang="es" className={`${sora.variable} ${dmMono.variable}`} data-theme={tema === 'sistema' ? undefined : tema}>
+    <html lang="es" className={inter.variable} data-theme={tema === 'sistema' ? undefined : tema}>
       <body>{children}</body>
     </html>
   );
