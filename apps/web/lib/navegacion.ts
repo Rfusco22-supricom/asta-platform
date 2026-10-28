@@ -52,7 +52,6 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       secciones: [
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/pendientes', titulo: 'Pendientes', icono: 'pendientes' },
-        { href: '/admin/alertas', titulo: 'Alertas', icono: 'alertas' },
         { href: '/admin/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el

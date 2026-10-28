@@ -4243,24 +4243,51 @@ button.serie-col .serie-barra { display: block; }
 .alerta-prioritaria { --tono: var(--danger); --tono-suave: color-mix(in srgb, var(--danger) 13%, transparent); }
 .alerta-pronto { --tono: var(--text-3); --tono-suave: color-mix(in srgb, var(--text-3) 12%, transparent); }
 
-.alertas-intro { margin: 0 0 14px; color: var(--text-2); font-size: 14px; }
-.alertas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 22px; }
+/*
+ * La franja del Inicio: lo primero de la portada. Cada tarjeta es un botón que
+ * abre el detalle en una ventana (`BarraAlertas`).
+ */
+.alertas-barra { margin-bottom: 22px; }
+.alertas-barra-cabeza { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 10px; }
+.alertas-barra-cabeza h2 { margin: 0; font-size: 13px; font-weight: 620; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); }
+.alertas-barra-nota { font-size: 12.5px; color: var(--text-2); }
+.alertas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .alerta-tarjeta {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 12px;
   align-items: center;
-  padding: 16px 18px;
+  width: 100%;
+  padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 4px solid var(--tono);
   border-radius: var(--radius);
   color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   box-shadow: var(--sombra-card);
+  transition: border-color 0.15s, transform 0.15s;
 }
-.alerta-tarjeta:hover { text-decoration: none; border-color: color-mix(in srgb, var(--tono) 45%, var(--border)); border-left-color: var(--tono); }
+.alerta-tarjeta:hover { border-color: color-mix(in srgb, var(--tono) 45%, var(--border)); border-left-color: var(--tono); transform: translateY(-1px); }
+.alerta-tarjeta:focus-visible { outline: 2px solid var(--tono); outline-offset: 2px; }
+.alerta-tarjeta.dash-esqueleto { --tono: var(--border-strong); cursor: default; }
+.alerta-icono { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--tono-suave); color: var(--tono); }
+.alerta-tarjeta-texto { display: grid; gap: 2px; min-width: 0; }
 .alerta-tarjeta-titulo { font-weight: 600; font-size: 14px; }
-.alerta-tarjeta-cifra { grid-column: 1 / -1; color: var(--text-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.alerta-tarjeta-cifra { color: var(--text-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) {
+  .alerta-tarjeta { grid-template-columns: auto minmax(0, 1fr); }
+  .alerta-tarjeta > .alerta-estado { grid-column: 2; justify-self: start; }
+}
+
+/* El detalle, en la ventana: sin la caja de panel, que ya la pone la ventana. */
+.alerta-modal { width: min(880px, calc(100vw - 32px)); }
+.alerta-modal .mes-detalle-caja { position: relative; padding: 22px 24px 20px; }
+.alerta-modal-cerrar { position: absolute; top: 14px; right: 14px; z-index: 1; }
+.alerta-modal .panel.alerta { margin: 0; padding: 0 0 0 16px; background: none; border-top: 0; border-right: 0; border-bottom: 0; box-shadow: none; border-radius: 0; }
+.alerta-modal .alerta-cabeza { padding-right: 44px; }
 
 .alerta-estado {
   display: inline-flex;
@@ -4327,7 +4354,7 @@ button.serie-col .serie-barra { display: block; }
 .medidor-dispara { --tono: var(--danger); }
 .medidor-cabeza { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .medidor-titulo { font-size: 13px; font-weight: 600; color: var(--text-2); }
-.medidor-cabeza strong { font-size: 20px; font-weight: 650; color: var(--tono); font-variant-numeric: tabular-nums; }
+.medidor-cabeza strong { font-size: 20px; font-weight: 650; color: var(--tono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .medidor-barra { position: relative; height: 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--text) 8%, transparent); }
 .medidor-relleno { position: absolute; inset: 0 auto 0 0; border-radius: var(--radius-pill); background: var(--tono); }
 .medidor-umbral { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; }
