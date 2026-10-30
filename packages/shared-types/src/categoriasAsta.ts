@@ -13,6 +13,10 @@ import { montoSchema, odooIdSchema } from './common.js';
  * Un cliente queda en la categoría MÁS ALTA cuyas dos condiciones cumple: quien
  * compra 2.000 al mes pero solo en dos de los cuatro meses no es Oro, y sí
  * Bronce. Las reglas viven solo aquí: cambiarlas es cambiar esta lista.
+ *
+ * Mínimos subidos el 2026-10-30 a petición de Marketing: Bronce de 250 a 500,
+ * Plata de 600 a 900 y Diamante de 3.000 a 4.500 al mes; Oro sigue en 1.500.
+ * Son también las cuotas mensuales del programa trimestral (`cuotasDe`).
  */
 
 export const claveCategoriaSchema = z.enum(['DIAMANTE', 'ORO', 'PLATA', 'BRONCE', 'GENERAL']);
@@ -33,10 +37,10 @@ export interface ReglaCategoria {
 
 /** De más alta a más baja: el orden en que se prueban. */
 export const CATEGORIAS_ASTA: readonly ReglaCategoria[] = [
-  { clave: 'DIAMANTE', nombre: 'Diamante', minimoMensual: 3000, minimoMeses: 3, metaClientes: 6, metaCompraMensual: 21600 },
+  { clave: 'DIAMANTE', nombre: 'Diamante', minimoMensual: 4500, minimoMeses: 3, metaClientes: 6, metaCompraMensual: 21600 },
   { clave: 'ORO', nombre: 'Oro', minimoMensual: 1500, minimoMeses: 3, metaClientes: 12, metaCompraMensual: 24000 },
-  { clave: 'PLATA', nombre: 'Plata', minimoMensual: 600, minimoMeses: 3, metaClientes: 24, metaCompraMensual: 22800 },
-  { clave: 'BRONCE', nombre: 'Bronce', minimoMensual: 250, minimoMeses: 2, metaClientes: 45, metaCompraMensual: 18000 },
+  { clave: 'PLATA', nombre: 'Plata', minimoMensual: 900, minimoMeses: 3, metaClientes: 24, metaCompraMensual: 22800 },
+  { clave: 'BRONCE', nombre: 'Bronce', minimoMensual: 500, minimoMeses: 2, metaClientes: 45, metaCompraMensual: 18000 },
   { clave: 'GENERAL', nombre: 'Cliente general', minimoMensual: 0, minimoMeses: 0, metaClientes: null, metaCompraMensual: 13600 },
 ];
 
