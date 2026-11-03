@@ -58,6 +58,8 @@ import {
   type Cotizaciones,
   pedidoSugeridoRespuestaSchema,
   demandaAstaRespuestaSchema,
+  ofertaClienteRespuestaSchema,
+  type OfertaCliente,
   type DemandaAsta,
   pedidosClienteRespuestaSchema,
   type PedidoSugerido,
@@ -754,4 +756,9 @@ export async function getPedidosParaAtender(accessToken: string, alcance: 'empre
 /** La demanda no cubierta de ASTA: impresoras buscadas en la aplicación sin producto ASTA. */
 export async function getDemandaAsta(accessToken: string, rango: { desde: string; hasta: string }, sede: number | null = null): Promise<DemandaAsta> {
   return (await request(`/api/v1/admin/demanda${consulta(rango, sede)}`, demandaAstaRespuestaSchema, accessToken)).data;
+}
+
+/** La próxima mejor oferta para un cliente de la cartera (o cualquiera, para administración). */
+export async function getOfertaCliente(accessToken: string, partnerId: number): Promise<OfertaCliente> {
+  return (await request(`/api/v1/salesperson/clients/${partnerId}/oferta`, ofertaClienteRespuestaSchema, accessToken)).data;
 }

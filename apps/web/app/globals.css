@@ -4423,3 +4423,10 @@ button.serie-col .serie-barra { display: block; }
 .demanda-sin-asta { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
 .demanda-sin-datos { color: var(--text-2); }
 .demanda-impresoras { max-width: 46ch; overflow-wrap: anywhere; }
+
+/* ── Próxima mejor oferta (ficha del cliente) ──────────────────────────────── */
+.oferta-lista { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.oferta-lista li { padding-left: 4px; }
+.oferta-producto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.oferta-producto strong { font-weight: 600; overflow-wrap: anywhere; }
+

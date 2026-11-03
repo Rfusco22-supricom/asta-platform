@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
@@ -17,6 +18,7 @@ import { Avatar } from '@/components/Avatar';
 import { Cifra } from '@/components/Cifras';
 import { GraficaMensual } from './GraficaMensual';
 import { Perfil } from './Perfil';
+import { Oferta } from './Oferta';
 
 /**
  * Ficha de cliente.
@@ -251,6 +253,10 @@ export default async function FichaCliente({ params, searchParams }: Props) {
       </section>
 
       {perfil && <Perfil perfil={perfil} />}
+
+      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
+        <Oferta token={sesion.accessToken} partnerId={partnerId} />
+      </Suspense>
 
       {/* ── Serie mensual ─────────────────────────────────────────────────── */}
       <section className="panel">
