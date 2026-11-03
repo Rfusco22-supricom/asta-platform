@@ -4417,3 +4417,9 @@ button.serie-col .serie-barra { display: block; }
 .cot-espera-larga { color: var(--warning); }
 .cot-vencida { color: var(--danger); }
 .cot-pie { margin: 12px 0 0; }
+
+/* ── Demanda no cubierta (/admin/demanda) ──────────────────────────────────── */
+.demanda-validar { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.demanda-sin-asta { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.demanda-sin-datos { color: var(--text-2); }
+.demanda-impresoras { max-width: 46ch; overflow-wrap: anywhere; }

@@ -44,6 +44,7 @@ import {
 } from '@asta/shared-types';
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
+import { demandaAsta } from '../services/recomendador/demanda.service.js';
 import {
   anadirAlias,
   anadirCompatibilidad,
@@ -536,6 +537,22 @@ adminRouter.delete('/personal/:odooUserId', autorizar('admin.usuarios.gestionar'
  * Qué buscan los clientes, qué no encuentran y dónde se pierden ventas.
  * `?desde=&hasta=` como los reportes; sin ellos, los últimos doce meses.
  */
+/**
+ * La demanda no cubierta de ASTA: las impresoras que se buscan en la aplicación
+ * ASTA sin producto ASTA, y los cartuchos que las cubrirían (ver
+ * `demanda.service`). Por periodo y sede, como los reportes.
+ */
+adminRouter.get('/demanda', autorizar('admin.recomendador.ver'), async (req, res, next) => {
+  try {
+    const query = req.query as Record<string, unknown>;
+    const rango = rangoDeLaPeticion(query);
+    const sede = sedeDeLaPeticion(query);
+    res.json({ data: await dePantalla(`admin:demanda:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () => demandaAsta(rango, sede)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 adminRouter.get('/recomendador/estadisticas', autorizar('admin.recomendador.ver'), async (req, res, next) => {
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);

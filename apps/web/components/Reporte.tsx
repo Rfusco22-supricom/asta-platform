@@ -49,15 +49,16 @@ export { etiquetaMes } from '@/lib/meses';
 /**
  * El importe con una barra detrás, proporcional al mayor de la tabla: se ve de
  * un vistazo quién pesa cuánto sin tener que comparar cifras de seis dígitos.
+ * `texto`, para lo que no es dinero (búsquedas, unidades).
  */
-export function Proporcion({ valor, maximo }: { valor: number; maximo: number }) {
+export function Proporcion({ valor, maximo, texto }: { valor: number; maximo: number; texto?: string }) {
   const ancho = maximo > 0 ? Math.max(0, Math.min(100, (valor / maximo) * 100)) : 0;
   return (
     <span className="proporcion">
       <span className="proporcion-barra" aria-hidden="true">
         <span style={{ width: `${ancho}%` }} />
       </span>
-      {money(valor)}
+      {texto ?? money(valor)}
     </span>
   );
 }
