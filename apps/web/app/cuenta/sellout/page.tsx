@@ -4,6 +4,8 @@ import { Cifra } from '@/components/Cifras';
 import { getPorMarcar, getSellOutCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { etiquetaMes, nombreMes } from '@/lib/meses';
 import { fecha } from '@/lib/formato';
+import { AvisoSellOut } from '@/components/AvisoSellOut';
+import { plazoSellout } from '@asta/shared-types';
 import { SubirSellOut } from './SubirSellOut';
 import { LoQueTeVendimos } from './LoQueTeVendimos';
 
@@ -48,6 +50,7 @@ export default async function SellOutPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+      <AvisoSellOut reportado={r.reportes.some((x) => x.vigente && x.mes === plazoSellout().mes)} enlace={false} />
       {ultimo && (
         <section className="stats">
           <Cifra icono="ventas" etiqueta={`Vendido · ${etiquetaMes(ultimo.mes)}`} valor={n(ultimo.vendidas)} nota="unidades" />

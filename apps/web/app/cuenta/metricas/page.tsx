@@ -5,9 +5,10 @@ import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
 import { ProgramaCliente } from '@/components/ProgramaCliente';
+import { AvisoSellOut } from '@/components/AvisoSellOut';
 import { getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money, moneyCompact } from '@/lib/formato';
-import type { MetricasCliente } from '@asta/shared-types';
+import { plazoSellout, type MetricasCliente } from '@asta/shared-types';
 
 /**
  * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
@@ -159,6 +160,9 @@ export default async function MetricasPage() {
     <Marco usuario={sesion.usuario} titulo="Mis métricas">
       {/* Su nivel del programa; si no se pudo leer, el rol de la cuenta. */}
       <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
+      {m.programa && (
+        <AvisoSellOut reportado={m.programa.evaluacion.meses.some((x) => x.mes === plazoSellout().mes && x.sellout === true)} enlace />
+      )}
       <ProgramaCliente programa={m.programa} />
       <Compras m={m} />
       <QueCompras m={m} />

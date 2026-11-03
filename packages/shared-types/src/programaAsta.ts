@@ -15,8 +15,8 @@ import { claveCategoriaSchema, reglaDe, type ClaveCategoria } from './categorias
  *
  *   · cuota mensual    — los tres meses compró al menos su mínimo mensual;
  *   · cuota trimestral — en el trimestre, al menos 3 × su mínimo mensual;
- *   · sell-out         — reportó los tres meses, cada uno antes del día
- *                        `DIA_LIMITE_SELLOUT` del mes siguiente.
+ *   · sell-out         — reportó los tres meses, cada uno hasta su último
+ *                        día (hora de Caracas).
  *
  * Cumple los tres: sube un nivel (Diamante se queda). Falla alguno: baja uno
  * (Cliente general se queda). De uno en uno, aunque compre para más.
@@ -40,8 +40,24 @@ export const EXCEDENTE: Record<ClaveCategoria, number> = { GENERAL: 1.5, BRONCE:
 /** La parte de las referencias ASTA que hay que comprar en el trimestre para el token de variedad. */
 export const VARIEDAD = 0.2;
 
-/** El sell-out de un mes vale si se reporta antes de este día del mes siguiente (incluido). */
-export const DIA_LIMITE_SELLOUT = 10;
+/**
+ * Desde cuántos días antes de acabar el mes se le recuerda al cliente que
+ * reporte su sell-out. El plazo es el último día del mes (decidido con
+ * Supricom el 2026-11-03; antes era el día 10 del siguiente).
+ */
+export const DIAS_AVISO_SELLOUT = 5;
+
+/**
+ * El mes en curso en Caracas y los días que le quedan, contando hoy: el último
+ * día del mes, 1. Caracas es UTC−4 todo el año.
+ */
+export function plazoSellout(hoy: Date = new Date()): { mes: string; ultimoDia: number; dias: number } {
+  const caracas = new Date(hoy.getTime() - 4 * 3_600_000);
+  const a = caracas.getUTCFullYear();
+  const m = caracas.getUTCMonth();
+  const ultimoDia = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+  return { mes: `${a}-${String(m + 1).padStart(2, '0')}`, ultimoDia, dias: ultimoDia - caracas.getUTCDate() + 1 };
+}
 
 /** El primer trimestre del programa: el nivel de partida es la categoría de antes al empezarlo. */
 export const PRIMER_TRIMESTRE = '2026-Q4';

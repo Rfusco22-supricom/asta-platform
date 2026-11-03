@@ -22,10 +22,10 @@ function Marca({ estado }: { estado: Estado }) {
   return <span className="prog-marca pendiente" aria-label="Pendiente">·</span>;
 }
 
-/** «nov 26» → el día que vence su sell-out: «10 dic». */
+/** «2026-11» → el día que vence su sell-out, el último del mes: «30 nov». */
 function limite(mes: string): string {
   const [a, m] = mes.split('-').map(Number) as [number, number];
-  return `10 ${etiquetaMes(new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 7)).split(' ')[0]}`;
+  return `${new Date(Date.UTC(a, m, 0)).getUTCDate()} ${etiquetaMes(mes).split(' ')[0]}`;
 }
 
 /** El mes que empieza el trimestre siguiente: cuando se cierra. */
@@ -132,7 +132,7 @@ export function ProgramaCliente({ programa }: { programa: MetricasCliente['progr
             {moneyEntero(e.compraTrimestre)} de {moneyEntero(e.cuotaTrimestral)}
           </span>
         </Obligatorio>
-        <Obligatorio titulo="Sell-out" tokens={TOKENS.sellout} estado={e.obligatorios.sellout} regla="Repórtalo cada mes en «Mi sell-out», hasta el día 10 del siguiente">
+        <Obligatorio titulo="Sell-out" tokens={TOKENS.sellout} estado={e.obligatorios.sellout} regla="Repórtalo cada mes en «Mi sell-out», hasta su último día">
           <span className="prog-meses">
             {e.meses.map((m) => (
               <span key={m.mes} className={`prog-mes ${m.sellout === true ? 'ok' : m.sellout === false ? 'no' : ''}`}>

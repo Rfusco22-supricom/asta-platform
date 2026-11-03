@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { bajar, mesesDelTrimestre, subir, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
+import { bajar, mesesDelTrimestre, plazoSellout, subir, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { CierreNoPermitido, cerrarTrimestre, conNivelesDelPrograma, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
 
@@ -42,8 +42,15 @@ describe('Trimestres', () => {
     expect([subir('BRONCE'), subir('DIAMANTE'), bajar('ORO'), bajar('GENERAL')]).toEqual(['PLATA', 'DIAMANTE', 'PLATA', 'GENERAL']);
   });
 
-  it('el sell-out de diciembre vale hasta el 10 de enero, hora de Caracas', () => {
-    expect(limiteSellout('2026-12').toISOString()).toBe('2027-01-11T04:00:00.000Z');
+  it('el sell-out de diciembre vale hasta el 31 de diciembre, hora de Caracas', () => {
+    expect(limiteSellout('2026-12').toISOString()).toBe('2027-01-01T04:00:00.000Z');
+  });
+
+  it('el plazo del mes en curso cuenta hoy y cambia de mes a medianoche de Caracas', () => {
+    expect(plazoSellout(new Date('2026-11-26T12:00:00Z'))).toEqual({ mes: '2026-11', ultimoDia: 30, dias: 5 });
+    expect(plazoSellout(new Date('2026-12-01T03:59:00Z'))).toEqual({ mes: '2026-11', ultimoDia: 30, dias: 1 });
+    expect(plazoSellout(new Date('2026-12-01T04:00:00Z'))).toEqual({ mes: '2026-12', ultimoDia: 31, dias: 31 });
+    expect(plazoSellout(new Date('2028-02-28T12:00:00Z'))).toEqual({ mes: '2028-02', ultimoDia: 29, dias: 2 });
   });
 });
 
@@ -101,7 +108,7 @@ describe('Las reglas', () => {
 
 describe('El cierre, contra MySQL', () => {
   const T = '2099-Q1';
-  const DESPUES = new Date('2099-04-11T05:00:00Z');
+  const DESPUES = new Date('2099-04-01T05:00:00Z');
   const cliente = (clave: string, nivel: 'PLATA' | 'ORO', nivelFinal: 'ORO' | 'BRONCE' | 'PLATA', tokens: number, definitiva = true): ClientePrograma => ({
     clave,
     partnerId: 3_990_000_001,
@@ -125,7 +132,7 @@ describe('El cierre, contra MySQL', () => {
   });
 
   it('no antes de que venza el plazo del sell-out de su último mes', async () => {
-    await expect(cerrarTrimestre(T, { aplicar: true, hoy: new Date('2099-04-10T12:00:00Z'), evaluarCon })).rejects.toThrow(/desde el 2099-04-11/);
+    await expect(cerrarTrimestre(T, { aplicar: true, hoy: new Date('2099-04-01T03:00:00Z'), evaluarCon })).rejects.toThrow(/desde el 2099-04-01/);
   });
 
   it('no con una evaluación que todavía puede cambiar', async () => {
