@@ -22,6 +22,7 @@ export const PESTANAS_ASTA_ADMIN = [
   { href: '/admin/asta', titulo: 'Oportunidades' },
   { href: '/admin/categorias', titulo: 'Categorías' },
   { href: '/admin/sellout', titulo: 'Sell-out' },
+  { href: '/admin/demanda', titulo: 'Demanda' },
 ];
 
 export const PESTANAS_ASTA_VENDEDOR = [
