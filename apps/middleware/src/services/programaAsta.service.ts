@@ -1,7 +1,6 @@
 import {
   ESCALERA,
   EXCEDENTE,
-  DIA_LIMITE_SELLOUT,
   PRIMER_TRIMESTRE,
   TOKENS,
   VARIEDAD,
@@ -119,11 +118,11 @@ export function evaluar(e: EntradaEvaluacion): EvaluacionTrimestre {
 // Lo que se lee
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** El último instante en que vale el sell-out de un mes: el día `DIA_LIMITE_SELLOUT` del siguiente, a medianoche de Caracas. */
+/** El último instante en que vale el sell-out de un mes: el final de su último día, hora de Caracas. */
 export function limiteSellout(mes: string): Date {
   const [a, m] = mes.split('-').map(Number) as [number, number];
-  // Caracas es UTC−4 todo el año: las 00:00 del día siguiente al límite son las 04:00 UTC.
-  return new Date(Date.UTC(a, m, DIA_LIMITE_SELLOUT + 1, 4));
+  // Caracas es UTC−4 todo el año: las 00:00 del día 1 del mes siguiente son las 04:00 UTC.
+  return new Date(Date.UTC(a, m, 1, 4));
 }
 
 function finDeMes(mes: string): string {

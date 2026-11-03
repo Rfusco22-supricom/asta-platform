@@ -12,8 +12,8 @@
  *
  * Sin trimestre, el que acaba de terminar. El simulacro se puede lanzar en
  * cualquier momento, también con el trimestre en curso: dice cómo cerraría si
- * terminara hoy. Cerrar, solo cuando ya no puede cambiar (desde el día 11 del
- * mes siguiente a su último mes, cuando vence el plazo del sell-out), y una
+ * terminara hoy. Cerrar, solo cuando ya no puede cambiar (desde el día 1 del
+ * trimestre siguiente, cuando vence el plazo del sell-out de su último mes), y una
  * vez. Al cerrar, pone en las cuentas el nivel nuevo (`aplicarNiveles`).
  */
 import { VARIEDAD, nombreTrimestre, reglaDe, trimestreAnterior, trimestreDe, trimestreSchema, type ClaveCategoria } from '@asta/shared-types';

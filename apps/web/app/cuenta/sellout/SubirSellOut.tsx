@@ -33,7 +33,8 @@ function base64De(archivo: File): Promise<string> {
 export function SubirSellOut() {
   const router = useRouter();
   const meses = mesesElegibles();
-  const [mes, setMes] = useState(meses[1]!);
+  // El de este mes: para el programa vale hasta su último día.
+  const [mes, setMes] = useState(meses[0]!);
   const [tipo, setTipo] = useState<TipoSellOut>('VENTAS');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [validacion, setValidacion] = useState<ValidacionSellOut | null>(null);
