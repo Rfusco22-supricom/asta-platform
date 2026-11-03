@@ -45,3 +45,4 @@ export * from './alertasTablero.js';
 export * from './cotizaciones.js';
 export * from './pedidoSugerido.js';
 export * from './demandaAsta.js';
+export * from './proximaOferta.js';

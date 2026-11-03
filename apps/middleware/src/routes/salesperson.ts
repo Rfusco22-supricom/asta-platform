@@ -12,6 +12,7 @@ import { actividadDeCartera } from '../services/actividadCartera.service.js';
 import { marcarSugerencia, sugerenciasPasale } from '../services/impulsa/pasaleAAsta.service.js';
 import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
+import { proximaOferta } from '../services/proximaOferta.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
@@ -146,6 +147,20 @@ salespersonRouter.get(
   autorizar('cliente.perfil.ver'),
   getClientProfileHandler,
 );
+
+/**
+ * La próxima mejor oferta: lo que compran de ASTA sus clientes parecidos y él
+ * no (ver `proximaOferta.service`). Con la misma acción que el perfil, que
+ * comprueba que el cliente sea de la cartera de quien pide.
+ */
+salespersonRouter.get('/clients/:partnerId/oferta', autorizar('cliente.perfil.ver'), async (req, res, next) => {
+  try {
+    const partnerId = Number(req.params.partnerId);
+    res.json({ data: await dePantalla(`cliente:${partnerId}:oferta`, () => proximaOferta(partnerId)) });
+  } catch (error) {
+    next(error);
+  }
+});
 
 salespersonRouter.post(
   '/clients/:partnerId/notes',
