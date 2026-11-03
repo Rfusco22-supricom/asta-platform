@@ -21,7 +21,10 @@ import { alertasTablero } from '../services/alertasTablero.service.js';
 import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
+import { atenderPedido, pedidosParaAtender } from '../services/pedidoSugerido.service.js';
 import {
+  atenderPedidoSchema,
+  estadoPedidoClienteSchema,
   tipoLoteSchema,
   validarLoteAstaSchema,
   validarLoteFabricanteSchema,
@@ -1037,6 +1040,37 @@ adminRouter.get('/sellout', autorizar('admin.sellout.ver'), async (req, res, nex
       return;
     }
     res.json({ data: await sellOutEmpresa(pedido) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Los pedidos sugeridos que envían todos los clientes, y marcarlos (ver `pedidoSugerido.service`). */
+const atenderPedidos = autorizar('admin.pedidos.atender');
+
+adminRouter.get('/pedidos-clientes', atenderPedidos, async (req, res, next) => {
+  try {
+    const estado = estadoPedidoClienteSchema.safeParse(req.query.estado ?? 'ENVIADO');
+    if (!estado.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'Estado no válido.' } });
+      return;
+    }
+    res.json({ data: await pedidosParaAtender(null, estado.data) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.patch('/pedidos-clientes/:id', atenderPedidos, async (req, res, next) => {
+  try {
+    const cuerpo = atenderPedidoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const pedido = await atenderPedido(String(req.params.id), cuerpo.data, { appUserId: req.identity.appUserId, vendedor: null });
+    recordAudit({ action: 'pedido.atendido', ...auditContext(req), targetType: 'pedidos_cliente', targetId: pedido.id, metadata: { estado: pedido.estado, odooPartnerId: pedido.partnerId } });
+    res.json({ data: pedido });
   } catch (error) {
     next(error);
   }

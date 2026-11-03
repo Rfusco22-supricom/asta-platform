@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { ErrorCode, PorMarcar, ReporteSellOut, ResumenSellOut, SellOutEmpresa, TipoSellOut, ValidacionSellOut } from '@asta/shared-types';
+import { plazoSellout } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheConRefresco } from '../utils/cacheConRefresco.js';
@@ -582,6 +583,79 @@ export async function porMarcar(partnerId: number, mes: string, hoy = new Date()
     .sort((a, b) => Number(b.quedan > 0) - Number(a.quedan > 0) || b.compradas - a.compradas || a.nombre.localeCompare(b.nombre));
 
   return { mes, desde: inventario ? sumarMeses(inventario, 1) : desde, inventario, productos };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lo que vende y lo que compra al mes: para el pedido sugerido
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Meses completos con los que se calcula lo que suele comprarnos al mes. */
+const MESES_RITMO_COMPRA = 3;
+
+export interface RitmoProducto {
+  productId: number;
+  sku: string | null;
+  nombre: string;
+  /** Lo que le queda, como en «Lo que te vendimos»; `null` sin sell-out. */
+  quedan: number | null;
+  /** Su venta media al mes; `null` sin sell-out. */
+  ventaMensual: number | null;
+  /** Lo que suele comprarnos al mes. */
+  compraMensual: number;
+  /** Lo que ya nos compró este mes. */
+  compradoMes: number;
+}
+
+/**
+ * Por producto ASTA: lo que vende al mes y lo que le queda, si reporta
+ * sell-out, y lo que suele comprarnos al mes. Lo usa el pedido sugerido.
+ *
+ * La venta media es la de los meses completos con dato, como los días de
+ * inventario de «Mi sell-out»; si solo hay dato del mes en curso, ese mes por
+ * la parte que ha pasado. Lo que suele comprar es la media de los
+ * `MESES_RITMO_COMPRA` meses completos anteriores.
+ */
+export async function ritmosDelCliente(partnerId: number, hoy = new Date()): Promise<{ conSellOut: boolean; productos: RitmoProducto[] }> {
+  const actual = mesDe(hoy);
+  const meses = Array.from({ length: MESES_RESUMEN }, (_, i) => sumarMeses(actual, i - MESES_RESUMEN + 1));
+  const [marcado, de, comprado, { porId }] = await Promise.all([
+    porMarcar(partnerId, actual, hoy),
+    reportado(partnerId, [sumarMeses(meses[0]!, -1), ...meses]),
+    dePantalla(`cliente:${partnerId}:sellout:comprado:${actual}`, () => compradoPorMes(partnerId, meses)),
+    catalogoAsta(),
+  ]);
+
+  const conSellOut = meses.some((m) => de.VENTAS.has(m) || de.INVENTARIO.has(m));
+  const completos = meses.filter((m) => m < actual);
+  const vendido = new Map(meses.map((m) => [m, vendidoDelMes(m, de, comprado)?.porProducto]));
+  const { ultimoDia, dias } = plazoSellout(hoy);
+  const parteDelMes = (ultimoDia - dias + 1) / ultimoDia;
+  const deCompra = completos.slice(-MESES_RITMO_COMPRA);
+  const quedan = new Map(marcado.productos.map((p) => [p.productId, p.quedan]));
+
+  const ids = new Set<number>([...quedan.keys(), ...deCompra.flatMap((m) => [...(comprado.get(m)?.keys() ?? [])]), ...(comprado.get(actual)?.keys() ?? [])]);
+  const productos: RitmoProducto[] = [];
+  for (const id of ids) {
+    const p = porId.get(id);
+    if (!p) continue;
+    let ventaMensual: number | null = null;
+    if (conSellOut) {
+      const conDato = completos.map((m) => vendido.get(m)?.get(id) ?? (vendido.get(m) ? 0 : undefined)).filter((v): v is number => v !== undefined);
+      const delMes = vendido.get(actual)?.get(id);
+      ventaMensual = conDato.length ? conDato.reduce((s, v) => s + v, 0) / conDato.length : delMes !== undefined ? delMes / parteDelMes : 0;
+    }
+    const compras = deCompra.reduce((s, m) => s + (comprado.get(m)?.get(id) ?? 0), 0);
+    productos.push({
+      productId: id,
+      sku: p.sku,
+      nombre: p.nombre,
+      quedan: conSellOut ? (quedan.get(id) ?? 0) : null,
+      ventaMensual,
+      compraMensual: Math.max(0, compras / MESES_RITMO_COMPRA),
+      compradoMes: comprado.get(actual)?.get(id) ?? 0,
+    });
+  }
+  return { conSellOut, productos };
 }
 
 /**

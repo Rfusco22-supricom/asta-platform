@@ -74,6 +74,10 @@ export type AuditAction =
   | 'kiosco.codigo_revision_revocado'
   /// Un cliente subió su sell-out de un mes (ventas o inventario).
   | 'sellout.subido'
+  /// Un cliente envió su pedido sugerido a su vendedor, y quién lo atendió
+  /// (pasado a Odoo o descartado).
+  | 'pedido.enviado'
+  | 'pedido.atendido'
   | 'user.invitado'
   | 'user.invitacion_aceptada'
   /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin

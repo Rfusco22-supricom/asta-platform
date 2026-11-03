@@ -246,6 +246,8 @@ GRANT SELECT, INSERT, UPDATE ON Asta.kiosk_codigos            TO 'asta_app'@'<ho
 GRANT SELECT, INSERT, UPDATE ON Asta.sell_out_reportes        TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT, UPDATE ON Asta.sell_out_lineas          TO 'asta_app'@'<host>';
 GRANT SELECT, INSERT         ON Asta.programa_trimestres      TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT, UPDATE ON Asta.pedidos_cliente          TO 'asta_app'@'<host>';
+GRANT SELECT, INSERT         ON Asta.pedidos_cliente_lineas   TO 'asta_app'@'<host>';
 GRANT SELECT                 ON Asta.ventas_smartbit          TO 'asta_app'@'<host>';
 
 -- Esta tabla ya existía, pero la telemetría del recomendador (#43) completa sus
@@ -268,6 +270,8 @@ GRANT SELECT ON Asta.kiosk_codigos            TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.sell_out_reportes        TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.sell_out_lineas          TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.programa_trimestres      TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.pedidos_cliente          TO 'asta_lectura'@'<host>';
+GRANT SELECT ON Asta.pedidos_cliente_lineas   TO 'asta_lectura'@'<host>';
 GRANT SELECT ON Asta.ventas_smartbit          TO 'asta_lectura'@'<host>';
 ```
 

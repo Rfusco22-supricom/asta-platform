@@ -56,6 +56,11 @@ import {
   alertasTableroRespuestaSchema,
   cotizacionesRespuestaSchema,
   type Cotizaciones,
+  pedidoSugeridoRespuestaSchema,
+  pedidosClienteRespuestaSchema,
+  type PedidoSugerido,
+  type PedidoCliente,
+  type EstadoPedidoCliente,
   type EstadoCotizacion,
   type AlertasTablero,
   type CategoriasAsta,
@@ -726,4 +731,20 @@ const clientesAdminSchema = z.object({
 /** Todos los clientes con cuenta, para la paleta ⌘K del administrador. */
 export async function getClientesAdmin(accessToken: string) {
   return (await request('/api/v1/admin/clientes', clientesAdminSchema, accessToken)).data;
+}
+
+/** El pedido sugerido de reposición del cliente con sesión. */
+export async function getPedidoSugerido(accessToken: string): Promise<PedidoSugerido> {
+  return (await request('/api/v1/account/pedido-sugerido', pedidoSugeridoRespuestaSchema, accessToken)).data;
+}
+
+/** Los últimos pedidos que envió el cliente con sesión. */
+export async function getPedidosCliente(accessToken: string): Promise<PedidoCliente[]> {
+  return (await request('/api/v1/account/pedidos', pedidosClienteRespuestaSchema, accessToken)).data;
+}
+
+/** Los pedidos que envían los clientes: todos (administración) o los de la propia cartera. */
+export async function getPedidosParaAtender(accessToken: string, alcance: 'empresa' | 'cartera', estado: EstadoPedidoCliente = 'ENVIADO'): Promise<PedidoCliente[]> {
+  const ruta = alcance === 'empresa' ? '/api/v1/admin/pedidos-clientes' : '/api/v1/salesperson/pedidos-clientes';
+  return (await request(`${ruta}?estado=${estado}`, pedidosClienteRespuestaSchema, accessToken)).data;
 }

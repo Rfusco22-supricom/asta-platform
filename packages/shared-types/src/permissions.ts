@@ -57,6 +57,8 @@ export const accionSchema = z.enum([
   'admin.compatibilidades.revisar',
   'admin.kioscos.gestionar',
   'admin.sellout.ver',
+  'admin.pedidos.atender',
+  'pedidos.cartera.atender',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
   'admin.duplicados.ver',
@@ -67,6 +69,7 @@ export const accionSchema = z.enum([
   'tablets.propias.gestionar',
   'metricas.propias.ver',
   'sellout.propio.gestionar',
+  'pedido.propio.enviar',
   'catalogo.leer',
   'precios.propios.leer',
   'facturas.propias.leer',
@@ -217,6 +220,26 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver el sell-out que reportan todos los clientes',
+  },
+  'pedido.propio.enviar': {
+    // Su pedido sugerido sale de SU sell-out y de SUS compras, y lo envía a su
+    // vendedor. El cliente sale del token: no hay parámetro que cambiarle.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Ver su pedido sugerido de reposición y enviarlo a su vendedor',
+  },
+  'pedidos.cartera.atender': {
+    // Aparte de la del administrador, como `reportes.propios.ver`: la ruta del
+    // vendedor solo ve y marca los pedidos de los clientes de los que es el
+    // vendedor en Odoo, y eso sale de `odooUserId` del token.
+    roles: ['VENDEDOR'],
+    ambito: 'ninguno',
+    descripcion: 'Ver los pedidos que envían los clientes de su cartera y marcarlos',
+  },
+  'admin.pedidos.atender': {
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver los pedidos que envían todos los clientes y marcarlos',
   },
   'admin.compatibilidades.revisar': {
     // Validar una compatibilidad la pone delante del cliente en el kiosco (#39).

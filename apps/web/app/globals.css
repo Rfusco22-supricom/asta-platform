@@ -4227,6 +4227,29 @@ button.serie-col .serie-barra { display: block; }
 }
 .so-historial { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
 .so-reemplazado { opacity: 0.55; }
+
+/* ── Pedido sugerido (/cuenta/pedido) y pedidos de clientes (Cotizaciones) ── */
+.pedido-quitado { opacity: 0.5; }
+.pedido-ok { margin: 0; color: var(--positive); font-weight: 600; }
+.pedido-pie { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.pedido-nota { display: grid; gap: 6px; flex: 1 1 280px; min-width: 0; }
+.pedido-nota textarea, .pedido-atender input { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: inherit; font: inherit; font-size: 13.5px; resize: vertical; }
+.pedido-total { display: grid; justify-items: end; gap: 6px; text-align: right; }
+.pedido-total strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.pedido-estado { margin-left: 6px; }
+.pedido-en_odoo { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 45%, var(--border)); }
+.pedido-descartado { color: var(--text-2); }
+.pedido-enviado { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.pedidos-clientes { display: grid; gap: 10px; }
+.pedidos-clientes > ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.pedido-cliente { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); }
+.pedido-cliente:first-child { border-top: 0; }
+.pedido-cliente-cabeza { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; }
+.pedido-cliente-cabeza strong { font-weight: 600; overflow-wrap: anywhere; }
+.pedido-cliente summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+.pedido-cliente table { width: 100%; font-size: 13px; }
+.pedido-atender { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pedido-atender input { width: auto; flex: 1 1 180px; min-width: 0; }
 .met-lista li > :last-child { flex: none; align-self: center; }
 
 /* De qué meses es la media de la meta: «media de jun – sep 2026». */

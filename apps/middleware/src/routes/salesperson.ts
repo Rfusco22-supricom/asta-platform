@@ -18,7 +18,8 @@ import { rangoDeLaPeticion } from '../services/rango.js';
 import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { z } from 'zod';
-import { marcarImpulsaSchema, nuevaCompatibilidadSchema, trimestreDe } from '@asta/shared-types';
+import { atenderPedidoSchema, estadoPedidoClienteSchema, marcarImpulsaSchema, nuevaCompatibilidadSchema, trimestreDe } from '@asta/shared-types';
+import { atenderPedido, pedidosParaAtender } from '../services/pedidoSugerido.service.js';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
 import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
@@ -355,6 +356,50 @@ salespersonRouter.post('/compatibilidades', autorizar('compatibilidades.proponer
 salespersonRouter.get('/compatibilidades/propias', autorizar('compatibilidades.proponer'), async (req, res, next) => {
   try {
     res.json({ data: await propuestasDe(req.identity.appUserId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Los pedidos sugeridos que envían los clientes de los que es el vendedor en
+ * Odoo, y marcarlos. El vendedor sale de `odooUserId` del token.
+ */
+const atenderPedidos = autorizar('pedidos.cartera.atender');
+
+salespersonRouter.get('/pedidos-clientes', atenderPedidos, async (req, res, next) => {
+  try {
+    const { odooUserId } = req.identity;
+    if (odooUserId === null) {
+      res.status(409).json({ error: { code: 'CONFLICT', message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.' } });
+      return;
+    }
+    const estado = estadoPedidoClienteSchema.safeParse(req.query.estado ?? 'ENVIADO');
+    if (!estado.success) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'Estado no válido.' } });
+      return;
+    }
+    res.json({ data: await pedidosParaAtender(odooUserId, estado.data) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+salespersonRouter.patch('/pedidos-clientes/:id', atenderPedidos, async (req, res, next) => {
+  try {
+    const { odooUserId, appUserId } = req.identity;
+    if (odooUserId === null) {
+      res.status(409).json({ error: { code: 'CONFLICT', message: 'Tu usuario no está vinculado a un vendedor de Odoo. Avisa al administrador.' } });
+      return;
+    }
+    const cuerpo = atenderPedidoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const pedido = await atenderPedido(String(req.params.id), cuerpo.data, { appUserId, vendedor: odooUserId });
+    recordAudit({ action: 'pedido.atendido', ...auditContext(req), targetType: 'pedidos_cliente', targetId: pedido.id, metadata: { estado: pedido.estado, odooPartnerId: pedido.partnerId } });
+    res.json({ data: pedido });
   } catch (error) {
     next(error);
   }
