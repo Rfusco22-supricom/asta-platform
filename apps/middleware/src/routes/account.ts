@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { cambioKioscoSchema, enviarPedidoSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
+import { DIAS_VENCE_PRONTO, FACTURAS_POR_PAGINA, cambioKioscoSchema, enviarPedidoSchema, vistaFacturasSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import {
@@ -14,6 +14,8 @@ import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
 import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
+import { getPartnerInvoice, listPartnerInvoices, resumenDeCobro } from '../services/invoicing.service.js';
+import { buscarPdfDeFactura, leerPdf } from '../services/invoicePdf.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
@@ -286,6 +288,71 @@ accountRouter.post('/pedidos', pedidos, async (req, res, next) => {
       metadata: { odooPartnerId: pedido.partnerId, lineas: pedido.lineas.length, unidades: pedido.unidades },
     });
     res.status(201).json({ data: pedido });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Mis facturas ────────────────────────────────────────────────────────────
+//
+// Lo que debe, lo que vence pronto y sus facturas, con el PDF. Las mismas
+// facturas que la API pública (`listPartnerInvoices`): el cliente sale del
+// token. Ver `facturasCliente.ts` en shared-types.
+
+const facturas = autorizar('facturas.propias.leer');
+
+accountRouter.get('/facturas', facturas, async (req, res, next) => {
+  try {
+    const vista = vistaFacturasSchema.safeParse(req.query.vista ?? 'pendientes');
+    const pagina = Number(req.query.pagina ?? 1);
+    if (!vista.success || !Number.isInteger(pagina) || pagina < 1 || pagina > 1000) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'vista es «pendientes» o «todas», y pagina un número desde 1.' } });
+      return;
+    }
+    const partnerId = req.identity.odooPartnerId;
+    const [resumen, lista] = await Promise.all([
+      resumenDeCobro(partnerId, DIAS_VENCE_PRONTO),
+      listPartnerInvoices(partnerId, { soloPorPagar: vista.data === 'pendientes', limit: FACTURAS_POR_PAGINA, offset: (pagina - 1) * FACTURAS_POR_PAGINA }),
+    ]);
+    res.json({ data: { resumen, vista: vista.data, facturas: lista.facturas, pagina, total: lista.total } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * El PDF de una de sus facturas, directamente: el panel ya tiene la sesión, no
+ * hace falta el enlace firmado de la API. Una factura de otro cliente responde
+ * igual que una que no existe, como en `/public/invoices/:id`.
+ */
+accountRouter.get('/facturas/:id/pdf', facturas, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const noEsta = () => res.status(404).json({ error: { code: 'INVOICE_NOT_FOUND', message: 'Factura no encontrada.' } });
+    if (!Number.isInteger(id) || id <= 0) {
+      noEsta();
+      return;
+    }
+    const factura = await getPartnerInvoice(req.identity.odooPartnerId, id);
+    if (!factura) {
+      noEsta();
+      return;
+    }
+    const pdf = await buscarPdfDeFactura(factura.id);
+    if (!pdf) {
+      res.status(404).json({ error: { code: 'INVOICE_PDF_NOT_AVAILABLE', message: 'Esta factura todavía no tiene PDF. Pídeselo a tu vendedor.' } });
+      return;
+    }
+    const bytes = await leerPdf(pdf.adjuntoId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      // El nombre sale del folio, que lo pone Odoo, limpiado: nada que pueda romper la cabecera.
+      'Content-Disposition': `attachment; filename="factura-${factura.folio.replace(/[^A-Za-z0-9._-]/g, '-')}.pdf"`,
+      'Content-Length': String(bytes.length),
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.end(bytes);
   } catch (error) {
     next(error);
   }

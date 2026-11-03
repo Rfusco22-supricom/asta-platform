@@ -152,6 +152,14 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M15 3v4h4M9 11h4M9 15h3M15.5 13v6M14 14.2c0-.7.7-1.2 1.5-1.2s1.5.4 1.5 1-.7.9-1.5 1-1.5.5-1.5 1.1.7 1 1.5 1 1.5-.4 1.5-1.1" />
         </svg>
       );
+    case 'facturas':
+      // Un recibo con el borde de abajo cortado: lo que se le facturó.
+      return (
+        <svg {...comun}>
+          <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z" />
+          <path d="M9 8h6M9 12h6M9 16h3" />
+        </svg>
+      );
     case 'calidad':
       // Una hoja de comprobaciones con su visto bueno.
       return (

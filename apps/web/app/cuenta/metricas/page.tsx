@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Bienvenida } from '@/components/Bienvenida';
@@ -6,9 +7,9 @@ import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
 import { ProgramaCliente } from '@/components/ProgramaCliente';
 import { AvisoSellOut } from '@/components/AvisoSellOut';
-import { getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { getFacturasCliente, getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money, moneyCompact } from '@/lib/formato';
-import { plazoSellout, type MetricasCliente } from '@asta/shared-types';
+import { DIAS_VENCE_PRONTO, plazoSellout, type FacturasCliente, type MetricasCliente } from '@asta/shared-types';
 
 /**
  * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
@@ -140,6 +141,8 @@ function Tablets({ m }: { m: MetricasCliente }) {
 export default async function MetricasPage() {
   const sesion = await requireSession();
 
+  // Lo que debe va aparte: si falla, las métricas salen igual, sin el aviso.
+  const facturas = getFacturasCliente(sesion.accessToken, 'pendientes').catch(() => null);
   let m: MetricasCliente;
   try {
     m = await getMetricasCliente(sesion.accessToken);
@@ -160,6 +163,7 @@ export default async function MetricasPage() {
     <Marco usuario={sesion.usuario} titulo="Mis métricas">
       {/* Su nivel del programa; si no se pudo leer, el rol de la cuenta. */}
       <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
+      <AvisoFacturas resumen={(await facturas)?.resumen ?? null} />
       {m.programa && (
         <AvisoSellOut reportado={m.programa.evaluacion.meses.some((x) => x.mes === plazoSellout().mes && x.sellout === true)} enlace />
       )}
@@ -170,3 +174,22 @@ export default async function MetricasPage() {
     </Marco>
   );
 }
+
+/** Si debe algo vencido, o algo vence esta semana, se le avisa al entrar. */
+function AvisoFacturas({ resumen: r }: { resumen: FacturasCliente['resumen'] | null }) {
+  if (!r || (r.facturasVencidas === 0 && r.facturasVencenPronto === 0)) return null;
+  const vencidas = r.facturasVencidas > 0;
+  return (
+    <div className={vencidas ? 'notice error' : 'notice aviso-sellout'} role="status" style={{ marginBottom: 18 }}>
+      <h2>
+        {vencidas
+          ? `Tienes ${r.facturasVencidas} ${r.facturasVencidas === 1 ? 'factura vencida' : 'facturas vencidas'} por ${money(r.vencido)}`
+          : `${r.facturasVencenPronto === 1 ? 'Una factura vence' : `${r.facturasVencenPronto} facturas vencen`} en los próximos ${DIAS_VENCE_PRONTO} días`}
+      </h2>
+      <p>
+        <Link href="/cuenta/facturas">Ver mis facturas</Link>
+      </p>
+    </div>
+  );
+}
+

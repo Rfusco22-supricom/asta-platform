@@ -59,6 +59,9 @@ import {
   pedidoSugeridoRespuestaSchema,
   demandaAstaRespuestaSchema,
   ofertaClienteRespuestaSchema,
+  facturasClienteRespuestaSchema,
+  type FacturasCliente,
+  type VistaFacturas,
   type OfertaCliente,
   type DemandaAsta,
   pedidosClienteRespuestaSchema,
@@ -761,4 +764,9 @@ export async function getDemandaAsta(accessToken: string, rango: { desde: string
 /** La próxima mejor oferta para un cliente de la cartera (o cualquiera, para administración). */
 export async function getOfertaCliente(accessToken: string, partnerId: number): Promise<OfertaCliente> {
   return (await request(`/api/v1/salesperson/clients/${partnerId}/oferta`, ofertaClienteRespuestaSchema, accessToken)).data;
+}
+
+/** «Mis facturas» del cliente con sesión: lo que debe y sus facturas. */
+export async function getFacturasCliente(accessToken: string, vista: VistaFacturas, pagina = 1): Promise<FacturasCliente> {
+  return (await request(`/api/v1/account/facturas?vista=${vista}&pagina=${pagina}`, facturasClienteRespuestaSchema, accessToken)).data;
 }

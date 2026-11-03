@@ -302,7 +302,8 @@ a:hover { text-decoration: underline; }
   background: var(--vidrio);
   box-shadow: var(--vidrio-brillo);
 }
-.segmented button {
+.segmented button,
+.segmented a {
   font: inherit;
   font-size: 13px;
   padding: 7px 13px;
@@ -313,8 +314,11 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
 }
-.segmented button[aria-pressed='true'] { background: var(--text); color: var(--bg); font-weight: 600; }
-.segmented button:hover:not([aria-pressed='true']) { background: var(--vidrio-fuerte); color: var(--text); }
+.segmented button[aria-pressed='true'],
+.segmented a[aria-current='page'] { background: var(--text); color: var(--bg); font-weight: 600; }
+.segmented a { text-decoration: none; }
+.segmented button:hover:not([aria-pressed='true']),
+.segmented a:hover:not([aria-current='page']) { background: var(--vidrio-fuerte); color: var(--text); }
 
 .count { margin-left: auto; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
@@ -4429,4 +4433,13 @@ button.serie-col .serie-barra { display: block; }
 .oferta-lista li { padding-left: 4px; }
 .oferta-producto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .oferta-producto strong { font-weight: 600; overflow-wrap: anywhere; }
+
+/* ── Mis facturas (/cuenta/facturas) ───────────────────────────────────────── */
+.factura-fecha { white-space: nowrap; }
+.factura-vence { font-size: 12px; color: var(--text-2); }
+.factura-vencida { color: var(--danger); font-weight: 600; }
+.factura-pronto { color: var(--warning); font-weight: 600; }
+.factura-estado-paid { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 45%, var(--border)); }
+.factura-estado-not_paid, .factura-estado-partial { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; }
 
