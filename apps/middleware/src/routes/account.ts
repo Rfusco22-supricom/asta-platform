@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { cambioKioscoSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
+import { cambioKioscoSchema, enviarPedidoSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import {
@@ -13,6 +13,7 @@ import { auditContext } from '../middleware/auditContext.js';
 import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
+import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
@@ -237,6 +238,54 @@ accountRouter.post('/sellout', sellOut, async (req, res, next) => {
       metadata: { mes: r.reporte.mes, tipo: r.reporte.tipo, filas: r.reporte.filas, odooPartnerId: req.identity.odooPartnerId },
     });
     res.status(201).json({ data: r.reporte });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Pedido sugerido ─────────────────────────────────────────────────────────
+//
+// Lo que le sugerimos reponer de ASTA, y enviarlo a su vendedor. Ver
+// `pedidoSugerido.service`. El cliente sale del token.
+
+const pedidos = autorizar('pedido.propio.enviar');
+
+accountRouter.get('/pedido-sugerido', pedidos, async (req, res, next) => {
+  try {
+    res.json({ data: await pedidoSugerido(req.identity.odooPartnerId, req.identity.odooPricelistId ?? null, req.log) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+accountRouter.get('/pedidos', pedidos, async (req, res, next) => {
+  try {
+    res.json({ data: await pedidosDelCliente(req.identity.odooPartnerId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+accountRouter.post('/pedidos', pedidos, async (req, res, next) => {
+  try {
+    const cuerpo = enviarPedidoSchema.safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: z.prettifyError(cuerpo.error) } });
+      return;
+    }
+    const pedido = await enviarPedido(
+      { partnerId: req.identity.odooPartnerId, appUserId: req.identity.appUserId, pricelistIdentidad: req.identity.odooPricelistId ?? null },
+      cuerpo.data,
+      req.log,
+    );
+    recordAudit({
+      action: 'pedido.enviado',
+      ...auditContext(req),
+      targetType: 'pedidos_cliente',
+      targetId: pedido.id,
+      metadata: { odooPartnerId: pedido.partnerId, lineas: pedido.lineas.length, unidades: pedido.unidades },
+    });
+    res.status(201).json({ data: pedido });
   } catch (error) {
     next(error);
   }

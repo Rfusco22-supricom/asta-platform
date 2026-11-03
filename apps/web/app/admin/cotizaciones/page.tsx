@@ -3,7 +3,8 @@ import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { ListaCotizaciones, estadoDeParams } from '@/components/Cotizaciones';
-import { getCotizacionesEmpresa, ApiError, ContractError, esRedireccion } from '@/lib/api';
+import { PedidosClientes } from '@/components/PedidosClientes';
+import { getCotizacionesEmpresa, getPedidosParaAtender, ApiError, ContractError, esRedireccion } from '@/lib/api';
 
 /**
  * Las cotizaciones de ASTA de toda la empresa, por periodo, sede y estado. Por
@@ -22,6 +23,8 @@ export default async function CotizacionesEmpresaPage({ searchParams }: { search
   const sede = sedeDeParams(params);
   const estado = estadoDeParams(params);
 
+  // Los pedidos de clientes van aparte: si fallan, las cotizaciones salen igual.
+  const pedidos = getPedidosParaAtender(sesion.accessToken, 'empresa').catch(() => null);
   let datos;
   try {
     datos = await getCotizacionesEmpresa(sesion.accessToken, periodo, estado, sede);
@@ -38,10 +41,13 @@ export default async function CotizacionesEmpresaPage({ searchParams }: { search
     );
   }
 
+  const enviados = await pedidos;
+
   return (
     <Marco usuario={sesion.usuario} titulo="Cotizaciones">
       <Sedes base="/admin/cotizaciones" sede={sede} periodo={periodo} />
       <Periodos base="/admin/cotizaciones" periodo={periodo} sede={sede} />
+      {enviados && <PedidosClientes inicial={enviados} />}
       <ListaCotizaciones datos={datos} base="/admin/cotizaciones" periodo={periodo} sede={sede} conVendedor />
     </Marco>
   );

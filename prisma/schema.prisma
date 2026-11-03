@@ -1232,3 +1232,60 @@ model AlertState {
 
   @@map("alert_states")
 }
+
+/// Un pedido sugerido que el cliente envió desde el panel (`pedidoSugerido.service`).
+/// No se escribe en Odoo: lo recibe su vendedor, que lo pasa a Odoo como
+/// cotización y lo marca aquí. Se cierra marcándolo, nunca se borra.
+enum EstadoPedidoCliente {
+  /// Enviado por el cliente y sin atender.
+  ENVIADO
+  /// El vendedor lo pasó a Odoo (con su folio, si lo puso).
+  EN_ODOO
+  /// El vendedor lo descartó (con el motivo).
+  DESCARTADO
+}
+
+model PedidoCliente {
+  id               String              @id @default(uuid()) @db.Char(36)
+  odooPartnerId    Int                 @map("odoo_partner_id") @db.UnsignedInt
+  /// El nombre del cliente al enviarlo: la lista no consulta Odoo.
+  cliente          String              @db.VarChar(200)
+  /// Su vendedor en Odoo al enviarlo (`res.partner.user_id`). Sin vendedor,
+  /// solo lo ve administración.
+  odooVendedorId   Int?                @map("odoo_vendedor_id") @db.UnsignedInt
+  nota             String?             @db.VarChar(500)
+  /// Con los precios de su tarifa al enviarlo; `null` si no se pudieron leer.
+  importeEstimado  Decimal?            @map("importe_estimado") @db.Decimal(14, 2)
+  /// Quién lo envió (app_users.id). Sin FK: el pedido se queda aunque se borre la cuenta.
+  enviadoPor       String              @map("enviado_por") @db.Char(36)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.DateTime(3)
+  estado           EstadoPedidoCliente @default(ENVIADO)
+  folioOdoo        String?             @map("folio_odoo") @db.VarChar(64)
+  motivo           String?             @db.VarChar(300)
+  atendidoPor      String?             @map("atendido_por") @db.Char(36)
+  atendidoEn       DateTime?           @map("atendido_en") @db.DateTime(3)
+
+  lineas PedidoClienteLinea[]
+
+  @@index([estado, createdAt], map: "ix_pedidos_cliente_estado")
+  @@index([odooPartnerId, createdAt], map: "ix_pedidos_cliente_cliente")
+  @@index([odooVendedorId, estado], map: "ix_pedidos_cliente_vendedor")
+  @@map("pedidos_cliente")
+}
+
+model PedidoClienteLinea {
+  id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  pedidoId      String        @map("pedido_id") @db.Char(36)
+  pedido        PedidoCliente @relation(fields: [pedidoId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_pedidos_cliente_lineas_pedido")
+  odooProductId Int           @map("odoo_product_id") @db.UnsignedInt
+  sku           String?       @db.VarChar(64)
+  nombre        String        @db.VarChar(255)
+  cantidad      Int           @db.UnsignedInt
+  /// Lo que le sugerimos; `null` si lo añadió él.
+  sugeridas     Int?          @db.UnsignedInt
+  /// Precio unitario de su tarifa al enviarlo, sin IVA.
+  precio        Decimal?      @db.Decimal(14, 2)
+
+  @@index([pedidoId], map: "ix_pedidos_cliente_lineas_pedido")
+  @@map("pedidos_cliente_lineas")
+}

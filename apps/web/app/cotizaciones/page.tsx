@@ -2,7 +2,8 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { ListaCotizaciones, estadoDeParams } from '@/components/Cotizaciones';
-import { getCotizacionesCartera, ApiError, ContractError, esRedireccion } from '@/lib/api';
+import { PedidosClientes } from '@/components/PedidosClientes';
+import { getCotizacionesCartera, getPedidosParaAtender, ApiError, ContractError, esRedireccion } from '@/lib/api';
 
 /**
  * Las cotizaciones de ASTA de los clientes de la propia cartera: las abiertas,
@@ -20,6 +21,8 @@ export default async function CotizacionesCarteraPage({ searchParams }: { search
   const periodo = desde && hasta ? { desde, hasta } : fechasDe('trimestre');
   const estado = estadoDeParams(params);
 
+  // Los pedidos de clientes van aparte: si fallan, las cotizaciones salen igual.
+  const pedidos = getPedidosParaAtender(sesion.accessToken, 'cartera').catch(() => null);
   let datos;
   try {
     datos = await getCotizacionesCartera(sesion.accessToken, periodo, estado);
@@ -36,9 +39,12 @@ export default async function CotizacionesCarteraPage({ searchParams }: { search
     );
   }
 
+  const enviados = await pedidos;
+
   return (
     <Marco usuario={sesion.usuario} titulo="Cotizaciones">
       <Periodos base="/cotizaciones" periodo={periodo} />
+      {enviados && <PedidosClientes inicial={enviados} />}
       <ListaCotizaciones datos={datos} base="/cotizaciones" periodo={periodo} conVendedor={false} />
     </Marco>
   );

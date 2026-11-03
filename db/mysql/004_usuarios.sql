@@ -228,6 +228,10 @@ GRANT SELECT, INSERT, UPDATE ON asta.sell_out_reportes TO 'asta_app'@'localhost'
 GRANT SELECT, INSERT, UPDATE ON asta.sell_out_lineas TO 'asta_app'@'localhost';
 -- El cierre de cada trimestre del programa de ASTA. Solo se inserta, al cerrar.
 GRANT SELECT, INSERT ON asta.programa_trimestres TO 'asta_app'@'localhost';
+-- Los pedidos sugeridos que envían los clientes. Sin DELETE: el vendedor los
+-- cierra marcándolos. Las líneas no cambian una vez enviadas.
+GRANT SELECT, INSERT, UPDATE ON asta.pedidos_cliente TO 'asta_app'@'localhost';
+GRANT SELECT, INSERT ON asta.pedidos_cliente_lineas TO 'asta_app'@'localhost';
 
 -- -----------------------------------------------------------------------------
 -- LOS TESTS NO PUEDEN CORRER CON ESTE USUARIO, y está bien así.
@@ -322,6 +326,8 @@ GRANT SELECT ON asta.kiosk_codigos         TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.sell_out_reportes     TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.sell_out_lineas       TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.programa_trimestres   TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.pedidos_cliente       TO 'asta_lectura'@'localhost';
+GRANT SELECT ON asta.pedidos_cliente_lineas TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.recommendation_events TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.api_usage_monthly     TO 'asta_lectura'@'localhost';
 GRANT SELECT ON asta.printer_brands           TO 'asta_lectura'@'localhost';
