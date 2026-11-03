@@ -253,11 +253,18 @@ async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null
 
 // ── Camino a la meta: las categorías de ASTA (#131), con la pirámide en 3D ─────
 
-/** De toda la empresa siempre: la categoría es del cliente, no de la sede. */
-async function Meta({ token }: { token: string }) {
-  const r = await intentar(() => getCategoriasAstaEmpresa(token));
+/**
+ * De toda la empresa siempre: la meta es de la empresa y la categoría es del
+ * cliente, no de la sede. La cifra grande es lo vendido en ASTA en el último
+ * mes del periodo elegido (el mes del filtro, o el que va en curso).
+ */
+async function Meta({ token, rango }: { token: string; rango: Rango }) {
+  const delMes = { desde: `${rango.hasta.slice(0, 7)}-01`, hasta: rango.hasta };
+  const [r, ventas] = await Promise.all([intentar(() => getCategoriasAstaEmpresa(token)), intentar(() => getReporteEmpresa(token, delMes, null))]);
   if (!r) return <Fallo area="meta" titulo="Camino a la meta" />;
-  return <HeroMeta datos={r} alcance="empresa" base="/admin/categorias" />;
+  const enCurso = rango.hasta.slice(0, 7) === new Date().toISOString().slice(0, 7);
+  const mes = ventas ? { vendido: ventas.totales.facturado, nombre: nombrePeriodo(delMes.desde, delMes.hasta), enCurso } : null;
+  return <HeroMeta datos={r} alcance="empresa" base="/admin/categorias" mes={mes} />;
 }
 
 /**
@@ -322,7 +329,7 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
           <Ventas token={token} rango={rango} sede={sede} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
-          <Meta token={token} />
+          <Meta token={token} rango={rango} />
         </Suspense>
         <Suspense fallback={<Esqueleto area="oportunidad" alto={230} />}>
           <Oportunidad token={token} sede={sede} />
