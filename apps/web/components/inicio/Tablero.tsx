@@ -69,10 +69,26 @@ const DE_ABAJO_ARRIBA: ClaveCategoria[] = ['GENERAL', 'BRONCE', 'PLATA', 'ORO', 
  *     de la empresa. Las metas por categoría son de la empresa entera y no se
  *     le enseñan: a un vendedor «0 de 6 Diamante» le diría que va mal cuando
  *     esa meta no es suya. En su lugar, qué parte de su cartera pone cada una.
+ *
+ * En la empresa, la cifra grande es lo vendido en ASTA en el mes del filtro
+ * (`mes`: el último mes del periodo elegido) frente a la meta, que es la misma
+ * todos los meses. La pirámide sigue con la media de los meses de la categoría.
  */
-export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; alcance: 'empresa' | 'cartera'; base: string }) {
+export function HeroMeta({
+  datos: r,
+  alcance,
+  base,
+  mes,
+}: {
+  datos: CategoriasAsta;
+  alcance: 'empresa' | 'cartera';
+  base: string;
+  mes?: { vendido: number; nombre: string; enCurso: boolean } | null;
+}) {
   const enCartera = alcance === 'cartera';
-  const avance = r.meta > 0 ? Math.min(100, (r.compraMensual / r.meta) * 100) : 0;
+  const delMes = !enCartera && mes ? mes : null;
+  const cifra = delMes ? delMes.vendido : r.compraMensual;
+  const avance = r.meta > 0 ? Math.min(100, (cifra / r.meta) * 100) : 0;
   const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
   const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
   // En la cartera, la barra es el 100 % de lo que compra; en la empresa, la meta.
@@ -105,10 +121,10 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
       <div className="hero-texto">
         <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} al mes`}</span>
         <div className="hero-cifra">
-          <strong>{corto(r.compraMensual)}</strong>
+          <strong>{corto(cifra)}</strong>
           <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
         </div>
-        <p className="hero-periodo">{mediaDe(r.meses)}</p>
+        <p className="hero-periodo">{delMes ? `vendido en ${delMes.nombre}` : mediaDe(r.meses)}</p>
 
         {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
         <div
@@ -119,7 +135,9 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
           aria-valuenow={enCartera ? undefined : Math.round(avance)}
           aria-label={enCartera ? 'Lo que pone cada categoría' : 'Avance hacia la meta'}
         >
-          {[...niveles].reverse().map((nv) => {
+          {delMes ? (
+            avance > 0 && <span style={{ width: `${avance}%`, background: 'linear-gradient(90deg, #1c8cdb, var(--violeta))' }} title={`${pct(avance)} de la meta`} />
+          ) : [...niveles].reverse().map((nv) => {
             const c = porClave.get(nv.clave as ClaveCategoria);
             const ancho = total > 0 ? ((c?.compraMensual ?? 0) / total) * 100 : 0;
             return ancho > 0 ? <span key={nv.clave} style={{ width: `${ancho}%`, background: nv.color }} title={`${nv.nombre}: ${nv.compra}`} /> : null;
@@ -133,7 +151,16 @@ export function HeroMeta({ datos: r, alcance, base }: { datos: CategoriasAsta; a
             </>
           ) : (
             <>
-              Faltan <strong>{moneyCompact(Math.max(0, r.meta - r.compraMensual))}</strong> al mes.
+              {delMes && cifra >= r.meta ? (
+                <>
+                  <strong>Meta cumplida</strong> en {delMes.nombre}.
+                </>
+              ) : (
+                <>
+                  {delMes ? (delMes.enCurso ? 'Faltan' : 'Faltaron') : 'Faltan'} <strong>{moneyCompact(r.meta - Math.max(0, cifra))}</strong>{' '}
+                  {delMes ? (delMes.enCurso ? 'para cerrar el mes en la meta' : 'para la meta') : 'al mes'}.
+                </>
+              )}
             </>
           )}{' '}
           {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa.
