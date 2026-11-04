@@ -106,6 +106,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
         { href: '/cuenta/sellout', titulo: 'Mi sell-out', icono: 'reportes', corto: 'Sell-out' },
         { href: '/cuenta/pedido', titulo: 'Pedido sugerido', icono: 'cotizaciones', corto: 'Pedido' },
+        { href: '/cuenta/facturas', titulo: 'Mis facturas', icono: 'facturas', corto: 'Facturas' },
         { href: '/cuenta/tablets', titulo: 'Mis tablets', icono: 'tablet', corto: 'Tablets' },
         { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
       ],

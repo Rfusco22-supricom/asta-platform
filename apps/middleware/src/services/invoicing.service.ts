@@ -326,9 +326,14 @@ export interface PartnerInvoiceListQuery {
   desde?: string;
   hasta?: string;
   estadoPago?: PaymentState;
+  /** Solo lo que debe (`ESTADOS_POR_PAGAR`), del vencimiento más antiguo al más nuevo. */
+  soloPorPagar?: boolean;
   limit: number;
   offset: number;
 }
+
+/** Lo que el cliente debe: sin pagar o pagado en parte. `in_payment` ya lo pagó. */
+const ESTADOS_POR_PAGAR: PaymentState[] = ['not_paid', 'partial'];
 
 function mapInvoice(row: InvoiceRow): PartnerInvoice {
   return {
@@ -357,6 +362,7 @@ export async function listPartnerInvoices(
 
   const domain = buildDomain(partnerId, { desde: query.desde, hasta: query.hasta });
   if (query.estadoPago) domain.push(['payment_state', '=', query.estadoPago]);
+  if (query.soloPorPagar) domain.push(['payment_state', 'in', ESTADOS_POR_PAGAR]);
 
   const [rows, total] = await Promise.all([
     searchRead<InvoiceRow>('account.move', domain, INVOICE_FIELDS, {
@@ -364,7 +370,7 @@ export async function listPartnerInvoices(
       offset: query.offset,
       // `id desc` desempata: sin él, dos facturas del mismo día pueden cambiar
       // de página entre una petición y la siguiente.
-      order: 'invoice_date desc, id desc',
+      order: query.soloPorPagar ? 'invoice_date_due asc, id asc' : 'invoice_date desc, id desc',
     }),
     executeKw<number>('account.move', 'search_count', [domain]),
   ]);
@@ -410,4 +416,49 @@ export async function invoiceExists(invoiceId: number): Promise<boolean> {
     ],
   ]);
   return n > 0;
+}
+
+/**
+ * Lo que debe un cliente: el total, lo vencido y lo que vence en los próximos
+ * `diasPronto` días, con el día de hoy en Caracas. Para «Mis facturas» (ver
+ * `facturasCliente.ts` en shared-types). Cuesta 1 RPC.
+ */
+export async function resumenDeCobro(
+  partnerId: number,
+  diasPronto: number,
+  ahora = new Date(),
+): Promise<{
+  porPagar: number;
+  facturasPorPagar: number;
+  vencido: number;
+  facturasVencidas: number;
+  vencePronto: number;
+  facturasVencenPronto: number;
+  proximoVencimiento: string | null;
+}> {
+  assertIdValido('partnerId', partnerId);
+  const domain = [...buildDomain(partnerId, {}), ['payment_state', 'in', ESTADOS_POR_PAGAR]] as OdooDomain;
+  const rows = await searchRead<Pick<InvoiceRow, 'invoice_date_due' | 'amount_residual_signed'>>('account.move', domain, ['invoice_date_due', 'amount_residual_signed']);
+
+  // Caracas es UTC−4 todo el año.
+  const dia = (d: Date) => new Date(d.getTime() - 4 * 3_600_000).toISOString().slice(0, 10);
+  const hoy = dia(ahora);
+  const limite = dia(new Date(ahora.getTime() + diasPronto * 86_400_000));
+  const r = { porPagar: 0, facturasPorPagar: 0, vencido: 0, facturasVencidas: 0, vencePronto: 0, facturasVencenPronto: 0, proximoVencimiento: null as string | null };
+  for (const row of rows) {
+    const saldo = row.amount_residual_signed ?? 0;
+    if (saldo <= 0) continue;
+    r.porPagar += saldo;
+    r.facturasPorPagar++;
+    const vence = row.invoice_date_due || null;
+    if (vence && vence < hoy) {
+      r.vencido += saldo;
+      r.facturasVencidas++;
+    } else if (vence && vence <= limite) {
+      r.vencePronto += saldo;
+      r.facturasVencenPronto++;
+    }
+    if (vence && vence >= hoy && (r.proximoVencimiento === null || vence < r.proximoVencimiento)) r.proximoVencimiento = vence;
+  }
+  return { ...r, porPagar: round2(r.porPagar), vencido: round2(r.vencido), vencePronto: round2(r.vencePronto) };
 }

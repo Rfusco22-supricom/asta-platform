@@ -46,3 +46,4 @@ export * from './cotizaciones.js';
 export * from './pedidoSugerido.js';
 export * from './demandaAsta.js';
 export * from './proximaOferta.js';
+export * from './facturasCliente.js';
