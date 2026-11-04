@@ -61,6 +61,8 @@ import {
   ofertaClienteRespuestaSchema,
   facturasClienteRespuestaSchema,
   datosFlyerRespuestaSchema,
+  calculadoraRespuestaSchema,
+  type Calculadora,
   type DatosFlyer,
   type FacturasCliente,
   type VistaFacturas,
@@ -776,4 +778,9 @@ export async function getFacturasCliente(accessToken: string, vista: VistaFactur
 /** Los datos de su tienda y los productos ASTA con foto, para «Mis flyers». */
 export async function getDatosFlyer(accessToken: string): Promise<DatosFlyer> {
   return (await request('/api/v1/account/flyers', datosFlyerRespuestaSchema, accessToken)).data;
+}
+
+/** La calculadora de ganancia: parejas ASTA–original con los precios de su tarifa. */
+export async function getCalculadora(accessToken: string): Promise<Calculadora> {
+  return (await request('/api/v1/account/calculadora', calculadoraRespuestaSchema, accessToken)).data;
 }

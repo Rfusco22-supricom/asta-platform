@@ -48,3 +48,4 @@ export * from './demandaAsta.js';
 export * from './proximaOferta.js';
 export * from './facturasCliente.js';
 export * from './flyers.js';
+export * from './calculadora.js';

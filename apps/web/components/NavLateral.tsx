@@ -152,6 +152,14 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M15 3v4h4M9 11h4M9 15h3M15.5 13v6M14 14.2c0-.7.7-1.2 1.5-1.2s1.5.4 1.5 1-.7.9-1.5 1-1.5.5-1.5 1.1.7 1 1.5 1 1.5-.4 1.5-1.1" />
         </svg>
       );
+    case 'calculadora':
+      // Una calculadora: lo que gana cambiando a ASTA.
+      return (
+        <svg {...comun}>
+          <rect x="5" y="3" width="14" height="18" rx="2" />
+          <path d="M8 7h8M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01M8.5 18h.01M12 18h3.5" />
+        </svg>
+      );
     case 'flyers':
       // Un megáfono: lo que el cliente publica para vender.
       return (
