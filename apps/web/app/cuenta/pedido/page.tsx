@@ -1,5 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { contextoCliente } from '@/lib/vistaCliente';
+import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
+import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { getPedidoSugerido, getPedidosCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money } from '@/lib/formato';
 import type { EstadoPedidoCliente } from '@asta/shared-types';
@@ -15,14 +18,24 @@ export const dynamic = 'force-dynamic';
 
 const ESTADO: Record<EstadoPedidoCliente, string> = { ENVIADO: 'Enviado', EN_ODOO: 'Cotizado', DESCARTADO: 'Descartado' };
 
-export default async function PedidoPage() {
+export default async function PedidoPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
+  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
+  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+    return (
+      <Marco usuario={sesion.usuario} titulo="Pedido sugerido">
+        <ElegirCliente token={sesion.accessToken} destino="/cuenta/pedido" />
+      </Marco>
+    );
+  }
+  const cliente = comoCliente?.id ?? null;
 
   let sugerido;
   // El historial va aparte: si falla, el pedido sale igual.
-  const historial = getPedidosCliente(sesion.accessToken).catch(() => null);
+  const historial = getPedidosCliente(sesion.accessToken, cliente).catch(() => null);
   try {
-    sugerido = await getPedidoSugerido(sesion.accessToken);
+    sugerido = await getPedidoSugerido(sesion.accessToken, cliente);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -40,6 +53,7 @@ export default async function PedidoPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Pedido sugerido">
+      {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/pedido" />}
       {sinAtender.length > 0 && (
         <div className="notice aviso-sellout" role="status">
           <h2>
@@ -50,7 +64,14 @@ export default async function PedidoPage() {
           <p>{sinAtender.length === 1 ? 'Tu vendedor todavía no lo ha pasado a cotización. La sugerencia de abajo no lo descuenta' : 'Tu vendedor todavía no los ha pasado a cotización. La sugerencia de abajo no los descuenta'}: si envías otro, se suma.</p>
         </div>
       )}
-      <PedidoEditable inicial={sugerido} />
+      {comoCliente ? (
+        // Mirando como administrador: se ve, pero no se envía nada en su nombre.
+        <fieldset disabled className="solo-ver">
+          <PedidoEditable inicial={sugerido} />
+        </fieldset>
+      ) : (
+        <PedidoEditable inicial={sugerido} />
+      )}
 
       {pedidos && pedidos.length > 0 && (
         <section className="panel">

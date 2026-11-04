@@ -269,13 +269,30 @@ export function NavLateral({
   contadores?: Record<string, number>;
 }) {
   const ruta = usePathname();
+  // Los grupos desplegables que el usuario abrió o cerró; los demás, abiertos si
+  // tienen la sección activa.
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
 
   return (
     <nav className="nav" aria-label="Secciones">
-      {grupos.map((g, i) => (
-        <div key={g.titulo ?? `grupo-${i}`} className="nav-grupo">
-          {g.titulo && <div className="nav-titulo">{g.titulo}</div>}
-          {g.secciones.map((s) => {
+      {grupos.map((g, i) => {
+        const id = g.titulo ?? `grupo-${i}`;
+        const conActiva = g.secciones.some((s) => estaActiva(ruta, s.href, s.prefijo, s.tambien));
+        // Plegado (solo iconos) no hay título que pulsar: se ven todas.
+        const abierto = !g.desplegable || plegado || (abiertos[id] ?? conActiva);
+        return (
+        <div key={id} className={g.desplegable ? 'nav-grupo nav-desplegable' : 'nav-grupo'}>
+          {g.titulo && g.desplegable && !plegado ? (
+            <button type="button" className="nav-titulo nav-titulo-boton" aria-expanded={abierto} onClick={() => setAbiertos((a) => ({ ...a, [id]: !abierto }))}>
+              {g.titulo}
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+          ) : (
+            g.titulo && <div className="nav-titulo">{g.titulo}</div>
+          )}
+          {abierto && g.secciones.map((s) => {
             const activa = estaActiva(ruta, s.href, s.prefijo, s.tambien);
             const cuenta = contadores[s.href] ?? 0;
             return (
@@ -301,7 +318,8 @@ export function NavLateral({
             );
           })}
         </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }

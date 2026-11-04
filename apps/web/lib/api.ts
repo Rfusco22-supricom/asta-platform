@@ -677,20 +677,29 @@ export async function getCodigoRevision(accessToken: string): Promise<CodigoRevi
 }
 
 /** «Mis métricas» del cliente con sesión: compras de ASTA, nivel y tablets. */
-export async function getMetricasCliente(accessToken: string): Promise<MetricasCliente> {
-  const r = await request('/api/v1/account/metricas', metricasClienteRespuestaSchema, accessToken);
+/**
+ * La ruta de una pantalla del cliente: la suya (`/account`, el cliente sale del
+ * token) o, con `cliente`, la vista del administrador sobre ese cliente
+ * (`/admin/vista-cliente/:id`, solo lectura).
+ */
+export function rutaCliente(ruta: string, cliente?: number | null): string {
+  return cliente ? `/api/v1/admin/vista-cliente/${cliente}${ruta}` : `/api/v1/account${ruta}`;
+}
+
+export async function getMetricasCliente(accessToken: string, cliente?: number | null): Promise<MetricasCliente> {
+  const r = await request(rutaCliente('/metricas', cliente), metricasClienteRespuestaSchema, accessToken);
   return r.data;
 }
 
 /** «Mi sell-out» del cliente con sesión. */
-export async function getSellOutCliente(accessToken: string): Promise<ResumenSellOut> {
-  const r = await request('/api/v1/account/sellout', resumenSellOutRespuestaSchema, accessToken);
+export async function getSellOutCliente(accessToken: string, cliente?: number | null): Promise<ResumenSellOut> {
+  const r = await request(rutaCliente('/sellout', cliente), resumenSellOutRespuestaSchema, accessToken);
   return r.data;
 }
 
 /** «Lo que te vendimos»: lo que el cliente nos compró, lo marcado y lo que le queda. Sin mes, el actual. */
-export async function getPorMarcar(accessToken: string, mes?: string): Promise<PorMarcar> {
-  const r = await request(`/api/v1/account/sellout/marcar${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, porMarcarRespuestaSchema, accessToken);
+export async function getPorMarcar(accessToken: string, mes?: string, cliente?: number | null): Promise<PorMarcar> {
+  const r = await request(rutaCliente(`/sellout/marcar${mes ? `?mes=${encodeURIComponent(mes)}` : ''}`, cliente), porMarcarRespuestaSchema, accessToken);
   return r.data;
 }
 
@@ -745,13 +754,13 @@ export async function getClientesAdmin(accessToken: string) {
 }
 
 /** El pedido sugerido de reposición del cliente con sesión. */
-export async function getPedidoSugerido(accessToken: string): Promise<PedidoSugerido> {
-  return (await request('/api/v1/account/pedido-sugerido', pedidoSugeridoRespuestaSchema, accessToken)).data;
+export async function getPedidoSugerido(accessToken: string, cliente?: number | null): Promise<PedidoSugerido> {
+  return (await request(rutaCliente('/pedido-sugerido', cliente), pedidoSugeridoRespuestaSchema, accessToken)).data;
 }
 
 /** Los últimos pedidos que envió el cliente con sesión. */
-export async function getPedidosCliente(accessToken: string): Promise<PedidoCliente[]> {
-  return (await request('/api/v1/account/pedidos', pedidosClienteRespuestaSchema, accessToken)).data;
+export async function getPedidosCliente(accessToken: string, cliente?: number | null): Promise<PedidoCliente[]> {
+  return (await request(rutaCliente('/pedidos', cliente), pedidosClienteRespuestaSchema, accessToken)).data;
 }
 
 /** Los pedidos que envían los clientes: todos (administración) o los de la propia cartera. */
@@ -771,16 +780,16 @@ export async function getOfertaCliente(accessToken: string, partnerId: number): 
 }
 
 /** «Mis facturas» del cliente con sesión: lo que debe y sus facturas. */
-export async function getFacturasCliente(accessToken: string, vista: VistaFacturas, pagina = 1): Promise<FacturasCliente> {
-  return (await request(`/api/v1/account/facturas?vista=${vista}&pagina=${pagina}`, facturasClienteRespuestaSchema, accessToken)).data;
+export async function getFacturasCliente(accessToken: string, vista: VistaFacturas, pagina = 1, cliente?: number | null): Promise<FacturasCliente> {
+  return (await request(rutaCliente(`/facturas?vista=${vista}&pagina=${pagina}`, cliente), facturasClienteRespuestaSchema, accessToken)).data;
 }
 
 /** Los datos de su tienda y los productos ASTA con foto, para «Mis flyers». */
-export async function getDatosFlyer(accessToken: string): Promise<DatosFlyer> {
-  return (await request('/api/v1/account/flyers', datosFlyerRespuestaSchema, accessToken)).data;
+export async function getDatosFlyer(accessToken: string, cliente?: number | null): Promise<DatosFlyer> {
+  return (await request(rutaCliente('/flyers', cliente), datosFlyerRespuestaSchema, accessToken)).data;
 }
 
 /** La calculadora de ganancia: parejas ASTA–original con los precios de su tarifa. */
-export async function getCalculadora(accessToken: string): Promise<Calculadora> {
-  return (await request('/api/v1/account/calculadora', calculadoraRespuestaSchema, accessToken)).data;
+export async function getCalculadora(accessToken: string, cliente?: number | null): Promise<Calculadora> {
+  return (await request(rutaCliente('/calculadora', cliente), calculadoraRespuestaSchema, accessToken)).data;
 }

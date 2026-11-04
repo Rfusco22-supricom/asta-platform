@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { contextoCliente } from '@/lib/vistaCliente';
+import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
+import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { Cifra } from '@/components/Cifras';
 import { getFacturasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money } from '@/lib/formato';
@@ -32,15 +35,25 @@ function cuandoVence(f: PublicInvoice, hoy: string): { texto: string; tono: 'ven
   return { texto: `vence en ${d} ${d === 1 ? 'día' : 'días'}`, tono: d <= DIAS_VENCE_PRONTO ? 'pronto' : null };
 }
 
-export default async function FacturasPage({ searchParams }: { searchParams: Promise<{ vista?: string; pagina?: string }> }) {
+export default async function FacturasPage({ searchParams }: { searchParams: Promise<{ vista?: string; pagina?: string; elegir?: string }> }) {
   const sesion = await requireSession();
+  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
+  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+    return (
+      <Marco usuario={sesion.usuario} titulo="Mis facturas">
+        <ElegirCliente token={sesion.accessToken} destino="/cuenta/facturas" />
+      </Marco>
+    );
+  }
+  const cliente = comoCliente?.id ?? null;
   const q = await searchParams;
   const vista: VistaFacturas = q.vista === 'todas' ? 'todas' : 'pendientes';
   const pagina = Math.max(1, Number(q.pagina) || 1);
 
   let d;
   try {
-    d = await getFacturasCliente(sesion.accessToken, vista, pagina);
+    d = await getFacturasCliente(sesion.accessToken, vista, pagina, cliente);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -61,6 +74,7 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mis facturas">
+      {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/facturas" />}
       {r.facturasVencidas > 0 ? (
         <div className="notice error" role="status" style={{ marginBottom: 18 }}>
           <h2>

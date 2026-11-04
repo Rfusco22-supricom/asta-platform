@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { contextoCliente } from '@/lib/vistaCliente';
+import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
+import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { Bienvenida } from '@/components/Bienvenida';
 import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
@@ -138,14 +141,24 @@ function Tablets({ m }: { m: MetricasCliente }) {
   );
 }
 
-export default async function MetricasPage() {
+export default async function MetricasPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
+  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
+  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+    return (
+      <Marco usuario={sesion.usuario} titulo="Mis métricas">
+        <ElegirCliente token={sesion.accessToken} destino="/cuenta/metricas" />
+      </Marco>
+    );
+  }
+  const cliente = comoCliente?.id ?? null;
 
   // Lo que debe va aparte: si falla, las métricas salen igual, sin el aviso.
-  const facturas = getFacturasCliente(sesion.accessToken, 'pendientes').catch(() => null);
+  const facturas = getFacturasCliente(sesion.accessToken, 'pendientes', 1, cliente).catch(() => null);
   let m: MetricasCliente;
   try {
-    m = await getMetricasCliente(sesion.accessToken);
+    m = await getMetricasCliente(sesion.accessToken, cliente);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -161,8 +174,9 @@ export default async function MetricasPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mis métricas">
+      {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/metricas" />}
       {/* Su nivel del programa; si no se pudo leer, el rol de la cuenta. */}
-      <Bienvenida nombre={sesion.usuario.nombre} rol={sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
+      <Bienvenida nombre={comoCliente?.nombre ?? sesion.usuario.nombre} rol={comoCliente ? 'GENERAL' : sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
       <AvisoFacturas resumen={(await facturas)?.resumen ?? null} />
       {m.programa && (
         <AvisoSellOut reportado={m.programa.evaluacion.meses.some((x) => x.mes === plazoSellout().mes && x.sellout === true)} enlace />

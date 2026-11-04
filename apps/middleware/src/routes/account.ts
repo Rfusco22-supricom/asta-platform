@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { DIAS_VENCE_PRONTO, FACTURAS_POR_PAGINA, cambioKioscoSchema, enviarPedidoSchema, vistaFacturasSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
+import { cambioKioscoSchema, enviarPedidoSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
 import { dePantalla } from '../services/pantallas.js';
 import { autorizar } from '../middleware/autorizar.js';
@@ -15,9 +15,8 @@ import { recordAudit } from '../services/audit.service.js';
 import { cambiarKiosco, codigoParaCliente, estadoCodigo, listarKioscos } from '../services/kioscos.service.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
 import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
-import { getPartnerInvoice, listPartnerInvoices, resumenDeCobro } from '../services/invoicing.service.js';
-import { buscarPdfDeFactura, leerPdf } from '../services/invoicePdf.service.js';
-import { datosFlyer, fotoDeProducto, tipoDeImagen } from '../services/flyers.service.js';
+import { datosFlyer } from '../services/flyers.service.js';
+import { responderFacturas, responderFotoProducto, responderPdfFactura } from './respuestasCliente.js';
 import { calculadora } from '../services/calculadora.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
@@ -306,18 +305,7 @@ const facturas = autorizar('facturas.propias.leer');
 
 accountRouter.get('/facturas', facturas, async (req, res, next) => {
   try {
-    const vista = vistaFacturasSchema.safeParse(req.query.vista ?? 'pendientes');
-    const pagina = Number(req.query.pagina ?? 1);
-    if (!vista.success || !Number.isInteger(pagina) || pagina < 1 || pagina > 1000) {
-      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'vista es «pendientes» o «todas», y pagina un número desde 1.' } });
-      return;
-    }
-    const partnerId = req.identity.odooPartnerId;
-    const [resumen, lista] = await Promise.all([
-      resumenDeCobro(partnerId, DIAS_VENCE_PRONTO),
-      listPartnerInvoices(partnerId, { soloPorPagar: vista.data === 'pendientes', limit: FACTURAS_POR_PAGINA, offset: (pagina - 1) * FACTURAS_POR_PAGINA }),
-    ]);
-    res.json({ data: { resumen, vista: vista.data, facturas: lista.facturas, pagina, total: lista.total } });
+    await responderFacturas(req.identity.odooPartnerId, req.query as Record<string, unknown>, res);
   } catch (error) {
     next(error);
   }
@@ -330,32 +318,7 @@ accountRouter.get('/facturas', facturas, async (req, res, next) => {
  */
 accountRouter.get('/facturas/:id/pdf', facturas, async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    const noEsta = () => res.status(404).json({ error: { code: 'INVOICE_NOT_FOUND', message: 'Factura no encontrada.' } });
-    if (!Number.isInteger(id) || id <= 0) {
-      noEsta();
-      return;
-    }
-    const factura = await getPartnerInvoice(req.identity.odooPartnerId, id);
-    if (!factura) {
-      noEsta();
-      return;
-    }
-    const pdf = await buscarPdfDeFactura(factura.id);
-    if (!pdf) {
-      res.status(404).json({ error: { code: 'INVOICE_PDF_NOT_AVAILABLE', message: 'Esta factura todavía no tiene PDF. Pídeselo a tu vendedor.' } });
-      return;
-    }
-    const bytes = await leerPdf(pdf.adjuntoId);
-    res.set({
-      'Content-Type': 'application/pdf',
-      // El nombre sale del folio, que lo pone Odoo, limpiado: nada que pueda romper la cabecera.
-      'Content-Disposition': `attachment; filename="factura-${factura.folio.replace(/[^A-Za-z0-9._-]/g, '-')}.pdf"`,
-      'Content-Length': String(bytes.length),
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    res.end(bytes);
+    await responderPdfFactura(req.identity.odooPartnerId, req.params.id, res);
   } catch (error) {
     next(error);
   }
@@ -380,14 +343,7 @@ accountRouter.get('/flyers', flyers, async (req, res, next) => {
 /** La foto de un producto ASTA a la venta. Otro producto, o sin foto: 404. */
 accountRouter.get('/flyers/fotos/:templateId', flyers, async (req, res, next) => {
   try {
-    const id = Number(req.params.templateId);
-    const foto = Number.isInteger(id) && id > 0 ? await fotoDeProducto(id) : null;
-    if (!foto) {
-      res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Ese producto no tiene foto.' } });
-      return;
-    }
-    res.set({ 'Content-Type': tipoDeImagen(foto), 'Content-Length': String(foto.length), 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
-    res.end(foto);
+    await responderFotoProducto(req.params.templateId, res);
   } catch (error) {
     next(error);
   }
