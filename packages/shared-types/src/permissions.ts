@@ -70,6 +70,7 @@ export const accionSchema = z.enum([
   'metricas.propias.ver',
   'sellout.propio.gestionar',
   'pedido.propio.enviar',
+  'flyers.propios.crear',
   'catalogo.leer',
   'precios.propios.leer',
   'facturas.propias.leer',
@@ -227,6 +228,12 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: CLIENTES,
     ambito: 'identidad',
     descripcion: 'Ver su pedido sugerido de reposición y enviarlo a su vendedor',
+  },
+  'flyers.propios.crear': {
+    // Los datos de SU tienda para ponerlos en un flyer: el cliente sale del token.
+    roles: CLIENTES,
+    ambito: 'identidad',
+    descripcion: 'Hacer flyers de ASTA con los datos de su tienda',
   },
   'pedidos.cartera.atender': {
     // Aparte de la del administrador, como `reportes.propios.ver`: la ruta del

@@ -4443,3 +4443,19 @@ button.serie-col .serie-barra { display: block; }
 .factura-estado-not_paid, .factura-estado-partial { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
 .paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; }
 
+/* ── Mis flyers (/cuenta/flyers) ───────────────────────────────────────────── */
+.flyer { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.flyer-controles { display: grid; gap: 14px; min-width: 0; }
+.flyer-controles h2 { margin: 0; }
+.flyer-grupo, .flyer-campo { display: grid; gap: 6px; min-width: 0; }
+.flyer-grupo .segmented { flex-wrap: wrap; }
+.flyer-grupo select { width: 100%; }
+.flyer-botones { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.flyer-vista { display: grid; justify-items: center; min-width: 0; position: sticky; top: 16px; }
+.flyer-vista canvas { width: 100%; max-width: 560px; height: auto; border-radius: 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); }
+.flyer-historia canvas { max-width: 360px; }
+@media (max-width: 860px) {
+  .flyer { grid-template-columns: minmax(0, 1fr); }
+  .flyer-vista { position: static; order: -1; }
+}
+

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { DIAS_VENCE_PRONTO, FACTURAS_POR_PAGINA, cambioKioscoSchema, enviarPedidoSchema, vistaFacturasSchema, marcarVendidoSchema, mesSchema, nuevoCodigoClienteSchema, subirSellOutSchema } from '@asta/shared-types';
 import { authJwt } from '../middleware/authJwt.js';
+import { dePantalla } from '../services/pantallas.js';
 import { autorizar } from '../middleware/autorizar.js';
 import {
   deleteApiKey,
@@ -16,6 +17,7 @@ import { metricasDeCliente } from '../services/metricasCliente.service.js';
 import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
 import { getPartnerInvoice, listPartnerInvoices, resumenDeCobro } from '../services/invoicing.service.js';
 import { buscarPdfDeFactura, leerPdf } from '../services/invoicePdf.service.js';
+import { datosFlyer, fotoDeProducto, tipoDeImagen } from '../services/flyers.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
@@ -353,6 +355,38 @@ accountRouter.get('/facturas/:id/pdf', facturas, async (req, res, next) => {
       'X-Content-Type-Options': 'nosniff',
     });
     res.end(bytes);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Mis flyers ──────────────────────────────────────────────────────────────
+//
+// Los datos de su tienda y los productos ASTA con foto, para que su navegador
+// dibuje el flyer. Ver `flyers.service`. El cliente sale del token.
+
+const flyers = autorizar('flyers.propios.crear');
+
+accountRouter.get('/flyers', flyers, async (req, res, next) => {
+  try {
+    const partnerId = req.identity.odooPartnerId;
+    res.json({ data: await dePantalla(`cliente:${partnerId}:flyers`, () => datosFlyer(partnerId)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** La foto de un producto ASTA a la venta. Otro producto, o sin foto: 404. */
+accountRouter.get('/flyers/fotos/:templateId', flyers, async (req, res, next) => {
+  try {
+    const id = Number(req.params.templateId);
+    const foto = Number.isInteger(id) && id > 0 ? await fotoDeProducto(id) : null;
+    if (!foto) {
+      res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Ese producto no tiene foto.' } });
+      return;
+    }
+    res.set({ 'Content-Type': tipoDeImagen(foto), 'Content-Length': String(foto.length), 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+    res.end(foto);
   } catch (error) {
     next(error);
   }
