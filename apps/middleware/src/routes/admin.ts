@@ -45,6 +45,7 @@ import {
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
 import { demandaAsta } from '../services/recomendador/demanda.service.js';
+import { vistaClienteRouter } from './vistaCliente.js';
 import {
   anadirAlias,
   anadirCompatibilidad,
@@ -1092,3 +1093,7 @@ adminRouter.patch('/pedidos-clientes/:id', atenderPedidos, async (req, res, next
     next(error);
   }
 });
+
+/** El panel de un cliente tal como lo ve él, solo para mirar (ver `vistaCliente.ts`). */
+adminRouter.use('/vista-cliente/:partnerId', vistaClienteRouter);
+

@@ -1,5 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { contextoCliente } from '@/lib/vistaCliente';
+import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
+import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { getCalculadora, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Calculadora } from './Calculadora';
 
@@ -10,11 +13,21 @@ import { Calculadora } from './Calculadora';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CalculadoraPage() {
+export default async function CalculadoraPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
+  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
+  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+    return (
+      <Marco usuario={sesion.usuario} titulo="Calculadora de ganancia">
+        <ElegirCliente token={sesion.accessToken} destino="/cuenta/calculadora" />
+      </Marco>
+    );
+  }
+  const cliente = comoCliente?.id ?? null;
   let datos;
   try {
-    datos = await getCalculadora(sesion.accessToken);
+    datos = await getCalculadora(sesion.accessToken, cliente);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -29,6 +42,7 @@ export default async function CalculadoraPage() {
   }
   return (
     <Marco usuario={sesion.usuario} titulo="Calculadora de ganancia">
+      {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/calculadora" />}
       <p className="panel-nota" style={{ marginTop: 0 }}>
         Cuánto ganas vendiendo ASTA en lugar del original, con los precios de tu tarifa. Mueve tu margen y el descuento que le das a tu cliente.
       </p>

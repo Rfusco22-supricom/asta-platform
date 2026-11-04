@@ -43,6 +43,8 @@ export interface GrupoNav {
   /** null = sin encabezado, para el bloque principal. */
   titulo: string | null;
   secciones: Seccion[];
+  /** Se pliega y despliega con su título; abierto si una de sus secciones está activa. */
+  desplegable?: boolean;
 }
 
 const POR_ROL: Record<Rol, GrupoNav[]> = {
@@ -56,7 +58,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
         // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el
         // reporte completo» lleva al detalle.
-        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias', '/admin/sellout'] },
+        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias', '/admin/sellout', '/admin/demanda'] },
       ],
     },
     {
@@ -65,6 +67,21 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
         { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
         { href: '/admin/kioscos', titulo: 'Tablets', icono: 'tablet' },
+      ],
+    },
+    {
+      // El panel de un cliente tal como lo ve él, para revisarlo (solo lectura).
+      // Las pantallas son las del cliente: con el administrador, piden antes
+      // qué cliente mirar (ver `lib/vistaCliente.ts`).
+      titulo: 'Usuarios',
+      desplegable: true,
+      secciones: [
+        { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
+        { href: '/cuenta/sellout', titulo: 'Mi sell-out', icono: 'reportes', corto: 'Sell-out' },
+        { href: '/cuenta/pedido', titulo: 'Pedido sugerido', icono: 'cotizaciones', corto: 'Pedido' },
+        { href: '/cuenta/facturas', titulo: 'Mis facturas', icono: 'facturas', corto: 'Facturas' },
+        { href: '/cuenta/flyers', titulo: 'Mis flyers', icono: 'flyers', corto: 'Flyers' },
+        { href: '/cuenta/calculadora', titulo: 'Calculadora', icono: 'calculadora', corto: 'Calcula' },
       ],
     },
     {

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
+import { clienteDeLaVista } from '@/lib/vistaCliente';
+import { rutaCliente } from '@/lib/api';
 
 /**
  * Puente del CLIENTE para descargar el PDF de una de sus facturas. Pasa los
@@ -13,7 +15,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!sesion) return NextResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Sin sesión.' } }, { status: 401 });
   const { id } = await params;
   try {
-    const res = await fetch(`${MIDDLEWARE_URL}/api/v1/account/facturas/${encodeURIComponent(id)}/pdf`, {
+    // El administrador en «Usuarios»: el PDF del cliente que mira.
+    const ruta = rutaCliente(`/facturas/${encodeURIComponent(id)}/pdf`, await clienteDeLaVista(sesion));
+    const res = await fetch(`${MIDDLEWARE_URL}${ruta}`, {
       headers: { Authorization: `Bearer ${sesion.accessToken}` },
       cache: 'no-store',
     });

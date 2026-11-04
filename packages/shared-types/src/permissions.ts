@@ -58,6 +58,7 @@ export const accionSchema = z.enum([
   'admin.kioscos.gestionar',
   'admin.sellout.ver',
   'admin.pedidos.atender',
+  'admin.vista.cliente',
   'pedidos.cartera.atender',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
@@ -242,6 +243,14 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['VENDEDOR'],
     ambito: 'ninguno',
     descripcion: 'Ver los pedidos que envían los clientes de su cartera y marcarlos',
+  },
+  'admin.vista.cliente': {
+    // Ver el panel de un cliente tal como lo ve él (métricas, sell-out, pedido
+    // sugerido, facturas, flyers, calculadora), para revisarlo. Solo leer:
+    // nada de lo que el cliente puede hacer allí se hace en su nombre.
+    roles: ['SUPERADMIN'],
+    ambito: 'ninguno',
+    descripcion: 'Ver el panel de un cliente tal como lo ve él, sin poder cambiar nada',
   },
   'admin.pedidos.atender': {
     roles: ['SUPERADMIN'],

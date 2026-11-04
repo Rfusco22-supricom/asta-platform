@@ -1,5 +1,8 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { contextoCliente } from '@/lib/vistaCliente';
+import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
+import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { Cifra } from '@/components/Cifras';
 import { getPorMarcar, getSellOutCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { etiquetaMes, nombreMes } from '@/lib/meses';
@@ -22,15 +25,25 @@ export const dynamic = 'force-dynamic';
 
 const n = (x: number | null) => (x === null ? '—' : x.toLocaleString('es-VE', { maximumFractionDigits: 2 }));
 
-export default async function SellOutPage() {
+export default async function SellOutPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
+  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
+  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+    return (
+      <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+        <ElegirCliente token={sesion.accessToken} destino="/cuenta/sellout" />
+      </Marco>
+    );
+  }
+  const cliente = comoCliente?.id ?? null;
 
   let r;
   // «Lo que te vendimos» va aparte: si falla, el resto de la página sale igual.
   // Una sesión caducada la detecta la otra llamada, que sí redirige.
-  const marcar = getPorMarcar(sesion.accessToken).catch(() => null);
+  const marcar = getPorMarcar(sesion.accessToken, undefined, cliente).catch(() => null);
   try {
-    r = await getSellOutCliente(sesion.accessToken);
+    r = await getSellOutCliente(sesion.accessToken, cliente);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
@@ -50,6 +63,7 @@ export default async function SellOutPage() {
 
   return (
     <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+      {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/sellout" />}
       <AvisoSellOut reportado={r.reportes.some((x) => x.vigente && x.mes === plazoSellout().mes)} enlace={false} />
       {ultimo && (
         <section className="stats">
@@ -61,7 +75,14 @@ export default async function SellOutPage() {
       )}
 
       {porMarcar ? (
-        <LoQueTeVendimos inicial={porMarcar} />
+        comoCliente ? (
+          // Mirando como administrador: se ve, pero no se marca nada en su nombre.
+          <fieldset disabled className="solo-ver">
+            <LoQueTeVendimos inicial={porMarcar} />
+          </fieldset>
+        ) : (
+          <LoQueTeVendimos inicial={porMarcar} />
+        )
       ) : (
         <section className="panel">
           <h2>Lo que te vendimos</h2>
@@ -69,7 +90,7 @@ export default async function SellOutPage() {
         </section>
       )}
 
-      <SubirSellOut />
+      {!comoCliente && <SubirSellOut />}
 
       <section className="panel">
         <h2>Mes a mes</h2>

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
+import { clienteDeLaVista } from '@/lib/vistaCliente';
+import { rutaCliente } from '@/lib/api';
 
 /**
  * Puente del CLIENTE para la foto de un producto ASTA en «Mis flyers». Va por
@@ -14,7 +16,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!sesion) return NextResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Sin sesión.' } }, { status: 401 });
   const { id } = await params;
   try {
-    const res = await fetch(`${MIDDLEWARE_URL}/api/v1/account/flyers/fotos/${encodeURIComponent(id)}`, {
+    // El administrador en «Usuarios»: por su ruta, que no pide ser cliente.
+    const ruta = rutaCliente(`/flyers/fotos/${encodeURIComponent(id)}`, await clienteDeLaVista(sesion));
+    const res = await fetch(`${MIDDLEWARE_URL}${ruta}`, {
       headers: { Authorization: `Bearer ${sesion.accessToken}` },
       cache: 'no-store',
     });
