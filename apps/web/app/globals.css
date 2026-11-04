@@ -4459,3 +4459,34 @@ button.serie-col .serie-barra { display: block; }
   .flyer-vista { position: static; order: -1; }
 }
 
+/* ── Calculadora de ganancia (/cuenta/calculadora) ────────────────────────── */
+.calc { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.calc-controles { display: grid; gap: 18px; min-width: 0; }
+.calc-campo { display: grid; gap: 6px; min-width: 0; }
+.calc-campo select { width: 100%; }
+.calc-campo input[type='range'] { width: 100%; accent-color: var(--accent); }
+.calc-etiqueta { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-2); }
+.calc-etiqueta b { color: var(--text); font-variant-numeric: tabular-nums; }
+.calc-resultado { display: grid; gap: 18px; min-width: 0; }
+.calc-comparacion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.calc-columna { display: grid; gap: 4px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 16px; min-width: 0; }
+.calc-columna strong { overflow-wrap: anywhere; }
+.calc-asta { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.calc-marca { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.calc-asta .calc-marca { color: var(--accent); }
+.calc-columna dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; margin: 10px 0 0; font-size: 14px; }
+.calc-columna dt { color: var(--text-2); white-space: nowrap; }
+.calc-columna dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.calc-titulares { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.calc-titulares p { display: grid; gap: 2px; margin: 0; padding: 14px 16px; border-radius: 16px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); }
+.calc-titulares b { font-size: 24px; font-variant-numeric: tabular-nums; color: var(--positive); }
+.calc-titulares span { font-size: 12.5px; color: var(--text-2); }
+.calc-mes { border-color: color-mix(in srgb, var(--positive) 45%, var(--border)) !important; }
+.calc-fila-activa td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+@media (max-width: 860px) {
+  .calc { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .calc-comparacion { grid-template-columns: minmax(0, 1fr); }
+}
+

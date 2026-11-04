@@ -18,6 +18,7 @@ import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/ped
 import { getPartnerInvoice, listPartnerInvoices, resumenDeCobro } from '../services/invoicing.service.js';
 import { buscarPdfDeFactura, leerPdf } from '../services/invoicePdf.service.js';
 import { datosFlyer, fotoDeProducto, tipoDeImagen } from '../services/flyers.service.js';
+import { calculadora } from '../services/calculadora.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
@@ -388,6 +389,21 @@ accountRouter.get('/flyers/fotos/:templateId', flyers, async (req, res, next) =>
     res.set({ 'Content-Type': tipoDeImagen(foto), 'Content-Length': String(foto.length), 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
     res.end(foto);
   } catch (error) {
+    next(error);
+  }
+});
+
+// ── Calculadora de ganancia ─────────────────────────────────────────────────
+//
+// Las parejas ASTA–original con los precios de SU tarifa (ver
+// `calculadora.service`). Con la acción de sus precios: es lo que enseña.
+
+accountRouter.get('/calculadora', autorizar('precios.propios.leer'), async (req, res, next) => {
+  try {
+    const partnerId = req.identity.odooPartnerId;
+    res.json({ data: await dePantalla(`cliente:${partnerId}:calculadora`, () => calculadora(partnerId, req.identity.odooPricelistId ?? null, req.log)) });
+  } catch (error) {
+    // Sin tarifa, `TarifaNoDisponible`: 409 con su mensaje para el cliente.
     next(error);
   }
 });
