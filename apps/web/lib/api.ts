@@ -60,6 +60,8 @@ import {
   demandaAstaRespuestaSchema,
   ofertaClienteRespuestaSchema,
   facturasClienteRespuestaSchema,
+  datosFlyerRespuestaSchema,
+  type DatosFlyer,
   type FacturasCliente,
   type VistaFacturas,
   type OfertaCliente,
@@ -769,4 +771,9 @@ export async function getOfertaCliente(accessToken: string, partnerId: number): 
 /** «Mis facturas» del cliente con sesión: lo que debe y sus facturas. */
 export async function getFacturasCliente(accessToken: string, vista: VistaFacturas, pagina = 1): Promise<FacturasCliente> {
   return (await request(`/api/v1/account/facturas?vista=${vista}&pagina=${pagina}`, facturasClienteRespuestaSchema, accessToken)).data;
+}
+
+/** Los datos de su tienda y los productos ASTA con foto, para «Mis flyers». */
+export async function getDatosFlyer(accessToken: string): Promise<DatosFlyer> {
+  return (await request('/api/v1/account/flyers', datosFlyerRespuestaSchema, accessToken)).data;
 }
