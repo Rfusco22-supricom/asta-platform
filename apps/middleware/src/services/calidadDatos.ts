@@ -60,8 +60,9 @@ export function tieneEspaciosDeMas(nombre: string): boolean {
  * ¿Qué tiene mal el nombre de un vendedor tal como está en Odoo?
  *
  * Ese nombre sale en el panel, en los reportes y en las facturas impresas. Hoy
- * conviven nombres en mayúsculas, con «(v)» al final o con un punto detrás:
- * cada uno lo escribió quien creó el usuario.
+ * conviven nombres con «(v)» al final o con un punto detrás: cada uno lo
+ * escribió quien creó el usuario. Todo en mayúsculas NO es un error: así se
+ * escriben muchos en Odoo y así se quieren.
  */
 export function problemasNombreVendedor(nombre: string): string[] {
   const problemas: string[] = [];
@@ -69,7 +70,5 @@ export function problemasNombreVendedor(nombre: string): string[] {
   if (/^asistente\b/i.test(nombre.trim())) problemas.push('es un puesto, no una persona');
   if (/[.,;]\s*$/.test(nombre)) problemas.push('termina en un signo de puntuación');
   if (tieneEspaciosDeMas(nombre)) problemas.push('tiene espacios de más');
-  const letras = nombre.replace(/\(v\)/gi, '').replace(/[^\p{L}]/gu, '');
-  if (letras.length > 3 && letras === letras.toUpperCase()) problemas.push('está todo en mayúsculas');
   return problemas;
 }
