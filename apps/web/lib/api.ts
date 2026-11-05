@@ -62,7 +62,9 @@ import {
   facturasClienteRespuestaSchema,
   datosFlyerRespuestaSchema,
   calculadoraRespuestaSchema,
+  comparativaZonaRespuestaSchema,
   type Calculadora,
+  type ComparativaZona,
   type DatosFlyer,
   type FacturasCliente,
   type VistaFacturas,
@@ -792,4 +794,9 @@ export async function getDatosFlyer(accessToken: string, cliente?: number | null
 /** La calculadora de ganancia: parejas ASTA–original con los precios de su tarifa. */
 export async function getCalculadora(accessToken: string, cliente?: number | null): Promise<Calculadora> {
   return (await request(rutaCliente('/calculadora', cliente), calculadoraRespuestaSchema, accessToken)).data;
+}
+
+/** «Tú frente a tu zona»: el cliente al lado de los de su estado y del país, sin nombres. */
+export async function getComparativaZona(accessToken: string, cliente?: number | null): Promise<ComparativaZona> {
+  return (await request(rutaCliente('/zona', cliente), comparativaZonaRespuestaSchema, accessToken)).data;
 }

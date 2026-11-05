@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
@@ -10,6 +11,7 @@ import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
 import { ProgramaCliente } from '@/components/ProgramaCliente';
 import { AvisoSellOut } from '@/components/AvisoSellOut';
+import { ComparativaZona } from '@/components/ComparativaZona';
 import { getFacturasCliente, getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money, moneyCompact } from '@/lib/formato';
 import { DIAS_VENCE_PRONTO, plazoSellout, type FacturasCliente, type MetricasCliente } from '@asta/shared-types';
@@ -18,7 +20,8 @@ import { DIAS_VENCE_PRONTO, plazoSellout, type FacturasCliente, type MetricasCli
  * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
  *
  * Su nivel en el programa de ASTA y cómo va en el trimestre, sus compras de
- * ASTA de los últimos doce meses, qué compra y lo que se busca en sus tablets.
+ * ASTA de los últimos doce meses, cómo va frente a su zona, qué compra y lo
+ * que se busca en sus tablets.
  * Cada bloque sale aunque otro no se haya podido leer.
  */
 
@@ -183,6 +186,9 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
       )}
       <ProgramaCliente programa={m.programa} />
       <Compras m={m} />
+      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 220 }} aria-busy="true" />}>
+        <ComparativaZona token={sesion.accessToken} cliente={cliente} />
+      </Suspense>
       <QueCompras m={m} />
       <Tablets m={m} />
     </Marco>

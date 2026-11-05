@@ -18,6 +18,7 @@ import { enviarPedido, pedidoSugerido, pedidosDelCliente } from '../services/ped
 import { datosFlyer } from '../services/flyers.service.js';
 import { responderFacturas, responderFotoProducto, responderPdfFactura } from './respuestasCliente.js';
 import { calculadora } from '../services/calculadora.service.js';
+import { comparativaZona } from '../services/comparativaZona.service.js';
 import { comprobar, guardar, marcarVendido, mesDe, plantilla, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 
 /**
@@ -144,6 +145,15 @@ accountRouter.patch('/tablets/:id', gestionarTablets, async (req, res, next) => 
 accountRouter.get('/metricas', autorizar('metricas.propias.ver'), async (req, res, next) => {
   try {
     res.json({ data: await metricasDeCliente(req.identity.odooPartnerId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/** Él frente a los clientes de su estado y del país, sin nombres (`comparativaZona.service`). */
+accountRouter.get('/zona', autorizar('metricas.propias.ver'), async (req, res, next) => {
+  try {
+    res.json({ data: await comparativaZona(req.identity.odooPartnerId) });
   } catch (error) {
     next(error);
   }
