@@ -49,3 +49,4 @@ export * from './proximaOferta.js';
 export * from './facturasCliente.js';
 export * from './flyers.js';
 export * from './calculadora.js';
+export * from './comparativaZona.js';
