@@ -239,7 +239,7 @@ export async function calidadDeDatos({ fresco = false } = {}): Promise<
     revision('NOMBRE_VENDEDOR', 'baja', {
       titulo: 'Nombres de vendedor mal escritos',
       porQue: 'El nombre sale en el panel, en los reportes y en las facturas. Hoy cada uno está escrito de una forma.',
-      comoArreglar: { ruta: ['Ajustes', 'Usuarios', 'el vendedor', 'Nombre'], nota: 'Basta con «Nombre Apellido».' },
+      comoArreglar: { ruta: ['Ajustes', 'Usuarios', 'el vendedor', 'Nombre'], nota: 'Basta con el nombre y el apellido; en mayúsculas también vale.' },
       unidad: 'vendedores',
     }, nombresVendedor),
     revision('ESPACIOS_EN_NOMBRE', 'baja', {

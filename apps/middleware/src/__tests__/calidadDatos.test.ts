@@ -46,8 +46,10 @@ describe('nombres', () => {
     expect(problemasNombreVendedor('Ana Pérez')).toEqual([]);
     expect(problemasNombreVendedor('Luis Mora (v)')).toEqual(['lleva «(v)» al final']);
     expect(problemasNombreVendedor('Rosa Díaz (V)')).toEqual(['lleva «(v)» al final']);
-    expect(problemasNombreVendedor('CARLA PEÑA.')).toEqual(['termina en un signo de puntuación', 'está todo en mayúsculas']);
-    expect(problemasNombreVendedor('MARTA  RUIZ')).toEqual(['tiene espacios de más', 'está todo en mayúsculas']);
+    expect(problemasNombreVendedor('CARLA PEÑA.')).toEqual(['termina en un signo de puntuación']);
+    expect(problemasNombreVendedor('MARTA  RUIZ')).toEqual(['tiene espacios de más']);
+    // Las mayúsculas no son un error.
+    expect(problemasNombreVendedor('JUAN SOTO')).toEqual([]);
     expect(problemasNombreVendedor('Asistente de Ventas CCS')).toEqual(['es un puesto, no una persona']);
   });
 });
