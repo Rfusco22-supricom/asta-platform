@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation';
 import { clearSession } from '@/lib/session';
 import { ambitoDe, navegacionDe } from '@/lib/navegacion';
 import { COOKIE_MENU } from '@/lib/menu';
+import { COOKIE_PRESENTACION, presentacionDe } from '@/lib/presentacion';
 import { limpiarEspacios, nombrePersona } from '@asta/shared-types';
+import { AvisoPresentacion } from './AvisoPresentacion';
 import { MarcoCliente } from './MarcoCliente';
 import { MenuUsuario } from './MenuUsuario';
 import { BuscadorCabecera } from './Paleta';
@@ -49,12 +51,15 @@ function iniciales(nombre: string): string {
 export async function Marco({
   usuario,
   titulo,
+  tituloPrivado,
   descripcion,
   acciones,
   children,
 }: {
   usuario: { nombre: string; role: string };
   titulo: string;
+  /** El título es el nombre de un cliente (su ficha): el modo presentación lo tapa. */
+  tituloPrivado?: boolean;
   /** Una línea que diga a qué pregunta responde la pantalla. */
   descripcion?: string;
   /** Botones propios de la pantalla, a la izquierda del buscador. */
@@ -62,7 +67,11 @@ export async function Marco({
   children: React.ReactNode;
 }) {
   const grupos = navegacionDe(usuario.role);
-  const plegado = (await cookies()).get(COOKIE_MENU)?.value === 'plegado';
+  const guardadas = await cookies();
+  const plegado = guardadas.get(COOKIE_MENU)?.value === 'plegado';
+  // El modo presentación solo se le ofrece al personal: es quien enseña el panel.
+  const esPersonal = usuario.role === 'SUPERADMIN' || usuario.role === 'VENDEDOR';
+  const presentacion = esPersonal ? presentacionDe(guardadas.get(COOKIE_PRESENTACION)?.value) : null;
   // El vendedor es una persona y su nombre viene de Odoo tal cual («MARTA  RUIZ (v)»).
   // El de un cliente es una razón social: solo se le quitan los espacios de más.
   const nombreVisible = usuario.role === 'VENDEDOR' ? nombrePersona(usuario.nombre) : limpiarEspacios(usuario.nombre);
@@ -71,17 +80,18 @@ export async function Marco({
     <MarcoCliente grupos={grupos} ambito={ambitoDe(usuario.role)} rol={usuario.role} plegadoInicial={plegado} salir={salir}>
       <header className="cabecera">
         <div className="cabecera-titulo">
-          <h1>{titulo}</h1>
+          <h1 data-privado={tituloPrivado || undefined}>{titulo}</h1>
           {descripcion && <p>{descripcion}</p>}
         </div>
 
         {/*
-          El chip del usuario ABRE un menú: tema y cerrar sesión. A su izquierda, el buscador que abre la paleta ⌘K.
+          El chip del usuario ABRE un menú: tema, modo presentación y cerrar sesión. A su izquierda, el buscador que abre la paleta ⌘K.
         */}
         <div className="cabecera-acciones">
+          {presentacion && <AvisoPresentacion />}
           {acciones}
           <BuscadorCabecera />
-          <MenuUsuario nombre={nombreVisible} rol={usuario.role} iniciales={iniciales(nombreVisible)} salir={salir} />
+          <MenuUsuario nombre={nombreVisible} rol={usuario.role} iniciales={iniciales(nombreVisible)} presentacion={presentacion} salir={salir} />
         </div>
       </header>
 

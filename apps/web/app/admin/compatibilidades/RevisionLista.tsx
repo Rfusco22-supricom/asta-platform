@@ -164,7 +164,8 @@ export function RevisionLista({
           <article key={p.templateId} className="revision-producto">
             <header>
               <div>
-                <div className="cliente-nombre">{p.nombre ?? <em>{odooDisponible ? 'Ya no existe en Odoo' : 'Sin nombre: Odoo no responde'}</em>}</div>
+                <div className="cliente-nombre" data-publico>
+                  {p.nombre ?? <em>{odooDisponible ? 'Ya no existe en Odoo' : 'Sin nombre: Odoo no responde'}</em>}</div>
                 <div className="sku">
                   {p.sku ?? 'sin referencia'} · plantilla {p.templateId}
                   {p.nombre && !p.activoEnOdoo && <span className="tag prospecto" style={{ marginLeft: 8 }}>archivado o no a la venta</span>}

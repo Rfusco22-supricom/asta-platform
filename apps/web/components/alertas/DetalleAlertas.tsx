@@ -172,7 +172,9 @@ export function Ritmo({ r }: { r: AlertaRitmo }) {
             <tbody>
               {r.vendedores.map((v) => (
                 <tr key={v.odooUserId ?? 'sin'}>
-                  <td className="c-cliente">{v.vendedor ?? <span className="stat-sub">Sin vendedor</span>}</td>
+                  <td className="c-cliente" data-privado>
+                    {v.vendedor ?? <span className="stat-sub">Sin vendedor</span>}
+                  </td>
                   <td className="num" data-etiqueta="Clientes">
                     {n(v.clientes)}
                   </td>
@@ -382,7 +384,7 @@ export function Tendencia({ t }: { t: AlertaTendencia }) {
               <tbody>
                 {t.inventario.productos.map((p) => (
                   <tr key={`${p.sede}-${p.productoId}`}>
-                    <td className="c-cliente alerta-producto">
+                    <td className="c-cliente alerta-producto" data-publico>
                       <span className="cliente-nombre">{p.codigo ?? p.nombre}</span>
                       {p.codigo && <span className="cliente-contacto">{p.nombre}</span>}
                     </td>

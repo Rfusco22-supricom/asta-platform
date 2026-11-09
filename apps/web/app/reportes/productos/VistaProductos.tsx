@@ -183,7 +183,9 @@ function Producto({ p }: { p: ProductoDelReporte }) {
             <ul>
               {p.clientes.map((cl) => (
                 <li key={cl.partnerId}>
-                  <Link href={`/cartera/${cl.partnerId}`}>{cl.nombre}</Link>
+                  <Link href={`/cartera/${cl.partnerId}`} data-privado>
+                    {cl.nombre}
+                  </Link>
                   <span>{cantidad(cl.cantidad)} u.</span>
                   <span className="num">{money(cl.monto)}</span>
                 </li>

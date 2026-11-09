@@ -18,7 +18,7 @@ export function BuscadorClientes({ clientes, destino }: { clientes: { id: number
         {encontrados.map((c) => (
           <li key={c.id}>
             <a href={enlace(c)}>
-              <strong>{c.nombre}</strong>
+              <strong data-privado>{c.nombre}</strong>
               <span className="stat-sub">{c.nivel}</span>
             </a>
           </li>

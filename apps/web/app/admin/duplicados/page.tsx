@@ -198,7 +198,7 @@ export default async function DuplicadosPage({
                   {g.registros.map((r) => (
                     <tr key={r.partnerId} className={r.esDestino ? 'duplicados-destino' : undefined}>
                       <td>
-                        <span className="duplicados-id">id {r.partnerId}</span> {r.nombre}
+                        <span className="duplicados-id">id {r.partnerId}</span> <span data-privado>{r.nombre}</span>
                         {r.esDestino && <span className="duplicados-flecha">← fusionar aquí</span>}
                       </td>
                       <td className={`num${r.facturado === 0 ? ' zero' : ''}`}>{money(r.facturado)}</td>

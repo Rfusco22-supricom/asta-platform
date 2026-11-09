@@ -147,7 +147,7 @@ export function Tablets({ inicial, descargas }: { inicial: Kiosco[]; descargas: 
                 <div className="kio-tablet-info">
                   <div className="kio-tablet-nombre">
                     <span className={`kio-punto${enLinea(k) ? ' si' : ''}`} aria-hidden="true" />
-                    {k.nombre}
+                    <span data-privado>{k.nombre}</span>
                     {!k.activo && <span className="pi-insignia">Desactivada</span>}
                   </div>
                   <div className="kio-tablet-detalle">{k.tienda}</div>

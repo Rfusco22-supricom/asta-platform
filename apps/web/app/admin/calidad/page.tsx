@@ -162,7 +162,12 @@ function Tabla({ r }: { r: Revision }) {
           {r.muestra.map((h) => (
             <tr key={h.id}>
               <td className="cd-nombre">{h.nombre}</td>
-              {conDetalle && <td className="cd-detalle">{h.detalle}</td>}
+              {/* El detalle repite nombres, RIF y correos: el modo presentación lo tapa. */}
+              {conDetalle && (
+                <td className="cd-detalle" data-privado>
+                  {h.detalle}
+                </td>
+              )}
               {conCompania && <td className="cd-compania">{h.compania ?? '—'}</td>}
               {conVendedor && <td>{h.vendedor ?? <span className="stat-sub">—</span>}</td>}
               <td className={`num${h.facturado === 0 ? ' zero' : ''}`}>{money(h.facturado)}</td>

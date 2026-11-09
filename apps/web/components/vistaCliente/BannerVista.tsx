@@ -6,7 +6,7 @@ export function BannerVista({ vista, destino }: { vista: VistaCliente; destino: 
   return (
     <div className="vista-banner" role="status">
       <span>
-        Estás viendo el panel de <strong>{vista.nombre}</strong> tal como lo ve él · <b>solo lectura</b>
+        Estás viendo el panel de <strong data-privado>{vista.nombre}</strong> tal como lo ve él · <b>solo lectura</b>
       </span>
       <span className="vista-banner-acciones">
         <Link href={`${destino}?elegir=1`}>Cambiar cliente</Link>

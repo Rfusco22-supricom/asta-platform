@@ -53,7 +53,7 @@ export function ListaImpulsa({ clientes }: { clientes: ClienteImpulsa[] }) {
             <section key={c.partnerId} className="panel imp-cliente">
               <header className="imp-cabecera">
                 <Avatar nombre={c.nombre} />
-                <Link href={`/cartera/${c.partnerId}`} className="imp-nombre">
+                <Link href={`/cartera/${c.partnerId}`} className="imp-nombre" data-privado>
                   {c.nombre}
                   <CargandoEnlace />
                 </Link>

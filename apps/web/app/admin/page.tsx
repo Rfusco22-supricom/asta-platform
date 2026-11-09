@@ -50,6 +50,7 @@ function Ranking<T>({
   valor,
   enlace,
   pie,
+  privado,
 }: {
   area: string;
   titulo: string;
@@ -59,6 +60,8 @@ function Ranking<T>({
   valor: (f: T) => number;
   enlace?: { href: string; texto: string };
   pie?: (f: T) => React.ReactNode;
+  /** Los nombres son de clientes o vendedores: el modo presentación los tapa. */
+  privado?: boolean;
 }) {
   const maximo = Math.max(0, ...filas.map(valor));
   return (
@@ -73,7 +76,7 @@ function Ranking<T>({
             <li key={i}>
               <span className="dash-pos">{i + 1}</span>
               <span className="dash-nombre">
-                {nombre(f)}
+                <span data-privado={privado || undefined}>{nombre(f)}</span>
                 {pie && <small>{pie(f)}</small>}
               </span>
               <Proporcion valor={valor(f)} maximo={maximo} />
@@ -170,6 +173,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         valor={(v) => v.facturado}
         pie={(v) => facturas(v.facturas)}
         enlace={{ href: urlCon('/admin/agentes', { sede }), texto: 'Todos los vendedores' }}
+        privado
       />
 
       <Ranking
@@ -180,6 +184,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         valor={(c) => c.facturado}
         pie={(c) => facturas(c.facturas)}
         enlace={{ href: reportes, texto: 'Ver más clientes' }}
+        privado
       />
     </>
   );

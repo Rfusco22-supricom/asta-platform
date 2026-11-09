@@ -78,7 +78,10 @@ function Obligatorio({ titulo, estado, regla, tokens, children }: { titulo: stri
       <Marca estado={estado} />
       <div className="prog-texto">
         <strong>{titulo}</strong>
-        <span className="stat-sub">{regla}</span>
+        {/* La regla es la misma para todo el nivel: el modo presentación la deja ver. */}
+        <span className="stat-sub" data-publico>
+          {regla}
+        </span>
         {children}
       </div>
       <span className="prog-tokens-fila">+{tokens}</span>

@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { CargaGlobal } from '@/components/CargaGlobal';
+import { COOKIE_PRESENTACION, presentacionDe } from '@/lib/presentacion';
 import { COOKIE_TEMA, temaValido } from '@/lib/tema';
 import './globals.css';
 
@@ -33,10 +34,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // El tema elegido en el menú de usuario. Se lee en el servidor para que la
   // página llegue ya pintada con él: decidirlo en el navegador haría un destello
   // del tema contrario en cada carga. Sin elección, manda el sistema.
-  const tema = temaValido((await cookies()).get(COOKIE_TEMA)?.value);
+  const guardadas = await cookies();
+  const tema = temaValido(guardadas.get(COOKIE_TEMA)?.value);
+  // El modo presentación (`lib/presentacion.ts`): el script que tapa va en el
+  // <head>, sin `async`, para estar vigilando antes de que llegue el <body>.
+  const presentacion = presentacionDe(guardadas.get(COOKIE_PRESENTACION)?.value);
 
   return (
-    <html lang="es" className={inter.variable} data-theme={tema === 'sistema' ? undefined : tema}>
+    <html lang="es" className={inter.variable} data-theme={tema === 'sistema' ? undefined : tema} data-presentacion={presentacion ? '' : undefined}>
+      {presentacion && (
+        <head>
+          <script src="/tapado.js" />
+        </head>
+      )}
       <body>
         {/* El aviso de «cargando» de todo el panel: ver CargaGlobal. */}
         <Suspense fallback={null}>
