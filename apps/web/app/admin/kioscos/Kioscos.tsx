@@ -239,10 +239,12 @@ export function Kioscos({
                 <div className="kio-tablet-info">
                   <div className="kio-tablet-nombre">
                     <span className={`kio-punto${enLinea(k) ? ' si' : ''}`} aria-hidden="true" />
-                    {k.nombre}
+                    <span data-privado>{k.nombre}</span>
                     {!k.activo && <span className="pi-insignia">Desactivada</span>}
                   </div>
-                  <div className="kio-tablet-detalle">{dondeEsta(k)}</div>
+                  <div className="kio-tablet-detalle" data-privado>
+                    {dondeEsta(k)}
+                  </div>
                   <div className="kio-tablet-detalle">
                     {haceCuanto(k.ultimaConexion)}
                     {k.version ? ` · app ${k.version}` : ''}

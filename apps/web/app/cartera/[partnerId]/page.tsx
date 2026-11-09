@@ -119,7 +119,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
     desde && hasta ? `en ${nombrePeriodo(desde, hasta)}` : desde ? `desde ${fecha(desde)}` : hasta ? `hasta ${fecha(hasta)}` : 'histórico';
 
   return (
-    <Marco usuario={sesion.usuario} titulo={nombre}>
+    <Marco usuario={sesion.usuario} titulo={nombre} tituloPrivado>
       {/* La tarjeta del cliente: su avatar, de dónde se llega y la tarifa de Odoo. */}
       <div className="panel ficha-cabeza">
         <Avatar nombre={nombre} tamano="l" />
@@ -127,7 +127,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           {/* El administrador no tiene cartera: llega desde los reportes. */}
           <div className="crumb">
             {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
-            <span>/</span> {nombre}
+            <span>/</span> <span data-privado>{nombre}</span>
           </div>
           {/* El nombre ya es el título de la pantalla: aquí no se repite. */}
           <span className="ficha-tarifa">{cliente.tier ?? 'Sin tarifa asignada'}</span>
@@ -170,7 +170,12 @@ export default async function FichaCliente({ params, searchParams }: Props) {
               <li key={h.partnerId} style={{ marginBottom: 4 }}>
                 <strong>{money(h.facturado)}</strong> en {h.facturas}{' '}
                 {h.facturas === 1 ? 'factura' : 'facturas'}
-                {h.vendedorNombre && <> · cartera de {h.vendedorNombre}</>}
+                {h.vendedorNombre && (
+                  <>
+                    {' · cartera de '}
+                    <span data-privado>{h.vendedorNombre}</span>
+                  </>
+                )}
                 {ODOO_URL && (
                   <>
                     {' · '}

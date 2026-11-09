@@ -24,7 +24,9 @@ export function Bienvenida({ nombre, rol, categoria }: { nombre: string; rol: st
     <section className="panel bienvenida">
       <div className="bienvenida-texto">
         <span className="hero-etiqueta">Portal de clientes ASTA</span>
-        <h2>Hola, {limpiarEspacios(nombre)}</h2>
+        <h2>
+          Hola, <span data-privado>{limpiarEspacios(nombre)}</span>
+        </h2>
         {nivel && losa !== null && (
           <span className="bienvenida-nivel" style={{ '--c': COLORES_CATEGORIAS[losa] } as React.CSSProperties}>
             <i aria-hidden="true" />

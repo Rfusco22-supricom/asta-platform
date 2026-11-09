@@ -343,7 +343,7 @@ export function Paleta({
                     <IconoPaleta nombre={e.icono} />
                   </span>
                   <span className="paleta-texto">
-                    <strong>{e.titulo}</strong>
+                    <strong data-privado={e.icono === 'cartera' || undefined}>{e.titulo}</strong>
                     {e.subtitulo && <small>{e.subtitulo}</small>}
                   </span>
                   {e.dato && <span className="paleta-dato">{e.dato}</span>}

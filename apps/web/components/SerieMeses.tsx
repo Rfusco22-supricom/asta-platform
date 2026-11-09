@@ -241,6 +241,7 @@ function Contenido({ datos, variacion, anterior }: { datos: DetalleMes; variacio
           detalle: `${n(c.facturas)} ${smartbit ? (c.facturas === 1 ? 'compra' : 'compras') : c.facturas === 1 ? 'factura' : 'facturas'}`,
           href: c.partnerId ? `/cartera/${c.partnerId}` : undefined,
         }))}
+        privado
       />
 
       {datos.porVendedor && datos.porVendedor.length > 0 && (
@@ -252,6 +253,7 @@ function Contenido({ datos, variacion, anterior }: { datos: DetalleMes; variacio
             monto: v.facturado,
             detalle: `${n(v.facturas)} ${v.facturas === 1 ? 'factura' : 'facturas'}`,
           }))}
+          privado
         />
       )}
 
@@ -277,9 +279,12 @@ function Contenido({ datos, variacion, anterior }: { datos: DetalleMes; variacio
 function Lista({
   titulo,
   filas,
+  privado,
 }: {
   titulo: string;
   filas: { clave: string; nombre: string; monto: number; detalle: string; href?: string }[];
+  /** Los nombres son de clientes o vendedores: el modo presentación los tapa. */
+  privado?: boolean;
 }) {
   if (filas.length === 0) return null;
   const maximo = Math.max(...filas.map((f) => f.monto), 1);
@@ -290,7 +295,7 @@ function Lista({
         {filas.map((f) => (
           <li key={f.clave}>
             <span className="mes-detalle-nombre">
-              {f.href ? <Link href={f.href}>{f.nombre}</Link> : f.nombre}
+              <span data-privado={privado || undefined}>{f.href ? <Link href={f.href}>{f.nombre}</Link> : f.nombre}</span>
               <small>{f.detalle}</small>
             </span>
             <span className="mes-detalle-monto" title={money(f.monto)}>

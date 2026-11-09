@@ -149,7 +149,7 @@ async function Hoy({ token }: { token: string }) {
               <Link href="/impulsa">
                 <Avatar nombre={c.nombre} tamano="s" />
                 <span className="lista-texto">
-                  <strong>{c.nombre}</strong>
+                  <strong data-privado>{c.nombre}</strong>
                   <small>
                     {c.pendientes} {c.pendientes === 1 ? 'producto' : 'productos'} para pasar a ASTA
                   </small>
@@ -192,7 +192,7 @@ async function EnJuego({ token }: { token: string }) {
               <Link href={`/cartera/${c.partnerId}`}>
                 <Avatar nombre={c.nombre} tamano="s" />
                 <span className="lista-texto">
-                  <strong>{c.nombre}</strong>
+                  <strong data-privado>{c.nombre}</strong>
                   <small>{loQueLeFalta(c.evaluacion)}</small>
                 </span>
                 <span className="lista-dato">{reglaDe(c.evaluacion.nivel).nombre}</span>

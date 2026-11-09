@@ -1,4 +1,6 @@
+import { cookies } from 'next/headers';
 import { requireSession } from '@/lib/session';
+import { COOKIE_PRESENTACION, presentacionDe } from '@/lib/presentacion';
 import { Marco } from '@/components/Marco';
 import { contextoCliente } from '@/lib/vistaCliente';
 import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
@@ -39,6 +41,11 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
         </div>
       </Marco>
     );
+  }
+  // En el modo presentación, la tienda sale en blanco: el flyer se dibuja en un
+  // `canvas`, y lo que hay dentro no lo puede tapar `tapado.js`.
+  if (presentacionDe((await cookies()).get(COOKIE_PRESENTACION)?.value)) {
+    datos = { ...datos, tienda: { ...datos.tienda, nombre: '', telefono: null, direccion: null } };
   }
   return (
     <Marco usuario={sesion.usuario} titulo="Mis flyers">

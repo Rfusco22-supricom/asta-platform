@@ -124,7 +124,7 @@ export default async function SellOutAdminPage({ searchParams }: { searchParams:
             <ol className="met-lista">
               {d.sinReportar.slice(0, 30).map((c) => (
                 <li key={c.partnerId}>
-                  <span>
+                  <span data-privado>
                     {c.nombre}
                     {c.vendedor && <span className="stat-sub"> · {c.vendedor}</span>}
                   </span>

@@ -31,7 +31,7 @@ function tono(nombre: string): number {
 
 export function Avatar({ nombre, tamano = 'm' }: { nombre: string; tamano?: 's' | 'm' | 'l' }) {
   return (
-    <span className={`avatar-cliente avatar-${tamano} avatar-tono-${tono(nombre)}`} aria-hidden="true">
+    <span className={`avatar-cliente avatar-${tamano} avatar-tono-${tono(nombre)}`} aria-hidden="true" data-privado>
       {iniciales(nombre)}
     </span>
   );

@@ -2,6 +2,7 @@
 
 import { ROLE_LABEL, type AppRole } from '@asta/shared-types';
 import { useEffect, useRef, useState } from 'react';
+import { cambiarPresentacion } from '@/lib/presentacion';
 import { aplicarTema, temaActual, type Tema } from '@/lib/tema';
 
 /**
@@ -24,6 +25,9 @@ import { aplicarTema, temaActual, type Tema } from '@/lib/tema';
  *
  * El tema (claro, oscuro o el del sistema) se elige aquí y se aplica al
  * momento, sin recargar: ver `lib/tema.ts`.
+ *
+ * El personal tiene además el modo presentación (`lib/presentacion.ts`): tapa
+ * lo de la empresa para enseñar el panel a un cliente.
  */
 
 const TEMAS: { valor: Tema; texto: string }[] = [
@@ -36,11 +40,14 @@ export function MenuUsuario({
   nombre,
   rol,
   iniciales,
+  presentacion,
   salir,
 }: {
   nombre: string;
   rol: string;
   iniciales: string;
+  /** Si el modo presentación está encendido; `null` si no se le ofrece (un cliente). */
+  presentacion: boolean | null;
   /** La acción de servidor que cierra la sesión. */
   salir: () => Promise<void>;
 }) {
@@ -130,6 +137,16 @@ export function MenuUsuario({
               ))}
             </div>
           </div>
+
+          {presentacion !== null && (
+            <button type="button" role="menuitemcheckbox" aria-checked={presentacion} className="menu-presentacion" onClick={() => cambiarPresentacion(!presentacion)}>
+              <span>
+                <strong>Modo presentación</strong>
+                <small>Tapa importes, clientes, vendedores y contactos</small>
+              </span>
+              <span className="interruptor" aria-hidden="true" />
+            </button>
+          )}
 
           <form action={salir}>
             <button type="submit" role="menuitem" className="menu-peligro">
