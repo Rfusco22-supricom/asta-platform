@@ -1267,11 +1267,20 @@ button.chip-usuario:focus-visible { outline: 2px solid var(--cian); outline-offs
 @keyframes aparecer { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
 
 /* ── Modo presentación (lib/presentacion.ts, public/tapado.js) ───────────────
-   El script marca lo que es de la empresa y aquí se pinta como una barra: el
-   texto, transparente; el fondo, del gris de los textos secundarios. */
-::highlight(tapado) { color: transparent; background-color: color-mix(in srgb, var(--text-3) 42%, transparent); }
+   El script marca lo que es de la empresa y aquí se difumina: el texto,
+   transparente, y en su lugar su sombra, desenfocada y estirada a los lados
+   para que tampoco se adivine en letra pequeña. En `em`, para que la cifra
+   grande del Inicio quede tan ilegible como la de una tabla. (Una barra gris
+   tapaba igual, pero la pantalla quedaba fea para enseñarla.) */
+::highlight(tapado) {
+  color: transparent;
+  text-shadow:
+    0.35em 0 0.7em color-mix(in srgb, var(--text) 55%, transparent),
+    -0.35em 0 0.7em color-mix(in srgb, var(--text) 55%, transparent),
+    0 0 0.8em color-mix(in srgb, var(--text) 70%, transparent);
+}
 /* Las cifras con degradado se pintan con su fondo recortado a la letra: ese
-   fondo seguiría dibujando el número encima de la barra. */
+   fondo seguiría dibujando el número nítido encima del difuminado. */
 html[data-presentacion] :is(.hero-cifra, .cat-avance-cifras) strong { background: none; color: var(--text); }
 /* Sin resaltados (un navegador viejo) no se puede tapar fino: se difumina todo. */
 html[data-presentacion='sin-resaltados'] main { filter: blur(9px); }
