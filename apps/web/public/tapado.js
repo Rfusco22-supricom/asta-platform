@@ -23,7 +23,7 @@
  * ── Cómo, y por qué así ──────────────────────────────────────────────────────
  *
  * No cambia el texto: lo MARCA con la API de resaltados de CSS y
- * `::highlight(tapado)` lo pinta como una barra (`globals.css`). Si cambiara el
+ * `::highlight(tapado)` lo difumina (`globals.css`). Si cambiara el
  * texto, React lo encontraría distinto al hidratar y volvería a pintar la
  * página entera, con un destello de las cifras de verdad.
  *
