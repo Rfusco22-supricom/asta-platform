@@ -34,3 +34,9 @@ export const PESTANAS_PERSONAS = [
   { href: '/admin/accesos?pestana=clientes', titulo: 'Clientes' },
   { href: '/admin/usuarios', titulo: 'Invitaciones' },
 ];
+
+/** «Tablets y conexiones» del cliente: sus tablets y sus API keys. */
+export const PESTANAS_CONEXIONES = [
+  { href: '/cuenta/tablets', titulo: 'Tablets' },
+  { href: '/cuenta/api-keys', titulo: 'API keys' },
+];

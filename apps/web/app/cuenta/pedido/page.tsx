@@ -24,7 +24,7 @@ export default async function PedidoPage({ searchParams }: { searchParams: Promi
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Pedido sugerido">
+      <Marco usuario={sesion.usuario} titulo="Pedidos">
         <ElegirCliente token={sesion.accessToken} destino="/cuenta/pedido" />
       </Marco>
     );
@@ -40,7 +40,7 @@ export default async function PedidoPage({ searchParams }: { searchParams: Promi
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Pedido sugerido">
+      <Marco usuario={sesion.usuario} titulo="Pedidos">
         <div className={esPermiso ? 'notice' : 'notice error'}>
           <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudo calcular tu pedido'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
@@ -52,7 +52,7 @@ export default async function PedidoPage({ searchParams }: { searchParams: Promi
   const sinAtender = pedidos?.filter((p) => p.estado === 'ENVIADO') ?? [];
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Pedido sugerido">
+    <Marco usuario={sesion.usuario} titulo="Pedidos">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/pedido" />}
       {sinAtender.length > 0 && (
         <div className="notice aviso-sellout" role="status">

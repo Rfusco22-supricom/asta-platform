@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
@@ -9,20 +8,20 @@ import { Bienvenida } from '@/components/Bienvenida';
 import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
-import { ProgramaCliente } from '@/components/ProgramaCliente';
-import { Beneficios } from '@/components/Beneficios';
+import { NivelCorto } from '@/components/ProgramaCliente';
 import { AvisoSellOut } from '@/components/AvisoSellOut';
-import { ComparativaZona } from '@/components/ComparativaZona';
 import { getFacturasCliente, getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { fecha, money, moneyCompact } from '@/lib/formato';
 import { DIAS_VENCE_PRONTO, plazoSellout, type FacturasCliente, type MetricasCliente } from '@asta/shared-types';
 
 /**
- * «Mis métricas»: la primera pantalla de un cliente (fase 1 del sell-out).
+ * El Inicio del cliente (la ruta sigue siendo `/cuenta/metricas`, para no
+ * romper enlaces): los avisos (facturas, sell-out), su nivel en corto con lo
+ * que le falta, atajos a lo que hace cada mes, sus compras de ASTA de los
+ * últimos doce meses, qué compra y lo que se busca en sus tablets. El detalle
+ * del nivel, sus beneficios y la comparativa con su zona están en «Mi nivel y
+ * beneficios» (`/cuenta/nivel`). Reorganizado el 2026-11-10.
  *
- * Su nivel en el programa de ASTA y cómo va en el trimestre, sus compras de
- * ASTA de los últimos doce meses, cómo va frente a su zona, qué compra y lo
- * que se busca en sus tablets.
  * Cada bloque sale aunque otro no se haya podido leer.
  */
 
@@ -151,7 +150,7 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis métricas">
+      <Marco usuario={sesion.usuario} titulo="Inicio">
         <ElegirCliente token={sesion.accessToken} destino="/cuenta/metricas" />
       </Marco>
     );
@@ -167,7 +166,7 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis métricas">
+      <Marco usuario={sesion.usuario} titulo="Inicio">
         <div className={esPermiso ? 'notice' : 'notice error'}>
           <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudieron cargar tus métricas'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
@@ -177,7 +176,7 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Mis métricas">
+    <Marco usuario={sesion.usuario} titulo="Inicio">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/metricas" />}
       {/* Su nivel del programa; si no se pudo leer, el rol de la cuenta. */}
       <Bienvenida nombre={comoCliente?.nombre ?? sesion.usuario.nombre} rol={comoCliente ? 'GENERAL' : sesion.usuario.role} categoria={m.programa?.evaluacion.nivel ?? null} />
@@ -185,12 +184,21 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
       {m.programa && (
         <AvisoSellOut reportado={m.programa.evaluacion.meses.some((x) => x.mes === plazoSellout().mes && x.sellout === true)} enlace />
       )}
-      <ProgramaCliente programa={m.programa} />
-      {m.programa && <Beneficios nivel={m.programa.evaluacion.nivel} para="cliente" />}
+      <NivelCorto programa={m.programa} enlace="/cuenta/nivel" />
+      {!comoCliente && (
+        <nav className="atajos-cliente" aria-label="Lo que puedes hacer">
+          <Link href="/cuenta/pedido">
+            Revisar tu pedido sugerido<small>Lo que te toca reponer, listo para enviar</small>
+          </Link>
+          <Link href="/cuenta/sellout">
+            Subir tu sell-out<small>Lo que vendiste este mes</small>
+          </Link>
+          <Link href="/cuenta/flyers">
+            Crear un flyer<small>Con los productos ASTA y tu tienda</small>
+          </Link>
+        </nav>
+      )}
       <Compras m={m} />
-      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 220 }} aria-busy="true" />}>
-        <ComparativaZona token={sesion.accessToken} cliente={cliente} />
-      </Suspense>
       <QueCompras m={m} />
       <Tablets m={m} />
     </Marco>

@@ -21,7 +21,7 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis flyers">
+      <Marco usuario={sesion.usuario} titulo="Flyers">
         <ElegirCliente token={sesion.accessToken} destino="/cuenta/flyers" />
       </Marco>
     );
@@ -34,7 +34,7 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis flyers">
+      <Marco usuario={sesion.usuario} titulo="Flyers">
         <div className={esPermiso ? 'notice' : 'notice error'}>
           <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudieron cargar tus flyers'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
@@ -48,7 +48,7 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
     datos = { ...datos, tienda: { ...datos.tienda, nombre: '', telefono: null, direccion: null } };
   }
   return (
-    <Marco usuario={sesion.usuario} titulo="Mis flyers">
+    <Marco usuario={sesion.usuario} titulo="Flyers">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/flyers" />}
       <p className="panel-nota" style={{ marginTop: 0 }}>
         Elige una plantilla, revisa los datos de tu tienda y descarga la imagen para publicarla en Instagram o WhatsApp.

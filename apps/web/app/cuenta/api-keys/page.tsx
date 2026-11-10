@@ -1,5 +1,6 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { PestanasSeccion, PESTANAS_CONEXIONES } from '@/components/PestanasSeccion';
 import { getApiKeys, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { ApiKeys } from './ApiKeys';
 
@@ -46,7 +47,7 @@ export default async function ApiKeysPage() {
      */
     if (error instanceof ApiError && error.status === 403) {
       return (
-        <Marco usuario={sesion.usuario} titulo="Mis API keys">
+        <Marco usuario={sesion.usuario} titulo="Tablets y conexiones">
           <div className="notice">
             <h2>Esta pantalla es para clientes</h2>
           </div>
@@ -55,7 +56,7 @@ export default async function ApiKeysPage() {
     }
 
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis API keys">
+      <Marco usuario={sesion.usuario} titulo="Tablets y conexiones">
         <div className="notice error">
           <h2>No se pudieron cargar tus API keys</h2>
           <p>
@@ -69,7 +70,8 @@ export default async function ApiKeysPage() {
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Mis API keys">
+    <Marco usuario={sesion.usuario} titulo="Tablets y conexiones">
+      <PestanasSeccion etiqueta="Tablets y conexiones" pestanas={PESTANAS_CONEXIONES} actual="/cuenta/api-keys" />
       <ApiKeys filas={datos.filas} vivas={datos.vivas} maximo={datos.maximo} />
     </Marco>
   );
