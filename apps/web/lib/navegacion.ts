@@ -58,7 +58,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/reportes', titulo: 'Ventas', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
-        { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
+        { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes', prefijo: true },
         { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza' },
       ],
     },

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Agente } from '@asta/shared-types';
 import { money, moneyEntero } from '@/lib/formato';
@@ -157,7 +158,10 @@ export function TablaAgentes({ filas }: { filas: Agente[] }) {
                     <div className="cliente-fila">
                       <Avatar nombre={a.nombre} tamano="s" />
                       <span className="cliente-datos">
-                        <span className="cliente-nombre">{a.nombre}</span>
+                        {/* Su página: todo lo suyo de ASTA (`/admin/agentes/[odooUserId]`). */}
+                        <Link href={`/admin/agentes/${a.odooUserId}`} className="cliente-nombre enlace-ficha">
+                          {a.nombre}
+                        </Link>
                         <span className="cliente-contacto">{a.login || '—'}</span>
                       </span>
                     </div>

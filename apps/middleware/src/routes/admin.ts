@@ -8,7 +8,7 @@ import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS }
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { AccesoImposible, buscarUsuariosOdoo, darAccesoPorId, listarConAcceso, quitarAccesoPersonal } from '../services/accesoPersonal.service.js';
-import { reporteAstaDeLaEmpresa } from '../services/reporteAsta.service.js';
+import { reporteAstaDeLaEmpresa, reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { dePantalla, olvidarPantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
@@ -289,8 +289,11 @@ adminRouter.get('/cotizaciones', autorizar('admin.reportes.ver'), async (req, re
     const rango = rangoDeLaPeticion(query);
     const sede = sedeDeLaPeticion(query);
     const estado = estadoDeLaPeticion(query);
-    const data = await dePantalla(`admin:cotizaciones:${claveSede(sede)}:${rango.desde}:${rango.hasta}:${estado}`, () =>
-      cotizaciones({ rango, sede, estado, odooUserId: null }),
+    // `?vendedor=` acota a la cartera de un vendedor: la página de cada vendedor.
+    const vendedor = Number(query.vendedor);
+    const odooUserId = Number.isInteger(vendedor) && vendedor > 0 ? vendedor : null;
+    const data = await dePantalla(`admin:cotizaciones:${claveSede(sede)}:${rango.desde}:${rango.hasta}:${estado}:${odooUserId ?? 'todos'}`, () =>
+      cotizaciones({ rango, sede, estado, odooUserId }),
     );
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
   } catch (error) {
@@ -335,6 +338,24 @@ adminRouter.get('/agentes', autorizar('admin.agentes.ver'), async (req, res, nex
       data: r.agentes,
       meta: { ...r.totales, generadoEn: r.generadoEn, duracionMs: r.duracionMs },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Lo de ASTA de UN vendedor, para su página en Vendedores: el mismo reporte que
+ * él ve en «Mis ventas» (`reporteAstaDelVendedor`), pedido por el administrador.
+ */
+adminRouter.get('/agentes/:odooUserId/reportes', autorizar('admin.agentes.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = Number(req.params.odooUserId);
+    if (!Number.isInteger(odooUserId) || odooUserId <= 0) {
+      res.status(400).json({ error: { code: 'INVALID_ID', message: 'odooUserId inválido.' } });
+      return;
+    }
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json(await dePantalla(`vendedor:${odooUserId}:reportes:${rango.desde}:${rango.hasta}`, () => reporteAstaDelVendedor(odooUserId, rango)));
   } catch (error) {
     next(error);
   }

@@ -515,6 +515,10 @@ export const getReporteEmpresa = (
   sede: number | null = null,
 ) => pedirReporte('/api/v1/admin/reportes', accessToken, rango, sede);
 
+/** El reporte de ASTA de UN vendedor, para su página en Vendedores (administración). */
+export const getReporteVendedor = (accessToken: string, odooUserId: number, rango?: { desde: string; hasta: string }) =>
+  pedirReporte(`/api/v1/admin/agentes/${odooUserId}/reportes`, accessToken, rango);
+
 export const getReporteCartera = (
   accessToken: string,
   rango?: { desde: string; hasta: string },
@@ -546,8 +550,16 @@ function consultaCotizaciones(rango: { desde: string; hasta: string }, estado: E
 }
 
 /** Las cotizaciones de ASTA de toda la empresa, en un periodo, una sede y un estado. */
-export async function getCotizacionesEmpresa(accessToken: string, rango: { desde: string; hasta: string }, estado: EstadoCotizacion, sede: number | null = null): Promise<Cotizaciones> {
-  return (await request(`/api/v1/admin/cotizaciones${consultaCotizaciones(rango, estado, sede)}`, cotizacionesRespuestaSchema, accessToken)).data;
+export async function getCotizacionesEmpresa(
+  accessToken: string,
+  rango: { desde: string; hasta: string },
+  estado: EstadoCotizacion,
+  sede: number | null = null,
+  /** Solo las de la cartera de este vendedor (su página en Vendedores). */
+  vendedor: number | null = null,
+): Promise<Cotizaciones> {
+  const q = consultaCotizaciones(rango, estado, sede) + (vendedor ? `&vendedor=${vendedor}` : '');
+  return (await request(`/api/v1/admin/cotizaciones${q}`, cotizacionesRespuestaSchema, accessToken)).data;
 }
 
 /** Las cotizaciones de ASTA de la propia cartera. */
