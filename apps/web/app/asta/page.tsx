@@ -4,7 +4,7 @@ import { getAstaCartera, ApiError, esRedireccion, ContractError } from '@/lib/ap
 import { moneyCompact } from '@/lib/formato';
 import { Cifra } from '@/components/Cifras';
 import { TablaAsta } from '../admin/asta/TablaAsta';
-import { PestanasSeccion, PESTANAS_ASTA_VENDEDOR } from '@/components/PestanasSeccion';
+import { PestanasReportes } from '@/components/PestanasReportes';
 
 /**
  * Oportunidades de ASTA en la cartera de UN vendedor.
@@ -34,8 +34,8 @@ export default async function AstaCarteraPage() {
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
+      <Marco usuario={sesion.usuario} titulo="Mis ventas">
+        <PestanasReportes actual="clientes" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta pantalla es para vendedores' : 'No se pudo cargar'}</h2>
           <p>
@@ -52,16 +52,16 @@ export default async function AstaCarteraPage() {
 
   if (filas.length === 0) {
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
+      <Marco usuario={sesion.usuario} titulo="Mis ventas">
+        <PestanasReportes actual="clientes" />
         <div className="empty">Ningún cliente tuyo compra consumibles todavía.</div>
       </Marco>
     );
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
+    <Marco usuario={sesion.usuario} titulo="Mis ventas">
+      <PestanasReportes actual="clientes" />
       <section className="stats">
         <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} nota="histórico, sin IVA" />
         <Cifra icono="clientes" etiqueta="Compran ASTA" valor={filas.filter((f) => f.asta > 0).length} nota="clientes tuyos que lo han comprado alguna vez" />

@@ -17,7 +17,7 @@ import { money, fecha } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
 import { Cifra } from '@/components/Cifras';
 import { GraficaMensual } from './GraficaMensual';
-import { Perfil } from './Perfil';
+import { Actividad, NotasCliente, QueCompra } from './Perfil';
 import { Oferta } from './Oferta';
 import { BeneficiosFicha } from './BeneficiosFicha';
 
@@ -33,6 +33,20 @@ export const dynamic = 'force-dynamic';
 
 const ODOO_URL = process.env.ODOO_URL ?? '';
 
+/**
+ * La ficha va en pestañas (reorganización del 2026-11-10): en una sola
+ * columna era muy larga y lo de cada día (cifras, qué ofrecerle) quedaba entre
+ * lo que se mira de vez en cuando. La pestaña va en la URL, con las fechas: el
+ * enlace a una pestaña se puede compartir tal cual.
+ */
+const PESTANAS = [
+  { clave: 'resumen', titulo: 'Resumen' },
+  { clave: 'compras', titulo: 'Qué compra' },
+  { clave: 'cobro', titulo: 'Cobro' },
+  { clave: 'notas', titulo: 'Notas' },
+] as const;
+type Pestana = (typeof PESTANAS)[number]['clave'];
+
 /** Colores por estado: el saldo pendiente debe cantar a la vista. */
 const ESTADO_CLASE: Record<string, string> = {
   paid: 'positive',
@@ -46,13 +60,14 @@ const ESTADO_CLASE: Record<string, string> = {
 
 interface Props {
   params: Promise<{ partnerId: string }>;
-  searchParams: Promise<{ desde?: string; hasta?: string }>;
+  searchParams: Promise<{ desde?: string; hasta?: string; pestana?: string }>;
 }
 
 export default async function FichaCliente({ params, searchParams }: Props) {
   const sesion = await requireSession();
   const { partnerId: raw } = await params;
-  const { desde, hasta } = await searchParams;
+  const { desde, hasta, pestana: pedida } = await searchParams;
+  const pestana = PESTANAS.some((p) => p.clave === pedida) ? (pedida as Pestana) : 'resumen';
 
   const partnerId = Number(raw);
   if (!Number.isInteger(partnerId) || partnerId <= 0) notFound();
@@ -204,34 +219,54 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         </div>
       )}
 
-      {/* ── Filtros ────────────────────────────────────────────────────────── */}
-      <form className="filtros" method="get">
-        <div className="filtro-campo">
-          <label htmlFor="desde">Desde</label>
-          <input id="desde" name="desde" type="date" className="input" defaultValue={desde ?? ''} />
-        </div>
-        <div className="filtro-campo">
-          <label htmlFor="hasta">Hasta</label>
-          <input id="hasta" name="hasta" type="date" className="input" defaultValue={hasta ?? ''} />
-        </div>
-        <button type="submit" className="btn btn-inline">
-          Aplicar
-        </button>
-        {hayFiltro && (
-          <Link href={`/cartera/${partnerId}`} className="btn-link">
-            Quitar filtros
-          </Link>
-        )}
-      </form>
+      <nav className="pestanas-reporte" aria-label="Secciones de la ficha">
+        {PESTANAS.map((p) => {
+          const qs = new URLSearchParams();
+          if (p.clave !== 'resumen') qs.set('pestana', p.clave);
+          if (desde) qs.set('desde', desde);
+          if (hasta) qs.set('hasta', hasta);
+          const href = `/cartera/${partnerId}${qs.size ? `?${qs}` : ''}`;
+          return (
+            <Link key={p.clave} href={href} prefetch={false} className={p.clave === pestana ? 'activa' : undefined} aria-current={p.clave === pestana ? 'page' : undefined}>
+              {p.titulo}
+            </Link>
+          );
+        })}
+      </nav>
 
-      {hayFiltro && (
+      {/* ── Filtros: no en Notas, que no dependen de fechas ───────────────── */}
+      {pestana !== 'notas' && (
+        <form className="filtros" method="get">
+          {pestana !== 'resumen' && <input type="hidden" name="pestana" value={pestana} />}
+          <div className="filtro-campo">
+            <label htmlFor="desde">Desde</label>
+            <input id="desde" name="desde" type="date" className="input" defaultValue={desde ?? ''} />
+          </div>
+          <div className="filtro-campo">
+            <label htmlFor="hasta">Hasta</label>
+            <input id="hasta" name="hasta" type="date" className="input" defaultValue={hasta ?? ''} />
+          </div>
+          <button type="submit" className="btn btn-inline">
+            Aplicar
+          </button>
+          {hayFiltro && (
+            <Link href={`/cartera/${partnerId}${pestana !== 'resumen' ? `?pestana=${pestana}` : ''}`} className="btn-link">
+              Quitar filtros
+            </Link>
+          )}
+        </form>
+      )}
+
+      {hayFiltro && pestana !== 'notas' && (
         <p className="filtro-aviso">
           Mostrando {desde ? `desde ${fecha(desde)}` : 'desde el inicio'}{' '}
           {hasta ? `hasta ${fecha(hasta)}` : 'hasta hoy'}.
         </p>
       )}
 
-      {/* ── Resumen ───────────────────────────────────────────────────────── */}
+      {/* ── Resumen: cifras, actividad, qué ofrecerle y beneficios ────────── */}
+      {pestana === 'resumen' && (
+        <>
       <section className="stats">
         {/* El criterio, escrito donde se lee el número (#26). */}
         <Cifra
@@ -266,23 +301,34 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         />
       </section>
 
-      {perfil && <Perfil perfil={perfil} />}
+          {perfil && <Actividad perfil={perfil} />}
 
-      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
-        <BeneficiosFicha token={sesion.accessToken} partnerId={partnerId} />
-      </Suspense>
+          <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
+            <Oferta token={sesion.accessToken} partnerId={partnerId} />
+          </Suspense>
 
-      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
-        <Oferta token={sesion.accessToken} partnerId={partnerId} />
-      </Suspense>
+          <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
+            <BeneficiosFicha token={sesion.accessToken} partnerId={partnerId} />
+          </Suspense>
+        </>
+      )}
 
-      {/* ── Serie mensual ─────────────────────────────────────────────────── */}
-      <section className="panel">
-        <h2>ASTA mes a mes</h2>
-        <GraficaMensual puntos={f.serieMensual ?? []} />
-      </section>
+      {/* ── Qué compra: sus productos y el mes a mes ──────────────────────── */}
+      {pestana === 'compras' && (
+        <>
+          {perfil ? <QueCompra perfil={perfil} /> : <div className="notice">No se pudo leer qué compra ahora.</div>}
+          <section className="panel">
+            <h2>ASTA mes a mes</h2>
+            <GraficaMensual puntos={f.serieMensual ?? []} />
+          </section>
+        </>
+      )}
 
-      {/* ── Estado de pago ────────────────────────────────────────────────── */}
+      {/* ── Notas del vendedor ────────────────────────────────────────────── */}
+      {pestana === 'notas' && (perfil ? <NotasCliente perfil={perfil} /> : <div className="notice">No se pudieron leer las notas ahora.</div>)}
+
+      {/* ── Cobro ─────────────────────────────────────────────────────────── */}
+      {pestana === 'cobro' && (
       <section className="panel">
         <h2>Cobro de lo que compró de ASTA</h2>
 
@@ -336,6 +382,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           </>
         )}
       </section>
+      )}
     </Marco>
   );
 }

@@ -1,34 +1,30 @@
 import { cache, Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { nombrePersona, nombreTrimestre, reglaDe } from '@asta/shared-types';
+import { nombrePersona } from '@asta/shared-types';
 import { requireSession } from '@/lib/session';
 import { destinoPara } from '@/lib/navegacion';
 import { Marco } from '@/components/Marco';
-import { Avatar } from '@/components/Avatar';
 import { Cifra } from '@/components/Cifras';
-import { alCerrar, loQueLeFalta } from '@/components/ProgramaStaff';
 import { Serie, etiquetaMes } from '@/components/Reporte';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { urlCon } from '@/components/Sedes';
 import { nombrePeriodo } from '@/lib/meses';
-import { Esqueleto, Fallo, HeroMeta, corto, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
-import { getActividadCartera, getCategoriasAstaCartera, getImpulsa, getPortfolio, getProgramaCartera, getReporteCartera } from '@/lib/api';
+import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
+import { TareasVendedor } from '@/components/inicio/TareasVendedor';
+import { getCategoriasAstaCartera, getReporteCartera } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
- * Inicio del vendedor: cómo va su cartera y qué hacer hoy.
- *
- * Antes entraba directo a Impulsa, que dice QUÉ ofrecer pero no CÓMO VA. Esta
- * portada junta en una pantalla lo que estaba repartido en cinco:
+ * «Hoy», la portada del vendedor: cómo va su cartera y a quién llamar hoy.
  *
  *   · Arriba, su cartera en ASTA con la pirámide de categorías en 3D: cuánto
  *     compran sus clientes al mes y cuánto aporta a la meta de la empresa.
- *   · Sus cifras de los últimos doce meses y la serie mes a mes.
- *   · «Para hoy»: los clientes de Impulsa con más dinero en otras marcas.
- *   · «En juego este trimestre»: los del programa que todavía pueden subir, y
- *     qué les falta.
- *   · «Se están enfriando»: los que compraban y llevan tiempo sin comprar.
+ *   · Sus cifras del periodo y la serie mes a mes.
+ *   · «Para hoy» (`TareasVendedor`): UNA lista de tareas con lo que antes
+ *     estaba repartido entre este Inicio, Impulsa y Cotizaciones —pedidos y
+ *     cotizaciones que esperan, quién baja o puede subir de nivel, quién se
+ *     enfría y a quién pasarle a ASTA—, lo urgente primero.
  *
  * Cada bloque es una lectura aparte con su `Suspense`, como en el Inicio del
  * administrador.
@@ -122,138 +118,6 @@ async function Ventas({ token, rango }: { token: string; rango: { desde: string;
   );
 }
 
-// ── Para hoy: lo de Impulsa con más en juego ───────────────────────────────────
-
-async function Hoy({ token }: { token: string }) {
-  const r = await intentar(() => getImpulsa(token));
-  if (!r) return <Fallo area="hoy" titulo="Para hoy" />;
-  const { pendientes } = r.meta;
-  const clientes = r.data
-    .map((c) => ({ ...c, pendientes: c.sugerencias.filter((s) => s.visible).length }))
-    .filter((c) => c.pendientes > 0)
-    // Los que más compran de otras marcas, primero; la cifra no se enseña (solo montos de ASTA).
-    .sort((a, b) => b.enJuego - a.enJuego)
-    .slice(0, 6);
-
-  return (
-    <section className="panel dash-hoy">
-      <h2>Para hoy</h2>
-      <p className="panel-nota">
-        {pendientes.sugerencias > 0
-          ? `${n(pendientes.sugerencias)} ${pendientes.sugerencias === 1 ? 'sugerencia' : 'sugerencias'} en ${n(pendientes.clientes)} ${pendientes.clientes === 1 ? 'cliente' : 'clientes'}`
-          : 'Hoy no hay a quién pasarle a ASTA.'}
-      </p>
-      {clientes.length > 0 ? (
-        <ul className="lista-inicio">
-          {clientes.map((c) => (
-            <li key={c.partnerId}>
-              <Link href="/impulsa">
-                <Avatar nombre={c.nombre} tamano="s" />
-                <span className="lista-texto">
-                  <strong data-privado>{c.nombre}</strong>
-                  <small>
-                    {c.pendientes} {c.pendientes === 1 ? 'producto' : 'productos'} para pasar a ASTA
-                  </small>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty">Has atendido todas las sugerencias.</div>
-      )}
-      <Link className="btn btn-inline dash-hoy-btn" href="/impulsa">
-        Abrir Impulsa
-      </Link>
-    </section>
-  );
-}
-
-// ── En juego: pueden subir este trimestre si cumplen lo que les falta ───────────
-
-async function EnJuego({ token }: { token: string }) {
-  const r = await intentar(() => getProgramaCartera(token));
-  if (!r) return <Fallo area="cerca" titulo="En juego este trimestre" />;
-  // Primero a los que menos les falta del trimestre: son las llamadas que más rinden.
-  const falta = (c: (typeof r.clientes)[number]) => c.evaluacion.cuotaTrimestral - c.evaluacion.compraTrimestre;
-  const lista = r.clientes
-    .filter((c) => alCerrar(c.evaluacion) === 'juego')
-    .sort((a, b) => falta(a) - falta(b))
-    .slice(0, 5);
-
-  return (
-    <section className="panel dash-cerca">
-      <h2>En juego este trimestre</h2>
-      <p className="panel-nota">Si cumplen lo que les falta antes de que cierre {nombreTrimestre(r.trimestre)}, suben de nivel.</p>
-      {lista.length > 0 ? (
-        <ul className="lista-inicio">
-          {lista.map((c) => (
-            <li key={c.clave}>
-              <Link href={`/cartera/${c.partnerId}`}>
-                <Avatar nombre={c.nombre} tamano="s" />
-                <span className="lista-texto">
-                  <strong data-privado>{c.nombre}</strong>
-                  <small>{loQueLeFalta(c.evaluacion)}</small>
-                </span>
-                <span className="lista-dato">{reglaDe(c.evaluacion.nivel).nombre}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty">Nadie de tu cartera está en juego ahora mismo.</div>
-      )}
-      <Link className="dash-mas" href="/categorias?ver=juego">
-        Ver todos →
-      </Link>
-    </section>
-  );
-}
-
-// ── Se están enfriando: compraban y llevan tiempo sin comprar ──────────────────
-
-async function Enfriando({ token }: { token: string }) {
-  const [act, port] = await Promise.all([intentar(() => getActividadCartera(token)), intentar(() => getPortfolio(token))]);
-  if (!act || !port) return <Fallo area="enfriando" titulo="Se están enfriando" />;
-  const nombres = new Map(port.filas.map((f) => [f.id, f.nombre]));
-  // Primero los que más compraban: perderlos es lo que más cuesta.
-  const lista = act.data
-    .filter((a) => (a.estado === 'en_riesgo' || a.estado === 'dormido') && a.facturado12m > 0)
-    .sort((a, b) => b.facturado12m - a.facturado12m)
-    .slice(0, 5);
-
-  return (
-    <section className="panel dash-enfriando">
-      <h2>Se están enfriando</h2>
-      <p className="panel-nota">Compraban y llevan más de {act.meta.umbrales.enRiesgo} días sin comprar.</p>
-      {lista.length > 0 ? (
-        <ul className="lista-inicio">
-          {lista.map((a) => {
-            const nombre = nombres.get(a.partnerId) ?? `Cliente ${a.partnerId}`;
-            return (
-              <li key={a.partnerId}>
-                <Link href={`/cartera/${a.partnerId}`}>
-                  <Avatar nombre={nombre} tamano="s" />
-                  <span className="lista-texto">
-                    <strong>{nombre}</strong>
-                    <small>{a.diasSinComprar === null ? 'sin compras' : `${n(a.diasSinComprar)} días sin comprar`}</small>
-                  </span>
-                  <span className={`lista-dato${a.estado === 'dormido' ? ' lista-rojo' : ' lista-ambar'}`}>{corto(a.facturado12m)}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="empty">Ningún cliente que compraba se ha enfriado.</div>
-      )}
-      <Link className="dash-mas" href="/cartera">
-        Ver tu cartera →
-      </Link>
-    </section>
-  );
-}
-
 function EsqueletoVentas() {
   return (
     <>
@@ -288,14 +152,8 @@ export default async function InicioVendedorPage({ searchParams }: { searchParam
         <Suspense fallback={<EsqueletoVentas />}>
           <Ventas token={token} rango={rango} />
         </Suspense>
-        <Suspense fallback={<Esqueleto area="hoy" alto={420} />}>
-          <Hoy token={token} />
-        </Suspense>
-        <Suspense fallback={<Esqueleto area="cerca" alto={300} />}>
-          <EnJuego token={token} />
-        </Suspense>
-        <Suspense fallback={<Esqueleto area="enfriando" alto={300} />}>
-          <Enfriando token={token} />
+        <Suspense fallback={<Esqueleto area="hoy" alto={520} />}>
+          <TareasVendedor token={token} />
         </Suspense>
       </div>
     </Marco>

@@ -30,7 +30,7 @@ export default async function CotizacionesCarteraPage({ searchParams }: { search
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Cotizaciones">
+      <Marco usuario={sesion.usuario} titulo="Cotizaciones y pedidos">
         <div className="notice error">
           <h2>{esPermiso ? 'Tu usuario no tiene cartera asociada' : 'No se pudieron leer las cotizaciones'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -42,7 +42,7 @@ export default async function CotizacionesCarteraPage({ searchParams }: { search
   const enviados = await pedidos;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Cotizaciones">
+    <Marco usuario={sesion.usuario} titulo="Cotizaciones y pedidos">
       <Periodos base="/cotizaciones" periodo={periodo} />
       {enviados && <PedidosClientes inicial={enviados} />}
       <ListaCotizaciones datos={datos} base="/cotizaciones" periodo={periodo} conVendedor={false} />

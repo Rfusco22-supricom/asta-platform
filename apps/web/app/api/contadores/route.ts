@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 /**
  * Los números del menú: cuánto espera en cada sección, por ruta.
  *
- *   · Vendedor → `/impulsa`: las sugerencias pendientes de «Pásale a ASTA».
+ *   · Vendedor → `/inicio` («Hoy»): las sugerencias pendientes de Impulsa.
  *   · Administrador → `/admin/compatibilidades`: las propuestas sin revisar.
  *
  * Lo pide el menú al cargar y cada pocos minutos (`components/NavLateral.tsx`).
@@ -26,7 +26,8 @@ const guardados = new Map<string, { hasta: number; contadores: Record<string, nu
 async function leer(rol: string, token: string): Promise<Record<string, number>> {
   if (rol === 'VENDEDOR') {
     const r = await getImpulsa(token);
-    return { '/impulsa': r.meta.pendientes.sugerencias };
+    // Impulsa ya no está en el menú: sus sugerencias cuentan en «Hoy».
+    return { '/inicio': r.meta.pendientes.sugerencias };
   }
   if (rol === 'SUPERADMIN') {
     const r = await getRevisionCompatibilidades(token, { estado: 'PROPUESTA' });
