@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { bajar, mesesDelTrimestre, plazoSellout, subir, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
+import { bajar, mesesDelTrimestre, nivelBloqueado, plazoSellout, subir, topar, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { CierreNoPermitido, cerrarTrimestre, conNivelesDelPrograma, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
 
@@ -42,6 +42,11 @@ describe('Trimestres', () => {
     expect([subir('BRONCE'), subir('DIAMANTE'), bajar('ORO'), bajar('GENERAL')]).toEqual(['PLATA', 'DIAMANTE', 'PLATA', 'GENERAL']);
   });
 
+  it('Diamante está bloqueado: de Oro no se sube, y nadie empieza por encima de Oro', () => {
+    expect([subir('PLATA'), subir('ORO')]).toEqual(['ORO', 'ORO']);
+    expect([nivelBloqueado('DIAMANTE'), nivelBloqueado('ORO'), topar('DIAMANTE'), topar('PLATA')]).toEqual([true, false, 'ORO', 'PLATA']);
+  });
+
   it('el sell-out de diciembre vale hasta el 31 de diciembre, hora de Caracas', () => {
     expect(limiteSellout('2026-12').toISOString()).toBe('2027-01-01T04:00:00.000Z');
   });
@@ -79,10 +84,11 @@ describe('Las reglas', () => {
     expect(evaluar(entrada({ nivel: 'GENERAL', compras: [0, 0, 0] }))).toMatchObject({ nivelFinal: 'GENERAL', tokens: 4 });
   });
 
-  it('Diamante que cumple se queda; el excedente de cada nivel', () => {
-    const diamante = evaluar(entrada({ nivel: 'DIAMANTE', compras: [5400, 5400, 5400] }));
-    expect(diamante).toMatchObject({ nivelFinal: 'DIAMANTE', tokens: 13 });
-    expect(diamante.extras.excedente).toBe(true);
+  it('Oro que cumple se queda; el excedente de cada nivel', () => {
+    // Oro necesita el 130 %: 1.950 de media.
+    const oro = evaluar(entrada({ nivel: 'ORO', compras: [1950, 1950, 1950] }));
+    expect(oro).toMatchObject({ nivelFinal: 'ORO', tokens: 13 });
+    expect(oro.extras.excedente).toBe(true);
     // Bronce necesita el 150 %: 750 de media.
     expect(evaluar(entrada({ nivel: 'BRONCE', compras: [750, 750, 750] })).extras.excedente).toBe(true);
     expect(evaluar(entrada({ nivel: 'BRONCE', compras: [749, 749, 749] })).extras.excedente).toBe(false);

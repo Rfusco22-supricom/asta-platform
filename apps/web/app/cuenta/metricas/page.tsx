@@ -10,6 +10,7 @@ import { Cifra } from '@/components/Cifras';
 import { Serie } from '@/components/SerieMeses';
 import { Proporcion } from '@/components/Reporte';
 import { ProgramaCliente } from '@/components/ProgramaCliente';
+import { Beneficios } from '@/components/Beneficios';
 import { AvisoSellOut } from '@/components/AvisoSellOut';
 import { ComparativaZona } from '@/components/ComparativaZona';
 import { getFacturasCliente, getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
@@ -185,6 +186,7 @@ export default async function MetricasPage({ searchParams }: { searchParams: Pro
         <AvisoSellOut reportado={m.programa.evaluacion.meses.some((x) => x.mes === plazoSellout().mes && x.sellout === true)} enlace />
       )}
       <ProgramaCliente programa={m.programa} />
+      {m.programa && <Beneficios nivel={m.programa.evaluacion.nivel} para="cliente" />}
       <Compras m={m} />
       <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 220 }} aria-busy="true" />}>
         <ComparativaZona token={sesion.accessToken} cliente={cliente} />

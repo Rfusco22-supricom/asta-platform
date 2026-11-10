@@ -4,6 +4,7 @@ import {
   MESES_VENTANA_CATEGORIA,
   categoriaDe,
   limpiarEspacios,
+  nivelBloqueado,
   nombrePersona,
   type CategoriasAsta,
   type ClienteCategoria,
@@ -69,6 +70,8 @@ export function siguienteCategoria(compraMensual: number, meses: number): Client
   const i = CATEGORIAS_ASTA.indexOf(actual);
   if (i <= 0) return null;
   const arriba = CATEGORIAS_ASTA[i - 1]!;
+  // A un nivel bloqueado (Diamante, ver `NIVEL_MAXIMO`) no se le cuenta lo que falta.
+  if (nivelBloqueado(arriba.clave)) return null;
   return {
     categoria: arriba.clave,
     faltaMensual: Math.max(0, Math.round((arriba.minimoMensual - compraMensual) * 100) / 100),

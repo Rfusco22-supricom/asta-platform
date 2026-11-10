@@ -53,6 +53,7 @@ import {
   calidadDatosRespuestaSchema,
   categoriasAstaRespuestaSchema,
   programaEmpresaRespuestaSchema,
+  programaClienteRespuestaSchema,
   alertasTableroRespuestaSchema,
   cotizacionesRespuestaSchema,
   type Cotizaciones,
@@ -78,6 +79,7 @@ import {
   type AlertasTablero,
   type CategoriasAsta,
   type ProgramaEmpresa,
+  type ProgramaDeCliente,
   type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
@@ -779,6 +781,11 @@ export async function getDemandaAsta(accessToken: string, rango: { desde: string
 /** La próxima mejor oferta para un cliente de la cartera (o cualquiera, para administración). */
 export async function getOfertaCliente(accessToken: string, partnerId: number): Promise<OfertaCliente> {
   return (await request(`/api/v1/salesperson/clients/${partnerId}/oferta`, ofertaClienteRespuestaSchema, accessToken)).data;
+}
+
+/** El programa de ASTA de un cliente de la cartera (o de cualquiera, para el administrador). */
+export async function getProgramaDeCliente(accessToken: string, partnerId: number): Promise<ProgramaDeCliente> {
+  return (await request(`/api/v1/salesperson/clients/${partnerId}/programa`, programaClienteRespuestaSchema, accessToken)).data;
 }
 
 /** «Mis facturas» del cliente con sesión: lo que debe y sus facturas. */

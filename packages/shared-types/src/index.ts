@@ -25,6 +25,7 @@ export * from './calidadDatos.js';
 export * from './nombres.js';
 export * from './categoriasAsta.js';
 export * from './programaAsta.js';
+export * from './beneficiosAsta.js';
 export * from './agentes.js';
 export * from './asta.js';
 export * from './reportes.js';
