@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!sesion) return NextResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Sin sesión.' } }, { status: 401 });
   const { id } = await params;
   try {
-    // El administrador en «Usuarios»: el PDF del cliente que mira.
+    // El administrador en «Ver su panel»: el PDF del cliente que mira.
     const ruta = rutaCliente(`/facturas/${encodeURIComponent(id)}/pdf`, await clienteDeLaVista(sesion));
     const res = await fetch(`${MIDDLEWARE_URL}${ruta}`, {
       headers: { Authorization: `Bearer ${sesion.accessToken}` },

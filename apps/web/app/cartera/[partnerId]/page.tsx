@@ -102,7 +102,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           </h2>
           <p>{error instanceof Error ? error.message : 'Error inesperado.'}</p>
           <p style={{ marginTop: 12 }}>
-            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">← Volver a reportes</Link> : <Link href="/cartera">← Volver a mi cartera</Link>}
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/asta">← Volver a clientes</Link> : <Link href="/cartera">← Volver a mi cartera</Link>}
           </p>
         </div>
       </Marco>
@@ -127,17 +127,25 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         <div className="ficha-datos">
           {/* El administrador no tiene cartera: llega desde los reportes. */}
           <div className="crumb">
-            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/asta">Clientes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
             <span>/</span> <span data-privado>{nombre}</span>
           </div>
           {/* El nombre ya es el título de la pantalla: aquí no se repite. */}
           <span className="ficha-tarifa">{cliente.tier ?? 'Sin tarifa asignada'}</span>
         </div>
-        {ODOO_URL && (
-          <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
-            Abrir en Odoo ↗
-          </a>
-        )}
+        <div className="ficha-acciones">
+          {/* El panel del cliente tal como lo ve él, solo lectura (ver `/api/vista-cliente`). */}
+          {sesion.usuario.role === 'SUPERADMIN' && (
+            <a className="ficha-odoo" href={`/api/vista-cliente?id=${partnerId}&nombre=${encodeURIComponent(nombre)}&a=/cuenta/metricas`}>
+              Ver su panel
+            </a>
+          )}
+          {ODOO_URL && (
+            <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
+              Abrir en Odoo ↗
+            </a>
+          )}
+        </div>
       </div>
 
       {/*

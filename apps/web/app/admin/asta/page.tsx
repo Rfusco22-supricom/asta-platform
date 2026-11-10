@@ -5,7 +5,6 @@ import { getAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/ap
 import { moneyCompact } from '@/lib/formato';
 import { TablaAsta } from './TablaAsta';
 import { Cifra } from '@/components/Cifras';
-import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 
 /**
  * Marca ASTA: cuánto del consumible que compran nuestros clientes es nuestro.
@@ -39,8 +38,7 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
+      <Marco usuario={sesion.usuario} titulo="Clientes">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -56,8 +54,7 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
   const { filas, totales } = datos;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
+    <Marco usuario={sesion.usuario} titulo="Clientes">
       <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
         <Cifra icono="cuota" color="rosa" etiqueta="Cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran nuestros clientes" />

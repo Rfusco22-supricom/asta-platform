@@ -27,7 +27,7 @@ const n = (x: number | null) => (x === null ? '—' : x.toLocaleString('es-VE', 
 
 export default async function SellOutPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (

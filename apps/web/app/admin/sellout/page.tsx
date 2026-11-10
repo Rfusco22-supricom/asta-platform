@@ -3,7 +3,6 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Cifra } from '@/components/Cifras';
 import { InsigniaCategoria } from '@/components/Categorias';
-import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 import { getSellOutEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { etiquetaMes, nombreMes } from '@/lib/meses';
 
@@ -34,8 +33,7 @@ export default async function SellOutAdminPage({ searchParams }: { searchParams:
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/sellout" />
+      <Marco usuario={sesion.usuario} titulo="Sell-out">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -45,8 +43,7 @@ export default async function SellOutAdminPage({ searchParams }: { searchParams:
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/sellout" />
+    <Marco usuario={sesion.usuario} titulo="Sell-out">
       <nav className="periodos" aria-label="Mes">
         {ultimosMeses().map((m) => (
           <Link key={m} href={`/admin/sellout?mes=${m}`} className={m === d.mes ? 'periodo periodo--activo' : 'periodo'} aria-current={m === d.mes ? 'page' : undefined}>

@@ -3,7 +3,7 @@ import { getSession } from '@/lib/session';
 import { COOKIE_VISTA } from '@/lib/vistaCliente';
 
 /**
- * Elegir (o dejar) el cliente cuyo panel mira el administrador en «Usuarios».
+ * Elegir (o dejar) el cliente cuyo panel mira el administrador en «Ver su panel».
  *
  *   GET ?id=123&nombre=…&a=/cuenta/metricas → guarda el cliente y va a esa pantalla
  *   GET ?salir=1                            → lo olvida y vuelve al Inicio

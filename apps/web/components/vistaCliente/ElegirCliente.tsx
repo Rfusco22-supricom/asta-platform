@@ -2,7 +2,7 @@ import { getClientesAdmin, esRedireccion } from '@/lib/api';
 import { BuscadorClientes } from './BuscadorClientes';
 
 /**
- * «Usuarios», sin cliente elegido: a quién mirar. La lista es la de la paleta
+ * «Ver su panel», sin cliente elegido: a quién mirar. La lista es la de la paleta
  * ⌘K (todos los clientes con cuenta); se filtra en el navegador.
  */
 export async function ElegirCliente({ token, destino }: { token: string; destino: string }) {

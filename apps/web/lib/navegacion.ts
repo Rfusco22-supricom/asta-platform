@@ -48,47 +48,40 @@ export interface GrupoNav {
 }
 
 const POR_ROL: Record<Rol, GrupoNav[]> = {
+  // Reorganizado el 2026-11-10: una entrada por tarea, sin pantallas que se
+  // repitan. Pendientes pasó al Inicio («Necesita tu atención»), Reportes es
+  // Ventas, y el panel de un cliente se abre desde su ficha («Ver su panel»).
   SUPERADMIN: [
     {
       titulo: null,
       secciones: [
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
-        { href: '/admin/pendientes', titulo: 'Pendientes', icono: 'pendientes' },
-        { href: '/admin/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza' },
+        { href: '/admin/reportes', titulo: 'Ventas', icono: 'reportes' },
+        { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes' },
-        // Reportes no está en el menú: el Inicio ya lo resume, y su «Ver el
-        // reporte completo» lleva al detalle.
-        { href: '/admin/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/admin/categorias', '/admin/sellout', '/admin/demanda'] },
+        { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza' },
       ],
     },
     {
-      titulo: 'Aplicación ASTA',
+      titulo: 'Programa ASTA',
       secciones: [
-        { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true },
-        { href: '/admin/recomendador', titulo: 'Recomendador', icono: 'recomendador' },
+        { href: '/admin/categorias', titulo: 'Niveles y trimestre', icono: 'categorias', corto: 'Niveles' },
+        { href: '/admin/sellout', titulo: 'Sell-out', icono: 'facturas' },
+      ],
+    },
+    {
+      titulo: 'Catálogo y aplicación',
+      secciones: [
+        { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true, corto: 'Compatibles' },
+        { href: '/admin/recomendador', titulo: 'Búsquedas y demanda', icono: 'recomendador', corto: 'Búsquedas', tambien: ['/admin/demanda'] },
         { href: '/admin/kioscos', titulo: 'Tablets', icono: 'tablet' },
       ],
     },
     {
-      // El panel de un cliente tal como lo ve él, para revisarlo (solo lectura).
-      // Las pantallas son las del cliente: con el administrador, piden antes
-      // qué cliente mirar (ver `lib/vistaCliente.ts`).
-      titulo: 'Usuarios',
-      desplegable: true,
+      titulo: 'Configuración',
       secciones: [
-        { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
-        { href: '/cuenta/sellout', titulo: 'Mi sell-out', icono: 'reportes', corto: 'Sell-out' },
-        { href: '/cuenta/pedido', titulo: 'Pedido sugerido', icono: 'cotizaciones', corto: 'Pedido' },
-        { href: '/cuenta/facturas', titulo: 'Mis facturas', icono: 'facturas', corto: 'Facturas' },
-        { href: '/cuenta/flyers', titulo: 'Mis flyers', icono: 'flyers', corto: 'Flyers' },
-        { href: '/cuenta/calculadora', titulo: 'Calculadora', icono: 'calculadora', corto: 'Calcula' },
-      ],
-    },
-    {
-      titulo: 'Administración',
-      secciones: [
+        { href: '/admin/accesos', titulo: 'Personas y accesos', icono: 'usuarios', corto: 'Personas', tambien: ['/admin/usuarios'] },
         { href: '/admin/calidad', titulo: 'Datos de Odoo', icono: 'calidad', corto: 'Odoo', tambien: ['/admin/duplicados'] },
-        { href: '/admin/accesos', titulo: 'Personas', icono: 'usuarios', tambien: ['/admin/usuarios'] },
       ],
     },
   ],
@@ -165,3 +158,17 @@ export function ambitoDe(rol: string): string {
   if (rol === 'VENDEDOR') return 'Ventas';
   return 'Mi cuenta';
 }
+
+/**
+ * Las pantallas del cliente que el administrador recorre al mirar su panel
+ * («Ver su panel» en la ficha): salen como pestañas en el aviso de arriba
+ * (`BannerVista`). Tablets y API keys no: son de la cuenta, no del negocio.
+ */
+export const PANTALLAS_VISTA_CLIENTE: Array<{ href: string; titulo: string }> = [
+  { href: '/cuenta/metricas', titulo: 'Métricas' },
+  { href: '/cuenta/sellout', titulo: 'Sell-out' },
+  { href: '/cuenta/pedido', titulo: 'Pedido sugerido' },
+  { href: '/cuenta/facturas', titulo: 'Facturas' },
+  { href: '/cuenta/flyers', titulo: 'Flyers' },
+  { href: '/cuenta/calculadora', titulo: 'Calculadora' },
+];

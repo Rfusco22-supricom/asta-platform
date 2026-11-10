@@ -6,9 +6,11 @@ import { Periodos, fechasDe } from '@/components/Periodos';
 import { nombrePeriodo } from '@/lib/meses';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
 import type { SedeId } from '@asta/shared-types';
-import { Proporcion, Serie, etiquetaMes } from '@/components/Reporte';
+import { Serie, etiquetaMes } from '@/components/Reporte';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
-import { getAlertasTablero, getAstaEmpresa, getCategoriasAstaEmpresa, getReporteEmpresa, getReporteProductosEmpresa } from '@/lib/api';
+import { Ranking } from '@/components/inicio/Ranking';
+import { Atencion } from '@/components/inicio/Atencion';
+import { getAlertasTablero, getCategoriasAstaEmpresa, getReporteEmpresa } from '@/lib/api';
 import { BarraAlertas } from '@/components/alertas/BarraAlertas';
 import { Concentracion, Ritmo, Tendencia, resumenAlertas } from '@/components/alertas/DetalleAlertas';
 import { money, moneyCompact } from '@/lib/formato';
@@ -19,14 +21,14 @@ import { Cifra } from '@/components/Cifras';
  *
  * La marca propia es lo que el panel existe para empujar, así que la portada
  * contesta lo que se pregunta primero: cuánto se vende, si sube o baja, qué
- * parte del consumible se lleva ASTA frente a las otras marcas, qué y a quién
- * se vende, y cuánto queda por ganar. Lo que hay por hacer está en Pendientes.
+ * hay que atender hoy y quién vende y compra más. El detalle vive en su
+ * sección: los productos en Ventas, la oportunidad (clientes sin ASTA) en
+ * Clientes, y cada pendiente en el sitio donde se resuelve.
  *
- * Cuatro lecturas independientes, cada una con su `Suspense`: las categorías
- * (el bloque de arriba, con la pirámide en 3D), el reporte de la empresa
- * (cifras, serie, vendedores, clientes), los productos y la oportunidad. La
- * página sale enseguida y cada bloque llega cuando responde Odoo; si uno falla,
- * solo ese bloque lo dice.
+ * Lecturas independientes, cada una con su `Suspense`: las alertas, las
+ * categorías (la pirámide en 3D), el reporte de la empresa (cifras, serie,
+ * vendedores, clientes) y «Necesita tu atención». La página sale enseguida y
+ * cada bloque llega cuando responde Odoo; si uno falla, solo ese bloque lo dice.
  */
 
 export const dynamic = 'force-dynamic';
@@ -40,58 +42,6 @@ function rangoDe(params: Record<string, string | string[] | undefined>): Rango |
 }
 
 // ── Cifras, serie, vendedores y clientes: el reporte de la empresa ─────────────
-
-function Ranking<T>({
-  area,
-  titulo,
-  nota,
-  filas,
-  nombre,
-  valor,
-  enlace,
-  pie,
-  privado,
-}: {
-  area: string;
-  titulo: string;
-  nota?: string;
-  filas: T[];
-  nombre: (f: T) => React.ReactNode;
-  valor: (f: T) => number;
-  enlace?: { href: string; texto: string };
-  pie?: (f: T) => React.ReactNode;
-  /** Los nombres son de clientes o vendedores: el modo presentación los tapa. */
-  privado?: boolean;
-}) {
-  const maximo = Math.max(0, ...filas.map(valor));
-  return (
-    <section className={`panel dash-${area} dash-ranking`}>
-      <h2>{titulo}</h2>
-      {nota && <p className="panel-nota">{nota}</p>}
-      {filas.length === 0 ? (
-        <div className="empty">Sin ventas de ASTA en el periodo.</div>
-      ) : (
-        <ol>
-          {filas.map((f, i) => (
-            <li key={i}>
-              <span className="dash-pos">{i + 1}</span>
-              <span className="dash-nombre">
-                <span data-privado={privado || undefined}>{nombre(f)}</span>
-                {pie && <small>{pie(f)}</small>}
-              </span>
-              <Proporcion valor={valor(f)} maximo={maximo} />
-            </li>
-          ))}
-        </ol>
-      )}
-      {enlace && (
-        <Link className="dash-mas" href={enlace.href}>
-          {enlace.texto} →
-        </Link>
-      )}
-    </section>
-  );
-}
 
 async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sede: SedeId | null }) {
   const r = await intentar(() => getReporteEmpresa(token, rango, sede));
@@ -159,7 +109,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         <div className="dash-cabeza">
           <h2>ASTA mes a mes</h2>
           <Link className="dash-mas" href={reportes}>
-            Ver el reporte completo →
+            Ver en Ventas →
           </Link>
         </div>
         <Serie puntos={r.serieMensual} sede={sede} />
@@ -183,7 +133,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         nombre={(c) => (c.partnerId ? <Link href={`/cartera/${c.partnerId}`}>{c.nombre}</Link> : c.nombre)}
         valor={(c) => c.facturado}
         pie={(c) => facturas(c.facturas)}
-        enlace={{ href: reportes, texto: 'Ver más clientes' }}
+        enlace={{ href: reportes, texto: 'Todos los clientes en Ventas' }}
         privado
       />
     </>
@@ -202,57 +152,6 @@ function EsqueletoVentas() {
       <Esqueleto area="vendedores" alto={300} />
       <Esqueleto area="clientes" alto={300} />
     </>
-  );
-}
-
-// ── Productos ──────────────────────────────────────────────────────────────────
-
-async function Productos({ token, rango, sede }: { token: string; rango: Rango; sede: SedeId | null }) {
-  const r = await intentar(() => getReporteProductosEmpresa(token, rango, sede));
-  if (!r) return <Fallo area="productos" titulo="Productos ASTA más vendidos" />;
-  const productos = r.categorias
-    .flatMap((c) => c.productos)
-    .sort((a, b) => b.monto - a.monto)
-    .slice(0, 8);
-  return (
-    <Ranking
-      area="productos"
-      titulo="Productos"
-      nota={`${n(r.totales.productos)} distintos`}
-      filas={productos}
-      nombre={(p) => p.nombre.replace(/^ASTA\s+/i, '')}
-      valor={(p) => p.monto}
-      pie={(p) => `${n(Math.round(p.cantidad))} u. · ${n(p.clientes.length)} clientes`}
-    />
-  );
-}
-
-// ── Oportunidad ────────────────────────────────────────────────────────────────
-
-async function Oportunidad({ token, sede }: { token: string; sede: SedeId | null }) {
-  const r = await intentar(() => getAstaEmpresa(token, sede));
-  if (!r) return <Fallo area="oportunidad" titulo="Lo que queda por ganar" />;
-  const { totales: t } = r;
-  return (
-    <section className="panel dash-oportunidad">
-      <h2>Lo que queda por ganar</h2>
-      <div className="dash-cuota">
-        {/* La cuota como anillo: lo lleno es ASTA, lo vacío lo que se llevan las otras marcas. */}
-        <div className="anillo" role="img" aria-label={`ASTA ${pct(t.cuota)} del consumible`} style={{ '--p': Math.min(100, t.cuota) } as React.CSSProperties}>
-          <span>{pct(t.cuota)}</span>
-        </div>
-        <div className="stat-sub">
-          {moneyCompact(t.asta)} en ASTA · {moneyCompact(t.competencia)} en otras marcas
-        </div>
-      </div>
-      <div className="dash-oport-dato">
-        <strong>{n(t.sinAsta)}</strong> clientes compran consumibles y nunca han probado ASTA
-        <span>{moneyCompact(t.sinAstaImporte)} en otras marcas</span>
-      </div>
-      <Link className="btn btn-inline dash-oport-btn" href={urlCon('/admin/asta', { sede })}>
-        Ver a quién ofrecerle ASTA
-      </Link>
-    </section>
   );
 }
 
@@ -336,11 +235,8 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} rango={rango} />
         </Suspense>
-        <Suspense fallback={<Esqueleto area="oportunidad" alto={230} />}>
-          <Oportunidad token={token} sede={sede} />
-        </Suspense>
-        <Suspense fallback={<Esqueleto area="productos" alto={300} />}>
-          <Productos token={token} rango={rango} sede={sede} />
+        <Suspense fallback={<Esqueleto area="atencion" alto={360} />}>
+          <Atencion token={token} />
         </Suspense>
       </div>
     </Marco>

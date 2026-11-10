@@ -20,7 +20,7 @@ const ESTADO: Record<EstadoPedidoCliente, string> = { ENVIADO: 'Enviado', EN_ODO
 
 export default async function PedidoPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (

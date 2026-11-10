@@ -37,7 +37,7 @@ function cuandoVence(f: PublicInvoice, hoy: string): { texto: string; tono: 'ven
 
 export default async function FacturasPage({ searchParams }: { searchParams: Promise<{ vista?: string; pagina?: string; elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (

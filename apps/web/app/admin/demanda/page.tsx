@@ -5,7 +5,7 @@ import { Cifra } from '@/components/Cifras';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { Proporcion } from '@/components/Reporte';
-import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
+import { PestanasSeccion, PESTANAS_BUSQUEDAS } from '@/components/PestanasSeccion';
 import { getDemandaAsta, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { nombrePeriodo } from '@/lib/meses';
 import { fecha } from '@/lib/formato';
@@ -47,8 +47,8 @@ export default async function DemandaPage({ searchParams }: { searchParams: Prom
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/demanda" />
+      <Marco usuario={sesion.usuario} titulo="Búsquedas y demanda">
+        <PestanasSeccion etiqueta="Búsquedas y demanda" pestanas={PESTANAS_BUSQUEDAS} actual="/admin/demanda" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo calcular la demanda'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -64,8 +64,8 @@ export default async function DemandaPage({ searchParams }: { searchParams: Prom
   const maxImpresora = Math.max(0, ...d.impresoras.map((i) => i.busquedas));
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/demanda" />
+    <Marco usuario={sesion.usuario} titulo="Búsquedas y demanda">
+      <PestanasSeccion etiqueta="Búsquedas y demanda" pestanas={PESTANAS_BUSQUEDAS} actual="/admin/demanda" />
       <Sedes base="/admin/demanda" sede={sede} periodo={periodo} />
       <Periodos base="/admin/demanda" periodo={periodo} sede={sede} />
 
@@ -90,7 +90,7 @@ export default async function DemandaPage({ searchParams }: { searchParams: Prom
         )}
         {t.sinImpresora > 0 && (
           <>
-            Las búsquedas sin impresora (un alias que falta) están en <Link href="/admin/recomendador">Recomendador</Link>.
+            Las búsquedas sin impresora (un alias que falta) están en la pestaña <Link href="/admin/recomendador">Búsquedas</Link>.
           </>
         )}
       </p>
