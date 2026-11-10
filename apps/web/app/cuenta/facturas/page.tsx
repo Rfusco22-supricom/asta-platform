@@ -10,9 +10,10 @@ import { fecha, money } from '@/lib/formato';
 import { DIAS_VENCE_PRONTO, FACTURAS_POR_PAGINA, PAYMENT_STATE_LABEL, type PublicInvoice, type VistaFacturas } from '@asta/shared-types';
 
 /**
- * «Mis facturas»: lo que el cliente debe, lo que vence pronto y todas sus
- * facturas de Supricom, con el PDF. Por defecto, las pendientes, de la que
- * vence antes a la que vence después.
+ * «Mis facturas»: lo que el cliente debe de ASTA, lo que vence pronto y sus
+ * facturas con ASTA, con el PDF. Solo montos de ASTA (decidido con Supricom el
+ * 2026-11-10): de cada factura, la parte ASTA de su total y de su saldo. Por
+ * defecto, las pendientes, de la que vence antes a la que vence después.
  */
 
 export const dynamic = 'force-dynamic';
@@ -92,14 +93,14 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       <section className="stats">
-        <Cifra icono="cobrar" etiqueta="Por pagar" valor={money(r.porPagar)} nota={`${r.facturasPorPagar} ${r.facturasPorPagar === 1 ? 'factura' : 'facturas'}`} />
+        <Cifra icono="cobrar" etiqueta="Por pagar de ASTA" valor={money(r.porPagar)} nota={`la parte ASTA de ${r.facturasPorPagar} ${r.facturasPorPagar === 1 ? 'factura' : 'facturas'}`} />
         <Cifra icono="alerta" color="rosa" etiqueta="Vencido" valor={money(r.vencido)} tono={r.vencido > 0 ? 'alerta' : undefined} nota={r.facturasVencidas ? `${r.facturasVencidas} ${r.facturasVencidas === 1 ? 'factura' : 'facturas'}` : 'nada vencido'} />
         <Cifra icono="reloj" color="ambar" etiqueta={`Vence en ${DIAS_VENCE_PRONTO} días`} valor={money(r.vencePronto)} tono={r.vencePronto > 0 ? 'atencion' : undefined} nota={r.proximoVencimiento ? `el próximo, ${fecha(r.proximoVencimiento)}` : 'sin vencimientos próximos'} />
       </section>
 
       <section className="panel">
         <div className="so-subir-cabeza">
-          <h2>{vista === 'pendientes' ? 'Por pagar' : 'Todas tus facturas'}</h2>
+          <h2>{vista === 'pendientes' ? 'Por pagar' : 'Tus facturas con ASTA'}</h2>
           <div className="segmented" role="group" aria-label="Qué facturas ver">
             <Link href={url('pendientes')} aria-current={vista === 'pendientes' ? 'page' : undefined}>
               Por pagar
@@ -111,7 +112,7 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
         </div>
 
         {d.facturas.length === 0 ? (
-          <div className="empty">{vista === 'pendientes' ? 'No debes nada. ¡Al día!' : 'Todavía no tienes facturas.'}</div>
+          <div className="empty">{vista === 'pendientes' ? 'No debes nada. ¡Al día!' : 'Todavía no tienes facturas con ASTA.'}</div>
         ) : (
           <div className="table-wrap" style={{ border: 0 }}>
             <table>
@@ -120,8 +121,8 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
                   <th>Factura</th>
                   <th>Emitida</th>
                   <th>Vence</th>
-                  <th className="num">Total</th>
-                  <th className="num">Saldo</th>
+                  <th className="num">ASTA</th>
+                  <th className="num">Saldo de ASTA</th>
                   <th>Estado</th>
                   <th aria-label="PDF" />
                 </tr>

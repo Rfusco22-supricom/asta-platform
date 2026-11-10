@@ -54,7 +54,7 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
     );
   }
   const periodo = nombrePeriodo(rango.desde, rango.hasta);
-  const { totales, asta } = r;
+  const { totales } = r;
   const mes = ultimoMes(r.serieMensual);
   const reportes = urlCon('/admin/reportes', { periodo: rango, sede });
 
@@ -86,23 +86,16 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         ) : (
           <Cifra className="dash-kpi" icono="mes" color="violeta" etiqueta="Último mes" valor="—" nota="sin meses completos en el periodo" />
         )}
-        <Cifra
-          className="dash-kpi"
-          icono="cuota"
-          color="rosa"
-          etiqueta="Cuota de ASTA"
-          valor={pct(asta.cuota)}
-          nota={`en ${periodo} · ${moneyCompact(asta.competencia)} en otras marcas`}
-        />
+        <Cifra className="dash-kpi" icono="ticket" color="rosa" etiqueta="Ticket promedio" valor={money(totales.ticketPromedio)} nota={`de ASTA por factura, en ${periodo}`} />
         <Cifra
           className="dash-kpi"
           icono="clientes"
           color="verde"
           etiqueta="Clientes que compran ASTA"
           valor={n(totales.clientes)}
-          nota={`en ${periodo} · ticket promedio ${money(totales.ticketPromedio)}`}
+          nota={`con al menos una compra en ${periodo}`}
         />
-        <Cifra className="dash-kpi" icono="cobrar" color="ambar" etiqueta="Por cobrar" valor={moneyCompact(totales.porCobrar)} nota={`a hoy, de las facturas con ASTA de ${periodo}`} />
+        <Cifra className="dash-kpi" icono="cobrar" color="ambar" etiqueta="Por cobrar de ASTA" valor={moneyCompact(totales.porCobrar)} nota={`a hoy, la parte ASTA de lo que se debe de ${periodo}`} />
       </section>
 
       <section className="panel dash-serie">

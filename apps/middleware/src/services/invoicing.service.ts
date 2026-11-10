@@ -1,5 +1,6 @@
 import { executeKw, readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { FACTURA, TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
+import { FACTURA_CON_ASTA, astaPorFactura, saldoAsta } from './ventasAsta.service.js';
 
 /**
  * Facturación de un cliente, leída en vivo de `account.move`.
@@ -328,6 +329,11 @@ export interface PartnerInvoiceListQuery {
   estadoPago?: PaymentState;
   /** Solo lo que debe (`ESTADOS_POR_PAGAR`), del vencimiento más antiguo al más nuevo. */
   soloPorPagar?: boolean;
+  /**
+   * Para el panel del cliente («Mis facturas»): solo las facturas con ASTA, y su
+   * total y su saldo, la parte ASTA (`saldoAsta`). La API pública no lo pide.
+   */
+  soloAsta?: boolean;
   limit: number;
   offset: number;
 }
@@ -363,9 +369,10 @@ export async function listPartnerInvoices(
   const domain = buildDomain(partnerId, { desde: query.desde, hasta: query.hasta });
   if (query.estadoPago) domain.push(['payment_state', '=', query.estadoPago]);
   if (query.soloPorPagar) domain.push(['payment_state', 'in', ESTADOS_POR_PAGAR]);
+  if (query.soloAsta) domain.push(FACTURA_CON_ASTA);
 
   const [rows, total] = await Promise.all([
-    searchRead<InvoiceRow>('account.move', domain, INVOICE_FIELDS, {
+    searchRead<InvoiceRow & { amount_untaxed_signed: number }>('account.move', domain, query.soloAsta ? [...INVOICE_FIELDS, 'amount_untaxed_signed'] : INVOICE_FIELDS, {
       limit: query.limit,
       offset: query.offset,
       // `id desc` desempata: sin él, dos facturas del mismo día pueden cambiar
@@ -375,7 +382,15 @@ export async function listPartnerInvoices(
     executeKw<number>('account.move', 'search_count', [domain]),
   ]);
 
-  return { facturas: rows.map(mapInvoice), total };
+  if (!query.soloAsta) return { facturas: rows.map(mapInvoice), total };
+  const asta = await astaPorFactura(rows.map((r) => r.id));
+  return {
+    facturas: rows.map((r) => {
+      const a = asta.get(r.id) ?? 0;
+      return mapInvoice({ ...r, amount_total_signed: saldoAsta(r.amount_total_signed ?? 0, a, r.amount_untaxed_signed), amount_residual_signed: saldoAsta(r.amount_residual_signed ?? 0, a, r.amount_untaxed_signed) });
+    }),
+    total,
+  };
 }
 
 /**
@@ -421,12 +436,14 @@ export async function invoiceExists(invoiceId: number): Promise<boolean> {
 /**
  * Lo que debe un cliente: el total, lo vencido y lo que vence en los próximos
  * `diasPronto` días, con el día de hoy en Caracas. Para «Mis facturas» (ver
- * `facturasCliente.ts` en shared-types). Cuesta 1 RPC.
+ * `facturasCliente.ts` en shared-types). Cuesta 1 RPC, y otra con `soloAsta`.
  */
 export async function resumenDeCobro(
   partnerId: number,
   diasPronto: number,
   ahora = new Date(),
+  /** Solo la parte ASTA de las facturas con ASTA (el panel del cliente). */
+  soloAsta = false,
 ): Promise<{
   porPagar: number;
   facturasPorPagar: number;
@@ -437,8 +454,15 @@ export async function resumenDeCobro(
   proximoVencimiento: string | null;
 }> {
   assertIdValido('partnerId', partnerId);
-  const domain = [...buildDomain(partnerId, {}), ['payment_state', 'in', ESTADOS_POR_PAGAR]] as OdooDomain;
-  const rows = await searchRead<Pick<InvoiceRow, 'invoice_date_due' | 'amount_residual_signed'>>('account.move', domain, ['invoice_date_due', 'amount_residual_signed']);
+  const domain = [...buildDomain(partnerId, {}), ['payment_state', 'in', ESTADOS_POR_PAGAR], ...(soloAsta ? [FACTURA_CON_ASTA] : [])] as OdooDomain;
+  const leidas = await searchRead<Pick<InvoiceRow, 'id' | 'invoice_date_due' | 'amount_residual_signed'> & { amount_untaxed_signed: number }>('account.move', domain, [
+    'id',
+    'invoice_date_due',
+    'amount_residual_signed',
+    'amount_untaxed_signed',
+  ]);
+  const asta = soloAsta ? await astaPorFactura(leidas.map((r) => r.id)) : null;
+  const rows = asta ? leidas.map((r) => ({ ...r, amount_residual_signed: saldoAsta(r.amount_residual_signed ?? 0, asta.get(r.id) ?? 0, r.amount_untaxed_signed) })) : leidas;
 
   // Caracas es UTC−4 todo el año.
   const dia = (d: Date) => new Date(d.getTime() - 4 * 3_600_000).toISOString().slice(0, 10);

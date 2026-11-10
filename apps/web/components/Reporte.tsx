@@ -86,7 +86,7 @@ export function VistaReporte({
   /** Solo en la vista del administrador: pinta el selector de sede (ver `Sedes`). */
   sede?: SedeId | null;
 }) {
-  const { totales, asta } = datos;
+  const { totales } = datos;
   const pctDeuda = totales.facturado > 0 ? (totales.porCobrar / totales.facturado) * 100 : 0;
   const hayAlgo = totales.facturas > 0;
   const maxVendedor = Math.max(0, ...(datos.porVendedor ?? []).map((v) => v.facturado));
@@ -96,7 +96,7 @@ export function VistaReporte({
         vacio: 'No hay ventas de ASTA en este periodo',
         facturado: 'Vendido en ASTA',
         facturas: `${totales.facturas.toLocaleString('es-VE')} facturas con ASTA · sin IVA`,
-        deuda: 'en las facturas con ASTA',
+        deuda: 'la parte ASTA de lo que se debe, a hoy',
         ticket: 'de ASTA por factura',
         clientes: 'con al menos una compra de ASTA',
         serie: 'ASTA mes a mes',
@@ -137,7 +137,7 @@ export function VistaReporte({
             <Metrica
               icono="cobrar"
               color="ambar"
-              etiqueta="Por cobrar"
+              etiqueta={soloAsta ? 'Por cobrar de ASTA' : 'Por cobrar'}
               valor={moneyCompact(totales.porCobrar)}
               nota={t.deuda}
               tono={!soloAsta && pctDeuda >= 30 ? 'mal' : undefined}
@@ -161,29 +161,6 @@ export function VistaReporte({
           <section className="panel">
             <h2>{t.serie}</h2>
             <Serie puntos={datos.serieMensual} sede={sede ?? null} />
-          </section>
-
-          <section className="panel">
-            <h2>ASTA frente a las demás marcas</h2>
-            {asta.asta + asta.competencia === 0 ? (
-              <div className="empty" style={{ padding: '20px' }}>
-                Sin consumibles en este periodo.
-              </div>
-            ) : (
-              <div className="cuota">
-                <div className="cuota-barra">
-                  <div className="cuota-asta" style={{ width: `${asta.cuota}%` }} />
-                </div>
-                <div className="cuota-pie">
-                  <span>
-                    <strong>{asta.cuota.toFixed(1)} %</strong> ASTA · {money(asta.asta)}
-                  </span>
-                  <span className="cuota-otros">
-                    {(100 - asta.cuota).toFixed(1)} % otras marcas · {money(asta.competencia)}
-                  </span>
-                </div>
-              </div>
-            )}
           </section>
 
           {datos.porVendedor && datos.porVendedor.length > 0 && (

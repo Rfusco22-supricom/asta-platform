@@ -57,7 +57,6 @@ export function ListaImpulsa({ clientes }: { clientes: ClienteImpulsa[] }) {
                   {c.nombre}
                   <CargandoEnlace />
                 </Link>
-                {vista === 'pendientes' && c.enJuego > 0 && <span className="imp-enjuego">{money(c.enJuego)} en otras marcas</span>}
               </header>
               <ul className="imp-sugerencias">
                 {c.sugerencias.map((s) => (
@@ -111,7 +110,7 @@ function Sugerencia({ partnerId, s }: { partnerId: number; s: SugerenciaPasale }
           {o.nombre}
         </span>
         <small>
-          {money(o.monto)} · {o.cantidad.toLocaleString('es')} u. en {o.facturas} {o.facturas === 1 ? 'factura' : 'facturas'} · última el {fecha(o.ultimaCompra)}
+          {o.cantidad.toLocaleString('es')} u. en {o.facturas} {o.facturas === 1 ? 'factura' : 'facturas'} · última el {fecha(o.ultimaCompra)}
         </small>
       </div>
 

@@ -20,8 +20,9 @@ export async function responderFacturas(partnerId: number, query: Record<string,
     return;
   }
   const [resumen, lista] = await Promise.all([
-    resumenDeCobro(partnerId, DIAS_VENCE_PRONTO),
-    listPartnerInvoices(partnerId, { soloPorPagar: vista.data === 'pendientes', limit: FACTURAS_POR_PAGINA, offset: (pagina - 1) * FACTURAS_POR_PAGINA }),
+    // Solo ASTA: las facturas con ASTA y su parte ASTA (decidido con Supricom el 2026-11-10).
+    resumenDeCobro(partnerId, DIAS_VENCE_PRONTO, new Date(), true),
+    listPartnerInvoices(partnerId, { soloPorPagar: vista.data === 'pendientes', soloAsta: true, limit: FACTURAS_POR_PAGINA, offset: (pagina - 1) * FACTURAS_POR_PAGINA }),
   ]);
   res.json({ data: { resumen, vista: vista.data, facturas: lista.facturas, pagina, total: lista.total } });
 }

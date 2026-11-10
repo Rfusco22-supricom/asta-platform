@@ -83,10 +83,10 @@ export default async function CarteraPage() {
         <Cifra
           icono="cobrar"
           color="ambar"
-          etiqueta="Por cobrar"
+          etiqueta="Por cobrar de ASTA"
           valor={moneyCompact(meta.porCobrarCartera)}
           tono={meta.porCobrarCartera > 0 ? 'alerta' : undefined}
-          nota={`a hoy · ${conDeuda} clientes con saldo en facturas con ASTA`}
+          nota={`a hoy · la parte ASTA de lo que deben ${conDeuda} clientes`}
         />
         <Cifra icono="clientes" color="verde" etiqueta="Compran ASTA" valor={conHistorial} nota={`${filas.length - conHistorial} todavía sin comprar ASTA`} />
         <Cifra

@@ -118,7 +118,6 @@ export function ListaCotizaciones({
                   <th>Cotización</th>
                   {conVendedor && <th>Vendedor</th>}
                   <th className="num">ASTA</th>
-                  <th className="num">Total</th>
                   <th>{estado === 'abierta' ? 'Espera' : 'Creada'}</th>
                 </tr>
               </thead>
@@ -139,9 +138,6 @@ export function ListaCotizaciones({
                       {conVendedor && <td data-etiqueta="Vendedor">{c.vendedor ?? <span className="stat-sub">sin vendedor</span>}</td>}
                       <td className="num" data-etiqueta="ASTA">
                         {moneyEntero(c.importeAsta)}
-                      </td>
-                      <td className="num" data-etiqueta="Total">
-                        {moneyEntero(c.importeTotal)}
                       </td>
                       <td data-etiqueta={estado === 'abierta' ? 'Espera' : 'Creada'}>
                         {estado === 'abierta' ? (
@@ -168,7 +164,7 @@ export function ListaCotizaciones({
           </p>
         )}
         <p className="panel-nota cot-pie">
-          Pedidos de venta de Odoo con algún producto ASTA, creados en {enPeriodo}. «ASTA» es lo de la marca, sin IVA; «Total», el pedido entero.
+          Pedidos de venta de Odoo con algún producto ASTA, creados en {enPeriodo}. «ASTA» es lo de la marca, sin IVA.
         </p>
       </section>
     </>

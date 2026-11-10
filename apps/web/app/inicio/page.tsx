@@ -94,10 +94,10 @@ async function Ventas({ token, rango }: { token: string; rango: { desde: string;
           className="dash-kpi"
           icono="cobrar"
           color="ambar"
-          etiqueta="Por cobrar"
+          etiqueta="Por cobrar de ASTA"
           valor={moneyCompact(totales.porCobrar)}
           tono={totales.porCobrar > 0 ? 'atencion' : undefined}
-          nota={`a hoy, de las facturas con ASTA de ${periodo}`}
+          nota={`a hoy, la parte ASTA de lo que se debe de ${periodo}`}
         />
         <Cifra
           className="dash-kpi"
@@ -131,6 +131,7 @@ async function Hoy({ token }: { token: string }) {
   const clientes = r.data
     .map((c) => ({ ...c, pendientes: c.sugerencias.filter((s) => s.visible).length }))
     .filter((c) => c.pendientes > 0)
+    // Los que más compran de otras marcas, primero; la cifra no se enseña (solo montos de ASTA).
     .sort((a, b) => b.enJuego - a.enJuego)
     .slice(0, 6);
 
@@ -139,7 +140,7 @@ async function Hoy({ token }: { token: string }) {
       <h2>Para hoy</h2>
       <p className="panel-nota">
         {pendientes.sugerencias > 0
-          ? `${n(pendientes.sugerencias)} ${pendientes.sugerencias === 1 ? 'sugerencia' : 'sugerencias'} en ${n(pendientes.clientes)} ${pendientes.clientes === 1 ? 'cliente' : 'clientes'} · ${moneyCompact(pendientes.enJuego)} en otras marcas`
+          ? `${n(pendientes.sugerencias)} ${pendientes.sugerencias === 1 ? 'sugerencia' : 'sugerencias'} en ${n(pendientes.clientes)} ${pendientes.clientes === 1 ? 'cliente' : 'clientes'}`
           : 'Hoy no hay a quién pasarle a ASTA.'}
       </p>
       {clientes.length > 0 ? (
@@ -154,7 +155,6 @@ async function Hoy({ token }: { token: string }) {
                     {c.pendientes} {c.pendientes === 1 ? 'producto' : 'productos'} para pasar a ASTA
                   </small>
                 </span>
-                <span className="lista-dato lista-ambar">{corto(c.enJuego)}</span>
               </Link>
             </li>
           ))}
