@@ -1,5 +1,6 @@
 import { beneficiosDe, beneficiosNuevos, reglaDe, subir, type ClaveCategoria } from '@asta/shared-types';
 import { InsigniaCategoria } from '@/components/Categorias';
+import { moneyEntero } from '@/lib/formato';
 
 /**
  * Los beneficios del programa ASTA para un nivel: lo que ya tiene y lo que
@@ -81,6 +82,56 @@ export function Beneficios({ nivel, para }: { nivel: ClaveCategoria; para: Para 
         </div>
       </div>
       {!cliente && arriba !== nivel && <p className="stat-sub benef-pie">Para subir, en el trimestre tiene que cumplir la cuota mensual, la del trimestre y reportar el sell-out.</p>}
+    </section>
+  );
+}
+
+/**
+ * Los beneficios de TODOS los niveles, como referencia para Supricom (en
+ * «Niveles y trimestre» del administrador y «Programa ASTA» del vendedor):
+ * cada nivel con su cuota y lo que estrena; los de abajo se conservan.
+ * Diamante, bloqueado.
+ */
+export function BeneficiosPorNivel() {
+  const niveles = (['BRONCE', 'PLATA', 'ORO'] as const).map((clave, i, todos) => ({
+    clave,
+    regla: reglaDe(clave),
+    nuevos: beneficiosNuevos(clave),
+    conserva: i > 0 ? reglaDe(todos[i - 1]!).nombre : null,
+  }));
+  return (
+    <section className="panel benef-niveles" aria-labelledby="benef-niveles-titulo">
+      <h2 id="benef-niveles-titulo">Beneficios por nivel</h2>
+      <p className="panel-nota">Lo que gana el cliente en cada nivel. Cada uno conserva los de los niveles de abajo; Cliente general no tiene beneficios.</p>
+      <div className="benef-niveles-rejilla" data-publico>
+        {niveles.map((nv) => (
+          <div key={nv.clave} className="benef-nivel">
+            <div className="benef-nivel-cabeza">
+              <InsigniaCategoria categoria={nv.clave} />
+              <span className="stat-sub">desde {moneyEntero(nv.regla.minimoMensual)} al mes</span>
+            </div>
+            <ul className="benef-lista">
+              {nv.nuevos.map((b) => (
+                <li key={b.clave}>
+                  <strong>{b.titulo}</strong>
+                  <span className="stat-sub">{b.detalle}</span>
+                </li>
+              ))}
+            </ul>
+            {nv.conserva && <span className="stat-sub">+ los de {nv.conserva}</span>}
+          </div>
+        ))}
+        <div className="benef-nivel benef-nivel-bloqueado">
+          <div className="benef-nivel-cabeza">
+            <InsigniaCategoria categoria="DIAMANTE" />
+          </div>
+          <p className="benef-bloqueado">
+            <Candado />
+            <span>Próximamente</span>
+          </p>
+          <span className="stat-sub">Bloqueado: Oro es hoy el nivel más alto.</span>
+        </div>
+      </div>
     </section>
   );
 }

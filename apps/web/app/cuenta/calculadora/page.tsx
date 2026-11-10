@@ -4,12 +4,27 @@ import { contextoCliente } from '@/lib/vistaCliente';
 import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
 import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { getCalculadora, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { Calculadora } from './Calculadora';
+import { Calculadora, type ProductoCalculadora } from './Calculadora';
 
 /**
- * «Calculadora»: cuánto gana el cliente vendiendo ASTA en lugar del original,
- * con los precios de su tarifa. Ver `Calculadora`.
+ * «Calculadora de ganancia»: cuánto gana el cliente vendiendo ASTA, con los
+ * precios de su tarifa. Ver `Calculadora`.
+ *
+ * Solo ASTA (decidido con Supricom el 2026-11-10): el middleware devuelve
+ * parejas ASTA–original, y aquí, en el servidor, se quedan solo los productos
+ * ASTA (uno por producto). Lo del original no llega al navegador.
  */
+
+/** De las parejas, los productos ASTA, sin repetir. Solo los que se llaman ASTA: en Odoo hay originales con la marca mal puesta. */
+function soloAsta(parejas: Awaited<ReturnType<typeof getCalculadora>>['parejas']): ProductoCalculadora[] {
+  const vistos = new Map<number, ProductoCalculadora>();
+  for (const p of parejas) {
+    if (vistos.has(p.asta.productId) || !/\bASTA\b/i.test(p.asta.nombre)) continue;
+    vistos.set(p.asta.productId, { productId: p.asta.productId, sku: p.asta.sku, nombre: p.asta.nombre, precio: p.asta.precio, compraMensual: p.compraMensualAsta });
+  }
+  // Primero los que ya compra (de más a menos); luego por nombre.
+  return [...vistos.values()].sort((a, b) => b.compraMensual - a.compraMensual || a.nombre.localeCompare(b.nombre));
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +59,9 @@ export default async function CalculadoraPage({ searchParams }: { searchParams: 
     <Marco usuario={sesion.usuario} titulo="Calculadora de ganancia">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/calculadora" />}
       <p className="panel-nota" style={{ marginTop: 0 }}>
-        Cuánto ganas vendiendo ASTA en lugar del original, con los precios de tu tarifa. Mueve tu margen y el descuento que le das a tu cliente.
+        Cuánto ganas vendiendo ASTA, con los precios de tu tarifa. Elige un producto y mueve tu margen.
       </p>
-      <Calculadora datos={datos} />
+      <Calculadora productos={soloAsta(datos.parejas)} />
     </Marco>
   );
 }

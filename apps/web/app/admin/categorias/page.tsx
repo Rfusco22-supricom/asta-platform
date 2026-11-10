@@ -1,6 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
+import { BeneficiosPorNivel } from '@/components/Beneficios';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
 import { getCategoriasAstaEmpresa, getProgramaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
 
@@ -54,6 +55,7 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
     <Marco usuario={sesion.usuario} titulo="Niveles y trimestre">
       <CaminoMeta datos={datos} />
       <Tabla programa={await programa} filtro={filtro} base="/admin/categorias" conVendedor />
+      <BeneficiosPorNivel />
     </Marco>
   );
 }

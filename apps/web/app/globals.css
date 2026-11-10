@@ -4678,3 +4678,11 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .atajos-cliente a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid var(--vidrio-borde); background: var(--vidrio-fuerte); box-shadow: var(--vidrio-brillo); color: var(--text); font-size: 14px; font-weight: 600; }
 .atajos-cliente a:hover { text-decoration: none; border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
 .atajos-cliente small { display: block; font-size: 12.5px; font-weight: 400; color: var(--text-2); }
+
+/* ── Beneficios por nivel (`BeneficiosPorNivel`) ────────────────────────────── */
+.benef-niveles { display: grid; gap: 10px; }
+.benef-niveles h2 { margin: 0; }
+.benef-niveles-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
+.benef-nivel { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 60%, transparent); min-width: 0; }
+.benef-nivel-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.benef-nivel-bloqueado { border-style: dashed; }
