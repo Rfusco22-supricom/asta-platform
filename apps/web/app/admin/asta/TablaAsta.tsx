@@ -7,51 +7,13 @@ import { money, moneyEntero } from '@/lib/formato';
 import { Avatar } from '@/components/Avatar';
 
 /**
- * Lista de oportunidades: quién compra consumibles de otra marca y cuánto.
+ * Los clientes y lo que compran de ASTA, del que más al que menos.
  *
- * ── Por qué ordena por lo de la COMPETENCIA ──────────────────────────────────
- *
- * Porque la pregunta es dónde hay más que ganar, y eso es el importe que hoy se
- * va a otra marca. Ordenar por el total del cliente pondría arriba a los que ya
- * compran ASTA casi todo, que no son una oportunidad: son clientes atendidos.
- *
- * ── La barra de cuota ────────────────────────────────────────────────────────
- *
- * Es el único adorno de la tabla y se gana el sitio: el porcentaje solo se lee
- * fila a fila, y la barra deja ver de un vistazo dónde está el hueco. No lleva
- * color por «bueno» o «malo» — un 0 % en un cliente de 900 importa mucho menos
- * que un 20 % en uno de 90.000, y pintarlos igual de rojos sería mentir.
+ * Solo montos de ASTA (decidido con Supricom el 2026-11-10): lo que compran de
+ * otras marcas no se enseña. «Nunca han comprado ASTA» son los que compran
+ * consumibles y ninguno de ASTA: la primera prueba es la conversación más
+ * fácil. Van en el orden del middleware, los que más compran primero.
  */
-
-function Cuota({ pct }: { pct: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-      <div
-        style={{
-          width: 54,
-          height: 6,
-          borderRadius: 999,
-          background: 'var(--surface-2)',
-          border: '1px solid var(--border)',
-          overflow: 'hidden',
-          flex: 'none',
-        }}
-        aria-hidden="true"
-      >
-        <div
-          style={{
-            width: `${Math.min(100, Math.max(0, pct))}%`,
-            height: '100%',
-            background: 'linear-gradient(90deg, var(--primario-claro), var(--primario))',
-          }}
-        />
-      </div>
-      <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'right' }}>
-        {pct.toFixed(0)} %
-      </span>
-    </div>
-  );
-}
 
 export function TablaAsta({
   filas,
@@ -76,7 +38,10 @@ export function TablaAsta({
     }
     // «Nunca han comprado ASTA» es la conversación más fácil de tener: no hay que
     // convencer de cambiar, hay que conseguir la primera prueba.
+    // Sin ASTA: en el orden en que llegan (los que más compran, primero).
+    // Todos: del que más ASTA compra al que menos.
     if (soloSinAsta) r = r.filter((o) => o.asta === 0 && o.competencia > 0);
+    else r = [...r].sort((a, b) => b.asta - a.asta);
     return r;
   }, [filas, busca, soloSinAsta]);
 
@@ -115,9 +80,7 @@ export function TablaAsta({
             <tr>
               <th>Cliente</th>
               {conVendedor && <th>Vendedor</th>}
-              <th className="num">A la competencia</th>
-              <th className="num">En ASTA</th>
-              <th className="num">Cuota ASTA</th>
+              <th className="num">Compra de ASTA</th>
             </tr>
           </thead>
           <tbody>
@@ -141,16 +104,8 @@ export function TablaAsta({
                   </td>
                 )}
 
-                <td className="num c-competencia" data-etiqueta="Competencia" title={money(o.competencia)}>
-                  {moneyEntero(o.competencia)}
-                </td>
-
-                <td className={`num c-asta${o.asta === 0 ? ' zero' : ''}`} data-etiqueta="En ASTA" title={money(o.asta)}>
-                  {o.asta === 0 ? '—' : moneyEntero(o.asta)}
-                </td>
-
-                <td className="num c-cuota" data-etiqueta="Cuota">
-                  <Cuota pct={o.cuota} />
+                <td className={`num c-asta${o.asta === 0 ? ' zero' : ''}`} data-etiqueta="Compra de ASTA" title={money(o.asta)}>
+                  {o.asta === 0 ? 'Nunca ha comprado' : moneyEntero(o.asta)}
                 </td>
               </tr>
             ))}
@@ -167,7 +122,7 @@ export function TablaAsta({
         */}
         {visibles.length > 200 && (
           <div className="empty">
-            Se muestran las 200 mayores de {visibles.length}. Usa el buscador para el resto.
+            Se muestran los 200 primeros de {visibles.length}. Usa el buscador para el resto.
           </div>
         )}
       </div>

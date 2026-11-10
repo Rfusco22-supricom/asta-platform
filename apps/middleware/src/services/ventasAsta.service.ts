@@ -12,14 +12,13 @@ import { compras, deSede, enRango, smartbit, ventasDeClientes, ventasSmartbitDeC
  * De cada factura cuentan sus LÍNEAS de producto ASTA, sin IVA y en la moneda
  * de la compañía (`-balance` de la línea), con las notas de crédito restando.
  * Una factura con un portátil y un tóner ASTA suma el tóner. «La última compra»
- * es la última factura con ASTA; «por cobrar», el saldo entero de las facturas
- * que llevan algo de ASTA, porque Odoo no dice qué línea se pagó.
+ * es la última factura con ASTA; «por cobrar», la PARTE ASTA del saldo de cada
+ * factura con ASTA (`saldoAsta`): Odoo no dice qué línea se pagó, así que el
+ * saldo se reparte en proporción a lo que la factura lleva de ASTA (decidido
+ * con Supricom el 2026-11-10: el panel solo enseña montos de ASTA).
  *
  * Las ventas a empresas del grupo no cuentan (`intercompania.ts`): ni aquí ni
  * en nada que parta de `LINEAS_ASTA`.
- *
- * Lo que el cliente compra de otras marcas no desaparece del panel: es la
- * materia de «Oportunidades ASTA» (`asta.service.ts`), que sigue mirándolo.
  *
  * Medido el 5-oct-2026 en la cartera de DANIEL ESPINOZA: 22.710 de ASTA frente
  * a 1.019.792 de facturación total, y 41 clientes con ASTA de 94 con facturas.
@@ -74,10 +73,60 @@ function redondear(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+/**
+ * La parte de ASTA de una factura, de 0 a 1: lo ASTA sin IVA entre su base
+ * imponible. Una factura solo de ASTA es 1; una con un portátil y un tóner, la
+ * proporción del tóner. Las notas de crédito tienen las dos cifras negativas.
+ */
+export function parteAsta(asta: number, baseImponible: number): number {
+  if (!baseImponible) return 0;
+  return Math.min(1, Math.max(0, asta / baseImponible));
+}
+
+/** La parte ASTA de un importe de la factura (el saldo, el total). */
+export function saldoAsta(importe: number, asta: number, baseImponible: number): number {
+  return importe * parteAsta(asta, baseImponible);
+}
+
+/** Lo ASTA (sin IVA, neto, en moneda de la compañía) de cada factura de `ids`. Un `read_group`. */
+export async function astaPorFactura(ids: number[]): Promise<Map<number, number>> {
+  const r = new Map<number, number>();
+  if (ids.length === 0) return r;
+  const grupos = await readGroup<{ move_id: [number, string] | false; balance: number }>(
+    'account.move.line',
+    [...LINEAS_ASTA, ['move_id', 'in', ids]],
+    ['balance:sum'],
+    ['move_id'],
+  );
+  for (const g of grupos) if (g.move_id) r.set(g.move_id[0], (r.get(g.move_id[0]) ?? 0) - g.balance);
+  return r;
+}
+
+/**
+ * Lo que se debe de ASTA, por cliente: de cada factura con saldo de
+ * `dominioFacturas`, la parte ASTA de su saldo. Solo lee las facturas que deben
+ * algo, que son pocas: dos llamadas a Odoo.
+ */
+export async function saldoAstaPorCliente(dominioFacturas: OdooDomain): Promise<Map<number, number>> {
+  const facturas = await searchRead<{ id: number; commercial_partner_id: [number, string] | false; amount_residual_signed: number; amount_untaxed_signed: number }>(
+    'account.move',
+    [...dominioFacturas, ['amount_residual_signed', '!=', 0]],
+    ['id', 'commercial_partner_id', 'amount_residual_signed', 'amount_untaxed_signed'],
+  );
+  const asta = await astaPorFactura(facturas.map((f) => f.id));
+  const r = new Map<number, number>();
+  for (const f of facturas) {
+    if (!f.commercial_partner_id) continue;
+    const id = f.commercial_partner_id[0];
+    r.set(id, (r.get(id) ?? 0) + saldoAsta(f.amount_residual_signed, asta.get(f.id) ?? 0, f.amount_untaxed_signed));
+  }
+  return r;
+}
+
 export interface TotalAsta {
   /** Vendido en ASTA, sin IVA, neto de devoluciones. */
   total: number;
-  /** Saldo de las facturas con ASTA. */
+  /** La parte ASTA del saldo de las facturas con ASTA (`saldoAstaPorCliente`). */
   porCobrar: number;
   /** Facturas de venta con ASTA (las notas de crédito no son una compra). */
   facturas: number;
@@ -99,27 +148,29 @@ export async function totalesAstaDeCartera(
   conSmartbit?: number[] | Promise<number[]>,
 ): Promise<Map<number, TotalAsta>> {
   const sede = query.sede ?? null;
-  const [lineas, facturas, sb] = await Promise.all([
+  const dominioFacturas: OdooDomain = [
+    ['state', '=', 'posted'],
+    ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
+    FACTURA_CON_ASTA,
+    SIN_INTERCOMPANIA,
+    ...(odooUserId === null ? [] : carteraDesdeFactura(odooUserId)),
+    ...rangoLinea(query),
+    ...enSede(sede),
+  ];
+  const [lineas, facturas, saldos, sb] = await Promise.all([
     readGroup<{ partner_id: [number, string] | false; balance: number }>(
       'account.move.line',
       [...LINEAS_ASTA, ...(odooUserId === null ? [] : carteraDesdeLinea(odooUserId)), ...rangoLinea(query), ...enSede(sede)],
       ['balance:sum'],
       ['partner_id'],
     ),
-    readGroup<{ commercial_partner_id: [number, string] | false; move_type: string | false; amount_residual_signed: number; __count: number }>(
+    readGroup<{ commercial_partner_id: [number, string] | false; move_type: string | false; __count: number }>(
       'account.move',
-      [
-        ['state', '=', 'posted'],
-        ['move_type', 'in', [FACTURA, NOTA_DE_CREDITO]],
-        FACTURA_CON_ASTA,
-        SIN_INTERCOMPANIA,
-        ...(odooUserId === null ? [] : carteraDesdeFactura(odooUserId)),
-        ...rangoLinea(query),
-        ...enSede(sede),
-      ],
-      ['amount_residual_signed:sum'],
+      dominioFacturas,
+      ['amount_total_signed:sum'],
       ['commercial_partner_id', 'move_type'],
     ),
+    saldoAstaPorCliente(dominioFacturas),
     conSmartbit ? Promise.all([smartbit(), conSmartbit]) : null,
   ]);
 
@@ -132,10 +183,9 @@ export async function totalesAstaDeCartera(
   for (const g of lineas) if (g.partner_id) de(g.partner_id[0]).total += -g.balance;
   for (const g of facturas) {
     if (!g.commercial_partner_id) continue;
-    const t = de(g.commercial_partner_id[0]);
-    t.porCobrar += g.amount_residual_signed;
-    if (g.move_type === FACTURA) t.facturas += g.__count;
+    if (g.move_type === FACTURA) de(g.commercial_partner_id[0]).facturas += g.__count;
   }
+  for (const [id, saldo] of saldos) de(id).porCobrar += saldo;
   if (sb) {
     for (const [id, ventas] of ventasDeClientes(...sb)) {
       const delRango = ventas.filter((v) => enRango(v, query) && deSede(v, sede));
@@ -175,6 +225,7 @@ interface FacturaLeida {
   payment_state: NonNullable<NonNullable<InvoicingSummary['ultimaFactura']>['estadoPago']> | false;
   amount_total_signed: number;
   amount_residual_signed: number;
+  amount_untaxed_signed: number;
 }
 
 /**
@@ -183,9 +234,10 @@ interface FacturaLeida {
  *
  *   · `totalFacturado`, `ticketPromedio`, `serieMensual` y el `monto` del
  *     desglose y de la última factura: lo ASTA de cada factura;
- *   · `porCobrar` y el `saldo` del desglose: el saldo de las facturas con ASTA;
- *   · `cobrado`: lo cobrado de esas facturas (su total menos su saldo), así que
- *     el «% cobrado» es `cobrado / (cobrado + porCobrar)`.
+ *   · `porCobrar` y el `saldo` del desglose: la parte ASTA del saldo de las
+ *     facturas con ASTA (`saldoAsta`);
+ *   · `cobrado`: la parte ASTA de lo cobrado de esas facturas (su total menos
+ *     su saldo), así que el «% cobrado» es `cobrado / (cobrado + porCobrar)`.
  *
  * Con la historia de Smartbit de su RIF (`smartbit.service`): suma a lo
  * vendido, las facturas (cada compra), el ticket y la serie. No al saldo, al
@@ -213,7 +265,7 @@ export async function resumenAstaDeCliente(partnerId: number, query: InvoicingQu
     ? await searchRead<FacturaLeida>(
         'account.move',
         [['id', 'in', [...astaDe.keys()]]],
-        ['id', 'name', 'move_type', 'invoice_date', 'payment_state', 'amount_total_signed', 'amount_residual_signed'],
+        ['id', 'name', 'move_type', 'invoice_date', 'payment_state', 'amount_total_signed', 'amount_residual_signed', 'amount_untaxed_signed'],
       )
     : [];
 
@@ -228,15 +280,16 @@ export async function resumenAstaDeCliente(partnerId: number, query: InvoicingQu
   for (const f of facturas) {
     const asta = astaDe.get(f.id) ?? 0;
     const esFactura = f.move_type === FACTURA;
+    const saldo = saldoAsta(f.amount_residual_signed, asta, f.amount_untaxed_signed);
     total += asta;
-    porCobrar += f.amount_residual_signed;
-    totalFacturas += f.amount_total_signed;
+    porCobrar += saldo;
+    totalFacturas += saldoAsta(f.amount_total_signed, asta, f.amount_untaxed_signed);
     if (esFactura) numeroFacturas++;
 
     const estado = f.payment_state || 'desconocido';
     const e = porEstado.get(estado) ?? { monto: 0, saldo: 0, facturas: 0 };
     e.monto += asta;
-    e.saldo += f.amount_residual_signed;
+    e.saldo += saldo;
     if (esFactura) e.facturas++;
     porEstado.set(estado, e);
 

@@ -5,7 +5,7 @@ import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, ty
 import { enSede } from './sede.js';
 import { compras, deSede, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
 import { SIN_INTERCOMPANIA } from './intercompania.js';
-import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea } from './ventasAsta.service.js';
+import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea, saldoAstaPorCliente } from './ventasAsta.service.js';
 import { limpiarEspacios, nombrePersona, type SedeId } from '@asta/shared-types';
 
 /**
@@ -18,7 +18,7 @@ import { limpiarEspacios, nombrePersona, type SedeId } from '@asta/shared-types'
  *   · `facturado`, la serie y el top de clientes: lo vendido de ASTA, sin IVA,
  *     neto de devoluciones;
  *   · `facturas`: facturas de venta que llevan ASTA;
- *   · `porCobrar`: el saldo de esas facturas;
+ *   · `porCobrar`: la parte ASTA del saldo de esas facturas (`saldoAstaPorCliente`);
  *   · `porVendedor` (solo empresa): por el comercial ASIGNADO al cliente, el
  *     mismo criterio que «Mi cartera», así que la fila de cada vendedor es su
  *     cartera. Antes era el comercial de la factura (`invoice_user_id`);
@@ -50,7 +50,7 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas, sede: 
     ...enSede(sede),
   ];
 
-  const [lineasPorMes, lineasPorCliente, facturasPorMes, facturasPorCliente, competencia, sb] = await Promise.all([
+  const [lineasPorMes, lineasPorCliente, facturasPorMes, facturasPorCliente, saldoDe, competencia, sb] = await Promise.all([
     readGroup<{ balance: number; __domain?: unknown }>('account.move.line', lineas as never, ['balance:sum'], ['invoice_date:month']),
     readGroup<{ partner_id: [number, string] | false; balance: number }>('account.move.line', lineas as never, ['balance:sum'], ['partner_id']),
     readGroup<{ move_type: string | false; amount_residual_signed: number; __count: number; __domain?: unknown }>(
@@ -65,6 +65,8 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas, sede: 
       ['amount_residual_signed:sum'],
       ['commercial_partner_id', 'move_type'],
     ),
+    // Lo que se debe de ASTA: la parte ASTA del saldo de cada factura.
+    saldoAstaPorCliente(facturasAsta as never),
     // La competencia, como oportunidad: lo que se compró de otras marcas en las
     // categorías donde ASTA tiene producto.
     (async () => totalDeProductos((await productosEnCompetencia()).otros, rango, deLaEmpresa ? null : await carteraDe(odooUserId), sede))(),
@@ -80,8 +82,8 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas, sede: 
   const nFacturas = new Map<string, number>();
   let porCobrar = 0;
   let facturas = 0;
+  for (const saldo of saldoDe.values()) porCobrar += saldo;
   for (const g of facturasPorMes) {
-    porCobrar += g.amount_residual_signed ?? 0;
     if (g.move_type !== FACTURA) continue;
     facturas += g.__count;
     const mes = mesDelGrupo(g);
@@ -95,11 +97,9 @@ async function reporteAsta(odooUserId: number | null, rango: RangoFechas, sede: 
   }
 
   const facturasDe = new Map<number, number>();
-  const saldoDe = new Map<number, number>();
   for (const g of facturasPorCliente) {
     if (!g.commercial_partner_id) continue;
     const id = g.commercial_partner_id[0];
-    saldoDe.set(id, (saldoDe.get(id) ?? 0) + (g.amount_residual_signed ?? 0));
     if (g.move_type === FACTURA) facturasDe.set(id, (facturasDe.get(id) ?? 0) + g.__count);
   }
 

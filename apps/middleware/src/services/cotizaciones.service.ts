@@ -5,6 +5,7 @@ import {
   nombrePersona,
   type Cotizacion,
   type Cotizaciones,
+  type CotizacionDetalle,
   estadoCotizacionSchema,
   type EstadoCotizacion,
 } from '@asta/shared-types';
@@ -200,4 +201,69 @@ export async function cotizaciones(c: ConsultaCotizaciones, ahora = new Date()):
   });
 
   return { totales, estado: c.estado, filas };
+}
+
+/**
+ * Una cotización por dentro, con sus productos de ASTA (`CotizacionDetalle`).
+ * Con `odooUserId`, solo si el cliente es de la cartera de ese vendedor: una
+ * de otra cartera responde igual que una que no existe (`null`). Tres llamadas.
+ */
+export async function detalleCotizacion(id: number, odooUserId: number | null, ahora = new Date()): Promise<CotizacionDetalle | null> {
+  const dominio: OdooDomain = [
+    ['id', '=', id],
+    ['order_line.product_id.product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA],
+    SIN_INTERCOMPANIA_PEDIDO,
+    ...(odooUserId === null
+      ? []
+      : ([
+          ['partner_id.commercial_partner_id.user_id', '=', odooUserId],
+          ['partner_id.commercial_partner_id.active', '=', true],
+        ] as OdooDomain)),
+  ];
+  const [p] = await searchRead<FilaPedido>('sale.order', dominio, ['name', 'state', 'create_date', 'validity_date', 'partner_id', 'user_id', 'amount_untaxed'], { limit: 1 });
+  if (!p || !p.partner_id) return null;
+
+  const [lineas, [contacto]] = await Promise.all([
+    searchRead<{ product_id: [number, string] | false; product_uom_qty: number; price_unit: number; discount: number; price_subtotal: number }>(
+      'sale.order.line',
+      [['order_id', '=', id], ['product_id.product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA]],
+      ['product_id', 'product_uom_qty', 'price_unit', 'discount', 'price_subtotal'],
+      { order: 'sequence asc, id asc' },
+    ),
+    searchRead<{ commercial_partner_id: [number, string] | false }>('res.partner', [['id', '=', p.partner_id[0]]], ['commercial_partner_id'], { context: { active_test: false } }),
+  ]);
+  const ids = [...new Set(lineas.flatMap((l) => (l.product_id ? [l.product_id[0]] : [])))];
+  const productos = ids.length
+    ? await searchRead<{ id: number; default_code: string | false; name: string }>('product.product', [['id', 'in', ids]], ['default_code', 'name'], { context: { active_test: false } })
+    : [];
+  const producto = new Map(productos.map((x) => [x.id, x]));
+  const ficha = contacto?.commercial_partner_id || null;
+  const filas = lineas.flatMap((l) => {
+    if (!l.product_id) return [];
+    const x = producto.get(l.product_id[0]);
+    return [
+      {
+        productId: l.product_id[0],
+        sku: x?.default_code || null,
+        nombre: limpiarEspacios(x?.name ?? l.product_id[1]),
+        cantidad: l.product_uom_qty,
+        precio: redondear(l.price_unit),
+        descuento: l.discount ?? 0,
+        subtotal: redondear(l.price_subtotal),
+      },
+    ];
+  });
+  return {
+    id,
+    folio: p.name,
+    fecha: diaEnCaracas(p.create_date),
+    dias: Math.max(0, Math.floor((ahora.getTime() - instante(p.create_date).getTime()) / DIA_MS)),
+    vence: p.validity_date || null,
+    estado: estadoDe(p.state),
+    partnerId: ficha ? ficha[0] : p.partner_id[0],
+    cliente: limpiarEspacios(ficha ? ficha[1] : p.partner_id[1]),
+    vendedor: p.user_id ? nombrePersona(p.user_id[1]) : null,
+    importeAsta: redondear(filas.reduce((s, l) => s + l.subtotal, 0)),
+    lineas: filas,
+  };
 }

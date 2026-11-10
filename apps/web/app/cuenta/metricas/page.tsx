@@ -49,7 +49,7 @@ function Compras({ m }: { m: MetricasCliente }) {
       <section className="stats">
         <Cifra icono="ventas" etiqueta="Compras de ASTA" valor={moneyCompact(c.totalFacturado)} nota={`${n(c.numeroFacturas)} ${c.numeroFacturas === 1 ? 'factura' : 'facturas'} · 12 meses`} tendencia={serie.map((p) => p.monto)} />
         {ultimo && <Cifra icono="mes" color="violeta" etiqueta="Este mes" valor={moneyCompact(ultimo.monto)} nota={`${n(ultimo.facturas)} ${ultimo.facturas === 1 ? 'factura' : 'facturas'}`} />}
-        <Cifra icono="cobrar" color="ambar" etiqueta="Por pagar" nota="a hoy" valor={moneyCompact(c.porCobrar)} tono={c.porCobrar > 0 ? 'atencion' : undefined} />
+        <Cifra icono="cobrar" color="ambar" etiqueta="Por pagar de ASTA" nota="a hoy, la parte ASTA de tus facturas" valor={moneyCompact(c.porCobrar)} tono={c.porCobrar > 0 ? 'atencion' : undefined} />
         {m.perfil && (
           <Cifra
             icono="reloj"
@@ -147,7 +147,7 @@ function Tablets({ m }: { m: MetricasCliente }) {
 
 export default async function MetricasPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Usuarios»): primero, cuál.
+  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (

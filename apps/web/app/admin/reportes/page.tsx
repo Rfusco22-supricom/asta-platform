@@ -1,11 +1,16 @@
+import { Suspense } from 'react';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { VistaReporte } from '@/components/Reporte';
 import { sedeDeParams } from '@/components/Sedes';
 import { getReporteEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { ProductosAsta } from '@/components/inicio/Ranking';
+import { Esqueleto } from '@/components/inicio/Tablero';
 
 /**
- * Reportes de facturación de toda la empresa.
+ * Ventas: los reportes de facturación de toda la empresa, con los productos
+ * ASTA más vendidos (antes en el Inicio). Entrada propia en el menú desde la
+ * reorganización del 2026-11-10; antes solo se llegaba desde el Inicio.
  *
  * Es la pantalla que faltaba para que el entregable del roadmap se cumpla: «los
  * vendedores usan el panel a diario y dejan de pedir reportes». Hasta ahora el
@@ -41,7 +46,7 @@ export default async function ReportesAdminPage({
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Reportes">
+      <Marco usuario={sesion.usuario} titulo="Ventas">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -55,11 +60,13 @@ export default async function ReportesAdminPage({
   }
 
   return (
-    <Marco
-      usuario={sesion.usuario}
-      titulo="Reportes"
-    >
+    <Marco usuario={sesion.usuario} titulo="Ventas">
       <VistaReporte datos={datos} base="/admin/reportes" soloAsta sede={sede} />
+      <div className="ventas-productos">
+        <Suspense fallback={<Esqueleto area="productos" alto={300} />}>
+          <ProductosAsta token={sesion.accessToken} rango={datos.periodo} sede={sede} cuantos={15} />
+        </Suspense>
+      </div>
     </Marco>
   );
 }

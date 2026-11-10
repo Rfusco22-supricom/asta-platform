@@ -102,7 +102,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           </h2>
           <p>{error instanceof Error ? error.message : 'Error inesperado.'}</p>
           <p style={{ marginTop: 12 }}>
-            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">← Volver a reportes</Link> : <Link href="/cartera">← Volver a mi cartera</Link>}
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/asta">← Volver a clientes</Link> : <Link href="/cartera">← Volver a mi cartera</Link>}
           </p>
         </div>
       </Marco>
@@ -127,17 +127,25 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         <div className="ficha-datos">
           {/* El administrador no tiene cartera: llega desde los reportes. */}
           <div className="crumb">
-            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/reportes">Reportes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
+            {sesion.usuario.role === 'SUPERADMIN' ? <Link href="/admin/asta">Clientes</Link> : <Link href="/cartera">Mi cartera</Link>}{' '}
             <span>/</span> <span data-privado>{nombre}</span>
           </div>
           {/* El nombre ya es el título de la pantalla: aquí no se repite. */}
           <span className="ficha-tarifa">{cliente.tier ?? 'Sin tarifa asignada'}</span>
         </div>
-        {ODOO_URL && (
-          <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
-            Abrir en Odoo ↗
-          </a>
-        )}
+        <div className="ficha-acciones">
+          {/* El panel del cliente tal como lo ve él, solo lectura (ver `/api/vista-cliente`). */}
+          {sesion.usuario.role === 'SUPERADMIN' && (
+            <a className="ficha-odoo" href={`/api/vista-cliente?id=${partnerId}&nombre=${encodeURIComponent(nombre)}&a=/cuenta/metricas`}>
+              Ver su panel
+            </a>
+          )}
+          {ODOO_URL && (
+            <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
+              Abrir en Odoo ↗
+            </a>
+          )}
+        </div>
       </div>
 
       {/*
@@ -236,10 +244,10 @@ export default async function FichaCliente({ params, searchParams }: Props) {
         <Cifra
           icono="cobrar"
           color="ambar"
-          etiqueta="Por cobrar"
+          etiqueta="Por cobrar de ASTA"
           valor={money(f.porCobrar)}
           tono={f.porCobrar > 0 ? 'alerta' : undefined}
-          nota={f.cobrado + f.porCobrar > 0 ? `${pctCobrado.toFixed(0)} % cobrado de las facturas con ASTA` : 'sin facturas con ASTA en Odoo'}
+          nota={f.cobrado + f.porCobrar > 0 ? `la parte ASTA de su saldo · ${pctCobrado.toFixed(0)} % cobrado` : 'sin facturas con ASTA en Odoo'}
         />
         <Cifra icono="ticket" color="violeta" etiqueta="Ticket promedio" valor={money(f.ticketPromedio)} pequena nota={`${periodoFicha} · de ASTA por factura`} />
         <Cifra
@@ -276,7 +284,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
 
       {/* ── Estado de pago ────────────────────────────────────────────────── */}
       <section className="panel">
-        <h2>Estado de cobro de las facturas con ASTA</h2>
+        <h2>Cobro de lo que compró de ASTA</h2>
 
         {f.desglosePorEstadoDePago.length === 0 ? (
           <div className="empty" style={{ padding: '28px 20px' }}>
@@ -304,7 +312,7 @@ export default async function FichaCliente({ params, searchParams }: Props) {
                   <tr>
                     <th>Estado</th>
                     <th className="num">ASTA</th>
-                    <th className="num">Saldo</th>
+                    <th className="num">Saldo de ASTA</th>
                     <th className="num">Facturas</th>
                   </tr>
                 </thead>

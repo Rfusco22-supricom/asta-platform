@@ -3440,6 +3440,7 @@ a.enlace-ficha:hover { color: var(--primario); }
   font-weight: 500;
 }
 .ficha-odoo:hover { text-decoration: none; border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
+.ficha-acciones { flex: none; display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 640px) {
   .panel.ficha-cabeza { flex-wrap: wrap; padding: 16px; }
   .ficha-cabeza .avatar-l { width: 48px; height: 48px; border-radius: 16px; font-size: 17px; }
@@ -3505,8 +3506,8 @@ a.enlace-ficha:hover { color: var(--primario); }
   grid-template-areas:
     'meta meta meta'
     'kpis kpis kpis'
-    'serie serie oportunidad'
-    'productos vendedores clientes';
+    'atencion serie serie'
+    'atencion vendedores clientes';
   gap: 20px;
   margin-top: 18px;
 }
@@ -3515,6 +3516,7 @@ a.enlace-ficha:hover { color: var(--primario); }
 .dash-serie { grid-area: serie; }
 .dash-oportunidad { grid-area: oportunidad; display: flex; flex-direction: column; gap: 14px; }
 .dash-productos { grid-area: productos; }
+.dash-atencion { grid-area: atencion; display: flex; flex-direction: column; }
 .dash-vendedores { grid-area: vendedores; }
 .dash-clientes { grid-area: clientes; }
 
@@ -3578,14 +3580,14 @@ a.enlace-ficha:hover { color: var(--primario); }
     grid-template-areas:
       'meta meta'
       'kpis kpis'
+      'atencion atencion'
       'serie serie'
-      'oportunidad productos'
       'vendedores clientes';
   }
 }
 @media (max-width: 760px) {
   .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'serie' 'oportunidad' 'productos' 'vendedores' 'clientes'; }
+  .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'atencion' 'serie' 'vendedores' 'clientes'; }
 }
 
 /* Las cinco cifras del Inicio de administración no caben parejas en 3 ni en 2
@@ -4534,7 +4536,7 @@ button.serie-col .serie-barra { display: block; }
   .calc-comparacion { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ── «Usuarios» del administrador: el panel de un cliente, solo para mirar ── */
+/* ── «Ver su panel» del administrador: el panel de un cliente, solo para mirar ── */
 .nav-titulo-boton { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; font: inherit; cursor: pointer; text-align: left; }
 .nav-titulo-boton svg { transition: transform 0.15s; }
 .nav-titulo-boton[aria-expanded='false'] svg { transform: rotate(-90deg); }
@@ -4597,3 +4599,49 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .benef-bloqueado { margin: 4px 0 0; display: inline-flex; align-items: center; gap: 8px; justify-self: start; padding: 5px 12px; border-radius: 999px; border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-3); }
 .benef-bloqueado strong { color: var(--diamante); font-weight: 650; }
 .benef-pie { margin: 0; }
+
+/* ── «Necesita tu atención» del Inicio (`components/inicio/Atencion.tsx`) ───── */
+.atencion-cuenta { min-width: 24px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); font-size: 12.5px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.atencion-lista { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
+.atencion-lista li + li { border-top: 1px solid var(--border); }
+.atencion-lista a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 11px 4px; color: var(--text); border-radius: 10px; }
+.atencion-lista a:hover { text-decoration: none; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.atencion-punto { width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--warning); }
+.atencion-alerta .atencion-punto { background: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent); }
+.atencion-texto { display: grid; gap: 2px; min-width: 0; }
+.atencion-texto strong { font-size: 14px; font-weight: 650; }
+.atencion-texto span { font-size: 13px; color: var(--text-2); }
+.atencion-flecha { font-size: 20px; line-height: 1; color: var(--text-3); }
+.ventas-productos { margin-top: 20px; }
+
+/* ── Filtros de sede y periodo: dos desplegables en una fila ─────────────────
+   (`components/Sedes.tsx`, `components/Periodos.tsx`). Son hermanos en la
+   página: en línea, se colocan uno al lado del otro sin envoltorio. */
+.filtro-compacto { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 10px 16px 0; vertical-align: middle; max-width: 100%; }
+.filtro-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  background: var(--vidrio-fuerte);
+  box-shadow: var(--vidrio-brillo);
+  color: var(--text-2);
+}
+.filtro-select:focus-within { border-color: color-mix(in srgb, var(--cian) 55%, transparent); }
+.filtro-select[aria-busy='true'] { opacity: .6; }
+.filtro-select .select {
+  width: auto;
+  height: 38px;
+  padding: 0 30px 0 0;
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.filtro-compacto .periodos-texto { margin: 0; }

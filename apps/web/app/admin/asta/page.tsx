@@ -5,23 +5,13 @@ import { getAstaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/ap
 import { moneyCompact } from '@/lib/formato';
 import { TablaAsta } from './TablaAsta';
 import { Cifra } from '@/components/Cifras';
-import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 
 /**
- * Marca ASTA: cuánto del consumible que compran nuestros clientes es nuestro.
+ * Clientes: lo que cada cliente compra de ASTA, y quiénes nunca lo han probado.
  *
- * ── Qué se compara, y qué no ─────────────────────────────────────────────────
- *
- * Solo las categorías donde ASTA fabrica —CONSUMIBLES y GENERAL—. Medir la cuota
- * de ASTA en ROUTERING sería dividir por una oportunidad que no existe: ahí el
- * cliente no está eligiendo otra marca, es que ASTA no hace eso.
- *
- * ── La cifra que importa ─────────────────────────────────────────────────────
- *
- * No es la cuota del 11,9 %, que es un titular. Es que 860 clientes compran
- * consumibles cada mes y no han probado ASTA ni una vez. Esa lista tiene nombres
- * y vendedor asignado, y es la única parte de esta pantalla sobre la que alguien
- * puede hacer algo mañana.
+ * Solo montos de ASTA (decidido con Supricom el 2026-11-10). Los que nunca han
+ * comprado ASTA salen de los que compran consumibles —CONSUMIBLES y GENERAL,
+ * donde ASTA fabrica—, pero lo que compran de otras marcas no se enseña.
  */
 
 export const dynamic = 'force-dynamic';
@@ -39,8 +29,7 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
+      <Marco usuario={sesion.usuario} titulo="Clientes">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>
@@ -54,22 +43,21 @@ export default async function AstaPage({ searchParams }: { searchParams: Promise
   }
 
   const { filas, totales } = datos;
+  const compran = filas.filter((f) => f.asta > 0).length;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/asta" />
+    <Marco usuario={sesion.usuario} titulo="Clientes">
       <Sedes base="/admin/asta" sede={sede} />
       <section className="stats">
-        <Cifra icono="cuota" color="rosa" etiqueta="Cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran nuestros clientes" />
-        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} tono="sube" nota="histórico · marca propia" />
-        <Cifra icono="juego" color="ambar" etiqueta="A la competencia" valor={moneyCompact(totales.competencia)} tono="alerta" nota="histórico · otras marcas" />
+        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} nota="histórico, sin IVA" />
+        <Cifra icono="clientes" etiqueta="Compran ASTA" valor={compran.toLocaleString('es-VE')} nota="clientes que lo han comprado alguna vez" />
         <Cifra
           icono="diana"
           color="violeta"
-          etiqueta="Sin probar ASTA"
+          etiqueta="Nunca han comprado ASTA"
           valor={totales.sinAsta.toLocaleString('es-VE')}
           tono="atencion"
-          nota={`clientes · ${moneyCompact(totales.sinAstaImporte)} fuera, histórico`}
+          nota="clientes que compran consumibles: la primera prueba"
         />
       </section>
 

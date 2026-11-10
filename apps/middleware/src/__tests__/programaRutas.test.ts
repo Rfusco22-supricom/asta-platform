@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { nivelBloqueado, programaClienteRespuestaSchema, programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
+import { cotizacionDetalleRespuestaSchema, nivelBloqueado, programaClienteRespuestaSchema, programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { emitirAccessToken } from '../auth/jwt.js';
@@ -84,5 +84,18 @@ describe('El programa para Supricom', () => {
     expect(nivelBloqueado(valido.data!.data.evaluacion.nivel)).toBe(false);
     expect((await pedir('/api/v1/salesperson/clients/133261/programa', 'vendedorSinCartera')).status).toBe(403);
     expect((await pedir('/api/v1/salesperson/clients/133261/programa', 'cliente')).status).toBe(403);
+  }, 180_000);
+
+  it('una cotización por dentro: el administrador la ve con solo ASTA; un vendedor de otra cartera, como si no existiera', async () => {
+    const lista = await pedir('/api/v1/admin/cotizaciones?estado=abierta', 'admin');
+    const id = (lista.body as { data: { filas: Array<{ id: number }> } }).data.filas[0]?.id;
+    if (!id) return;
+    const r = await pedir(`/api/v1/admin/cotizaciones/${id}`, 'admin');
+    expect(r.status).toBe(200);
+    const valido = cotizacionDetalleRespuestaSchema.safeParse(r.body);
+    expect(valido.success, JSON.stringify(valido.error?.issues?.slice(0, 3))).toBe(true);
+    expect(valido.data!.data.lineas.length).toBeGreaterThan(0);
+    expect((await pedir(`/api/v1/salesperson/cotizaciones/${id}`, 'vendedorSinCartera')).status).toBe(404);
+    expect((await pedir(`/api/v1/admin/cotizaciones/${id}`, 'cliente')).status).toBe(403);
   }, 180_000);
 });

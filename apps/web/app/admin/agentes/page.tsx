@@ -89,9 +89,9 @@ export default async function AgentesPage({ searchParams }: { searchParams: Prom
         <Metrica
           icono="cobrar"
           color="ambar"
-          etiqueta="Por cobrar"
+          etiqueta="Por cobrar de ASTA"
           valor={moneyCompact(totales.porCobrar)}
-          nota="a hoy, en las facturas con ASTA"
+          nota="a hoy, la parte ASTA de lo que se debe"
         />
         <Metrica
           icono="candado"

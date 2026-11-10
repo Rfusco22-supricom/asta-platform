@@ -63,22 +63,9 @@ export default async function AstaCarteraPage() {
     <Marco usuario={sesion.usuario} titulo="ASTA">
       <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/asta" />
       <section className="stats">
-        <Cifra icono="cuota" color="rosa" etiqueta="Tu cuota de ASTA" valor={`${totales.cuota.toFixed(1)} %`} nota="del consumible que compran tus clientes" />
-        <Cifra
-          icono="juego"
-          color="ambar"
-          etiqueta="A la competencia"
-          valor={moneyCompact(totales.competencia)}
-          tono="alerta"
-          nota="histórico · otras marcas"
-        />
-        <Cifra
-          icono="diana"
-          color="violeta"
-          etiqueta="Sin probar ASTA"
-          valor={totales.sinAsta}
-          nota={`clientes tuyos · ${moneyCompact(totales.sinAstaImporte)} fuera, histórico`}
-        />
+        <Cifra icono="ventas" color="verde" etiqueta="Vendido en ASTA" valor={moneyCompact(totales.asta)} nota="histórico, sin IVA" />
+        <Cifra icono="clientes" etiqueta="Compran ASTA" valor={filas.filter((f) => f.asta > 0).length} nota="clientes tuyos que lo han comprado alguna vez" />
+        <Cifra icono="diana" color="violeta" etiqueta="Nunca han comprado ASTA" valor={totales.sinAsta} nota="clientes tuyos que compran consumibles" />
       </section>
 
       <TablaAsta filas={filas} conVendedor={false} />

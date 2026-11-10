@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 /**
- * Las pestañas de una sección que junta varias páginas: «ASTA» (oportunidades y
- * categorías), «Datos de Odoo» (errores y duplicados), «Personas» (equipo,
+ * Las pestañas de una sección que junta varias páginas: «Búsquedas y demanda»,
+ * «Datos de Odoo» (errores y duplicados), «Personas y accesos» (equipo,
  * clientes e invitaciones). Cada pestaña es su propia página, así que los
  * enlaces de antes siguen sirviendo.
  */
@@ -18,11 +18,10 @@ export function PestanasSeccion({ etiqueta, pestanas, actual }: { etiqueta: stri
   );
 }
 
-export const PESTANAS_ASTA_ADMIN = [
-  { href: '/admin/asta', titulo: 'Oportunidades' },
-  { href: '/admin/categorias', titulo: 'Categorías' },
-  { href: '/admin/sellout', titulo: 'Sell-out' },
-  { href: '/admin/demanda', titulo: 'Demanda' },
+/** «Búsquedas y demanda»: lo que se busca en la aplicación ASTA y lo que falta. */
+export const PESTANAS_BUSQUEDAS = [
+  { href: '/admin/recomendador', titulo: 'Búsquedas' },
+  { href: '/admin/demanda', titulo: 'Demanda no cubierta' },
 ];
 
 export const PESTANAS_ASTA_VENDEDOR = [

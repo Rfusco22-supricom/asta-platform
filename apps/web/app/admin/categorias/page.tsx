@@ -3,7 +3,6 @@ import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
 import { getCategoriasAstaEmpresa, getProgramaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { PestanasSeccion, PESTANAS_ASTA_ADMIN } from '@/components/PestanasSeccion';
 
 /**
  * El programa de ASTA de toda la empresa: cómo va el conjunto hacia la meta
@@ -42,8 +41,7 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/categorias" />
+      <Marco usuario={sesion.usuario} titulo="Niveles y trimestre">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo leer de Odoo'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -53,8 +51,7 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_ADMIN} actual="/admin/categorias" />
+    <Marco usuario={sesion.usuario} titulo="Niveles y trimestre">
       <CaminoMeta datos={datos} />
       <Tabla programa={await programa} filtro={filtro} base="/admin/categorias" conVendedor />
     </Marco>

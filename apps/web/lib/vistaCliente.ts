@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import type { Session } from '@/lib/session';
 
 /**
- * «Usuarios» del administrador: ver el panel de un cliente tal como lo ve él.
+ * «Ver su panel» del administrador: ver el panel de un cliente tal como lo ve él.
  *
  * El cliente elegido viaja en una cookie (`asta_vista_cliente`), y no en la
  * URL, para que el menú lleve de una pantalla suya a otra sin perderlo. Las

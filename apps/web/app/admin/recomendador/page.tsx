@@ -1,5 +1,6 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { PestanasSeccion, PESTANAS_BUSQUEDAS } from '@/components/PestanasSeccion';
 import { Periodos } from '@/components/Periodos';
 import { getEstadisticasRecomendador, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { BusquedasSinResultado } from './BusquedasSinResultado';
@@ -64,7 +65,8 @@ export default async function RecomendadorPage({
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Recomendador">
+      <Marco usuario={sesion.usuario} titulo="Búsquedas y demanda">
+        <PestanasSeccion etiqueta="Búsquedas y demanda" pestanas={PESTANAS_BUSQUEDAS} actual="/admin/recomendador" />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudo cargar'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -77,7 +79,8 @@ export default async function RecomendadorPage({
   const hayAlgo = totales.busquedas > 0 || totales.consultasDirectas > 0;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Recomendador">
+    <Marco usuario={sesion.usuario} titulo="Búsquedas y demanda">
+      <PestanasSeccion etiqueta="Búsquedas y demanda" pestanas={PESTANAS_BUSQUEDAS} actual="/admin/recomendador" />
       <Periodos base="/admin/recomendador" periodo={{ desde: datos.desde, hasta: datos.hasta }} />
 
       {!hayAlgo ? (
