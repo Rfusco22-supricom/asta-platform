@@ -32,7 +32,7 @@ export default async function CotizacionesEmpresaPage({ searchParams }: { search
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Cotizaciones">
+      <Marco usuario={sesion.usuario} titulo="Cotizaciones y pedidos">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es solo para administradores' : 'No se pudieron leer las cotizaciones'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -44,7 +44,7 @@ export default async function CotizacionesEmpresaPage({ searchParams }: { search
   const enviados = await pedidos;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Cotizaciones">
+    <Marco usuario={sesion.usuario} titulo="Cotizaciones y pedidos">
       <Sedes base="/admin/cotizaciones" sede={sede} periodo={periodo} />
       <Periodos base="/admin/cotizaciones" periodo={periodo} sede={sede} />
       {enviados && <PedidosClientes inicial={enviados} />}
