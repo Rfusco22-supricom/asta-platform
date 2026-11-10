@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { invoicingSummarySchema } from './invoicing.js';
 import { clientProfileSchema } from './partners.js';
-import { evaluacionTrimestreSchema } from './programaAsta.js';
+import { programaClienteSchema } from './programaAsta.js';
 
 /**
  * «Mis métricas»: lo que un CLIENTE ve de sí mismo en el panel, con datos que
@@ -21,12 +21,7 @@ export const metricasClienteSchema = z.object({
    * en curso y los tokens que lleva de los ya cerrados. Su nivel de ahora es
    * `evaluacion.nivel`.
    */
-  programa: z
-    .object({
-      saldoTokens: z.number().int().nonnegative(),
-      evaluacion: evaluacionTrimestreSchema,
-    })
-    .nullable(),
+  programa: programaClienteSchema.nullable(),
   /** Lo que se busca en SUS tablets. `null` si no tiene ninguna. */
   tablets: z
     .object({

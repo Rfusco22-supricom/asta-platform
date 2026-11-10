@@ -4581,3 +4581,19 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
   .zona-tabla tbody td { display: grid; gap: 2px; padding: 0; border: 0; text-align: left; white-space: normal; }
   .zona-tabla tbody td::before { content: attr(data-etiqueta); font-size: 11px; font-weight: 500; color: var(--text-3); }
 }
+
+/* ── Beneficios del programa ASTA (`components/Beneficios.tsx`) ──────────── */
+.benef { display: grid; gap: 12px; }
+.benef h2 { margin: 0; }
+.benef-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px 32px; align-items: start; }
+.benef-col { display: grid; gap: 8px; min-width: 0; }
+.benef-arriba { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.benef-lista { list-style: none; margin: 0; padding: 0; display: grid; }
+.benef-lista li { display: grid; gap: 3px; padding: 9px 0 9px 14px; border-top: 1px solid var(--border); position: relative; }
+.benef-lista li:first-child { border-top: 0; }
+.benef-lista li::before { content: ''; position: absolute; left: 0; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--pi-ok); }
+.benef-lista.nuevos li::before { content: '+'; width: auto; height: auto; top: 8px; left: -1px; border-radius: 0; background: none; font-weight: 700; color: var(--pi-ok); }
+.benef-vacio { margin: 0; }
+.benef-bloqueado { margin: 4px 0 0; display: inline-flex; align-items: center; gap: 8px; justify-self: start; padding: 5px 12px; border-radius: 999px; border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-3); }
+.benef-bloqueado strong { color: var(--diamante); font-weight: 650; }
+.benef-pie { margin: 0; }

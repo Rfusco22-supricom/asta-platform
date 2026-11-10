@@ -18,8 +18,9 @@ import { claveCategoriaSchema, reglaDe, type ClaveCategoria } from './categorias
  *   · sell-out         — reportó los tres meses, cada uno hasta su último
  *                        día (hora de Caracas).
  *
- * Cumple los tres: sube un nivel (Diamante se queda). Falla alguno: baja uno
- * (Cliente general se queda). De uno en uno, aunque compre para más.
+ * Cumple los tres: sube un nivel, hasta `NIVEL_MAXIMO` (ahí se queda). Falla
+ * alguno: baja uno (Cliente general se queda). De uno en uno, aunque compre
+ * para más.
  *
  * Y tres extras, 1 token cada uno, que no mueven el nivel:
  *
@@ -67,6 +68,24 @@ export const trimestreSchema = z.string().regex(/^\d{4}-Q[1-4]$/);
 /** De abajo arriba: el orden en que se sube. */
 export const ESCALERA: readonly ClaveCategoria[] = ['GENERAL', 'BRONCE', 'PLATA', 'ORO', 'DIAMANTE'];
 
+/**
+ * El nivel más alto al que se puede llegar hoy. Diamante está BLOQUEADO
+ * (decidido con Supricom el 2026-11-10): sus beneficios no están aprobados, así
+ * que nadie sube a él y quien cumple en Oro se queda en Oro. Se ve con candado
+ * y «Próximamente». Para abrirlo, basta con poner aquí 'DIAMANTE'.
+ */
+export const NIVEL_MAXIMO: ClaveCategoria = 'ORO';
+
+/** Un nivel que existe pero al que todavía no se puede llegar. */
+export function nivelBloqueado(nivel: ClaveCategoria): boolean {
+  return ESCALERA.indexOf(nivel) > ESCALERA.indexOf(NIVEL_MAXIMO);
+}
+
+/** El nivel, sin pasar del más alto que se puede alcanzar. */
+export function topar(nivel: ClaveCategoria): ClaveCategoria {
+  return nivelBloqueado(nivel) ? NIVEL_MAXIMO : nivel;
+}
+
 /** «2026-11-03» → «2026-Q4». */
 export function trimestreDe(fecha: string | Date): string {
   const iso = typeof fecha === 'string' ? fecha : fecha.toISOString();
@@ -99,8 +118,10 @@ export function cuotasDe(nivel: ClaveCategoria): { mensual: number; trimestral: 
   return { mensual: regla.minimoMensual, trimestral: regla.minimoMensual * 3 };
 }
 
+/** Un nivel más, sin pasar de `NIVEL_MAXIMO`. Quien ya está arriba se queda. */
 export function subir(nivel: ClaveCategoria): ClaveCategoria {
-  return ESCALERA[Math.min(ESCALERA.indexOf(nivel) + 1, ESCALERA.length - 1)]!;
+  const i = ESCALERA.indexOf(nivel);
+  return ESCALERA[Math.max(i, Math.min(i + 1, ESCALERA.indexOf(NIVEL_MAXIMO)))]!;
 }
 
 export function bajar(nivel: ClaveCategoria): ClaveCategoria {
@@ -143,6 +164,16 @@ export const evaluacionTrimestreSchema = z.object({
 });
 
 export type EvaluacionTrimestre = z.infer<typeof evaluacionTrimestreSchema>;
+
+/** El programa de UN cliente: su evaluación del trimestre y sus tokens acumulados. */
+export const programaClienteSchema = z.object({
+  saldoTokens: z.number().int().nonnegative(),
+  evaluacion: evaluacionTrimestreSchema,
+});
+
+export type ProgramaDeCliente = z.infer<typeof programaClienteSchema>;
+
+export const programaClienteRespuestaSchema = z.object({ data: programaClienteSchema });
 
 /** Un cliente en el programa: su grupo (RIF) y su evaluación del trimestre. */
 export const clienteProgramaSchema = z.object({

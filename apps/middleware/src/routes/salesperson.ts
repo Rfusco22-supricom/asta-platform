@@ -23,7 +23,7 @@ import { atenderPedidoSchema, estadoPedidoClienteSchema, marcarImpulsaSchema, nu
 import { atenderPedido, pedidosParaAtender } from '../services/pedidoSugerido.service.js';
 import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/revisionImpresoras.service.js';
 import { recordAudit } from '../services/audit.service.js';
-import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
+import { categoriasDelPrograma, programaDeCliente, programaEnCurso } from '../services/programaAsta.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 
 /**
@@ -157,6 +157,19 @@ salespersonRouter.get('/clients/:partnerId/oferta', autorizar('cliente.perfil.ve
   try {
     const partnerId = Number(req.params.partnerId);
     res.json({ data: await dePantalla(`cliente:${partnerId}:oferta`, () => proximaOferta(partnerId)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * El programa de ASTA de un cliente: su nivel, cómo va en el trimestre y sus
+ * tokens, lo mismo que él ve en «Mis métricas». Para los beneficios de la
+ * ficha. Con la misma acción que el perfil: el cliente tiene que ser suyo.
+ */
+salespersonRouter.get('/clients/:partnerId/programa', autorizar('cliente.perfil.ver'), async (req, res, next) => {
+  try {
+    res.json({ data: await programaDeCliente(Number(req.params.partnerId)) });
   } catch (error) {
     next(error);
   }

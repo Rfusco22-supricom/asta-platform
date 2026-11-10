@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
+import { nivelBloqueado, programaClienteRespuestaSchema, programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { emitirAccessToken } from '../auth/jwt.js';
@@ -75,4 +75,14 @@ describe('El programa para Supricom', () => {
     expect((await pedir('/api/v1/salesperson/asta/programa', 'cliente')).status).toBe(403);
     expect((await pedir('/api/v1/admin/asta/programa', 'cliente')).status).toBe(403);
   });
+
+  it('el de un cliente, para la ficha: el administrador lo ve, nunca en Diamante; el vendedor, solo de su cartera', async () => {
+    const r = await pedir('/api/v1/salesperson/clients/133261/programa', 'admin');
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    const valido = programaClienteRespuestaSchema.safeParse(r.body);
+    expect(valido.success, JSON.stringify(valido.error?.issues?.slice(0, 3))).toBe(true);
+    expect(nivelBloqueado(valido.data!.data.evaluacion.nivel)).toBe(false);
+    expect((await pedir('/api/v1/salesperson/clients/133261/programa', 'vendedorSinCartera')).status).toBe(403);
+    expect((await pedir('/api/v1/salesperson/clients/133261/programa', 'cliente')).status).toBe(403);
+  }, 180_000);
 });

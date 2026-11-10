@@ -27,7 +27,7 @@ function imprimir(r: ResumenCierre): void {
   console.log(`  ${n(r.clientes)}  clientes en el programa`);
   console.log(`  ${n(r.suben)}  suben un nivel`);
   console.log(`  ${n(r.bajan)}  bajan un nivel`);
-  console.log(`  ${n(r.seQuedan)}  se quedan (Diamante que cumple, o Cliente general que no)`);
+  console.log(`  ${n(r.seQuedan)}  se quedan (Oro que cumple, o Cliente general que no)`);
   console.log(`  ${n(r.tokens)}  tokens repartidos\n`);
   console.log('  Cumplen:');
   console.log(`  ${n(r.cumplen.mensual)}  la cuota mensual los tres meses`);

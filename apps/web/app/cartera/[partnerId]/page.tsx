@@ -19,6 +19,7 @@ import { Cifra } from '@/components/Cifras';
 import { GraficaMensual } from './GraficaMensual';
 import { Perfil } from './Perfil';
 import { Oferta } from './Oferta';
+import { BeneficiosFicha } from './BeneficiosFicha';
 
 /**
  * Ficha de cliente.
@@ -258,6 +259,10 @@ export default async function FichaCliente({ params, searchParams }: Props) {
       </section>
 
       {perfil && <Perfil perfil={perfil} />}
+
+      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
+        <BeneficiosFicha token={sesion.accessToken} partnerId={partnerId} />
+      </Suspense>
 
       <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 160 }} aria-busy="true" />}>
         <Oferta token={sesion.accessToken} partnerId={partnerId} />

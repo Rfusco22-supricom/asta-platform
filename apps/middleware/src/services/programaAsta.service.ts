@@ -10,6 +10,7 @@ import {
   mesesDelTrimestre,
   nombrePersona,
   subir,
+  topar,
   trimestreAnterior,
   trimestreDe,
   type CategoriasAsta,
@@ -244,7 +245,7 @@ async function partida(trimestre: string, hoy: Date): Promise<Map<string, Partid
     return new Map(
       categorias.clientes.map((c) => [
         c.clave,
-        { nivel: c.categoria, sinFallos: c.porMes.slice(-3).every((x) => x >= cuotasDe(c.categoria).mensual), partnerId: c.partnerId },
+        { nivel: topar(c.categoria), sinFallos: c.porMes.slice(-3).every((x) => x >= cuotasDe(topar(c.categoria)).mensual), partnerId: c.partnerId },
       ]),
     );
   }
@@ -310,7 +311,8 @@ export async function evaluarTrimestre(trimestre: string, hoy = new Date()): Pro
     const principal = g && g.porFicha.size ? [...g.porFicha.entries()].sort((a, b) => b[1] - a[1])[0]![0] : p!.partnerId;
     const evaluacion = evaluar({
       trimestre,
-      nivel: p?.nivel ?? 'GENERAL',
+      // Nadie empieza por encima de `NIVEL_MAXIMO` (Diamante, bloqueado).
+      nivel: topar(p?.nivel ?? 'GENERAL'),
       compras: g?.compras ?? [0, 0, 0],
       mesesTerminados: terminados,
       sellout: meses.map((m, i) => (g?.sellout.has(m) ? true : plazoVencido[i] ? false : null)) as EntradaEvaluacion['sellout'],
@@ -443,17 +445,18 @@ export async function cerrarTrimestre(
 /**
  * El nivel de cada cliente hoy, para las cuentas (`aplicarNiveles`): con el que
  * acabó su último trimestre cerrado. Antes del primer cierre, su categoría el
- * día que empezó el programa. Los que no salen aquí son Cliente general.
+ * día que empezó el programa. Los que no salen aquí son Cliente general. Nadie
+ * pasa de `NIVEL_MAXIMO`: con Diamante bloqueado, quien compra para él es Oro.
  */
 export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
   const ultimo = await prisma.programaTrimestre.aggregate({ _max: { trimestre: true } });
   if (!ultimo._max.trimestre) {
     const [a, q] = PRIMER_TRIMESTRE.split('-Q').map(Number) as [number, number];
     const categorias = await categoriasAsta({ hoy: new Date(Date.UTC(a, (q - 1) * 3, 1, 12)) });
-    return new Map(categorias.clientes.map((c) => [c.clave, c.categoria]));
+    return new Map(categorias.clientes.map((c) => [c.clave, topar(c.categoria)]));
   }
   const filas = await prisma.programaTrimestre.findMany({ where: { trimestre: ultimo._max.trimestre }, select: { clave: true, nivelFin: true } });
-  return new Map(filas.map((f) => [f.clave, f.nivelFin]));
+  return new Map(filas.map((f) => [f.clave, topar(f.nivelFin)]));
 }
 
 /**

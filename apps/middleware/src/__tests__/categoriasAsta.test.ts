@@ -30,12 +30,13 @@ describe('categoriaDe', () => {
 
 describe('siguienteCategoria', () => {
   it('dice cuánto falta al mes, cuántos meses, o las dos cosas', () => {
-    expect(siguienteCategoria(2179.76, 4)).toEqual({ categoria: 'DIAMANTE', faltaMensual: 2320.24, faltanMeses: 0 });
+    expect(siguienteCategoria(1200, 4)).toEqual({ categoria: 'ORO', faltaMensual: 300, faltanMeses: 0 });
     expect(siguienteCategoria(1937, 2)).toEqual({ categoria: 'PLATA', faltaMensual: 0, faltanMeses: 1 });
     expect(siguienteCategoria(100, 1)).toEqual({ categoria: 'BRONCE', faltaMensual: 400, faltanMeses: 1 });
   });
 
-  it('en Diamante no hay siguiente', () => {
+  it('en Oro y en Diamante no hay siguiente: Diamante está bloqueado', () => {
+    expect(siguienteCategoria(2179.76, 4)).toBeNull();
     expect(siguienteCategoria(5000, 4)).toBeNull();
   });
 });
