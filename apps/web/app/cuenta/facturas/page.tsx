@@ -42,7 +42,7 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis facturas">
+      <Marco usuario={sesion.usuario} titulo="Facturas">
         <ElegirCliente token={sesion.accessToken} destino="/cuenta/facturas" />
       </Marco>
     );
@@ -59,7 +59,7 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis facturas">
+      <Marco usuario={sesion.usuario} titulo="Facturas">
         <div className={esPermiso ? 'notice' : 'notice error'}>
           <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudieron leer tus facturas'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
@@ -74,7 +74,7 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
   const url = (v: VistaFacturas, p = 1) => `/cuenta/facturas?vista=${v}${p > 1 ? `&pagina=${p}` : ''}`;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Mis facturas">
+    <Marco usuario={sesion.usuario} titulo="Facturas">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/facturas" />}
       {r.facturasVencidas > 0 ? (
         <div className="notice error" role="status" style={{ marginBottom: 18 }}>

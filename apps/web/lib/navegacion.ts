@@ -57,7 +57,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
       secciones: [
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/reportes', titulo: 'Ventas', icono: 'reportes' },
-        { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
+        { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/nivel', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes', prefijo: true },
         { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
       ],
@@ -106,20 +106,30 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     },
   ],
 
+  // Reorganizado el 2026-11-10: lo de cada mes arriba; lo que ayuda a vender,
+  // aparte; lo técnico (tablets y API keys), en Configuración.
   BRONCE: [
     {
       titulo: null,
       secciones: [
-        // Lo primero que ve un cliente al entrar.
-        { href: '/cuenta/metricas', titulo: 'Mis métricas', icono: 'resumen', corto: 'Métricas' },
-        { href: '/cuenta/sellout', titulo: 'Mi sell-out', icono: 'reportes', corto: 'Sell-out' },
-        { href: '/cuenta/pedido', titulo: 'Pedido sugerido', icono: 'cotizaciones', corto: 'Pedido' },
-        { href: '/cuenta/facturas', titulo: 'Mis facturas', icono: 'facturas', corto: 'Facturas' },
-        { href: '/cuenta/flyers', titulo: 'Mis flyers', icono: 'flyers', corto: 'Flyers' },
-        { href: '/cuenta/calculadora', titulo: 'Calculadora', icono: 'calculadora', corto: 'Calcula' },
-        { href: '/cuenta/tablets', titulo: 'Mis tablets', icono: 'tablet', corto: 'Tablets' },
-        { href: '/cuenta/api-keys', titulo: 'Mis API keys', icono: 'llave', corto: 'API keys' },
+        // Lo primero que ve un cliente al entrar (la ruta sigue siendo /cuenta/metricas).
+        { href: '/cuenta/metricas', titulo: 'Inicio', icono: 'resumen' },
+        { href: '/cuenta/nivel', titulo: 'Mi nivel y beneficios', icono: 'categorias', corto: 'Mi nivel' },
+        { href: '/cuenta/pedido', titulo: 'Pedidos', icono: 'cotizaciones' },
+        { href: '/cuenta/facturas', titulo: 'Facturas', icono: 'facturas' },
+        { href: '/cuenta/sellout', titulo: 'Sell-out', icono: 'reportes' },
       ],
+    },
+    {
+      titulo: 'Para vender más',
+      secciones: [
+        { href: '/cuenta/flyers', titulo: 'Flyers', icono: 'flyers' },
+        { href: '/cuenta/calculadora', titulo: 'Calculadora de ganancia', icono: 'calculadora', corto: 'Calcula' },
+      ],
+    },
+    {
+      titulo: 'Configuración',
+      secciones: [{ href: '/cuenta/tablets', titulo: 'Tablets y conexiones', icono: 'tablet', corto: 'Tablets', tambien: ['/cuenta/api-keys'] }],
     },
   ],
   get PLATA() {
@@ -163,10 +173,11 @@ export function ambitoDe(rol: string): string {
  * (`BannerVista`). Tablets y API keys no: son de la cuenta, no del negocio.
  */
 export const PANTALLAS_VISTA_CLIENTE: Array<{ href: string; titulo: string }> = [
-  { href: '/cuenta/metricas', titulo: 'Métricas' },
-  { href: '/cuenta/sellout', titulo: 'Sell-out' },
-  { href: '/cuenta/pedido', titulo: 'Pedido sugerido' },
+  { href: '/cuenta/metricas', titulo: 'Inicio' },
+  { href: '/cuenta/nivel', titulo: 'Mi nivel' },
+  { href: '/cuenta/pedido', titulo: 'Pedidos' },
   { href: '/cuenta/facturas', titulo: 'Facturas' },
+  { href: '/cuenta/sellout', titulo: 'Sell-out' },
   { href: '/cuenta/flyers', titulo: 'Flyers' },
   { href: '/cuenta/calculadora', titulo: 'Calculadora' },
 ];

@@ -135,7 +135,7 @@ export function ProgramaCliente({ programa }: { programa: MetricasCliente['progr
             {moneyEntero(e.compraTrimestre)} de {moneyEntero(e.cuotaTrimestral)}
           </span>
         </Obligatorio>
-        <Obligatorio titulo="Sell-out" tokens={TOKENS.sellout} estado={e.obligatorios.sellout} regla="Repórtalo cada mes en «Mi sell-out», hasta su último día">
+        <Obligatorio titulo="Sell-out" tokens={TOKENS.sellout} estado={e.obligatorios.sellout} regla="Repórtalo cada mes en «Sell-out», hasta su último día">
           <span className="prog-meses">
             {e.meses.map((m) => (
               <span key={m.mes} className={`prog-mes ${m.sellout === true ? 'ok' : m.sellout === false ? 'no' : ''}`}>
@@ -181,6 +181,47 @@ export function ProgramaCliente({ programa }: { programa: MetricasCliente['progr
       <p className="stat-sub prog-pie">
         Este trimestre llevas <strong>{n(e.tokens)}</strong> {e.tokens === 1 ? 'token' : 'tokens'}. Se suman a tu saldo al cerrar el trimestre, en {cierre(e.trimestre)}.
       </p>
+    </section>
+  );
+}
+
+/**
+ * El nivel en corto, para el Inicio del cliente: su nivel, qué pasará con él,
+ * los tres obligatorios como fichas y sus tokens. El detalle (meses, cuotas,
+ * extras, beneficios) está en «Mi nivel y beneficios» (`/cuenta/nivel`).
+ */
+export function NivelCorto({ programa, enlace }: { programa: MetricasCliente['programa']; enlace: string }) {
+  if (!programa) return null;
+  const { evaluacion: e, saldoTokens } = programa;
+  const fichas: Array<{ titulo: string; estado: Estado }> = [
+    { titulo: `Compra mensual de ${moneyEntero(e.cuotaMensual)}`, estado: e.obligatorios.mensual },
+    { titulo: `Compra del trimestre de ${moneyEntero(e.cuotaTrimestral)}`, estado: e.obligatorios.trimestral },
+    { titulo: 'Sell-out de cada mes', estado: e.obligatorios.sellout },
+  ];
+  return (
+    <section className="panel prog nivel-corto" aria-labelledby="nivel-corto-titulo">
+      <div className="prog-cabeza">
+        <div className="prog-nivel">
+          <h2 id="nivel-corto-titulo">Tu nivel ASTA · {nombreTrimestre(e.trimestre)}</h2>
+          <InsigniaCategoria categoria={e.nivel} />
+        </div>
+        <div className="prog-saldo">
+          <b>{n(saldoTokens)}</b>
+          <span>tokens acumulados</span>
+        </div>
+      </div>
+      <Veredicto e={e} />
+      <ul className="nivel-fichas" data-publico>
+        {fichas.map((f) => (
+          <li key={f.titulo} className={f.estado === true ? 'ok' : f.estado === false ? 'no' : undefined}>
+            <Marca estado={f.estado} />
+            {f.titulo}
+          </li>
+        ))}
+      </ul>
+      <a className="dash-mas" href={enlace}>
+        Ver tu nivel, tus tokens y tus beneficios →
+      </a>
     </section>
   );
 }

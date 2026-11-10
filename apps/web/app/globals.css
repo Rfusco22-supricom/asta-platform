@@ -4665,3 +4665,16 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
   .tarea { grid-template-columns: auto minmax(0, 1fr); }
   .tarea-accion { grid-column: 2; justify-self: start; }
 }
+
+/* ── El nivel en corto del Inicio del cliente (`NivelCorto`) ────────────────── */
+.nivel-fichas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.nivel-fichas li { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; color: var(--text-2); }
+.nivel-fichas li.ok { color: var(--pi-ok); border-color: color-mix(in srgb, var(--pi-ok) 45%, var(--border)); }
+.nivel-fichas li.no { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.nivel-fichas .prog-marca { width: 20px; height: 20px; font-size: 11px; }
+
+/* ── Atajos del Inicio del cliente ──────────────────────────────────────────── */
+.atajos-cliente { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.atajos-cliente a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid var(--vidrio-borde); background: var(--vidrio-fuerte); box-shadow: var(--vidrio-brillo); color: var(--text); font-size: 14px; font-weight: 600; }
+.atajos-cliente a:hover { text-decoration: none; border-color: color-mix(in srgb, var(--cian) 45%, transparent); }
+.atajos-cliente small { display: block; font-size: 12.5px; font-weight: 400; color: var(--text-2); }

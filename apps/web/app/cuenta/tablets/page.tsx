@@ -1,5 +1,6 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
+import { PestanasSeccion, PESTANAS_CONEXIONES } from '@/components/PestanasSeccion';
 import { getTabletsPropias, ApiError, esRedireccion, ContractError } from '@/lib/api';
 import { Tablets } from './Tablets';
 
@@ -26,7 +27,7 @@ export default async function TabletsPage() {
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Mis tablets">
+      <Marco usuario={sesion.usuario} titulo="Tablets y conexiones">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta sección es para clientes' : 'No se pudo cargar'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -40,8 +41,9 @@ export default async function TabletsPage() {
   return (
     <Marco
       usuario={sesion.usuario}
-      titulo="Mis tablets"
+      titulo="Tablets y conexiones"
     >
+      <PestanasSeccion etiqueta="Tablets y conexiones" pestanas={PESTANAS_CONEXIONES} actual="/cuenta/tablets" />
       <Tablets inicial={tablets} descargas={descargas} />
     </Marco>
   );

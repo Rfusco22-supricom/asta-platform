@@ -31,7 +31,7 @@ export default async function SellOutPage({ searchParams }: { searchParams: Prom
   const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
   if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
     return (
-      <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+      <Marco usuario={sesion.usuario} titulo="Sell-out">
         <ElegirCliente token={sesion.accessToken} destino="/cuenta/sellout" />
       </Marco>
     );
@@ -48,7 +48,7 @@ export default async function SellOutPage({ searchParams }: { searchParams: Prom
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+      <Marco usuario={sesion.usuario} titulo="Sell-out">
         <div className={esPermiso ? 'notice' : 'notice error'}>
           <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudo cargar tu sell-out'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
@@ -62,7 +62,7 @@ export default async function SellOutPage({ searchParams }: { searchParams: Prom
   const reponer = r.productos.filter((p) => p.reponer).length;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Mi sell-out">
+    <Marco usuario={sesion.usuario} titulo="Sell-out">
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/sellout" />}
       <AvisoSellOut reportado={r.reportes.some((x) => x.vigente && x.mes === plazoSellout().mes)} enlace={false} />
       {ultimo && (
