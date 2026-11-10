@@ -18,7 +18,7 @@ import { informeDeDuplicados } from '../services/duplicados.service.js';
 import { calidadDeDatos } from '../services/calidadDatos.service.js';
 import { categoriasDelPrograma, programaEnCurso } from '../services/programaAsta.service.js';
 import { alertasTablero } from '../services/alertasTablero.service.js';
-import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
+import { cotizaciones, detalleCotizacion, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { prisma } from '../config/prisma.js';
 import { z } from 'zod';
 import { atenderPedido, pedidosParaAtender } from '../services/pedidoSugerido.service.js';
@@ -301,6 +301,21 @@ adminRouter.get('/cotizaciones', autorizar('admin.reportes.ver'), async (req, re
   }
 });
 
+/** Una cotización por dentro: sus productos de ASTA (`detalleCotizacion`). */
+adminRouter.get('/cotizaciones/:id', autorizar('admin.reportes.ver'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const data = Number.isInteger(id) && id > 0 ? await detalleCotizacion(id, null) : null;
+    if (!data) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Cotización no encontrada.' } });
+      return;
+    }
+    res.json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * Todos los clientes con cuenta, para la paleta ⌘K del administrador: saltar a
  * la ficha de cualquiera escribiendo su nombre.
@@ -351,7 +366,7 @@ adminRouter.get('/agentes/:odooUserId/reportes', autorizar('admin.agentes.ver'),
   try {
     const odooUserId = Number(req.params.odooUserId);
     if (!Number.isInteger(odooUserId) || odooUserId <= 0) {
-      res.status(400).json({ error: { code: 'INVALID_ID', message: 'odooUserId inválido.' } });
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'odooUserId inválido.' } });
       return;
     }
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);

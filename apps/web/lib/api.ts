@@ -54,6 +54,7 @@ import {
   categoriasAstaRespuestaSchema,
   programaEmpresaRespuestaSchema,
   programaClienteRespuestaSchema,
+  cotizacionDetalleRespuestaSchema,
   alertasTableroRespuestaSchema,
   cotizacionesRespuestaSchema,
   type Cotizaciones,
@@ -80,6 +81,7 @@ import {
   type CategoriasAsta,
   type ProgramaEmpresa,
   type ProgramaDeCliente,
+  type CotizacionDetalle,
   type CalidadDatos,
   type Hermano,
   type OportunidadAsta,
@@ -560,6 +562,12 @@ export async function getCotizacionesEmpresa(
 ): Promise<Cotizaciones> {
   const q = consultaCotizaciones(rango, estado, sede) + (vendedor ? `&vendedor=${vendedor}` : '');
   return (await request(`/api/v1/admin/cotizaciones${q}`, cotizacionesRespuestaSchema, accessToken)).data;
+}
+
+/** Una cotización por dentro: de toda la empresa (administración) o de la propia cartera. */
+export async function getCotizacion(accessToken: string, id: number, alcance: 'empresa' | 'cartera'): Promise<CotizacionDetalle> {
+  const ruta = alcance === 'empresa' ? `/api/v1/admin/cotizaciones/${id}` : `/api/v1/salesperson/cotizaciones/${id}`;
+  return (await request(ruta, cotizacionDetalleRespuestaSchema, accessToken)).data;
 }
 
 /** Las cotizaciones de ASTA de la propia cartera. */

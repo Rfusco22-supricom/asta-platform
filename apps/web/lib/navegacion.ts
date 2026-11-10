@@ -59,7 +59,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin/reportes', titulo: 'Ventas', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes', prefijo: true },
-        { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza' },
+        { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
       ],
     },
     {
@@ -101,7 +101,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
           corto: 'Cartera',
         },
         { href: '/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/categorias'] },
-        { href: '/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza' },
+        { href: '/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
         // Reportes, como en administración: se llega desde el Inicio.
         { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
       ],

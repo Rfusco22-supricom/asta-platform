@@ -65,3 +65,28 @@ export const cotizacionesRespuestaSchema = z.object({
   data: cotizacionesSchema,
   meta: z.object({ generadoEn: z.string(), duracionMs: z.number() }),
 });
+
+/**
+ * Una cotización por dentro, para su página: sus productos de ASTA. Solo ASTA
+ * (decidido con Supricom el 2026-11-10): las líneas de otras marcas no se
+ * enseñan.
+ */
+export const cotizacionDetalleSchema = cotizacionSchema.omit({ importeTotal: true }).extend({
+  lineas: z.array(
+    z.object({
+      productId: odooIdSchema,
+      sku: z.string().nullable(),
+      nombre: z.string(),
+      cantidad: z.number(),
+      /** Precio unitario de la línea, sin IVA. */
+      precio: montoSchema,
+      /** Descuento de la línea, en %. */
+      descuento: z.number(),
+      /** Cantidad × precio − descuento, sin IVA. */
+      subtotal: montoSchema,
+    }),
+  ),
+});
+export type CotizacionDetalle = z.infer<typeof cotizacionDetalleSchema>;
+
+export const cotizacionDetalleRespuestaSchema = z.object({ data: cotizacionDetalleSchema });

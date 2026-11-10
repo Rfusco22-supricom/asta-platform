@@ -16,7 +16,7 @@ import { proximaOferta } from '../services/proximaOferta.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
-import { cotizaciones, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
+import { cotizaciones, detalleCotizacion, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { z } from 'zod';
 import { atenderPedidoSchema, estadoPedidoClienteSchema, marcarImpulsaSchema, nuevaCompatibilidadSchema, trimestreDe } from '@asta/shared-types';
@@ -316,6 +316,25 @@ salespersonRouter.get('/cotizaciones', autorizar('reportes.propios.ver'), async 
       cotizaciones({ rango, estado, odooUserId }),
     );
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Una cotización por dentro, solo si su cliente es de la PROPIA cartera. Una
+ * de otra cartera responde igual que una que no existe.
+ */
+salespersonRouter.get('/cotizaciones/:id', autorizar('reportes.propios.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    const id = Number(req.params.id);
+    const data = odooUserId !== null && Number.isInteger(id) && id > 0 ? await detalleCotizacion(id, odooUserId) : null;
+    if (!data) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Cotización no encontrada.' } });
+      return;
+    }
+    res.json({ data });
   } catch (error) {
     next(error);
   }

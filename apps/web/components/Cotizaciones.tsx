@@ -132,7 +132,10 @@ export function ListaCotizaciones({
                         </Link>
                       </td>
                       <td data-etiqueta="Cotización">
-                        <span className="cot-folio">{c.folio}</span>
+                        {/* Su página: los productos de ASTA que lleva. */}
+                        <Link href={`${base}/${c.id}`} className="cot-folio enlace-ficha">
+                          {c.folio}
+                        </Link>
                         <span className="stat-sub">{dia(c.fecha)}</span>
                       </td>
                       {conVendedor && <td data-etiqueta="Vendedor">{c.vendedor ?? <span className="stat-sub">sin vendedor</span>}</td>}
