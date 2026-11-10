@@ -19,15 +19,37 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.supricom.asta.kiosco"
+        // El de Google Play: no se puede cambiar una vez publicada. El `namespace`
+        // (el paquete del código) no sale en ningún sitio y se queda.
+        applicationId = "com.supricom.asta"
         // Android 8: lo que corre en cualquier tablet que se compre hoy para esto.
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
         // En el emulador, 10.0.2.2 es el `localhost` de la máquina anfitriona.
         buildConfigField("String", "ASTA_API_BASE", cadena(local.getProperty("asta.apiBase", "http://10.0.2.2:3001")))
         buildConfigField("String", "ASTA_API_KEY", cadena(local.getProperty("asta.apiKey", "")))
+    }
+
+    // La firma de subida a Google Play, de `keystore.properties` (no se versiona,
+    // como la clave): ver docs/14-TIENDAS.md. Sin él, el .aab sale sin firmar.
+    val firma = Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    if (firma.getProperty("storeFile") != null) {
+        signingConfigs {
+            create("subida") {
+                storeFile = rootProject.file(firma.getProperty("storeFile"))
+                storePassword = firma.getProperty("storePassword")
+                keyAlias = firma.getProperty("keyAlias")
+                keyPassword = firma.getProperty("keyPassword")
+            }
+        }
+        buildTypes {
+            getByName("release") { signingConfig = signingConfigs.getByName("subida") }
+        }
     }
 
     buildFeatures {

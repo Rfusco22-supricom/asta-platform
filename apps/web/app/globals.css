@@ -4581,3 +4581,20 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
   .zona-tabla tbody td { display: grid; gap: 2px; padding: 0; border: 0; text-align: left; white-space: normal; }
   .zona-tabla tbody td::before { content: attr(data-etiqueta); font-size: 11px; font-weight: 500; color: var(--text-3); }
 }
+/* Las páginas públicas de la aplicación ASTA: privacidad y soporte. */
+.legal { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 24px; max-width: 760px; margin: 0 auto; padding: 28px 20px 32px; }
+.legal-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.legal-logo img { height: 34px; width: auto; display: block; }
+.legal-cabeza nav { display: flex; gap: 18px; font-size: 14px; }
+.legal-cabeza nav a { color: var(--text-2); text-decoration: none; }
+.legal-cabeza nav a:hover { color: var(--primario); }
+.legal-texto { padding: 28px 30px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); line-height: 1.6; font-size: 15px; min-width: 0; }
+.legal-texto h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; text-wrap: balance; }
+.legal-texto h2 { margin: 26px 0 8px; font-size: 17px; }
+.legal-texto h3 { margin: 16px 0 4px; font-size: 15px; }
+.legal-texto p, .legal-texto ul, .legal-texto ol { margin: 0 0 12px; }
+.legal-texto ul, .legal-texto ol { padding-left: 22px; display: grid; gap: 8px; }
+.legal-texto a { color: var(--primario); overflow-wrap: anywhere; }
+.legal-fecha { color: var(--text-2); font-size: 13px; }
+.legal-pie { text-align: center; font-size: 12px; color: var(--text-3); }
+@media (max-width: 640px) { .legal-texto { padding: 20px 18px; } }
