@@ -2,16 +2,18 @@ import Link from 'next/link';
 import { CargandoEnlace } from './CargandoEnlace';
 
 /**
- * «Resumen · Por producto», encima de los reportes del vendedor.
+ * «Resumen · Por producto · Por cliente», encima de «Mis ventas» del vendedor.
  *
  * Las pestañas conservan el periodo: si estás mirando «Este año» en el resumen
- * y pasas a productos, sigue siendo este año.
+ * y pasas a productos, sigue siendo este año. «Por cliente» (`/asta`) es
+ * histórico: no tiene periodo.
  */
-export function PestanasReportes({ actual, periodo }: { actual: 'resumen' | 'productos'; periodo?: { desde: string; hasta: string } }) {
+export function PestanasReportes({ actual, periodo }: { actual: 'resumen' | 'productos' | 'clientes'; periodo?: { desde: string; hasta: string } }) {
   const qs = periodo ? `?desde=${periodo.desde}&hasta=${periodo.hasta}` : '';
   const pestanas = [
     { clave: 'resumen', etiqueta: 'Resumen', href: `/reportes${qs}` },
     { clave: 'productos', etiqueta: 'Por producto', href: `/reportes/productos${qs}` },
+    { clave: 'clientes', etiqueta: 'Por cliente', href: '/asta' },
   ] as const;
   return (
     <nav className="pestanas-reporte" aria-label="Tipo de reporte">

@@ -40,7 +40,7 @@ export default async function ReportesCarteraPage({
 
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Reportes">
+      <Marco usuario={sesion.usuario} titulo="Mis ventas">
         {/* Que un fallo del resumen no deje también sin llegar a «Por producto». */}
         <PestanasReportes actual="resumen" periodo={rango} />
         <div className="notice error">
@@ -58,7 +58,7 @@ export default async function ReportesCarteraPage({
   return (
     <Marco
       usuario={sesion.usuario}
-      titulo="Reportes"
+      titulo="Mis ventas"
     >
       <PestanasReportes actual="resumen" periodo={datos.periodo} />
       <VistaReporte datos={datos} base="/reportes" soloAsta />

@@ -90,21 +90,19 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     {
       titulo: null,
       secciones: [
-        // Lo primero que abre el vendedor: cómo va su cartera y qué hacer hoy.
-        { href: '/inicio', titulo: 'Inicio', icono: 'resumen' },
-        { href: '/impulsa', titulo: 'Impulsa a tus clientes', icono: 'impulsa', corto: 'Impulsa' },
-        {
-          href: '/cartera',
-          titulo: 'Mi cartera',
-          icono: 'cartera',
-          prefijo: true,
-          corto: 'Cartera',
-        },
-        { href: '/asta', titulo: 'ASTA', icono: 'marca', tambien: ['/categorias'] },
-        { href: '/cotizaciones', titulo: 'Cotizaciones', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
-        // Reportes, como en administración: se llega desde el Inicio.
-        { href: '/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', corto: 'Compatibles' },
+        // Reorganizado el 2026-11-10. «Hoy» junta el Inicio con Impulsa
+        // (sigue abierto desde sus tareas); «Mis ventas», los reportes y sus
+        // clientes en ASTA; «Programa ASTA», los niveles de su cartera.
+        { href: '/inicio', titulo: 'Hoy', icono: 'resumen', tambien: ['/impulsa'] },
+        { href: '/cartera', titulo: 'Mi cartera', icono: 'cartera', prefijo: true, corto: 'Cartera' },
+        { href: '/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
+        { href: '/reportes', titulo: 'Mis ventas', icono: 'reportes', prefijo: true, corto: 'Ventas', tambien: ['/asta'] },
+        { href: '/categorias', titulo: 'Programa ASTA', icono: 'categorias', corto: 'Programa' },
       ],
+    },
+    {
+      titulo: 'Más',
+      secciones: [{ href: '/compatibilidades', titulo: 'Proponer compatibilidad', icono: 'compatibilidades', corto: 'Compatibles' }],
     },
   ],
 

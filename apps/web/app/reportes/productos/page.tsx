@@ -34,7 +34,7 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="Reportes">
+      <Marco usuario={sesion.usuario} titulo="Mis ventas">
         <PestanasReportes actual="productos" periodo={rango} />
         <div className="notice error">
           <h2>{esPermiso ? 'Esta pantalla es para vendedores' : 'No se pudo cargar'}</h2>
@@ -47,7 +47,7 @@ export default async function ReporteProductosPage({ searchParams }: { searchPar
   const { totales, periodo } = datos;
 
   return (
-    <Marco usuario={sesion.usuario} titulo="Reportes">
+    <Marco usuario={sesion.usuario} titulo="Mis ventas">
       <PestanasReportes actual="productos" periodo={periodo} />
       <Periodos base="/reportes/productos" periodo={periodo} />
 

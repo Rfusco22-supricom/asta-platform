@@ -24,11 +24,6 @@ export const PESTANAS_BUSQUEDAS = [
   { href: '/admin/demanda', titulo: 'Demanda no cubierta' },
 ];
 
-export const PESTANAS_ASTA_VENDEDOR = [
-  { href: '/asta', titulo: 'Oportunidades' },
-  { href: '/categorias', titulo: 'Categorías' },
-];
-
 export const PESTANAS_ODOO = [
   { href: '/admin/calidad', titulo: 'Errores' },
   { href: '/admin/duplicados', titulo: 'Duplicados' },

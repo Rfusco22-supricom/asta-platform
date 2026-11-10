@@ -3,7 +3,6 @@ import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
 import { getCategoriasAstaCartera, getProgramaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
-import { PestanasSeccion, PESTANAS_ASTA_VENDEDOR } from '@/components/PestanasSeccion';
 
 /**
  * El programa de ASTA de los clientes del vendedor: quién es Oro, Plata o
@@ -39,8 +38,7 @@ export default async function CategoriasVendedorPage({ searchParams }: { searchP
     if (esRedireccion(error)) throw error;
     const esPermiso = error instanceof ApiError && error.status === 403;
     return (
-      <Marco usuario={sesion.usuario} titulo="ASTA">
-        <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/categorias" />
+      <Marco usuario={sesion.usuario} titulo="Programa ASTA">
         <div className="notice error">
           <h2>{esPermiso ? 'Esta pantalla es para vendedores' : 'No se pudo leer de Odoo'}</h2>
           <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>
@@ -50,8 +48,7 @@ export default async function CategoriasVendedorPage({ searchParams }: { searchP
   }
 
   return (
-    <Marco usuario={sesion.usuario} titulo="ASTA">
-      <PestanasSeccion etiqueta="ASTA" pestanas={PESTANAS_ASTA_VENDEDOR} actual="/categorias" />
+    <Marco usuario={sesion.usuario} titulo="Programa ASTA">
       <CaminoMeta datos={datos} />
       <Tabla programa={await programa} filtro={filtro} base="/categorias" conVendedor={false} />
     </Marco>
