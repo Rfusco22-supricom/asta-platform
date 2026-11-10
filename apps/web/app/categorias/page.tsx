@@ -1,6 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
+import { BeneficiosPorNivel } from '@/components/Beneficios';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
 import { getCategoriasAstaCartera, getProgramaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
 
@@ -51,6 +52,7 @@ export default async function CategoriasVendedorPage({ searchParams }: { searchP
     <Marco usuario={sesion.usuario} titulo="Programa ASTA">
       <CaminoMeta datos={datos} />
       <Tabla programa={await programa} filtro={filtro} base="/categorias" conVendedor={false} />
+      <BeneficiosPorNivel />
     </Marco>
   );
 }

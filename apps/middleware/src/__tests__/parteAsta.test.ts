@@ -29,3 +29,11 @@ describe('parte ASTA de una factura', () => {
     expect(saldoAsta(0, 300, 1000)).toBe(0);
   });
 });
+
+describe('un nombre de producto es de ASTA', () => {
+  it('lleva la palabra ASTA, al principio o no; los originales con la marca mal puesta, no', async () => {
+    const { esNombreAsta } = await import('../services/flyers.service.js');
+    expect(['ASTA TONER HP W1500A', 'TONER ASTA W1105A NO CHIP VERSION 4', 'ASTA CHIP A-CRG.057H ORIGINAL RECYCLE CHIP'].every(esNombreAsta)).toBe(true);
+    expect(['[CRG-047] TONER CANON NEGRO, LASERJET ORIGINAL', 'BOTELLA DE TINTA ORIGINAL CANON GI-10 BLACK 170 ml', 'HP DRUM CRG-051D/CF232A', 'PASTA TERMICA'].some(esNombreAsta)).toBe(false);
+  });
+});

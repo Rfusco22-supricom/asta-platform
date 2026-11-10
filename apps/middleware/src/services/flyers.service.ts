@@ -13,7 +13,15 @@ import { LINEA_ASTA } from './ventasAsta.service.js';
  * ASTA a la venta: la ruta no sirve la foto de cualquier producto por su id.
  */
 
-/** Las mismas condiciones para la lista y para la foto. */
+/**
+ * Las mismas condiciones para la lista y para la foto. Además de la marca, el
+ * nombre lleva la palabra «ASTA» (`esNombreAsta`): en Odoo hay originales con
+ * la marca ASTA puesta por error (tóneres Canon «LASERJET ORIGINAL», botellas
+ * «ORIGINAL CANON»), y un flyer de ASTA no puede anunciar otra marca (decidido
+ * con Supricom el 2026-11-10).
+ */
+export const esNombreAsta = (nombre: string) => /\bASTA\b/i.test(nombre);
+
 const ASTA_CON_FOTO: OdooDomain = [
   ['spiff_brand_id', '=', MARCA_ASTA],
   ['sale_ok', '=', true],
@@ -30,7 +38,7 @@ async function productosConFoto() {
   const enCache = cacheProductos.get('asta');
   if (enCache) return enCache;
   const filas = await searchRead<{ id: number; name: string; default_code: string | false }>('product.template', ASTA_CON_FOTO, ['name', 'default_code'], { order: 'name' });
-  const r = filas.map((f) => ({ templateId: f.id, sku: f.default_code || null, nombre: f.name }));
+  const r = filas.filter((f) => esNombreAsta(f.name)).map((f) => ({ templateId: f.id, sku: f.default_code || null, nombre: f.name }));
   cacheProductos.set('asta', r);
   return r;
 }
@@ -74,8 +82,8 @@ export async function fotoDeProducto(templateId: number): Promise<Buffer | null>
   const clave = String(templateId);
   const enCache = cacheFotos.get(clave);
   if (enCache !== undefined) return enCache;
-  const [f] = await searchRead<{ image_1024: string | false }>('product.template', [['id', '=', templateId], ...ASTA_CON_FOTO], ['image_1024'], { limit: 1 });
-  const r = f?.image_1024 ? Buffer.from(f.image_1024, 'base64') : null;
+  const [f] = await searchRead<{ name: string; image_1024: string | false }>('product.template', [['id', '=', templateId], ...ASTA_CON_FOTO], ['name', 'image_1024'], { limit: 1 });
+  const r = f?.image_1024 && esNombreAsta(f.name) ? Buffer.from(f.image_1024, 'base64') : null;
   cacheFotos.set(clave, r);
   return r;
 }
