@@ -4686,3 +4686,57 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .benef-nivel { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 60%, transparent); min-width: 0; }
 .benef-nivel-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
 .benef-nivel-bloqueado { border-style: dashed; }
+
+/* ── Editor de flyers: pasos, opciones, tarjetas de producto y campos ───────── */
+.flyer-controles { gap: 12px; }
+.fpaso { display: grid; gap: 12px; padding: 16px; border-radius: 18px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.fpaso-cabeza { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.fpaso-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--degradado); color: #fff; font-size: 13px; font-weight: 700; }
+.fpaso-titulo { font-size: 15px; font-weight: 650; }
+.fpaso-nota { margin-left: auto; font-size: 12.5px; color: var(--text-3); }
+.fopciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 8px; }
+.fopciones-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.fopcion { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 11px 13px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s; }
+.fopcion b { font-size: 14px; font-weight: 650; }
+.fopcion span { font-size: 12.5px; color: var(--text-2); }
+.fopcion:hover { border-color: color-mix(in srgb, var(--cian) 45%, var(--border)); }
+.fopcion[aria-pressed='true'] { border-color: var(--cian); background: color-mix(in srgb, var(--cian) 10%, var(--surface)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cian) 22%, transparent); }
+.fopcion-formato { flex-direction: row; align-items: center; gap: 12px; }
+.fopcion-formato > span { display: grid; gap: 2px; }
+.fforma { flex: none; display: block; border: 2px solid currentColor; border-radius: 5px; color: var(--accent); }
+.fforma-post { width: 26px; height: 26px; }
+.fforma-historia { width: 18px; height: 32px; }
+
+.fsel { display: grid; gap: 10px; }
+.fsel-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fsel-busca { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-3); }
+.fsel-busca:focus-within { border-color: var(--cian); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cian) 20%, transparent); }
+.fsel-busca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; }
+.fsel-rejilla { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 2px; }
+.fsel-tarjeta { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; text-align: center; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.fsel-tarjeta:hover { border-color: color-mix(in srgb, var(--cian) 45%, var(--border)); transform: translateY(-1px); }
+.fsel-tarjeta.elegida { border-color: var(--cian); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cian) 25%, transparent); }
+.fsel-tarjeta img { width: 100%; height: 76px; object-fit: contain; border-radius: 10px; background: #fff; }
+.fsel-nombre { font-size: 12px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fsel-sku { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.fsel-suyo { font-size: 10.5px; font-weight: 650; padding: 1px 7px; border-radius: 999px; color: var(--pi-ok); background: color-mix(in srgb, var(--pi-ok) 13%, transparent); }
+.fsel-orden { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--degradado); color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.fsel-mas { justify-self: center; }
+
+.fcampos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.fcampo { display: grid; gap: 6px; min-width: 0; }
+.fcampo-etiqueta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.fcampo-etiqueta small { font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fcampo .input { height: 42px; border-radius: 12px; }
+
+/* ── Subir su logo y la foto de su local (`Subir` en EditorFlyer) ─────────── */
+.fsubidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.fsubir { display: grid; gap: 6px; align-content: start; }
+.fsubir .btn-link { justify-self: start; font-size: 12.5px; }
+.fsubir-caja { position: relative; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; border-radius: 14px; border: 1.5px dashed var(--border-strong); background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s; }
+.fsubir-caja:hover { border-color: var(--cian); background: color-mix(in srgb, var(--cian) 6%, var(--surface)); }
+.fsubir-caja.con { border-style: solid; }
+.fsubir-caja input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.fsubir-caja img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; background: #fff; }
+.fsubir-mas { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--cian) 14%, transparent); color: var(--accent); font-size: 24px; font-weight: 500; }
+.fsubir-texto { font-size: 13.5px; font-weight: 600; color: var(--text); }

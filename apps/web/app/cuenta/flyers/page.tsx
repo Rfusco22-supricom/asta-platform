@@ -6,7 +6,11 @@ import { contextoCliente } from '@/lib/vistaCliente';
 import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
 import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { getDatosFlyer, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { Anton } from 'next/font/google';
 import { EditorFlyer } from './EditorFlyer';
+
+/** La letra condensada del titular de la plantilla ASTA (la de Marketing). */
+const anton = Anton({ weight: '400', subsets: ['latin'], display: 'swap' });
 
 /**
  * «Mis flyers»: flyers de ASTA con los datos de su tienda, para Instagram o
@@ -53,7 +57,11 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
       <p className="panel-nota" style={{ marginTop: 0 }}>
         Elige una plantilla, revisa los datos de tu tienda y descarga la imagen para publicarla en Instagram o WhatsApp.
       </p>
-      <EditorFlyer datos={datos} />
+      {/* Para que el navegador descargue la letra antes de dibujar el canvas. */}
+      <span className={anton.className} aria-hidden="true" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
+        ASTA
+      </span>
+      <EditorFlyer datos={datos} titular={anton.style.fontFamily} />
     </Marco>
   );
 }

@@ -5,7 +5,7 @@ import { MIN_CLIENTES_ZONA, PARTE_ALTA_ZONA, porcentajeArriba, type GrupoZona, t
 /**
  * «Tú frente a tu zona»: el cliente al lado de los de su estado y del país
  * (ver `comparativaZona.ts` en shared-types). Sin nombres ni cifras de nadie:
- * su puesto y las del grupo. Va en su propio `Suspense`: la primera vez lee
+ * su tramo (nunca el puesto exacto) y las del grupo. Va en su propio `Suspense`: la primera vez lee
  * las compras de todos los clientes y tarda unos segundos.
  */
 
@@ -18,7 +18,9 @@ const en = (g: GrupoZona) => `en ${g.nombre}`;
 /** Dónde cae él en la fila de clientes, de 0 (el que menos) a 100 (el que más). */
 function posicion(g: GrupoZona): number {
   if (g.puesto === null) return 0;
-  return g.clientes <= 1 ? 100 : ((g.clientes - g.puesto) / (g.clientes - 1)) * 100;
+  const x = g.clientes <= 1 ? 100 : ((g.clientes - g.puesto) / (g.clientes - 1)) * 100;
+  // Nunca en el extremo: un punto pegado al final diría «eres el número 1».
+  return Math.min(92, Math.max(4, x));
 }
 
 function Celda({ m, valor }: { m: MedidaZona; valor: string }) {
@@ -62,6 +64,16 @@ function Medidas({ g }: { g: GrupoZona }) {
   );
 }
 
+/**
+ * Su lugar, en tramos: el 10 %, el 25 % o la mitad que más compra. Nunca el
+ * puesto exacto (decidido con Supricom el 2026-11-11): «el número 1 de tu zona»
+ * dice demasiado de los demás y del propio cliente. Por debajo de la mitad, nada.
+ */
+function tramo(puesto: number, clientes: number): number | null {
+  const p = porcentajeArriba(puesto, clientes);
+  return p <= 10 ? 10 : p <= 25 ? 25 : p <= 50 ? 50 : null;
+}
+
 /** Lo que se le dice en una frase: dónde está y qué le falta. */
 function Mensaje({ g }: { g: GrupoZona }) {
   if (g.puesto === null) {
@@ -75,9 +87,7 @@ function Mensaje({ g }: { g: GrupoZona }) {
   const falta = g.compras.parteAlta - g.compras.tuyo;
   return (
     <p className="zona-mensaje">
-      {g.puesto === 1
-        ? `Eres quien más compra ASTA ${en(g)}.`
-        : falta <= 0
+      {falta <= 0
           ? `Estás entre los clientes que más compran ASTA ${en(g)}.`
           : `Te faltan ${moneyEntero(Math.ceil(falta))} en compras de ASTA para entrar en el ${ALTA} que más compra ${en(g)}.`}
     </p>
@@ -87,7 +97,7 @@ function Mensaje({ g }: { g: GrupoZona }) {
 function Fila({ g }: { g: GrupoZona }) {
   const x = posicion(g);
   return (
-    <div className="zona-fila" role="img" aria-label={g.puesto === null ? `Sin compras de ASTA ${en(g)}` : `Puesto ${g.puesto} de ${g.clientes} ${en(g)}`}>
+    <div className="zona-fila" role="img" aria-label={g.puesto === null ? `Sin compras de ASTA ${en(g)}` : `Tu lugar entre los clientes ${en(g)}`}>
       <div className="zona-pista">
         <span className="zona-marca" style={{ left: '50%' }} title="Cliente típico" />
         <span className="zona-marca" style={{ left: `${(1 - PARTE_ALTA_ZONA) * 100}%` }} title={`El ${ALTA} que más compra`} />
@@ -128,18 +138,17 @@ export async function ComparativaZona({ token, cliente }: { token: string; clien
       </p>
 
       <div className="zona-destacado">
-        {g.puesto !== null && (
+        {g.puesto !== null && tramo(g.puesto, g.clientes) && (
           <div className="zona-top">
             <small>Top</small>
-            <b>{porcentajeArriba(g.puesto, g.clientes)} %</b>
+            <b>{tramo(g.puesto, g.clientes)} %</b>
           </div>
         )}
         <div className="zona-texto">
           <Mensaje g={g} />
-          <span className="stat-sub">
-            {g.puesto !== null && `Puesto ${n(g.puesto)} de ${n(g.clientes)} ${en(g)}.`}
-            {otro?.puesto != null && ` En todo el país, puesto ${n(otro.puesto)} de ${n(otro.clientes)} (top ${porcentajeArriba(otro.puesto, otro.clientes)} %).`}
-          </span>
+          {otro?.puesto != null && tramo(otro.puesto, otro.clientes) && (
+            <span className="stat-sub">En todo el país, entre el {tramo(otro.puesto, otro.clientes)} % que más compra.</span>
+          )}
         </div>
       </div>
 
