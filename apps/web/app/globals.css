@@ -4728,3 +4728,15 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .fcampo-etiqueta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .fcampo-etiqueta small { font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .fcampo .input { height: 42px; border-radius: 12px; }
+
+/* ── Subir su logo y la foto de su local (`Subir` en EditorFlyer) ─────────── */
+.fsubidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.fsubir { display: grid; gap: 6px; align-content: start; }
+.fsubir .btn-link { justify-self: start; font-size: 12.5px; }
+.fsubir-caja { position: relative; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; border-radius: 14px; border: 1.5px dashed var(--border-strong); background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s; }
+.fsubir-caja:hover { border-color: var(--cian); background: color-mix(in srgb, var(--cian) 6%, var(--surface)); }
+.fsubir-caja.con { border-style: solid; }
+.fsubir-caja input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.fsubir-caja img { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; background: #fff; }
+.fsubir-mas { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--cian) 14%, transparent); color: var(--accent); font-size: 24px; font-weight: 500; }
+.fsubir-texto { font-size: 13.5px; font-weight: 600; color: var(--text); }

@@ -175,6 +175,20 @@ function ajustar(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: numb
   return px;
 }
 
+/** La imagen llenando el rectángulo, recortada por el centro (como `object-fit: cover`). */
+function cubrir(ctx: CanvasRenderingContext2D, img: Imagen, x: number, y: number, w: number, h: number) {
+  const escala = Math.max(w / img.width, h / img.height);
+  const sw = w / escala;
+  const sh = h / escala;
+  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+}
+
+/** La imagen entera dentro del rectángulo, centrada en alto y pegada a la izquierda (un logo). */
+function encajar(ctx: CanvasRenderingContext2D, img: Imagen, x: number, y: number, w: number, h: number) {
+  const escala = Math.min(w / img.width, h / img.height);
+  ctx.drawImage(img, x, y + (h - img.height * escala) / 2, img.width * escala, img.height * escala);
+}
+
 /** Una foto de Odoo (fondo blanco) sobre el fondo claro: en «multiplicar», el blanco desaparece. */
 function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: Imagen, x: number, y: number, w: number, h: number) {
   const escala = Math.min(w / foto.width, h / foto.height);
@@ -212,6 +226,9 @@ function dibujarAsta(
     producto: ProductoFlyer | null;
     /** «Tu tienda»: hasta tres productos ASTA que compra. */
     fotos: Imagen[];
+    /** El logo de su tienda y una foto de su local: los sube él y no salen de su navegador. */
+    logoTienda: Imagen | null;
+    fotoLocal: Imagen | null;
     fuente: string;
     titular: string;
   },
@@ -227,6 +244,19 @@ function dibujarAsta(
   fondo.addColorStop(1, '#f6fbff');
   ctx.fillStyle = fondo;
   ctx.fillRect(0, 0, ANCHO, alto);
+  // La foto de su local, de fondo y suavizada con el celeste: cada flyer, el suyo.
+  if (o.fotoLocal) {
+    // Desenfocada (donde el navegador lo sabe hacer) y muy tapada: es ambiente, no protagonista.
+    ctx.save();
+    ctx.filter = 'blur(10px)';
+    cubrir(ctx, o.fotoLocal, -30, -30, ANCHO + 60, alto + 60);
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = fondo;
+    ctx.fillRect(0, 0, ANCHO, alto);
+    ctx.restore();
+  }
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.beginPath();
   ctx.moveTo(0, alto * (H ? 0.8 : 0.74));
@@ -244,7 +274,17 @@ function dibujarAsta(
     ctx.drawImage(marca, (ANCHO - wm) / 2, alto * (H ? 0.08 : 0.06), wm, (wm * marca.height) / marca.width);
     ctx.restore();
     const wl = H ? 300 : 150;
-    ctx.drawImage(marca, (ANCHO - wl) / 2, H ? 70 : 8, wl, (wl * marca.height) / marca.width);
+    const yl = H ? 70 : 8;
+    const hl = (wl * marca.height) / marca.width;
+    if (o.logoTienda) {
+      // «asta | su logo»: el de ASTA a la izquierda y el suyo a la derecha.
+      ctx.drawImage(marca, ANCHO * 0.3 - wl / 2, yl, wl, hl);
+      ctx.fillStyle = 'rgba(26, 95, 224, 0.35)';
+      ctx.fillRect(ANCHO / 2 - 2, yl + hl * 0.28, 4, hl * 0.44);
+      encajar(ctx, o.logoTienda, ANCHO * 0.54, yl + hl * 0.22, ANCHO * 0.34, hl * 0.56);
+    } else {
+      ctx.drawImage(marca, (ANCHO - wl) / 2, yl, wl, hl);
+    }
   }
 
   // El titular, en dos líneas, centrado.
@@ -291,12 +331,24 @@ function dibujarAsta(
       ctx.restore();
     }
   } else if (o.variante === 'tienda') {
-    // Tres productos ASTA en fila y la frase debajo.
-    const n = Math.max(1, o.fotos.length);
-    const hueco = 24;
-    const fw = (ANCHO - 2 * 50 - (n - 1) * hueco) / n;
+    // La foto de su local en grande; sin ella, tres productos ASTA en fila. Y la frase debajo.
     const fh = zonaAlto * 0.7;
-    o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
+    if (o.fotoLocal) {
+      ctx.save();
+      rectRedondo(ctx, 60, zonaY, ANCHO - 120, fh, 36);
+      ctx.clip();
+      cubrir(ctx, o.fotoLocal, 60, zonaY, ANCHO - 120, fh);
+      ctx.restore();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 8;
+      rectRedondo(ctx, 60, zonaY, ANCHO - 120, fh, 36);
+      ctx.stroke();
+    } else {
+      const n = Math.max(1, o.fotos.length);
+      const hueco = 24;
+      const fw = (ANCHO - 2 * 50 - (n - 1) * hueco) / n;
+      o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
+    }
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
     ctx.font = f(700, H ? 46 : 34);
@@ -497,6 +549,55 @@ function SelectorProductos({ productos, elegido, alElegir }: { productos: Produc
   );
 }
 
+/**
+ * Subir una imagen suya (su logo, la foto de su local). Se lee en su navegador
+ * y solo se dibuja en el flyer: no se sube a ningún sitio. Las muy grandes se
+ * reducen a 1600 px para que el dibujo no vaya lento en un teléfono.
+ */
+function Subir({ etiqueta, ayuda, imagen, alCambiar }: { etiqueta: string; ayuda: string; imagen: Imagen | null; alCambiar: (img: Imagen | null) => void }) {
+  const [vista, setVista] = useState<string | null>(null);
+  function leer(archivo: File | undefined) {
+    if (!archivo || !archivo.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(archivo);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * escala);
+      c.height = Math.round(img.height * escala);
+      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      alCambiar(c);
+      setVista(c.toDataURL('image/png'));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+  return (
+    <div className="fsubir">
+      <span className="fcampo-etiqueta">{etiqueta}</span>
+      <label className={`fsubir-caja${imagen ? ' con' : ''}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local */}
+        {imagen && vista ? <img src={vista} alt="" /> : <span className="fsubir-mas" aria-hidden="true">+</span>}
+        <span className="fsubir-texto">{imagen ? 'Cambiar' : 'Subir imagen'}</span>
+        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => leer(e.target.files?.[0])} />
+      </label>
+      <span className="stat-sub">{ayuda}</span>
+      {imagen && (
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => {
+            alCambiar(null);
+            setVista(null);
+          }}
+        >
+          Quitar
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Un paso del editor: número, título y su contenido. */
 function Paso({ n, titulo, nota, children }: { n: number; titulo: string; nota?: string; children: React.ReactNode }) {
   return (
@@ -560,6 +661,8 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
 
   // «Tu tienda»: tres productos ASTA, primero los que compra. Se cargan una vez.
   const [fotosTienda, setFotosTienda] = useState<Imagen[]>([]);
+  const [logoTienda, setLogoTienda] = useState<Imagen | null>(null);
+  const [fotoLocal, setFotoLocal] = useState<Imagen | null>(null);
   useEffect(() => {
     if (plantilla !== 'tienda' || fotosTienda.length) return;
     const tres = [...datos.productos].sort((a, b) => Number(b.loCompra) - Number(a.loCompra)).slice(0, 3);
@@ -571,8 +674,8 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   useEffect(() => {
     const ctx = lienzo.current?.getContext('2d');
     if (!ctx) return;
-    dibujarAsta(ctx, { variante: plantilla, alto, campos, marca, panda, foto, producto, fotos: fotosTienda, fuente, titular: listoTitular ? titular : fuente });
-  }, [plantilla, alto, campos, marca, panda, foto, producto, fotosTienda, fuente, titular, listoTitular]);
+    dibujarAsta(ctx, { variante: plantilla, alto, campos, marca, panda, foto, producto, fotos: fotosTienda, logoTienda, fotoLocal, fuente, titular: listoTitular ? titular : fuente });
+  }, [plantilla, alto, campos, marca, panda, foto, producto, fotosTienda, logoTienda, fotoLocal, fuente, titular, listoTitular]);
 
   const nombreArchivo = `flyer-asta-${plantilla}-${formato}.png`;
 
@@ -667,6 +770,11 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
             {plantilla === 'tienda' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
             {plantilla === 'tienda' && campo('direccion', 'Dirección (opcional)', undefined, 120)}
           </div>
+          <div className="fsubidas">
+            <Subir etiqueta="Logo de tu tienda" ayuda="Sale arriba, junto al de ASTA" imagen={logoTienda} alCambiar={setLogoTienda} />
+            <Subir etiqueta="Foto de tu local" ayuda="De fondo, y en grande en «Tu tienda»" imagen={fotoLocal} alCambiar={setFotoLocal} />
+          </div>
+          <p className="stat-sub">Tu logo y tu foto se quedan en tu navegador: no se suben ni se guardan.</p>
         </Paso>
 
         <div className="flyer-botones">
