@@ -26,8 +26,16 @@ const PLANTILLAS: { clave: Plantilla; titulo: string }[] = [
 const DESCRIPCION: Record<Plantilla, string> = {
   asta: 'La de la marca: titular, producto y tu tienda',
   tienda: 'Tu tienda y que vendes ASTA',
-  producto: 'Un producto con su foto y precio',
+  producto: 'Un producto con su precio',
   busca: 'Invita a preguntar por su tóner',
+};
+
+/** El titular por defecto de cada plantilla, en dos líneas: el cliente lo puede cambiar. */
+const TITULARES: Record<Plantilla, [string, string]> = {
+  asta: ['TU TÓNER', 'PARA USO DIARIO'],
+  tienda: ['TÓNER Y TINTA', 'PARA TU IMPRESORA'],
+  producto: ['YA DISPONIBLE', 'EN TU TIENDA'],
+  busca: ['¿QUÉ TÓNER USA', 'TU IMPRESORA?'],
 };
 
 const FORMATOS: { clave: Formato; titulo: string; alto: number }[] = [
@@ -36,9 +44,6 @@ const FORMATOS: { clave: Formato; titulo: string; alto: number }[] = [
 ];
 
 const ANCHO = 1080;
-const AZUL_NOCHE = '#0b1e3a';
-const AZUL = '#1c8cdb';
-const CIAN = '#5bc0eb';
 
 interface Campos {
   /** La segunda línea del titular de la plantilla ASTA. */
@@ -139,10 +144,13 @@ function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
   ctx.closePath();
 }
 
-// ── La plantilla ASTA (la de Marketing, 2026-11-11) ─────────────────────────────
+// ── El diseño de Marketing (2026-11-11), para las cuatro plantillas ─────────────
 //
 // Fondo celeste con el logo de marca de agua, el titular en dos líneas, el
-// producto con su código en diagonal, el panda y «Disponible en» con la tienda. El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
+// panda y «Disponible en» con la tienda. Lo del centro cambia con la plantilla:
+// el producto con su código (ASTA y «Un producto», que añade el precio), tres
+// productos y una frase («Tu tienda») o un buscador dibujado («Encuentra tu
+// tóner»). El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
 // no está, la plantilla sale sin él.
 
 const AZUL_CLARO = '#5bb6f5';
@@ -194,7 +202,19 @@ function codigo(ctx: CanvasRenderingContext2D, texto: string, x: number, y: numb
 
 function dibujarAsta(
   ctx: CanvasRenderingContext2D,
-  o: { alto: number; campos: Campos; marca: HTMLImageElement | null; panda: HTMLImageElement | null; foto: Imagen | null; producto: ProductoFlyer | null; fuente: string; titular: string },
+  o: {
+    variante: Plantilla;
+    alto: number;
+    campos: Campos;
+    marca: HTMLImageElement | null;
+    panda: HTMLImageElement | null;
+    foto: Imagen | null;
+    producto: ProductoFlyer | null;
+    /** «Tu tienda»: hasta tres productos ASTA que compra. */
+    fotos: Imagen[];
+    fuente: string;
+    titular: string;
+  },
 ) {
   const { alto, campos, marca, panda, fuente, titular } = o;
   const H = alto > ANCHO;
@@ -229,8 +249,8 @@ function dibujarAsta(
 
   // El titular, en dos líneas, centrado.
   ctx.textAlign = 'center';
-  const l1 = (campos.destacado || 'TU TÓNER').toUpperCase();
-  const l2 = (campos.linea2 || 'PARA USO DIARIO').toUpperCase();
+  const l1 = (campos.destacado || TITULARES[o.variante][0]).toUpperCase();
+  const l2 = (campos.linea2 || TITULARES[o.variante][1]).toUpperCase();
   const y1 = H ? 520 : 232;
   const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 100, ANCHO - 120);
   let w = ctx.measureText(l1).width;
@@ -243,13 +263,104 @@ function dibujarAsta(
   ctx.fillText(l2, ANCHO / 2, y2);
   ctx.textAlign = 'left';
 
-  // El producto, grande en el centro, con su código en diagonal encima.
   const zonaY = y2 + (H ? 150 : 34);
-  const zonaAlto = (H ? alto * 0.74 : alto * 0.765) - zonaY;
+  const zonaAlto = (H ? alto * (o.variante === 'tienda' ? 0.7 : 0.74) : alto * (o.variante === 'tienda' ? 0.72 : 0.765)) - zonaY;
   const pxCodigo = H ? 120 : 64;
-  const sku = (o.producto?.sku ?? '').toUpperCase();
-  if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.1, zonaY + pxCodigo * 0.6, ANCHO * 0.8, zonaAlto - pxCodigo * 0.6);
-  if (sku) codigo(ctx, sku, 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
+
+  if (o.variante === 'asta' || o.variante === 'producto') {
+    // El producto, grande en el centro, con su código en diagonal encima.
+    const sku = (o.producto?.sku ?? '').toUpperCase();
+    if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.1, zonaY + pxCodigo * 0.6, ANCHO * 0.8, zonaAlto - pxCodigo * 0.6);
+    if (sku) codigo(ctx, sku, 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
+    // «Un producto»: el precio, en una pastilla azul a la derecha.
+    if (o.variante === 'producto' && campos.precio) {
+      ctx.font = `${H ? 92 : 64}px ${titular}`;
+      const pw = ctx.measureText(campos.precio).width + (H ? 80 : 56);
+      const ph = H ? 130 : 92;
+      const px = ANCHO - pw - 50;
+      const py = zonaY + zonaAlto * 0.42;
+      ctx.save();
+      ctx.translate(px + pw / 2, py + ph / 2);
+      ctx.rotate(-0.08);
+      ctx.fillStyle = degradado(ctx, -pw / 2, pw);
+      rectRedondo(ctx, -pw / 2, -ph / 2, pw, ph, ph / 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(campos.precio, 0, ph * 0.3);
+      ctx.restore();
+    }
+  } else if (o.variante === 'tienda') {
+    // Tres productos ASTA en fila y la frase debajo.
+    const n = Math.max(1, o.fotos.length);
+    const hueco = 24;
+    const fw = (ANCHO - 2 * 50 - (n - 1) * hueco) / n;
+    const fh = zonaAlto * 0.7;
+    o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1f4f8f';
+    ctx.font = f(700, H ? 46 : 34);
+    lineas(ctx, 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.', ANCHO - 160, 2).forEach((l, k) => ctx.fillText(l, ANCHO / 2, zonaY + fh + (H ? 90 : 56) + k * (H ? 60 : 44)));
+    ctx.textAlign = 'left';
+  } else {
+    // «Encuentra tu tóner»: la frase y un buscador dibujado.
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1f4f8f';
+    ctx.font = f(700, H ? 58 : 38);
+    const frase = lineas(ctx, 'Dinos el modelo y te damos el ASTA que le va.', ANCHO - 180, 2);
+    const fy = zonaY + zonaAlto * (H ? 0.24 : 0.16);
+    frase.forEach((l, k) => ctx.fillText(l, ANCHO / 2, fy + k * (H ? 72 : 48)));
+    const bw = ANCHO * 0.86;
+    const bh = H ? 150 : 104;
+    const bx = (ANCHO - bw) / 2;
+    const by = fy + frase.length * (H ? 72 : 48) + (H ? 70 : 34);
+    ctx.save();
+    ctx.shadowColor = 'rgba(16, 80, 160, 0.18)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#ffffff';
+    rectRedondo(ctx, bx, by, bw, bh, bh / 2);
+    ctx.fill();
+    ctx.restore();
+    // La lupa.
+    const lr = bh * 0.17;
+    const lx = bx + bh * 0.5;
+    const ly = by + bh * 0.46;
+    ctx.strokeStyle = '#1c8cdb';
+    ctx.lineWidth = H ? 7 : 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(lx, ly, lr, 0, Math.PI * 2);
+    ctx.moveTo(lx + lr * 0.72, ly + lr * 0.72);
+    ctx.lineTo(lx + lr * 1.5, ly + lr * 1.5);
+    ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8aa0b8';
+    ctx.font = f(600, H ? 42 : 30);
+    ctx.fillText('Modelo de tu impresora…', bx + bh * 0.95, by + bh * 0.6);
+    // El botón de buscar, a la derecha.
+    const br = bh / 2 - 12;
+    ctx.fillStyle = degradado(ctx, bx + bw - bh, bh);
+    ctx.beginPath();
+    ctx.arc(bx + bw - bh / 2, by + bh / 2, br, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = H ? 6 : 5;
+    const ax = bx + bw - bh / 2;
+    const ay = by + bh / 2;
+    ctx.beginPath();
+    ctx.moveTo(ax - br * 0.4, ay);
+    ctx.lineTo(ax + br * 0.38, ay);
+    ctx.moveTo(ax + br * 0.02, ay - br * 0.36);
+    ctx.lineTo(ax + br * 0.4, ay);
+    ctx.lineTo(ax + br * 0.02, ay + br * 0.36);
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1f4f8f';
+    ctx.font = f(600, H ? 36 : 26);
+    ctx.fillText('Tóner y tinta para láser y chorro de tinta', ANCHO / 2, by + bh + (H ? 80 : 54));
+    ctx.textAlign = 'left';
+  }
 
   // El panda, abajo a la izquierda.
   if (panda) {
@@ -262,7 +373,8 @@ function dibujarAsta(
   const cx = panda ? ANCHO * 0.72 : ANCHO / 2;
   const anchoBloque = panda ? ANCHO * 0.5 : ANCHO - 2 * 72;
   const pillAlto = H ? 88 : 66;
-  const pillY = alto - (H ? 330 : 245);
+  const extra = o.variante === 'tienda' ? [campos.instagram ? `@${campos.instagram.replace(/^@/, '')}` : '', campos.direccion].filter(Boolean).join('  ·  ') : '';
+  const pillY = alto - (H ? 330 : 245) - (extra ? (H ? 70 : 50) : 0);
   ctx.font = f(800, H ? 38 : 30);
   const etiqueta = 'DISPONIBLE EN';
   const pillAncho = ctx.measureText(etiqueta).width + pillAlto + 56;
@@ -303,136 +415,12 @@ function dibujarAsta(
     ctx.fillStyle = degradado(ctx, cx - w / 2, w);
     ctx.fillText(campos.telefono, cx, pillY + pillAlto + (H ? 182 : 128));
   }
+  if (extra) {
+    ctx.fillStyle = '#4a6a90';
+    ctx.font = f(600, H ? 32 : 24);
+    ctx.fillText(lineas(ctx, extra, anchoBloque, 1)[0]!, cx, pillY + pillAlto + (H ? 250 : 176));
+  }
   ctx.textAlign = 'left';
-}
-
-function dibujar(
-  ctx: CanvasRenderingContext2D,
-  { plantilla, alto, campos, logo, foto, producto, fuente }: { plantilla: Plantilla; alto: number; campos: Campos; logo: HTMLImageElement | null; foto: Imagen | null; producto: ProductoFlyer | null; fuente: string },
-) {
-  const f = (peso: number, px: number) => `${peso} ${px}px ${fuente}`;
-  const historia = alto > ANCHO;
-  const M = 72;
-
-  // ── Fondo: noche con un brillo cian, como el panel ──────────────────────────
-  const fondo = ctx.createLinearGradient(0, 0, ANCHO, alto);
-  fondo.addColorStop(0, AZUL_NOCHE);
-  fondo.addColorStop(1, '#12406f');
-  ctx.fillStyle = fondo;
-  ctx.fillRect(0, 0, ANCHO, alto);
-  const brillo = ctx.createRadialGradient(ANCHO * 0.85, alto * 0.18, 0, ANCHO * 0.85, alto * 0.18, ANCHO * 0.7);
-  brillo.addColorStop(0, 'rgba(91, 192, 235, 0.35)');
-  brillo.addColorStop(1, 'rgba(91, 192, 235, 0)');
-  ctx.fillStyle = brillo;
-  ctx.fillRect(0, 0, ANCHO, alto);
-
-  // ── Cabecera: el logo ───────────────────────────────────────────────────────
-  const arriba = historia ? 140 : M;
-  const logoAlto = logo ? (260 * logo.height) / logo.width : 100;
-  if (logo) ctx.drawImage(logo, M, arriba, 260, logoAlto);
-
-  // ── La tarjeta de la tienda, abajo ──────────────────────────────────────────
-  const tarjetaAlto = historia ? 330 : 270;
-  const tarjetaY = alto - tarjetaAlto - (historia ? 160 : M);
-  ctx.fillStyle = '#ffffff';
-  rectRedondo(ctx, M, tarjetaY, ANCHO - 2 * M, tarjetaAlto, 36);
-  ctx.fill();
-  ctx.fillStyle = AZUL;
-  ctx.font = f(700, 26);
-  ctx.fillText('DISPONIBLE EN', M + 48, tarjetaY + 66);
-  ctx.fillStyle = AZUL_NOCHE;
-  ctx.font = f(800, 54);
-  const nombre = lineas(ctx, campos.nombre || 'Tu tienda', ANCHO - 2 * M - 96, 1)[0]!;
-  ctx.fillText(nombre, M + 48, tarjetaY + 130);
-  let y = tarjetaY + 186;
-  ctx.font = f(700, 38);
-  ctx.fillStyle = AZUL;
-  const contacto = [campos.telefono, campos.instagram ? `@${campos.instagram.replace(/^@/, '')}` : ''].filter(Boolean).join('   ·   ');
-  if (contacto) {
-    ctx.fillText(lineas(ctx, contacto, ANCHO - 2 * M - 96, 1)[0]!, M + 48, y);
-    y += 52;
-  }
-  if (campos.direccion) {
-    ctx.font = f(500, 30);
-    ctx.fillStyle = '#4a5a70';
-    ctx.fillText(lineas(ctx, campos.direccion, ANCHO - 2 * M - 96, 1)[0]!, M + 48, y);
-  }
-
-  // ── El cuerpo, entre el logo y la tarjeta ───────────────────────────────────
-  // El hueco entre el logo y la tarjeta.
-  const top = arriba + logoAlto + (historia ? 110 : 70);
-  const fondoCuerpo = tarjetaY - (historia ? 70 : 50);
-  ctx.fillStyle = '#ffffff';
-
-  if (plantilla === 'producto') {
-    const destacado = campos.destacado || 'Ya disponible';
-    const tam = historia ? 72 : 56;
-    ctx.font = f(800, tam);
-    const titulo = lineas(ctx, destacado, ANCHO - 2 * M, historia ? 2 : 1);
-    titulo.forEach((l, i) => ctx.fillText(l, M, top + tam * 0.8 + i * tam * 1.1));
-    const cajaY = top + titulo.length * tam * 1.1 + 24;
-    const cajaAlto = fondoCuerpo - cajaY - (historia ? 220 : 70);
-    // La foto, sobre blanco: las de Odoo vienen con fondo blanco.
-    ctx.fillStyle = '#ffffff';
-    rectRedondo(ctx, M, cajaY, ANCHO - 2 * M, cajaAlto, 36);
-    ctx.fill();
-    if (foto) {
-      const pad = 40;
-      const escala = Math.min((ANCHO - 2 * M - 2 * pad) / foto.width, (cajaAlto - 2 * pad) / foto.height);
-      const w = foto.width * escala;
-      const h = foto.height * escala;
-      ctx.drawImage(foto, (ANCHO - w) / 2, cajaY + (cajaAlto - h) / 2, w, h);
-    }
-    if (campos.precio) {
-      ctx.font = f(800, 52);
-      const texto = campos.precio;
-      const w = ctx.measureText(texto).width + 72;
-      ctx.fillStyle = AZUL;
-      rectRedondo(ctx, ANCHO - M - w - 24, cajaY + 24, w, 88, 44);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(texto, ANCHO - M - w + 12, cajaY + 86);
-    }
-    const nombreY = cajaY + cajaAlto + (historia ? 70 : 50);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = f(700, historia ? 44 : 34);
-    const nombreProducto = (producto?.nombre ?? '').replace(/^ASTA\s+/i, '');
-    lineas(ctx, nombreProducto, ANCHO - 2 * M, historia ? 2 : 1).forEach((l, i) => ctx.fillText(l, M, nombreY + i * 50));
-    if (producto?.sku && historia) {
-      ctx.fillStyle = CIAN;
-      ctx.font = f(600, 32);
-      ctx.fillText(producto.sku, M, nombreY + 120);
-    }
-    return;
-  }
-
-  const [titulo, sub] =
-    plantilla === 'busca'
-      ? ['¿Qué tóner usa tu impresora?', 'Dinos el modelo y te damos el ASTA que le va. Tóner y tinta para láser y chorro de tinta.']
-      : ['Tóner y tinta ASTA', 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.'];
-  const tamTitulo = historia ? 124 : 96;
-  const interlinea = tamTitulo * 1.08;
-  ctx.font = f(800, tamTitulo);
-  const lt = lineas(ctx, campos.destacado || titulo, ANCHO - 2 * M, 3);
-  ctx.font = f(500, 40);
-  const ls = lineas(ctx, sub, ANCHO - 2 * M, 3);
-  // El bloque (titular, texto y franja), centrado en el hueco.
-  const bloque = lt.length * interlinea + 40 + ls.length * 54 + 30;
-  const inicio = top + Math.max(0, (fondoCuerpo - top - bloque) / 2) + tamTitulo * 0.8;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = f(800, tamTitulo);
-  lt.forEach((l, i) => ctx.fillText(l, M, inicio + i * interlinea));
-  let sy = inicio + (lt.length - 1) * interlinea + 40 + 44;
-  ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  ctx.font = f(500, 40);
-  ls.forEach((l) => {
-    ctx.fillText(l, M, sy);
-    sy += 54;
-  });
-  // Una franja de color, como acento.
-  ctx.fillStyle = CIAN;
-  rectRedondo(ctx, M, sy + 10, 160, 12, 6);
-  ctx.fill();
 }
 
 /**
@@ -540,7 +528,6 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     destacado: '',
     precio: '',
   });
-  const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [marca, setMarca] = useState<HTMLImageElement | null>(null);
   const [panda, setPanda] = useState<HTMLImageElement | null>(null);
   const [foto, setFoto] = useState<Imagen | null>(null);
@@ -555,7 +542,6 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   useEffect(() => {
     setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif');
     void document.fonts?.ready.then(() => setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif'));
-    void cargarImagen('/asta-logo-blanco.png').then(setLogo);
     void cargarImagen('/asta-logo.png').then(setMarca);
     void cargarImagen('/flyers/panda.png').then(setPanda);
     // El canvas no espera a la letra: se pide y se vuelve a dibujar cuando llega.
@@ -572,15 +558,21 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     };
   }, [plantilla, productoId]);
 
+  // «Tu tienda»: tres productos ASTA, primero los que compra. Se cargan una vez.
+  const [fotosTienda, setFotosTienda] = useState<Imagen[]>([]);
+  useEffect(() => {
+    if (plantilla !== 'tienda' || fotosTienda.length) return;
+    const tres = [...datos.productos].sort((a, b) => Number(b.loCompra) - Number(a.loCompra)).slice(0, 3);
+    void Promise.all(tres.map((p) => cargarImagen(`/api/flyers/fotos/${p.templateId}`))).then((imgs) =>
+      setFotosTienda(imgs.filter((x): x is HTMLImageElement => x !== null).map(sinMargen)),
+    );
+  }, [plantilla, datos.productos, fotosTienda.length]);
+
   useEffect(() => {
     const ctx = lienzo.current?.getContext('2d');
     if (!ctx) return;
-    if (plantilla === 'asta') {
-      dibujarAsta(ctx, { alto, campos, marca, panda, foto, producto, fuente, titular: listoTitular ? titular : fuente });
-      return;
-    }
-    dibujar(ctx, { plantilla, alto, campos, logo, foto, producto, fuente });
-  }, [plantilla, alto, campos, logo, marca, panda, foto, producto, fuente, titular, listoTitular]);
+    dibujarAsta(ctx, { variante: plantilla, alto, campos, marca, panda, foto, producto, fotos: fotosTienda, fuente, titular: listoTitular ? titular : fuente });
+  }, [plantilla, alto, campos, marca, panda, foto, producto, fotosTienda, fuente, titular, listoTitular]);
 
   const nombreArchivo = `flyer-asta-${plantilla}-${formato}.png`;
 
@@ -663,14 +655,8 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
 
         <Paso n={plantilla === 'producto' || plantilla === 'asta' ? 4 : 3} titulo="Textos">
           <div className="fcampos">
-            {plantilla === 'asta' ? (
-              <>
-                {campo('destacado', 'Titular, primera línea', 'TU TÓNER', 24)}
-                {campo('linea2', 'Titular, segunda línea', 'PARA USO DIARIO', 30)}
-              </>
-            ) : (
-              campo('destacado', 'Texto destacado (opcional)', plantilla === 'producto' ? 'Ya disponible' : plantilla === 'busca' ? '¿Qué tóner usa tu impresora?' : 'Tóner y tinta ASTA', 60)
-            )}
+            {campo('destacado', 'Titular, primera línea', TITULARES[plantilla][0], 24)}
+            {campo('linea2', 'Titular, segunda línea', TITULARES[plantilla][1], 30)}
           </div>
         </Paso>
 
@@ -678,8 +664,8 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
           <div className="fcampos">
             {campo('nombre', 'Nombre de tu tienda')}
             {campo('telefono', 'Teléfono o WhatsApp')}
-            {plantilla !== 'asta' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
-            {plantilla !== 'asta' && campo('direccion', 'Dirección', undefined, 120)}
+            {plantilla === 'tienda' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
+            {plantilla === 'tienda' && campo('direccion', 'Dirección (opcional)', undefined, 120)}
           </div>
         </Paso>
 
