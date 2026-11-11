@@ -23,6 +23,13 @@ const PLANTILLAS: { clave: Plantilla; titulo: string }[] = [
   { clave: 'busca', titulo: 'Encuentra tu tóner' },
 ];
 
+const DESCRIPCION: Record<Plantilla, string> = {
+  asta: 'La de la marca: titular, producto y tu tienda',
+  tienda: 'Tu tienda y que vendes ASTA',
+  producto: 'Un producto con su foto y precio',
+  busca: 'Invita a preguntar por su tóner',
+};
+
 const FORMATOS: { clave: Formato; titulo: string; alto: number }[] = [
   { clave: 'post', titulo: 'Publicación (cuadrada)', alto: 1080 },
   { clave: 'historia', titulo: 'Historia / estado', alto: 1920 },
@@ -51,6 +58,51 @@ function cargarImagen(src: string): Promise<HTMLImageElement | null> {
     img.onerror = () => resolve(null);
     img.src = src;
   });
+}
+
+type Imagen = HTMLImageElement | HTMLCanvasElement;
+
+/**
+ * La foto sin el margen blanco que traen las de Odoo: se recorta al rectángulo
+ * donde hay producto, con un poco de aire. Así el producto sale más grande en
+ * el flyer. La foto llega por el panel (mismo origen), así que se puede leer.
+ */
+function sinMargen(img: HTMLImageElement): Imagen {
+  try {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    if (!ctx || !c.width || !c.height) return img;
+    ctx.drawImage(img, 0, 0);
+    const { data } = ctx.getImageData(0, 0, c.width, c.height);
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y += 2) {
+      for (let x = 0; x < c.width; x += 2) {
+        const i = (y * c.width + x) * 4;
+        const blanco = data[i]! > 238 && data[i + 1]! > 238 && data[i + 2]! > 238;
+        if (data[i + 3]! > 16 && !blanco) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    if (x1 < 0) return img;
+    const aire = Math.round(Math.max(x1 - x0, y1 - y0) * 0.03);
+    x0 = Math.max(0, x0 - aire);
+    y0 = Math.max(0, y0 - aire);
+    x1 = Math.min(c.width - 1, x1 + aire);
+    y1 = Math.min(c.height - 1, y1 + aire);
+    const r = document.createElement('canvas');
+    r.width = x1 - x0 + 1;
+    r.height = y1 - y0 + 1;
+    r.getContext('2d')!.drawImage(c, x0, y0, r.width, r.height, 0, 0, r.width, r.height);
+    return r;
+  } catch {
+    return img;
+  }
 }
 
 /** Parte un texto en líneas que caben en `ancho`; como mucho `max`, con «…» en la última. */
@@ -89,9 +141,8 @@ function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 
 // ── La plantilla ASTA (la de Marketing, 2026-11-11) ─────────────────────────────
 //
-// Fondo celeste con el logo de marca de agua, el titular en dos líneas, uno o
-// dos productos con su código en diagonal, el panda y «Disponible en» con la
-// tienda. El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
+// Fondo celeste con el logo de marca de agua, el titular en dos líneas, el
+// producto con su código en diagonal, el panda y «Disponible en» con la tienda. El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
 // no está, la plantilla sale sin él.
 
 const AZUL_CLARO = '#5bb6f5';
@@ -117,7 +168,7 @@ function ajustar(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: numb
 }
 
 /** Una foto de Odoo (fondo blanco) sobre el fondo claro: en «multiplicar», el blanco desaparece. */
-function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: HTMLImageElement, x: number, y: number, w: number, h: number) {
+function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: Imagen, x: number, y: number, w: number, h: number) {
   const escala = Math.min(w / foto.width, h / foto.height);
   const fw = foto.width * escala;
   const fh = foto.height * escala;
@@ -143,7 +194,7 @@ function codigo(ctx: CanvasRenderingContext2D, texto: string, x: number, y: numb
 
 function dibujarAsta(
   ctx: CanvasRenderingContext2D,
-  o: { alto: number; campos: Campos; marca: HTMLImageElement | null; panda: HTMLImageElement | null; fotos: Array<HTMLImageElement | null>; productos: Array<ProductoFlyer | null>; fuente: string; titular: string },
+  o: { alto: number; campos: Campos; marca: HTMLImageElement | null; panda: HTMLImageElement | null; foto: Imagen | null; producto: ProductoFlyer | null; fuente: string; titular: string },
 ) {
   const { alto, campos, marca, panda, fuente, titular } = o;
   const H = alto > ANCHO;
@@ -172,44 +223,33 @@ function dibujarAsta(
     ctx.globalAlpha = 0.06;
     ctx.drawImage(marca, (ANCHO - wm) / 2, alto * (H ? 0.08 : 0.06), wm, (wm * marca.height) / marca.width);
     ctx.restore();
-    const wl = H ? 300 : 220;
-    ctx.drawImage(marca, (ANCHO - wl) / 2, H ? 70 : 30, wl, (wl * marca.height) / marca.width);
+    const wl = H ? 300 : 150;
+    ctx.drawImage(marca, (ANCHO - wl) / 2, H ? 70 : 8, wl, (wl * marca.height) / marca.width);
   }
 
   // El titular, en dos líneas, centrado.
   ctx.textAlign = 'center';
   const l1 = (campos.destacado || 'TU TÓNER').toUpperCase();
   const l2 = (campos.linea2 || 'PARA USO DIARIO').toUpperCase();
-  const y1 = H ? 520 : 250;
-  const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 120, ANCHO - 120);
+  const y1 = H ? 520 : 232;
+  const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 100, ANCHO - 120);
   let w = ctx.measureText(l1).width;
   ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
   ctx.fillText(l1, ANCHO / 2, y1);
-  const y2 = y1 + p1 * 0.62 + (H ? 70 : 40);
-  ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 74, ANCHO - 140);
+  const y2 = y1 + p1 * 0.62 + (H ? 70 : 24);
+  ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 58, ANCHO - 140);
   w = ctx.measureText(l2).width;
   ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
   ctx.fillText(l2, ANCHO / 2, y2);
   ctx.textAlign = 'left';
 
-  // Los productos: uno grande en el centro, o dos escalonados.
-  const [f1, f2] = o.fotos;
-  const [prod1, prod2] = o.productos;
-  const zonaY = y2 + (H ? 150 : 70);
-  const zonaAlto = (H ? alto * 0.74 : alto * 0.66) - zonaY;
-  const pxCodigo = H ? 120 : 76;
-  const sku = (p: ProductoFlyer | null) => (p?.sku ?? '').toUpperCase();
-  if (prod2) {
-    const fw = ANCHO * 0.66;
-    const fh = zonaAlto * 0.66;
-    if (f1) fotoSinFondo(ctx, f1, 0, zonaY + zonaAlto * 0.04, fw, fh);
-    if (f2) fotoSinFondo(ctx, f2, ANCHO - fw, zonaY + zonaAlto * 0.24, fw, fh);
-    if (sku(prod1)) codigo(ctx, sku(prod1), 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
-    if (sku(prod2)) codigo(ctx, sku(prod2), ANCHO - 50, zonaY + zonaAlto - 4, pxCodigo, titular, 'right');
-  } else {
-    if (f1) fotoSinFondo(ctx, f1, ANCHO * 0.12, zonaY + pxCodigo * 0.6, ANCHO * 0.76, zonaAlto - pxCodigo * 0.6);
-    if (sku(prod1)) codigo(ctx, sku(prod1), 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
-  }
+  // El producto, grande en el centro, con su código en diagonal encima.
+  const zonaY = y2 + (H ? 150 : 34);
+  const zonaAlto = (H ? alto * 0.74 : alto * 0.765) - zonaY;
+  const pxCodigo = H ? 120 : 64;
+  const sku = (o.producto?.sku ?? '').toUpperCase();
+  if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.1, zonaY + pxCodigo * 0.6, ANCHO * 0.8, zonaAlto - pxCodigo * 0.6);
+  if (sku) codigo(ctx, sku, 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
 
   // El panda, abajo a la izquierda.
   if (panda) {
@@ -268,7 +308,7 @@ function dibujarAsta(
 
 function dibujar(
   ctx: CanvasRenderingContext2D,
-  { plantilla, alto, campos, logo, foto, producto, fuente }: { plantilla: Plantilla; alto: number; campos: Campos; logo: HTMLImageElement | null; foto: HTMLImageElement | null; producto: ProductoFlyer | null; fuente: string },
+  { plantilla, alto, campos, logo, foto, producto, fuente }: { plantilla: Plantilla; alto: number; campos: Campos; logo: HTMLImageElement | null; foto: Imagen | null; producto: ProductoFlyer | null; fuente: string },
 ) {
   const f = (peso: number, px: number) => `${peso} ${px}px ${fuente}`;
   const historia = alto > ANCHO;
@@ -395,14 +435,102 @@ function dibujar(
   ctx.fill();
 }
 
+/**
+ * El selector del producto del flyer: tarjetas con la foto, buscador y «Los que
+ * compras». Uno solo (decidido con Supricom el 2026-11-11). Las fotos se cargan
+ * al verse.
+ */
+function SelectorProductos({ productos, elegido, alElegir }: { productos: ProductoFlyer[]; elegido: number | null; alElegir: (id: number) => void }) {
+  const [busca, setBusca] = useState('');
+  const [soloSuyos, setSoloSuyos] = useState(false);
+  const [cuantos, setCuantos] = useState(12);
+  const haySuyos = productos.some((p) => p.loCompra);
+  const visibles = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return productos.filter((p) => (!soloSuyos || p.loCompra) && (!q || `${p.nombre} ${p.sku ?? ''}`.toLowerCase().includes(q)));
+  }, [productos, busca, soloSuyos]);
+
+  return (
+    <div className="fsel">
+      <div className="fsel-barra">
+        <label className="fsel-busca">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="M20 20l-4.2-4.2" />
+          </svg>
+          <input
+            value={busca}
+            onChange={(e) => {
+              setBusca(e.target.value);
+              setCuantos(12);
+            }}
+            placeholder="Busca por nombre o código"
+            aria-label="Buscar producto"
+          />
+        </label>
+        {haySuyos && (
+          <div className="segmented" role="group" aria-label="Qué productos ver">
+            <button type="button" aria-pressed={!soloSuyos} onClick={() => setSoloSuyos(false)}>
+              Todos
+            </button>
+            <button type="button" aria-pressed={soloSuyos} onClick={() => setSoloSuyos(true)}>
+              Los que compras
+            </button>
+          </div>
+        )}
+      </div>
+      {visibles.length === 0 ? (
+        <p className="stat-sub">Ningún producto coincide.</p>
+      ) : (
+        <ul className="fsel-rejilla">
+          {visibles.slice(0, cuantos).map((p) => {
+            const es = p.templateId === elegido;
+            return (
+              <li key={p.templateId}>
+                <button type="button" className={`fsel-tarjeta${es ? ' elegida' : ''}`} aria-pressed={es} onClick={() => alElegir(p.templateId)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- la foto sale de Odoo por el panel */}
+                  <img src={`/api/flyers/fotos/${p.templateId}`} alt="" loading="lazy" />
+                  <span className="fsel-nombre">{p.nombre.replace(/^ASTA\s+/i, '')}</span>
+                  {p.sku && <span className="fsel-sku">{p.sku}</span>}
+                  {p.loCompra && <span className="fsel-suyo">Lo compras</span>}
+                  {es && <span className="fsel-orden">✓</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {visibles.length > cuantos && (
+        <button type="button" className="btn-link fsel-mas" onClick={() => setCuantos((c) => c + 12)}>
+          Ver más ({visibles.length - cuantos})
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Un paso del editor: número, título y su contenido. */
+function Paso({ n, titulo, nota, children }: { n: number; titulo: string; nota?: string; children: React.ReactNode }) {
+  return (
+    <section className="fpaso" aria-label={titulo}>
+      <header className="fpaso-cabeza">
+        <span className="fpaso-n" aria-hidden="true">
+          {n}
+        </span>
+        <span className="fpaso-titulo">{titulo}</span>
+        {nota && <span className="fpaso-nota">{nota}</span>}
+      </header>
+      {children}
+    </section>
+  );
+}
+
 /** `titular`: la familia de la letra condensada del titular (Anton, de `next/font`). */
 export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: string }) {
   const lienzo = useRef<HTMLCanvasElement>(null);
   const [plantilla, setPlantilla] = useState<Plantilla>('asta');
   const [formato, setFormato] = useState<Formato>('post');
   const [productoId, setProductoId] = useState<number | null>(datos.productos[0]?.templateId ?? null);
-  const [productoId2, setProductoId2] = useState<number | null>(null);
-  const [filtro, setFiltro] = useState('');
   const [campos, setCampos] = useState<Campos>({
     linea2: '',
     nombre: datos.tienda.nombre,
@@ -415,19 +543,13 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [marca, setMarca] = useState<HTMLImageElement | null>(null);
   const [panda, setPanda] = useState<HTMLImageElement | null>(null);
-  const [foto, setFoto] = useState<HTMLImageElement | null>(null);
-  const [foto2, setFoto2] = useState<HTMLImageElement | null>(null);
+  const [foto, setFoto] = useState<Imagen | null>(null);
   const [listoTitular, setListoTitular] = useState(false);
   const [fuente, setFuente] = useState('sans-serif');
   const [aviso, setAviso] = useState<string | null>(null);
 
   const alto = FORMATOS.find((x) => x.clave === formato)!.alto;
   const producto = datos.productos.find((p) => p.templateId === productoId) ?? null;
-  const producto2 = productoId2 === null ? null : (datos.productos.find((p) => p.templateId === productoId2) ?? null);
-  const visibles = useMemo(() => {
-    const q = filtro.trim().toLowerCase();
-    return q ? datos.productos.filter((p) => `${p.nombre} ${p.sku ?? ''}`.toLowerCase().includes(q)) : datos.productos;
-  }, [filtro, datos.productos]);
 
   // La fuente del panel (Inter, con el nombre que le da Next), y el logo, una vez.
   useEffect(() => {
@@ -444,31 +566,21 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     setFoto(null);
     if ((plantilla !== 'producto' && plantilla !== 'asta') || productoId === null) return;
     let vigente = true;
-    void cargarImagen(`/api/flyers/fotos/${productoId}`).then((img) => vigente && setFoto(img));
+    void cargarImagen(`/api/flyers/fotos/${productoId}`).then((img) => vigente && setFoto(img && sinMargen(img)));
     return () => {
       vigente = false;
     };
   }, [plantilla, productoId]);
 
   useEffect(() => {
-    setFoto2(null);
-    if (plantilla !== 'asta' || productoId2 === null) return;
-    let vigente = true;
-    void cargarImagen(`/api/flyers/fotos/${productoId2}`).then((img) => vigente && setFoto2(img));
-    return () => {
-      vigente = false;
-    };
-  }, [plantilla, productoId2]);
-
-  useEffect(() => {
     const ctx = lienzo.current?.getContext('2d');
     if (!ctx) return;
     if (plantilla === 'asta') {
-      dibujarAsta(ctx, { alto, campos, marca, panda, fotos: [foto, foto2], productos: [producto, producto2], fuente, titular: listoTitular ? titular : fuente });
+      dibujarAsta(ctx, { alto, campos, marca, panda, foto, producto, fuente, titular: listoTitular ? titular : fuente });
       return;
     }
     dibujar(ctx, { plantilla, alto, campos, logo, foto, producto, fuente });
-  }, [plantilla, alto, campos, logo, marca, panda, foto, foto2, producto, producto2, fuente, titular, listoTitular]);
+  }, [plantilla, alto, campos, logo, marca, panda, foto, producto, fuente, titular, listoTitular]);
 
   const nombreArchivo = `flyer-asta-${plantilla}-${formato}.png`;
 
@@ -501,8 +613,13 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   }
 
   const campo = (clave: keyof Campos, etiqueta: string, ayuda?: string, max = 80) => (
-    <label className="flyer-campo">
-      <span className="stat-sub">{etiqueta}</span>
+    <label className="fcampo">
+      <span className="fcampo-etiqueta">
+        {etiqueta}
+        <small>
+          {campos[clave].length}/{max}
+        </small>
+      </span>
       <input className="input" value={campos[clave]} maxLength={max} placeholder={ayuda} onChange={(e) => setCampos((c) => ({ ...c, [clave]: e.target.value }))} />
     </label>
   );
@@ -511,75 +628,60 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     <section className="panel flyer" aria-labelledby="flyer-titulo">
       <div className="flyer-controles">
         <h2 id="flyer-titulo">Tu flyer</h2>
-        <div className="flyer-grupo">
-          <span className="stat-sub">Plantilla</span>
-          <div className="segmented" role="group" aria-label="Plantilla">
+
+        <Paso n={1} titulo="Plantilla">
+          <div className="fopciones" role="group" aria-label="Plantilla">
             {PLANTILLAS.map((p) => (
-              <button key={p.clave} type="button" aria-pressed={plantilla === p.clave} onClick={() => setPlantilla(p.clave)}>
-                {p.titulo}
+              <button key={p.clave} type="button" className="fopcion" aria-pressed={plantilla === p.clave} onClick={() => setPlantilla(p.clave)}>
+                <b>{p.titulo}</b>
+                <span>{DESCRIPCION[p.clave]}</span>
               </button>
             ))}
           </div>
-        </div>
-        <div className="flyer-grupo">
-          <span className="stat-sub">Formato</span>
-          <div className="segmented" role="group" aria-label="Formato">
+        </Paso>
+
+        <Paso n={2} titulo="Formato">
+          <div className="fopciones fopciones-2" role="group" aria-label="Formato">
             {FORMATOS.map((x) => (
-              <button key={x.clave} type="button" aria-pressed={formato === x.clave} onClick={() => setFormato(x.clave)}>
-                {x.titulo}
+              <button key={x.clave} type="button" className="fopcion fopcion-formato" aria-pressed={formato === x.clave} onClick={() => setFormato(x.clave)}>
+                <i className={`fforma fforma-${x.clave}`} aria-hidden="true" />
+                <span>
+                  <b>{x.clave === 'post' ? 'Publicación' : 'Historia'}</b>
+                  <span>{x.clave === 'post' ? 'Cuadrada · feed de Instagram' : 'Vertical · estados de WhatsApp'}</span>
+                </span>
               </button>
             ))}
           </div>
-        </div>
+        </Paso>
 
         {(plantilla === 'producto' || plantilla === 'asta') && (
-          <div className="flyer-grupo">
-            <span className="stat-sub">{plantilla === 'asta' ? 'Producto 1' : 'Producto'}</span>
-            <input className="input" value={filtro} placeholder="Busca por nombre o código" onChange={(e) => setFiltro(e.target.value)} aria-label="Buscar producto" />
-            <select className="select" value={productoId ?? ''} onChange={(e) => setProductoId(Number(e.target.value))} aria-label="Producto" size={6}>
-              {visibles.map((p) => (
-                <option key={p.templateId} value={p.templateId}>
-                  {p.loCompra ? '★ ' : ''}
-                  {p.nombre.replace(/^ASTA\s+/i, '')}
-                  {p.sku ? ` · ${p.sku}` : ''}
-                </option>
-              ))}
-            </select>
-            <span className="stat-sub">★ los que nos compras</span>
+          <Paso n={3} titulo="Producto">
+            <SelectorProductos productos={datos.productos} elegido={productoId} alElegir={setProductoId} />
             {plantilla === 'producto' && campo('precio', 'Precio (opcional)', 'Por ejemplo: $25', 20)}
+          </Paso>
+        )}
+
+        <Paso n={plantilla === 'producto' || plantilla === 'asta' ? 4 : 3} titulo="Textos">
+          <div className="fcampos">
+            {plantilla === 'asta' ? (
+              <>
+                {campo('destacado', 'Titular, primera línea', 'TU TÓNER', 24)}
+                {campo('linea2', 'Titular, segunda línea', 'PARA USO DIARIO', 30)}
+              </>
+            ) : (
+              campo('destacado', 'Texto destacado (opcional)', plantilla === 'producto' ? 'Ya disponible' : plantilla === 'busca' ? '¿Qué tóner usa tu impresora?' : 'Tóner y tinta ASTA', 60)
+            )}
           </div>
-        )}
+        </Paso>
 
-        {plantilla === 'asta' && (
-          <label className="flyer-grupo">
-            <span className="stat-sub">Producto 2 (opcional)</span>
-            <select className="select" value={productoId2 ?? ''} onChange={(e) => setProductoId2(e.target.value ? Number(e.target.value) : null)} aria-label="Producto 2">
-              <option value="">Solo uno</option>
-              {datos.productos
-                .filter((p) => p.templateId !== productoId)
-                .map((p) => (
-                  <option key={p.templateId} value={p.templateId}>
-                    {p.loCompra ? '★ ' : ''}
-                    {p.nombre.replace(/^ASTA\s+/i, '')}
-                    {p.sku ? ` · ${p.sku}` : ''}
-                  </option>
-                ))}
-            </select>
-          </label>
-        )}
-
-        {plantilla === 'asta' ? (
-          <>
-            {campo('destacado', 'Titular, primera línea', 'TU TÓNER', 24)}
-            {campo('linea2', 'Titular, segunda línea', 'PARA USO DIARIO', 30)}
-          </>
-        ) : (
-          campo('destacado', 'Texto destacado (opcional)', plantilla === 'producto' ? 'Ya disponible' : plantilla === 'busca' ? '¿Qué tóner usa tu impresora?' : 'Tóner y tinta ASTA', 60)
-        )}
-        {campo('nombre', 'Nombre de tu tienda')}
-        {campo('telefono', 'Teléfono o WhatsApp')}
-        {plantilla !== 'asta' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
-        {plantilla !== 'asta' && campo('direccion', 'Dirección', undefined, 120)}
+        <Paso n={plantilla === 'producto' || plantilla === 'asta' ? 5 : 4} titulo="Tu tienda" nota="Sale de tu ficha; puedes cambiarlo aquí">
+          <div className="fcampos">
+            {campo('nombre', 'Nombre de tu tienda')}
+            {campo('telefono', 'Teléfono o WhatsApp')}
+            {plantilla !== 'asta' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
+            {plantilla !== 'asta' && campo('direccion', 'Dirección', undefined, 120)}
+          </div>
+        </Paso>
 
         <div className="flyer-botones">
           <button type="button" className="btn" onClick={() => void descargar()}>
