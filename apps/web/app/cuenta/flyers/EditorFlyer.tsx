@@ -157,11 +157,67 @@ const AZUL_CLARO = '#5bb6f5';
 const AZUL_FUERTE = '#1a5fe0';
 
 /** Degradado horizontal de la marca, de `x` a `x + w`. */
-function degradado(ctx: CanvasRenderingContext2D, x: number, w: number) {
+function degradado(ctx: CanvasRenderingContext2D, x: number, w: number, de = AZUL_CLARO, a = AZUL_FUERTE) {
   const g = ctx.createLinearGradient(x, 0, x + w, 0);
-  g.addColorStop(0, AZUL_CLARO);
-  g.addColorStop(1, AZUL_FUERTE);
+  g.addColorStop(0, de);
+  g.addColorStop(1, a);
   return g;
+}
+
+type Rgb = [number, number, number];
+const hex = ([r, g, b]: Rgb) => `#${[r, g, b].map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('')}`;
+/** `a` hacia `b` en la proporción `t` (0 = `a`, 1 = `b`). */
+const mezclar = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const luz = ([r, g, b]: Rgb) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+/**
+ * El color principal de un logo: el tono con más presencia entre los píxeles
+ * con color (sin blanco, negro, grises ni transparencia). `null` si el logo no
+ * tiene color (todo negro o gris): entonces el flyer se queda con el azul.
+ */
+function colorDelLogo(img: Imagen): Rgb | null {
+  try {
+    const c = document.createElement('canvas');
+    const escala = Math.min(1, 160 / Math.max(img.width, img.height));
+    c.width = Math.max(1, Math.round(img.width * escala));
+    c.height = Math.max(1, Math.round(img.height * escala));
+    const x = c.getContext('2d', { willReadFrequently: true })!;
+    x.drawImage(img, 0, 0, c.width, c.height);
+    const { data } = x.getImageData(0, 0, c.width, c.height);
+    const cubos = new Map<number, { peso: number; r: number; g: number; b: number }>();
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!;
+      if (data[i + 3]! < 128) continue;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      if (sat < 0.3 || max < 40 || (max > 235 && sat < 0.4)) continue;
+      // El tono, en 12 cubos.
+      let h = 0;
+      if (max === r) h = ((g - b) / (max - min)) % 6;
+      else if (max === g) h = (b - r) / (max - min) + 2;
+      else h = (r - g) / (max - min) + 4;
+      const cubo = Math.floor((((h * 60) % 360) + 360) % 360 / 30);
+      const k = cubos.get(cubo) ?? { peso: 0, r: 0, g: 0, b: 0 };
+      k.peso += sat;
+      k.r += r * sat;
+      k.g += g * sat;
+      k.b += b * sat;
+      cubos.set(cubo, k);
+    }
+    const mejor = [...cubos.values()].sort((a, b) => b.peso - a.peso)[0];
+    if (!mejor || mejor.peso < 20) return null;
+    return [mejor.r / mejor.peso, mejor.g / mejor.peso, mejor.b / mejor.peso];
+  } catch {
+    return null;
+  }
+}
+
+/** Los colores del bloque de la tienda: los del logo, o el azul de la marca. */
+function coloresTienda(color: Rgb | null) {
+  if (!color) return { base: '#1c8cdb', claro: AZUL_CLARO, fuerte: AZUL_FUERTE, tinte: null as Rgb | null };
+  // Si el color es muy claro, se oscurece para que el texto blanco de la pastilla se lea.
+  const base = luz(color) > 0.6 ? mezclar(color, [0, 0, 0], 0.35) : color;
+  return { base: hex(base), claro: hex(mezclar(base, [255, 255, 255], 0.25)), fuerte: hex(mezclar(base, [0, 0, 0], 0.25)), tinte: color };
 }
 
 /** El tamaño de letra más grande (hasta `max`) con el que `texto` cabe en `ancho`. */
@@ -173,14 +229,6 @@ function ajustar(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: numb
     ctx.font = fuente(px);
   }
   return px;
-}
-
-/** La imagen llenando el rectángulo, recortada por el centro (como `object-fit: cover`). */
-function cubrir(ctx: CanvasRenderingContext2D, img: Imagen, x: number, y: number, w: number, h: number) {
-  const escala = Math.max(w / img.width, h / img.height);
-  const sw = w / escala;
-  const sh = h / escala;
-  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
 }
 
 /** La imagen entera dentro del rectángulo, centrada en alto y pegada a la izquierda (un logo). */
@@ -226,9 +274,9 @@ function dibujarAsta(
     producto: ProductoFlyer | null;
     /** «Tu tienda»: hasta tres productos ASTA que compra. */
     fotos: Imagen[];
-    /** El logo de su tienda y una foto de su local: los sube él y no salen de su navegador. */
+    /** El logo de su tienda: lo sube él y no sale de su navegador. Sus colores tiñen el flyer. */
     logoTienda: Imagen | null;
-    fotoLocal: Imagen | null;
+    colorLogo: Rgb | null;
     fuente: string;
     titular: string;
   },
@@ -239,24 +287,14 @@ function dibujarAsta(
 
   // Fondo celeste, más claro hacia abajo, con una onda blanca.
   const fondo = ctx.createLinearGradient(0, 0, 0, alto);
-  fondo.addColorStop(0, '#bfe0f7');
-  fondo.addColorStop(0.55, '#e4f2fc');
+  const tienda = coloresTienda(o.colorLogo);
+  // Con logo, el celeste se tiñe un poco de su color; el titular sigue siendo azul ASTA.
+  const tinte = (c: Rgb, t: number) => (tienda.tinte ? hex(mezclar(c, mezclar(tienda.tinte, [255, 255, 255], 0.55), t)) : hex(c));
+  fondo.addColorStop(0, tinte([191, 224, 247], 0.45));
+  fondo.addColorStop(0.55, tinte([228, 242, 252], 0.3));
   fondo.addColorStop(1, '#f6fbff');
   ctx.fillStyle = fondo;
   ctx.fillRect(0, 0, ANCHO, alto);
-  // La foto de su local, de fondo y suavizada con el celeste: cada flyer, el suyo.
-  if (o.fotoLocal) {
-    // Desenfocada (donde el navegador lo sabe hacer) y muy tapada: es ambiente, no protagonista.
-    ctx.save();
-    ctx.filter = 'blur(10px)';
-    cubrir(ctx, o.fotoLocal, -30, -30, ANCHO + 60, alto + 60);
-    ctx.restore();
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = fondo;
-    ctx.fillRect(0, 0, ANCHO, alto);
-    ctx.restore();
-  }
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.beginPath();
   ctx.moveTo(0, alto * (H ? 0.8 : 0.74));
@@ -279,7 +317,7 @@ function dibujarAsta(
     if (o.logoTienda) {
       // «asta | su logo»: el de ASTA a la izquierda y el suyo a la derecha.
       ctx.drawImage(marca, ANCHO * 0.3 - wl / 2, yl, wl, hl);
-      ctx.fillStyle = 'rgba(26, 95, 224, 0.35)';
+      ctx.fillStyle = tienda.base;
       ctx.fillRect(ANCHO / 2 - 2, yl + hl * 0.28, 4, hl * 0.44);
       encajar(ctx, o.logoTienda, ANCHO * 0.54, yl + hl * 0.22, ANCHO * 0.34, hl * 0.56);
     } else {
@@ -331,24 +369,12 @@ function dibujarAsta(
       ctx.restore();
     }
   } else if (o.variante === 'tienda') {
-    // La foto de su local en grande; sin ella, tres productos ASTA en fila. Y la frase debajo.
+    // Tres productos ASTA en fila y la frase debajo.
     const fh = zonaAlto * 0.7;
-    if (o.fotoLocal) {
-      ctx.save();
-      rectRedondo(ctx, 60, zonaY, ANCHO - 120, fh, 36);
-      ctx.clip();
-      cubrir(ctx, o.fotoLocal, 60, zonaY, ANCHO - 120, fh);
-      ctx.restore();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 8;
-      rectRedondo(ctx, 60, zonaY, ANCHO - 120, fh, 36);
-      ctx.stroke();
-    } else {
-      const n = Math.max(1, o.fotos.length);
-      const hueco = 24;
-      const fw = (ANCHO - 2 * 50 - (n - 1) * hueco) / n;
-      o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
-    }
+    const n = Math.max(1, o.fotos.length);
+    const hueco = 24;
+    const fw = (ANCHO - 2 * 50 - (n - 1) * hueco) / n;
+    o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
     ctx.font = f(700, H ? 46 : 34);
@@ -430,7 +456,7 @@ function dibujarAsta(
   ctx.font = f(800, H ? 38 : 30);
   const etiqueta = 'DISPONIBLE EN';
   const pillAncho = ctx.measureText(etiqueta).width + pillAlto + 56;
-  ctx.fillStyle = '#1c8cdb';
+  ctx.fillStyle = degradado(ctx, cx - pillAncho / 2, pillAncho, tienda.claro, tienda.base);
   rectRedondo(ctx, cx - pillAncho / 2, pillY, pillAncho, pillAlto, pillAlto / 2);
   ctx.fill();
   // El círculo con la flecha.
@@ -441,7 +467,7 @@ function dibujarAsta(
   ctx.beginPath();
   ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#1c8cdb';
+  ctx.strokeStyle = tienda.base;
   ctx.lineWidth = H ? 5 : 4;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -459,12 +485,12 @@ function dibujarAsta(
   const nombre = campos.nombre || 'Tu tienda';
   ajustar(ctx, nombre, (px) => f(700, px), H ? 62 : 46, anchoBloque);
   w = ctx.measureText(nombre).width;
-  ctx.fillStyle = degradado(ctx, cx - w / 2, w);
+  ctx.fillStyle = degradado(ctx, cx - w / 2, w, tienda.claro, tienda.fuerte);
   ctx.fillText(nombre, cx, pillY + pillAlto + (H ? 92 : 64));
   if (campos.telefono) {
     ajustar(ctx, campos.telefono, (px) => f(800, px), H ? 72 : 52, anchoBloque);
     w = ctx.measureText(campos.telefono).width;
-    ctx.fillStyle = degradado(ctx, cx - w / 2, w);
+    ctx.fillStyle = degradado(ctx, cx - w / 2, w, tienda.claro, tienda.fuerte);
     ctx.fillText(campos.telefono, cx, pillY + pillAlto + (H ? 182 : 128));
   }
   if (extra) {
@@ -662,7 +688,7 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   // «Tu tienda»: tres productos ASTA, primero los que compra. Se cargan una vez.
   const [fotosTienda, setFotosTienda] = useState<Imagen[]>([]);
   const [logoTienda, setLogoTienda] = useState<Imagen | null>(null);
-  const [fotoLocal, setFotoLocal] = useState<Imagen | null>(null);
+  const colorLogo = useMemo(() => (logoTienda ? colorDelLogo(logoTienda) : null), [logoTienda]);
   useEffect(() => {
     if (plantilla !== 'tienda' || fotosTienda.length) return;
     const tres = [...datos.productos].sort((a, b) => Number(b.loCompra) - Number(a.loCompra)).slice(0, 3);
@@ -674,8 +700,8 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
   useEffect(() => {
     const ctx = lienzo.current?.getContext('2d');
     if (!ctx) return;
-    dibujarAsta(ctx, { variante: plantilla, alto, campos, marca, panda, foto, producto, fotos: fotosTienda, logoTienda, fotoLocal, fuente, titular: listoTitular ? titular : fuente });
-  }, [plantilla, alto, campos, marca, panda, foto, producto, fotosTienda, logoTienda, fotoLocal, fuente, titular, listoTitular]);
+    dibujarAsta(ctx, { variante: plantilla, alto, campos, marca, panda, foto, producto, fotos: fotosTienda, logoTienda, colorLogo, fuente, titular: listoTitular ? titular : fuente });
+  }, [plantilla, alto, campos, marca, panda, foto, producto, fotosTienda, logoTienda, colorLogo, fuente, titular, listoTitular]);
 
   const nombreArchivo = `flyer-asta-${plantilla}-${formato}.png`;
 
@@ -771,10 +797,9 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
             {plantilla === 'tienda' && campo('direccion', 'Dirección (opcional)', undefined, 120)}
           </div>
           <div className="fsubidas">
-            <Subir etiqueta="Logo de tu tienda" ayuda="Sale arriba, junto al de ASTA" imagen={logoTienda} alCambiar={setLogoTienda} />
-            <Subir etiqueta="Foto de tu local" ayuda="De fondo, y en grande en «Tu tienda»" imagen={fotoLocal} alCambiar={setFotoLocal} />
+            <Subir etiqueta="Logo de tu tienda" ayuda="Sale arriba, junto al de ASTA, y el flyer toma sus colores" imagen={logoTienda} alCambiar={setLogoTienda} />
           </div>
-          <p className="stat-sub">Tu logo y tu foto se quedan en tu navegador: no se suben ni se guardan.</p>
+          <p className="stat-sub">Tu logo se queda en tu navegador: no se sube ni se guarda.</p>
         </Paso>
 
         <div className="flyer-botones">
