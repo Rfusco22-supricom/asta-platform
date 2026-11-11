@@ -156,8 +156,16 @@ function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 // el producto, con su nombre de titular (ASTA y «Un producto», que añade el
 // precio), tres
 // productos y una frase («Tu tienda») o un buscador dibujado («Encuentra tu
-// tóner»). El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
-// no está, la plantilla sale sin él.
+// tóner»). El panda es un PNG con fondo transparente, uno por plantilla
+// (`PANDAS`): si no carga, la plantilla sale sin él.
+
+/** El panda de cada plantilla (en `public/flyers`), para que no salgan todas iguales. En «Un producto» señala hacia la tienda. */
+const PANDAS: Record<Plantilla, string> = {
+  asta: '/flyers/panda-pulgar.png',
+  tienda: '/flyers/panda-saluda.png',
+  producto: '/flyers/panda-presenta.png',
+  busca: '/flyers/panda-depie.png',
+};
 
 const AZUL_CLARO = '#5bb6f5';
 const AZUL_FUERTE = '#1a5fe0';
@@ -370,6 +378,8 @@ function dibujarAsta(
   const zonaY = y2 + (conProducto ? v(70, 26) : v(150, 34));
   const zonaAlto = alto * (o.variante === 'tienda' ? v(0.7, 0.72) : v(0.74, 0.765)) - zonaY;
 
+  // Dónde acaba el texto del centro: el panda no lo tapa (la foto del producto sí, como en el diseño).
+  let finTexto = 0;
   if (o.variante === 'asta' || o.variante === 'producto') {
     // El producto, grande en el centro (su nombre ya es el titular).
     if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.08, zonaY, ANCHO * 0.84, zonaAlto);
@@ -401,7 +411,9 @@ function dibujarAsta(
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
     ctx.font = f(700, v(46, 34));
-    lineas(ctx, 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.', ANCHO - 160, 2).forEach((l, k) => ctx.fillText(l, ANCHO / 2, zonaY + fh + (v(90, 56)) + k * (v(60, 44))));
+    const frase = lineas(ctx, 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.', ANCHO - 160, 2);
+    frase.forEach((l, k) => ctx.fillText(l, ANCHO / 2, zonaY + fh + v(90, 56) + k * v(60, 44)));
+    finTexto = zonaY + fh + v(90, 56) + (frase.length - 1) * v(60, 44) + v(16, 12);
     ctx.textAlign = 'left';
   } else {
     // «Encuentra tu tóner»: la frase y un buscador dibujado.
@@ -459,13 +471,14 @@ function dibujarAsta(
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
     ctx.font = f(600, v(36, 26));
-    ctx.fillText('Tóner y tinta para láser y chorro de tinta', ANCHO / 2, by + bh + (v(80, 54)));
+    ctx.fillText('Tóner y tinta para láser y chorro de tinta', ANCHO / 2, by + bh + v(80, 54));
+    finTexto = by + bh + v(80, 54) + v(12, 10);
     ctx.textAlign = 'left';
   }
 
   // El panda, abajo a la izquierda.
   if (panda) {
-    const ph = alto * v(0.3, 0.36);
+    const ph = Math.min(alto * v(0.3, 0.36), alto - finTexto - v(24, 16));
     const pw = (ph * panda.width) / panda.height;
     ctx.drawImage(panda, v(10, 0), alto - ph, pw, ph);
   }
@@ -679,13 +692,14 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     precio: '',
   });
   const [marca, setMarca] = useState<HTMLImageElement | null>(null);
-  const [panda, setPanda] = useState<HTMLImageElement | null>(null);
+  const [pandas, setPandas] = useState<Partial<Record<Plantilla, HTMLImageElement>>>({});
   const [foto, setFoto] = useState<Imagen | null>(null);
   const [listoTitular, setListoTitular] = useState(false);
   const [fuente, setFuente] = useState('sans-serif');
   const [aviso, setAviso] = useState<string | null>(null);
 
   const alto = FORMATOS.find((x) => x.clave === formato)!.alto;
+  const panda = pandas[plantilla] ?? null;
   const producto = datos.productos.find((p) => p.templateId === productoId) ?? null;
 
   // La fuente del panel (Inter, con el nombre que le da Next), y el logo, una vez.
@@ -693,7 +707,9 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
     setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif');
     void document.fonts?.ready.then(() => setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif'));
     void cargarImagen('/asta-logo.png').then(setMarca);
-    void cargarImagen('/flyers/panda.png').then(setPanda);
+    for (const [clave, src] of Object.entries(PANDAS) as [Plantilla, string][]) {
+      void cargarImagen(src).then((img) => img && setPandas((antes) => ({ ...antes, [clave]: img })));
+    }
     // El canvas no espera a la letra: se pide y se vuelve a dibujar cuando llega.
     void document.fonts?.load(`100px ${titular}`).then(() => setListoTitular(true));
   }, [titular]);
