@@ -30,7 +30,11 @@ const DESCRIPCION: Record<Plantilla, string> = {
   busca: 'Invita a preguntar por su tóner',
 };
 
-/** El titular por defecto de cada plantilla, en dos líneas: el cliente lo puede cambiar. */
+/**
+ * El titular por defecto de cada plantilla, en dos líneas: el cliente lo puede
+ * cambiar. En «Plantilla ASTA» y «Un producto» no se usa: el titular es el
+ * nombre del producto.
+ */
 const TITULARES: Record<Plantilla, [string, string]> = {
   asta: ['TU TÓNER', 'PARA USO DIARIO'],
   tienda: ['TÓNER Y TINTA', 'PARA TU IMPRESORA'],
@@ -148,7 +152,8 @@ function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 //
 // Fondo celeste con el logo de marca de agua, el titular en dos líneas, el
 // panda y «Disponible en» con la tienda. Lo del centro cambia con la plantilla:
-// el producto con su código (ASTA y «Un producto», que añade el precio), tres
+// el producto, con su nombre de titular (ASTA y «Un producto», que añade el
+// precio), tres
 // productos y una frase («Tu tienda») o un buscador dibujado («Encuentra tu
 // tóner»). El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
 // no está, la plantilla sale sin él.
@@ -237,6 +242,20 @@ function encajar(ctx: CanvasRenderingContext2D, img: Imagen, x: number, y: numbe
   ctx.drawImage(img, x, y + (h - img.height * escala) / 2, img.width * escala, img.height * escala);
 }
 
+/**
+ * Un texto en una o dos líneas, con la letra más grande (hasta `max`) con la
+ * que cabe entero, sin cortar palabras ni puntos suspensivos.
+ */
+function enDosLineas(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: number) => string, max: number, ancho: number): { lineas: string[]; px: number } {
+  for (let px = max; px >= 36; px -= 4) {
+    ctx.font = fuente(px);
+    const ls = lineas(ctx, texto, ancho, 3);
+    if (ls.length <= 2 && ls.every((l) => ctx.measureText(l).width <= ancho)) return { lineas: ls, px };
+  }
+  ctx.font = fuente(36);
+  return { lineas: lineas(ctx, texto, ancho, 2), px: 36 };
+}
+
 /** Una foto de Odoo (fondo blanco) sobre el fondo claro: en «multiplicar», el blanco desaparece. */
 function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: Imagen, x: number, y: number, w: number, h: number) {
   const escala = Math.min(w / foto.width, h / foto.height);
@@ -245,20 +264,6 @@ function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: Imagen, x: number, y:
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   ctx.drawImage(foto, x + (w - fw) / 2, y + (h - fh) / 2, fw, fh);
-  ctx.restore();
-}
-
-/** El código de un producto en diagonal, en cursiva y con el degradado de la marca. */
-function codigo(ctx: CanvasRenderingContext2D, texto: string, x: number, y: number, px: number, titular: string, alinear: CanvasTextAlign) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(-0.1);
-  ctx.transform(1, 0, -0.18, 1, 0, 0);
-  ctx.font = `${px}px ${titular}`;
-  ctx.textAlign = alinear;
-  const w = ctx.measureText(texto).width;
-  ctx.fillStyle = degradado(ctx, alinear === 'right' ? -w : 0, w);
-  ctx.fillText(texto, 0, 0);
   ctx.restore();
 }
 
@@ -325,31 +330,45 @@ function dibujarAsta(
     }
   }
 
-  // El titular, en dos líneas, centrado.
+  // El titular, centrado. En «Plantilla ASTA» y «Un producto» es el nombre
+  // del producto (o lo que escriba el cliente), en una o dos líneas del mismo
+  // tamaño; en las otras, las dos líneas de siempre, la segunda más pequeña.
   ctx.textAlign = 'center';
-  const l1 = (campos.destacado || TITULARES[o.variante][0]).toUpperCase();
-  const l2 = (campos.linea2 || TITULARES[o.variante][1]).toUpperCase();
-  const y1 = H ? 520 : 232;
-  const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 100, ANCHO - 120);
-  let w = ctx.measureText(l1).width;
-  ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
-  ctx.fillText(l1, ANCHO / 2, y1);
-  const y2 = y1 + p1 * 0.62 + (H ? 70 : 24);
-  ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 58, ANCHO - 140);
-  w = ctx.measureText(l2).width;
-  ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
-  ctx.fillText(l2, ANCHO / 2, y2);
+  const conProducto = o.variante === 'asta' || o.variante === 'producto';
+  let w = 0;
+  let y2: number;
+  if (conProducto) {
+    const texto = (campos.destacado.trim() || (o.producto?.nombre ?? 'Tu tóner ASTA').replace(/^ASTA\s+/i, '')).toUpperCase();
+    const { lineas: ls, px } = enDosLineas(ctx, texto, (n) => `${n}px ${titular}`, H ? 150 : 88, ANCHO - 120);
+    const y1 = (H ? 400 : 172) + px * 0.75;
+    ls.forEach((l, k) => {
+      w = ctx.measureText(l).width;
+      ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
+      ctx.fillText(l, ANCHO / 2, y1 + k * px * 1.02);
+    });
+    y2 = y1 + (ls.length - 1) * px * 1.02;
+  } else {
+    const l1 = (campos.destacado || TITULARES[o.variante][0]).toUpperCase();
+    const l2 = (campos.linea2 || TITULARES[o.variante][1]).toUpperCase();
+    const y1 = H ? 520 : 232;
+    const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 100, ANCHO - 120);
+    w = ctx.measureText(l1).width;
+    ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
+    ctx.fillText(l1, ANCHO / 2, y1);
+    y2 = y1 + p1 * 0.62 + (H ? 70 : 24);
+    ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 58, ANCHO - 140);
+    w = ctx.measureText(l2).width;
+    ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
+    ctx.fillText(l2, ANCHO / 2, y2);
+  }
   ctx.textAlign = 'left';
 
-  const zonaY = y2 + (H ? 150 : 34);
+  const zonaY = y2 + (H ? (conProducto ? 70 : 150) : conProducto ? 26 : 34);
   const zonaAlto = (H ? alto * (o.variante === 'tienda' ? 0.7 : 0.74) : alto * (o.variante === 'tienda' ? 0.72 : 0.765)) - zonaY;
-  const pxCodigo = H ? 120 : 64;
 
   if (o.variante === 'asta' || o.variante === 'producto') {
-    // El producto, grande en el centro, con su código en diagonal encima.
-    const sku = (o.producto?.sku ?? '').toUpperCase();
-    if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.1, zonaY + pxCodigo * 0.6, ANCHO * 0.8, zonaAlto - pxCodigo * 0.6);
-    if (sku) codigo(ctx, sku, 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
+    // El producto, grande en el centro (su nombre ya es el titular).
+    if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.08, zonaY, ANCHO * 0.84, zonaAlto);
     // «Un producto»: el precio, en una pastilla azul a la derecha.
     if (o.variante === 'producto' && campos.precio) {
       ctx.font = `${H ? 92 : 64}px ${titular}`;
@@ -784,8 +803,14 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
 
         <Paso n={plantilla === 'producto' || plantilla === 'asta' ? 4 : 3} titulo="Textos">
           <div className="fcampos">
-            {campo('destacado', 'Titular, primera línea', TITULARES[plantilla][0], 24)}
-            {campo('linea2', 'Titular, segunda línea', TITULARES[plantilla][1], 30)}
+            {plantilla === 'asta' || plantilla === 'producto' ? (
+              campo('destacado', 'Titular (opcional)', `Por defecto, el nombre del producto`, 48)
+            ) : (
+              <>
+                {campo('destacado', 'Titular, primera línea', TITULARES[plantilla][0], 24)}
+                {campo('linea2', 'Titular, segunda línea', TITULARES[plantilla][1], 30)}
+              </>
+            )}
           </div>
         </Paso>
 
