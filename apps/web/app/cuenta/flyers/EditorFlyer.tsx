@@ -13,10 +13,11 @@ import type { DatosFlyer, ProductoFlyer } from '@asta/shared-types';
  * beneficio de un nivel concreto, no de cualquier tienda.
  */
 
-type Plantilla = 'tienda' | 'producto' | 'busca';
+type Plantilla = 'asta' | 'tienda' | 'producto' | 'busca';
 type Formato = 'post' | 'historia';
 
 const PLANTILLAS: { clave: Plantilla; titulo: string }[] = [
+  { clave: 'asta', titulo: 'Plantilla ASTA' },
   { clave: 'tienda', titulo: 'Tu tienda' },
   { clave: 'producto', titulo: 'Un producto' },
   { clave: 'busca', titulo: 'Encuentra tu tóner' },
@@ -33,6 +34,8 @@ const AZUL = '#1c8cdb';
 const CIAN = '#5bc0eb';
 
 interface Campos {
+  /** La segunda línea del titular de la plantilla ASTA. */
+  linea2: string;
   nombre: string;
   telefono: string;
   direccion: string;
@@ -82,6 +85,185 @@ function rectRedondo(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+// ── La plantilla ASTA (la de Marketing, 2026-11-11) ─────────────────────────────
+//
+// Fondo celeste con el logo de marca de agua, el titular en dos líneas, uno o
+// dos productos con su código en diagonal, el panda y «Disponible en» con la
+// tienda. El panda es un PNG con fondo transparente (`/flyers/panda.png`): si
+// no está, la plantilla sale sin él.
+
+const AZUL_CLARO = '#5bb6f5';
+const AZUL_FUERTE = '#1a5fe0';
+
+/** Degradado horizontal de la marca, de `x` a `x + w`. */
+function degradado(ctx: CanvasRenderingContext2D, x: number, w: number) {
+  const g = ctx.createLinearGradient(x, 0, x + w, 0);
+  g.addColorStop(0, AZUL_CLARO);
+  g.addColorStop(1, AZUL_FUERTE);
+  return g;
+}
+
+/** El tamaño de letra más grande (hasta `max`) con el que `texto` cabe en `ancho`. */
+function ajustar(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: number) => string, max: number, ancho: number): number {
+  let px = max;
+  ctx.font = fuente(px);
+  while (px > 20 && ctx.measureText(texto).width > ancho) {
+    px -= 4;
+    ctx.font = fuente(px);
+  }
+  return px;
+}
+
+/** Una foto de Odoo (fondo blanco) sobre el fondo claro: en «multiplicar», el blanco desaparece. */
+function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  const escala = Math.min(w / foto.width, h / foto.height);
+  const fw = foto.width * escala;
+  const fh = foto.height * escala;
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.drawImage(foto, x + (w - fw) / 2, y + (h - fh) / 2, fw, fh);
+  ctx.restore();
+}
+
+/** El código de un producto en diagonal, en cursiva y con el degradado de la marca. */
+function codigo(ctx: CanvasRenderingContext2D, texto: string, x: number, y: number, px: number, titular: string, alinear: CanvasTextAlign) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-0.1);
+  ctx.transform(1, 0, -0.18, 1, 0, 0);
+  ctx.font = `${px}px ${titular}`;
+  ctx.textAlign = alinear;
+  const w = ctx.measureText(texto).width;
+  ctx.fillStyle = degradado(ctx, alinear === 'right' ? -w : 0, w);
+  ctx.fillText(texto, 0, 0);
+  ctx.restore();
+}
+
+function dibujarAsta(
+  ctx: CanvasRenderingContext2D,
+  o: { alto: number; campos: Campos; marca: HTMLImageElement | null; panda: HTMLImageElement | null; fotos: Array<HTMLImageElement | null>; productos: Array<ProductoFlyer | null>; fuente: string; titular: string },
+) {
+  const { alto, campos, marca, panda, fuente, titular } = o;
+  const H = alto > ANCHO;
+  const f = (peso: number, px: number) => `${peso} ${px}px ${fuente}`;
+
+  // Fondo celeste, más claro hacia abajo, con una onda blanca.
+  const fondo = ctx.createLinearGradient(0, 0, 0, alto);
+  fondo.addColorStop(0, '#bfe0f7');
+  fondo.addColorStop(0.55, '#e4f2fc');
+  fondo.addColorStop(1, '#f6fbff');
+  ctx.fillStyle = fondo;
+  ctx.fillRect(0, 0, ANCHO, alto);
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.beginPath();
+  ctx.moveTo(0, alto * (H ? 0.8 : 0.74));
+  ctx.quadraticCurveTo(ANCHO * 0.45, alto * (H ? 0.72 : 0.64), ANCHO, alto * (H ? 0.77 : 0.7));
+  ctx.lineTo(ANCHO, alto);
+  ctx.lineTo(0, alto);
+  ctx.closePath();
+  ctx.fill();
+
+  // El logo de marca de agua y el logo arriba.
+  if (marca) {
+    const wm = ANCHO * 1.25;
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.drawImage(marca, (ANCHO - wm) / 2, alto * (H ? 0.08 : 0.06), wm, (wm * marca.height) / marca.width);
+    ctx.restore();
+    const wl = H ? 300 : 220;
+    ctx.drawImage(marca, (ANCHO - wl) / 2, H ? 70 : 30, wl, (wl * marca.height) / marca.width);
+  }
+
+  // El titular, en dos líneas, centrado.
+  ctx.textAlign = 'center';
+  const l1 = (campos.destacado || 'TU TÓNER').toUpperCase();
+  const l2 = (campos.linea2 || 'PARA USO DIARIO').toUpperCase();
+  const y1 = H ? 520 : 250;
+  const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 120, ANCHO - 120);
+  let w = ctx.measureText(l1).width;
+  ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
+  ctx.fillText(l1, ANCHO / 2, y1);
+  const y2 = y1 + p1 * 0.62 + (H ? 70 : 40);
+  ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 74, ANCHO - 140);
+  w = ctx.measureText(l2).width;
+  ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
+  ctx.fillText(l2, ANCHO / 2, y2);
+  ctx.textAlign = 'left';
+
+  // Los productos: uno grande en el centro, o dos escalonados.
+  const [f1, f2] = o.fotos;
+  const [prod1, prod2] = o.productos;
+  const zonaY = y2 + (H ? 150 : 70);
+  const zonaAlto = (H ? alto * 0.74 : alto * 0.66) - zonaY;
+  const pxCodigo = H ? 120 : 76;
+  const sku = (p: ProductoFlyer | null) => (p?.sku ?? '').toUpperCase();
+  if (prod2) {
+    const fw = ANCHO * 0.66;
+    const fh = zonaAlto * 0.66;
+    if (f1) fotoSinFondo(ctx, f1, 0, zonaY + zonaAlto * 0.04, fw, fh);
+    if (f2) fotoSinFondo(ctx, f2, ANCHO - fw, zonaY + zonaAlto * 0.24, fw, fh);
+    if (sku(prod1)) codigo(ctx, sku(prod1), 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
+    if (sku(prod2)) codigo(ctx, sku(prod2), ANCHO - 50, zonaY + zonaAlto - 4, pxCodigo, titular, 'right');
+  } else {
+    if (f1) fotoSinFondo(ctx, f1, ANCHO * 0.12, zonaY + pxCodigo * 0.6, ANCHO * 0.76, zonaAlto - pxCodigo * 0.6);
+    if (sku(prod1)) codigo(ctx, sku(prod1), 110, zonaY + pxCodigo * 0.75, pxCodigo, titular, 'left');
+  }
+
+  // El panda, abajo a la izquierda.
+  if (panda) {
+    const ph = H ? alto * 0.3 : alto * 0.36;
+    const pw = (ph * panda.width) / panda.height;
+    ctx.drawImage(panda, H ? 10 : 0, alto - ph, pw, ph);
+  }
+
+  // «Disponible en», la tienda y el teléfono, abajo a la derecha.
+  const cx = panda ? ANCHO * 0.72 : ANCHO / 2;
+  const anchoBloque = panda ? ANCHO * 0.5 : ANCHO - 2 * 72;
+  const pillAlto = H ? 88 : 66;
+  const pillY = alto - (H ? 330 : 245);
+  ctx.font = f(800, H ? 38 : 30);
+  const etiqueta = 'DISPONIBLE EN';
+  const pillAncho = ctx.measureText(etiqueta).width + pillAlto + 56;
+  ctx.fillStyle = '#1c8cdb';
+  rectRedondo(ctx, cx - pillAncho / 2, pillY, pillAncho, pillAlto, pillAlto / 2);
+  ctx.fill();
+  // El círculo con la flecha.
+  const r = pillAlto / 2 - 10;
+  const ccx = cx - pillAncho / 2 + 12 + r;
+  const ccy = pillY + pillAlto / 2;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1c8cdb';
+  ctx.lineWidth = H ? 5 : 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(ccx - r * 0.45, ccy);
+  ctx.lineTo(ccx + r * 0.4, ccy);
+  ctx.moveTo(ccx + r * 0.05, ccy - r * 0.38);
+  ctx.lineTo(ccx + r * 0.42, ccy);
+  ctx.lineTo(ccx + r * 0.05, ccy + r * 0.38);
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.fillText(etiqueta, ccx + r + 18, ccy + (H ? 13 : 10));
+
+  ctx.textAlign = 'center';
+  const nombre = campos.nombre || 'Tu tienda';
+  ajustar(ctx, nombre, (px) => f(700, px), H ? 62 : 46, anchoBloque);
+  w = ctx.measureText(nombre).width;
+  ctx.fillStyle = degradado(ctx, cx - w / 2, w);
+  ctx.fillText(nombre, cx, pillY + pillAlto + (H ? 92 : 64));
+  if (campos.telefono) {
+    ajustar(ctx, campos.telefono, (px) => f(800, px), H ? 72 : 52, anchoBloque);
+    w = ctx.measureText(campos.telefono).width;
+    ctx.fillStyle = degradado(ctx, cx - w / 2, w);
+    ctx.fillText(campos.telefono, cx, pillY + pillAlto + (H ? 182 : 128));
+  }
+  ctx.textAlign = 'left';
 }
 
 function dibujar(
@@ -213,13 +395,16 @@ function dibujar(
   ctx.fill();
 }
 
-export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
+/** `titular`: la familia de la letra condensada del titular (Anton, de `next/font`). */
+export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: string }) {
   const lienzo = useRef<HTMLCanvasElement>(null);
-  const [plantilla, setPlantilla] = useState<Plantilla>('tienda');
+  const [plantilla, setPlantilla] = useState<Plantilla>('asta');
   const [formato, setFormato] = useState<Formato>('post');
   const [productoId, setProductoId] = useState<number | null>(datos.productos[0]?.templateId ?? null);
+  const [productoId2, setProductoId2] = useState<number | null>(null);
   const [filtro, setFiltro] = useState('');
   const [campos, setCampos] = useState<Campos>({
+    linea2: '',
     nombre: datos.tienda.nombre,
     telefono: datos.tienda.telefono ?? '',
     direccion: datos.tienda.direccion ?? '',
@@ -228,12 +413,17 @@ export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
     precio: '',
   });
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
+  const [marca, setMarca] = useState<HTMLImageElement | null>(null);
+  const [panda, setPanda] = useState<HTMLImageElement | null>(null);
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
+  const [foto2, setFoto2] = useState<HTMLImageElement | null>(null);
+  const [listoTitular, setListoTitular] = useState(false);
   const [fuente, setFuente] = useState('sans-serif');
   const [aviso, setAviso] = useState<string | null>(null);
 
   const alto = FORMATOS.find((x) => x.clave === formato)!.alto;
   const producto = datos.productos.find((p) => p.templateId === productoId) ?? null;
+  const producto2 = productoId2 === null ? null : (datos.productos.find((p) => p.templateId === productoId2) ?? null);
   const visibles = useMemo(() => {
     const q = filtro.trim().toLowerCase();
     return q ? datos.productos.filter((p) => `${p.nombre} ${p.sku ?? ''}`.toLowerCase().includes(q)) : datos.productos;
@@ -244,11 +434,15 @@ export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
     setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif');
     void document.fonts?.ready.then(() => setFuente(getComputedStyle(document.body).fontFamily || 'sans-serif'));
     void cargarImagen('/asta-logo-blanco.png').then(setLogo);
-  }, []);
+    void cargarImagen('/asta-logo.png').then(setMarca);
+    void cargarImagen('/flyers/panda.png').then(setPanda);
+    // El canvas no espera a la letra: se pide y se vuelve a dibujar cuando llega.
+    void document.fonts?.load(`100px ${titular}`).then(() => setListoTitular(true));
+  }, [titular]);
 
   useEffect(() => {
     setFoto(null);
-    if (plantilla !== 'producto' || productoId === null) return;
+    if ((plantilla !== 'producto' && plantilla !== 'asta') || productoId === null) return;
     let vigente = true;
     void cargarImagen(`/api/flyers/fotos/${productoId}`).then((img) => vigente && setFoto(img));
     return () => {
@@ -257,10 +451,24 @@ export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
   }, [plantilla, productoId]);
 
   useEffect(() => {
+    setFoto2(null);
+    if (plantilla !== 'asta' || productoId2 === null) return;
+    let vigente = true;
+    void cargarImagen(`/api/flyers/fotos/${productoId2}`).then((img) => vigente && setFoto2(img));
+    return () => {
+      vigente = false;
+    };
+  }, [plantilla, productoId2]);
+
+  useEffect(() => {
     const ctx = lienzo.current?.getContext('2d');
     if (!ctx) return;
+    if (plantilla === 'asta') {
+      dibujarAsta(ctx, { alto, campos, marca, panda, fotos: [foto, foto2], productos: [producto, producto2], fuente, titular: listoTitular ? titular : fuente });
+      return;
+    }
     dibujar(ctx, { plantilla, alto, campos, logo, foto, producto, fuente });
-  }, [plantilla, alto, campos, logo, foto, producto, fuente]);
+  }, [plantilla, alto, campos, logo, marca, panda, foto, foto2, producto, producto2, fuente, titular, listoTitular]);
 
   const nombreArchivo = `flyer-asta-${plantilla}-${formato}.png`;
 
@@ -324,9 +532,9 @@ export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
           </div>
         </div>
 
-        {plantilla === 'producto' && (
+        {(plantilla === 'producto' || plantilla === 'asta') && (
           <div className="flyer-grupo">
-            <span className="stat-sub">Producto</span>
+            <span className="stat-sub">{plantilla === 'asta' ? 'Producto 1' : 'Producto'}</span>
             <input className="input" value={filtro} placeholder="Busca por nombre o código" onChange={(e) => setFiltro(e.target.value)} aria-label="Buscar producto" />
             <select className="select" value={productoId ?? ''} onChange={(e) => setProductoId(Number(e.target.value))} aria-label="Producto" size={6}>
               {visibles.map((p) => (
@@ -338,15 +546,40 @@ export function EditorFlyer({ datos }: { datos: DatosFlyer }) {
               ))}
             </select>
             <span className="stat-sub">★ los que nos compras</span>
-            {campo('precio', 'Precio (opcional)', 'Por ejemplo: $25', 20)}
+            {plantilla === 'producto' && campo('precio', 'Precio (opcional)', 'Por ejemplo: $25', 20)}
           </div>
         )}
 
-        {campo('destacado', 'Texto destacado (opcional)', plantilla === 'producto' ? 'Ya disponible' : plantilla === 'busca' ? '¿Qué tóner usa tu impresora?' : 'Tóner y tinta ASTA', 60)}
+        {plantilla === 'asta' && (
+          <label className="flyer-grupo">
+            <span className="stat-sub">Producto 2 (opcional)</span>
+            <select className="select" value={productoId2 ?? ''} onChange={(e) => setProductoId2(e.target.value ? Number(e.target.value) : null)} aria-label="Producto 2">
+              <option value="">Solo uno</option>
+              {datos.productos
+                .filter((p) => p.templateId !== productoId)
+                .map((p) => (
+                  <option key={p.templateId} value={p.templateId}>
+                    {p.loCompra ? '★ ' : ''}
+                    {p.nombre.replace(/^ASTA\s+/i, '')}
+                    {p.sku ? ` · ${p.sku}` : ''}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+
+        {plantilla === 'asta' ? (
+          <>
+            {campo('destacado', 'Titular, primera línea', 'TU TÓNER', 24)}
+            {campo('linea2', 'Titular, segunda línea', 'PARA USO DIARIO', 30)}
+          </>
+        ) : (
+          campo('destacado', 'Texto destacado (opcional)', plantilla === 'producto' ? 'Ya disponible' : plantilla === 'busca' ? '¿Qué tóner usa tu impresora?' : 'Tóner y tinta ASTA', 60)
+        )}
         {campo('nombre', 'Nombre de tu tienda')}
         {campo('telefono', 'Teléfono o WhatsApp')}
-        {campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
-        {campo('direccion', 'Dirección', undefined, 120)}
+        {plantilla !== 'asta' && campo('instagram', 'Instagram (opcional)', 'tutienda', 40)}
+        {plantilla !== 'asta' && campo('direccion', 'Dirección', undefined, 120)}
 
         <div className="flyer-botones">
           <button type="button" className="btn" onClick={() => void descargar()}>
