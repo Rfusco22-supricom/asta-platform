@@ -14,7 +14,7 @@ import type { DatosFlyer, ProductoFlyer } from '@asta/shared-types';
  */
 
 type Plantilla = 'asta' | 'tienda' | 'producto' | 'busca';
-type Formato = 'post' | 'historia';
+type Formato = 'post' | 'vertical' | 'historia';
 
 const PLANTILLAS: { clave: Plantilla; titulo: string }[] = [
   { clave: 'asta', titulo: 'Plantilla ASTA' },
@@ -42,9 +42,10 @@ const TITULARES: Record<Plantilla, [string, string]> = {
   busca: ['¿QUÉ TÓNER USA', 'TU IMPRESORA?'],
 };
 
-const FORMATOS: { clave: Formato; titulo: string; alto: number }[] = [
-  { clave: 'post', titulo: 'Publicación (cuadrada)', alto: 1080 },
-  { clave: 'historia', titulo: 'Historia / estado', alto: 1920 },
+const FORMATOS: { clave: Formato; titulo: string; detalle: string; alto: number }[] = [
+  { clave: 'post', titulo: 'Cuadrada', detalle: '1080 × 1080 · feed', alto: 1080 },
+  { clave: 'vertical', titulo: 'Vertical', detalle: '1080 × 1350 · feed', alto: 1350 },
+  { clave: 'historia', titulo: 'Historia', detalle: '1080 × 1920 · estados', alto: 1920 },
 ];
 
 const ANCHO = 1080;
@@ -287,7 +288,10 @@ function dibujarAsta(
   },
 ) {
   const { alto, campos, marca, panda, fuente, titular } = o;
-  const H = alto > ANCHO;
+  // Las medidas van de la cuadrada (1080) a la historia (1920); la vertical
+  // (1350) queda en medio, en proporción a su alto.
+  const t = Math.min(1, Math.max(0, (alto - ANCHO) / (1920 - ANCHO)));
+  const v = (historia: number, cuadrada: number) => cuadrada + (historia - cuadrada) * t;
   const f = (peso: number, px: number) => `${peso} ${px}px ${fuente}`;
 
   // Fondo celeste, más claro hacia abajo, con una onda blanca.
@@ -302,8 +306,8 @@ function dibujarAsta(
   ctx.fillRect(0, 0, ANCHO, alto);
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.beginPath();
-  ctx.moveTo(0, alto * (H ? 0.8 : 0.74));
-  ctx.quadraticCurveTo(ANCHO * 0.45, alto * (H ? 0.72 : 0.64), ANCHO, alto * (H ? 0.77 : 0.7));
+  ctx.moveTo(0, alto * (v(0.8, 0.74)));
+  ctx.quadraticCurveTo(ANCHO * 0.45, alto * (v(0.72, 0.64)), ANCHO, alto * (v(0.77, 0.7)));
   ctx.lineTo(ANCHO, alto);
   ctx.lineTo(0, alto);
   ctx.closePath();
@@ -314,10 +318,10 @@ function dibujarAsta(
     const wm = ANCHO * 1.25;
     ctx.save();
     ctx.globalAlpha = 0.06;
-    ctx.drawImage(marca, (ANCHO - wm) / 2, alto * (H ? 0.08 : 0.06), wm, (wm * marca.height) / marca.width);
+    ctx.drawImage(marca, (ANCHO - wm) / 2, alto * (v(0.08, 0.06)), wm, (wm * marca.height) / marca.width);
     ctx.restore();
-    const wl = H ? 300 : 150;
-    const yl = H ? 70 : 8;
+    const wl = v(300, 150);
+    const yl = v(70, 8);
     const hl = (wl * marca.height) / marca.width;
     if (o.logoTienda) {
       // «asta | su logo»: el de ASTA a la izquierda y el suyo a la derecha.
@@ -339,8 +343,8 @@ function dibujarAsta(
   let y2: number;
   if (conProducto) {
     const texto = (campos.destacado.trim() || (o.producto?.nombre ?? 'Tu tóner ASTA').replace(/^ASTA\s+/i, '')).toUpperCase();
-    const { lineas: ls, px } = enDosLineas(ctx, texto, (n) => `${n}px ${titular}`, H ? 150 : 88, ANCHO - 120);
-    const y1 = (H ? 400 : 172) + px * 0.75;
+    const { lineas: ls, px } = enDosLineas(ctx, texto, (n) => `${n}px ${titular}`, v(150, 88), ANCHO - 120);
+    const y1 = (v(400, 172)) + px * 0.75;
     ls.forEach((l, k) => {
       w = ctx.measureText(l).width;
       ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
@@ -350,30 +354,30 @@ function dibujarAsta(
   } else {
     const l1 = (campos.destacado || TITULARES[o.variante][0]).toUpperCase();
     const l2 = (campos.linea2 || TITULARES[o.variante][1]).toUpperCase();
-    const y1 = H ? 520 : 232;
-    const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, H ? 190 : 100, ANCHO - 120);
+    const y1 = v(520, 232);
+    const p1 = ajustar(ctx, l1, (px) => `${px}px ${titular}`, v(190, 100), ANCHO - 120);
     w = ctx.measureText(l1).width;
     ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
     ctx.fillText(l1, ANCHO / 2, y1);
-    y2 = y1 + p1 * 0.62 + (H ? 70 : 24);
-    ajustar(ctx, l2, (px) => `${px}px ${titular}`, H ? 118 : 58, ANCHO - 140);
+    y2 = y1 + p1 * 0.62 + (v(70, 24));
+    ajustar(ctx, l2, (px) => `${px}px ${titular}`, v(118, 58), ANCHO - 140);
     w = ctx.measureText(l2).width;
     ctx.fillStyle = degradado(ctx, (ANCHO - w) / 2, w);
     ctx.fillText(l2, ANCHO / 2, y2);
   }
   ctx.textAlign = 'left';
 
-  const zonaY = y2 + (H ? (conProducto ? 70 : 150) : conProducto ? 26 : 34);
-  const zonaAlto = (H ? alto * (o.variante === 'tienda' ? 0.7 : 0.74) : alto * (o.variante === 'tienda' ? 0.72 : 0.765)) - zonaY;
+  const zonaY = y2 + (conProducto ? v(70, 26) : v(150, 34));
+  const zonaAlto = alto * (o.variante === 'tienda' ? v(0.7, 0.72) : v(0.74, 0.765)) - zonaY;
 
   if (o.variante === 'asta' || o.variante === 'producto') {
     // El producto, grande en el centro (su nombre ya es el titular).
     if (o.foto) fotoSinFondo(ctx, o.foto, ANCHO * 0.08, zonaY, ANCHO * 0.84, zonaAlto);
     // «Un producto»: el precio, en una pastilla azul a la derecha.
     if (o.variante === 'producto' && campos.precio) {
-      ctx.font = `${H ? 92 : 64}px ${titular}`;
-      const pw = ctx.measureText(campos.precio).width + (H ? 80 : 56);
-      const ph = H ? 130 : 92;
+      ctx.font = `${v(92, 64)}px ${titular}`;
+      const pw = ctx.measureText(campos.precio).width + (v(80, 56));
+      const ph = v(130, 92);
       const px = ANCHO - pw - 50;
       const py = zonaY + zonaAlto * 0.42;
       ctx.save();
@@ -396,21 +400,21 @@ function dibujarAsta(
     o.fotos.forEach((ft, k) => fotoSinFondo(ctx, ft, 50 + k * (fw + hueco), zonaY, fw, fh));
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
-    ctx.font = f(700, H ? 46 : 34);
-    lineas(ctx, 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.', ANCHO - 160, 2).forEach((l, k) => ctx.fillText(l, ANCHO / 2, zonaY + fh + (H ? 90 : 56) + k * (H ? 60 : 44)));
+    ctx.font = f(700, v(46, 34));
+    lineas(ctx, 'Para tu impresora láser y de tinta. Pregúntanos por el tuyo.', ANCHO - 160, 2).forEach((l, k) => ctx.fillText(l, ANCHO / 2, zonaY + fh + (v(90, 56)) + k * (v(60, 44))));
     ctx.textAlign = 'left';
   } else {
     // «Encuentra tu tóner»: la frase y un buscador dibujado.
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
-    ctx.font = f(700, H ? 58 : 38);
+    ctx.font = f(700, v(58, 38));
     const frase = lineas(ctx, 'Dinos el modelo y te damos el ASTA que le va.', ANCHO - 180, 2);
-    const fy = zonaY + zonaAlto * (H ? 0.24 : 0.16);
-    frase.forEach((l, k) => ctx.fillText(l, ANCHO / 2, fy + k * (H ? 72 : 48)));
+    const fy = zonaY + zonaAlto * (v(0.24, 0.16));
+    frase.forEach((l, k) => ctx.fillText(l, ANCHO / 2, fy + k * (v(72, 48))));
     const bw = ANCHO * 0.86;
-    const bh = H ? 150 : 104;
+    const bh = v(150, 104);
     const bx = (ANCHO - bw) / 2;
-    const by = fy + frase.length * (H ? 72 : 48) + (H ? 70 : 34);
+    const by = fy + frase.length * (v(72, 48)) + (v(70, 34));
     ctx.save();
     ctx.shadowColor = 'rgba(16, 80, 160, 0.18)';
     ctx.shadowBlur = 30;
@@ -424,7 +428,7 @@ function dibujarAsta(
     const lx = bx + bh * 0.5;
     const ly = by + bh * 0.46;
     ctx.strokeStyle = '#1c8cdb';
-    ctx.lineWidth = H ? 7 : 5;
+    ctx.lineWidth = v(7, 5);
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.arc(lx, ly, lr, 0, Math.PI * 2);
@@ -433,7 +437,7 @@ function dibujarAsta(
     ctx.stroke();
     ctx.textAlign = 'left';
     ctx.fillStyle = '#8aa0b8';
-    ctx.font = f(600, H ? 42 : 30);
+    ctx.font = f(600, v(42, 30));
     ctx.fillText('Modelo de tu impresora…', bx + bh * 0.95, by + bh * 0.6);
     // El botón de buscar, a la derecha.
     const br = bh / 2 - 12;
@@ -442,7 +446,7 @@ function dibujarAsta(
     ctx.arc(bx + bw - bh / 2, by + bh / 2, br, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = H ? 6 : 5;
+    ctx.lineWidth = v(6, 5);
     const ax = bx + bw - bh / 2;
     const ay = by + bh / 2;
     ctx.beginPath();
@@ -454,25 +458,25 @@ function dibujarAsta(
     ctx.stroke();
     ctx.textAlign = 'center';
     ctx.fillStyle = '#1f4f8f';
-    ctx.font = f(600, H ? 36 : 26);
-    ctx.fillText('Tóner y tinta para láser y chorro de tinta', ANCHO / 2, by + bh + (H ? 80 : 54));
+    ctx.font = f(600, v(36, 26));
+    ctx.fillText('Tóner y tinta para láser y chorro de tinta', ANCHO / 2, by + bh + (v(80, 54)));
     ctx.textAlign = 'left';
   }
 
   // El panda, abajo a la izquierda.
   if (panda) {
-    const ph = H ? alto * 0.3 : alto * 0.36;
+    const ph = alto * v(0.3, 0.36);
     const pw = (ph * panda.width) / panda.height;
-    ctx.drawImage(panda, H ? 10 : 0, alto - ph, pw, ph);
+    ctx.drawImage(panda, v(10, 0), alto - ph, pw, ph);
   }
 
   // «Disponible en», la tienda y el teléfono, abajo a la derecha.
   const cx = panda ? ANCHO * 0.72 : ANCHO / 2;
   const anchoBloque = panda ? ANCHO * 0.5 : ANCHO - 2 * 72;
-  const pillAlto = H ? 88 : 66;
+  const pillAlto = v(88, 66);
   const extra = o.variante === 'tienda' ? [campos.instagram ? `@${campos.instagram.replace(/^@/, '')}` : '', campos.direccion].filter(Boolean).join('  ·  ') : '';
-  const pillY = alto - (H ? 330 : 245) - (extra ? (H ? 70 : 50) : 0);
-  ctx.font = f(800, H ? 38 : 30);
+  const pillY = alto - (v(330, 245)) - (extra ? (v(70, 50)) : 0);
+  ctx.font = f(800, v(38, 30));
   const etiqueta = 'DISPONIBLE EN';
   const pillAncho = ctx.measureText(etiqueta).width + pillAlto + 56;
   ctx.fillStyle = degradado(ctx, cx - pillAncho / 2, pillAncho, tienda.claro, tienda.base);
@@ -487,7 +491,7 @@ function dibujarAsta(
   ctx.arc(ccx, ccy, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = tienda.base;
-  ctx.lineWidth = H ? 5 : 4;
+  ctx.lineWidth = v(5, 4);
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.moveTo(ccx - r * 0.45, ccy);
@@ -498,24 +502,24 @@ function dibujarAsta(
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
-  ctx.fillText(etiqueta, ccx + r + 18, ccy + (H ? 13 : 10));
+  ctx.fillText(etiqueta, ccx + r + 18, ccy + (v(13, 10)));
 
   ctx.textAlign = 'center';
   const nombre = campos.nombre || 'Tu tienda';
-  ajustar(ctx, nombre, (px) => f(700, px), H ? 62 : 46, anchoBloque);
+  ajustar(ctx, nombre, (px) => f(700, px), v(62, 46), anchoBloque);
   w = ctx.measureText(nombre).width;
   ctx.fillStyle = degradado(ctx, cx - w / 2, w, tienda.claro, tienda.fuerte);
-  ctx.fillText(nombre, cx, pillY + pillAlto + (H ? 92 : 64));
+  ctx.fillText(nombre, cx, pillY + pillAlto + (v(92, 64)));
   if (campos.telefono) {
-    ajustar(ctx, campos.telefono, (px) => f(800, px), H ? 72 : 52, anchoBloque);
+    ajustar(ctx, campos.telefono, (px) => f(800, px), v(72, 52), anchoBloque);
     w = ctx.measureText(campos.telefono).width;
     ctx.fillStyle = degradado(ctx, cx - w / 2, w, tienda.claro, tienda.fuerte);
-    ctx.fillText(campos.telefono, cx, pillY + pillAlto + (H ? 182 : 128));
+    ctx.fillText(campos.telefono, cx, pillY + pillAlto + (v(182, 128)));
   }
   if (extra) {
     ctx.fillStyle = '#4a6a90';
-    ctx.font = f(600, H ? 32 : 24);
-    ctx.fillText(lineas(ctx, extra, anchoBloque, 1)[0]!, cx, pillY + pillAlto + (H ? 250 : 176));
+    ctx.font = f(600, v(32, 24));
+    ctx.fillText(lineas(ctx, extra, anchoBloque, 1)[0]!, cx, pillY + pillAlto + (v(250, 176)));
   }
   ctx.textAlign = 'left';
 }
@@ -781,13 +785,13 @@ export function EditorFlyer({ datos, titular }: { datos: DatosFlyer; titular: st
         </Paso>
 
         <Paso n={2} titulo="Formato">
-          <div className="fopciones fopciones-2" role="group" aria-label="Formato">
+          <div className="fopciones fopciones-3" role="group" aria-label="Formato">
             {FORMATOS.map((x) => (
               <button key={x.clave} type="button" className="fopcion fopcion-formato" aria-pressed={formato === x.clave} onClick={() => setFormato(x.clave)}>
                 <i className={`fforma fforma-${x.clave}`} aria-hidden="true" />
                 <span>
-                  <b>{x.clave === 'post' ? 'Publicación' : 'Historia'}</b>
-                  <span>{x.clave === 'post' ? 'Cuadrada · feed de Instagram' : 'Vertical · estados de WhatsApp'}</span>
+                  <b>{x.titulo}</b>
+                  <span>{x.detalle}</span>
                 </span>
               </button>
             ))}
