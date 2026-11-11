@@ -74,8 +74,9 @@ type Imagen = HTMLImageElement | HTMLCanvasElement;
 
 /**
  * La foto sin el margen blanco que traen las de Odoo: se recorta al rectángulo
- * donde hay producto, con un poco de aire. Así el producto sale más grande en
- * el flyer. La foto llega por el panel (mismo origen), así que se puede leer.
+ * donde hay producto, con un poco de aire, y se le quita el fondo blanco
+ * (`quitarFondo`). Así el producto sale más grande y opaco en el flyer. La foto
+ * llega por el panel (mismo origen), así que se puede leer.
  */
 function sinMargen(img: HTMLImageElement): Imagen {
   try {
@@ -108,7 +109,9 @@ function sinMargen(img: HTMLImageElement): Imagen {
     const r = document.createElement('canvas');
     r.width = x1 - x0 + 1;
     r.height = y1 - y0 + 1;
-    r.getContext('2d')!.drawImage(c, x0, y0, r.width, r.height, 0, 0, r.width, r.height);
+    const rctx = r.getContext('2d', { willReadFrequently: true })!;
+    rctx.drawImage(c, x0, y0, r.width, r.height, 0, 0, r.width, r.height);
+    quitarFondo(rctx, r.width, r.height);
     return r;
   } catch {
     return img;
@@ -265,13 +268,73 @@ function enDosLineas(ctx: CanvasRenderingContext2D, texto: string, fuente: (px: 
   return { lineas: lineas(ctx, texto, ancho, 2), px: 36 };
 }
 
-/** Una foto de Odoo (fondo blanco) sobre el fondo claro: en «multiplicar», el blanco desaparece. */
+/**
+ * Quita el fondo blanco de una foto de Odoo: el blanco que toca el borde y todo
+ * el que se le junta (relleno desde los bordes). El blanco DENTRO del producto
+ * (la caja, una etiqueta) no toca el borde y se queda, así el producto sale
+ * opaco. El borde del recorte se suaviza para que no quede dentado.
+ */
+function quitarFondo(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const blanco = (p: number) => {
+    const i = p * 4;
+    const mn = Math.min(d[i]!, d[i + 1]!, d[i + 2]!);
+    const mx = Math.max(d[i]!, d[i + 1]!, d[i + 2]!);
+    // El fondo de Odoo es blanco puro (255); las cajas llegan a 252, así que el corte es estricto.
+    return d[i + 3]! < 16 || (mn > 250 && mx - mn < 6);
+  };
+  const fuera = new Uint8Array(w * h);
+  const cola = new Int32Array(w * h);
+  let fin = 0;
+  const entrar = (p: number) => {
+    if (!fuera[p] && blanco(p)) {
+      fuera[p] = 1;
+      cola[fin++] = p;
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    entrar(x);
+    entrar((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    entrar(y * w);
+    entrar(y * w + w - 1);
+  }
+  for (let k = 0; k < fin; k++) {
+    const p = cola[k]!;
+    const x = p % w;
+    if (x > 0) entrar(p - 1);
+    if (x < w - 1) entrar(p + 1);
+    if (p >= w) entrar(p - w);
+    if (p < w * (h - 1)) entrar(p + w);
+  }
+  for (let p = 0; p < w * h; p++) {
+    if (fuera[p]) {
+      d[p * 4 + 3] = 0;
+      continue;
+    }
+    // El borde del producto: medio transparente si es claro, para que no quede un filo blanco.
+    const x = p % w;
+    const junto = (x > 0 && fuera[p - 1]) || (x < w - 1 && fuera[p + 1]) || (p >= w && fuera[p - w]) || (p < w * (h - 1) && fuera[p + w]);
+    if (junto) {
+      const i = p * 4;
+      const luz = (d[i]! + d[i + 1]! + d[i + 2]!) / 3;
+      d[i + 3] = Math.round(d[i + 3]! * Math.min(1, Math.max(0.4, (255 - luz) / 30)));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/** La foto del producto (ya sin fondo, ver `quitarFondo`), opaca y con una sombra suave para que pose sobre el fondo. */
 function fotoSinFondo(ctx: CanvasRenderingContext2D, foto: Imagen, x: number, y: number, w: number, h: number) {
   const escala = Math.min(w / foto.width, h / foto.height);
   const fw = foto.width * escala;
   const fh = foto.height * escala;
   ctx.save();
-  ctx.globalCompositeOperation = 'multiply';
+  ctx.shadowColor = 'rgba(16, 60, 120, 0.22)';
+  ctx.shadowBlur = Math.round(fh * 0.06);
+  ctx.shadowOffsetY = Math.round(fh * 0.03);
   ctx.drawImage(foto, x + (w - fw) / 2, y + (h - fh) / 2, fw, fh);
   ctx.restore();
 }
