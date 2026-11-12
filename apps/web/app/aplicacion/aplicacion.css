@@ -140,10 +140,12 @@
 /* ── Activación ─────────────────────────────────────────────────────────── */
 .aa-activacion { align-items: center; justify-content: center; padding: 40px; overflow-y: auto; }
 .aa-activacion-caja { width: min(820px, 100%); }
-.aa-activacion-cuerpo { display: grid; gap: 24px; padding: 40px; }
+.aa-activacion-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 40px; }
 .aa-activacion-fila { display: flex; flex-wrap: wrap; gap: 16px; }
 .aa-codigo-campo {
   flex: 1 1 260px;
+  /* Un input tiene ancho propio (unos 20 caracteres): sin esto, en un teléfono empujaba la tarjeta fuera de la pantalla. */
+  width: 100%;
   min-width: 0;
   height: var(--aa-boton);
   padding: 0 24px;

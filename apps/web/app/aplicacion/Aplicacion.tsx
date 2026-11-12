@@ -164,7 +164,7 @@ function Activacion({ alActivar }: { alActivar: (token: string) => void }) {
         <div className="aa-franja" />
         <div className="aa-activacion-cuerpo">
           <Logo ancho={150} color="var(--aa-azul)" />
-          <h1 className="aa-t48">Activa esta tablet</h1>
+          <h1 className="aa-t48">Activa la aplicación</h1>
           <p className="aa-cuerpo aa-suave">
             Esta aplicación es para clientes de Supricom. Para usarla, entra al panel de ASTA con tu cuenta, ve a <b>Tablets → «Añadir tablet»</b> y escribe aquí el código de 6 dígitos.
           </p>
