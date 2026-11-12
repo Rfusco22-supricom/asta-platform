@@ -111,7 +111,8 @@ export type EstadoCodigoTablet = z.infer<typeof estadoCodigoTabletRespuestaSchem
 export const vincularTabletSchema = z.object({
   /** Se aceptan espacios y guiones: «482 913» es como se lee en la pantalla. */
   codigo: z.string().transform((c) => c.replace(/[\s-]/g, '')).pipe(z.string().regex(/^\d{6}$|^\d{12}$/)),
-  plataforma: z.enum(['ios', 'android']),
+  /** `web`: la aplicación en el navegador (`apps/web/app/aplicacion`), mientras no estén las tiendas. */
+  plataforma: z.enum(['ios', 'android', 'web']),
   modelo: z.string().trim().max(100).optional(),
   version: z.string().trim().max(20).optional(),
 });

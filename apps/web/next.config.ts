@@ -43,6 +43,24 @@ const nextConfig: NextConfig = {
   // El panel nunca debe anunciar con qué está hecho.
   poweredByHeader: false,
 
+  /**
+   * El service worker de la aplicación ASTA web vive en `/aplicacion/sw.js`, y
+   * por defecto solo podría controlar `/aplicacion/…`, no la página
+   * `/aplicacion` (sin barra). Esta cabecera le deja ese alcance. Sin caché:
+   * una versión nueva tiene que llegar a las tablets en cuanto se despliega.
+   */
+  async headers() {
+    return [
+      {
+        source: '/aplicacion/sw.js',
+        headers: [
+          { key: 'Service-Worker-Allowed', value: '/aplicacion' },
+          { key: 'Cache-Control', value: 'no-cache' },
+        ],
+      },
+    ];
+  },
+
   webpack: (config) => {
     /**
      * `shared-types` importa con extensión `.js` (`./common.js`) porque el
