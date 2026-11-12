@@ -107,15 +107,21 @@ export async function almacenesDeOdoo(): Promise<AlmacenKiosco[]> {
   const uid = await getUid();
   const [usuario] = await searchRead<{ company_ids: number[] }>('res.users', [['id', '=', uid]], ['company_ids']);
   const companias = usuario?.company_ids ?? [];
+  // En el orden de Odoo dentro de cada compañía (secuencia, id): el primero es el principal.
   const almacenes = await searchRead<{ id: number; name: string; code: string | false; company_id: [number, string] | false }>(
     'stock.warehouse',
     [],
     ['name', 'code', 'company_id'],
-    { order: 'company_id, name', context: { allowed_company_ids: companias } },
+    { order: 'company_id, sequence, id', context: { allowed_company_ids: companias } },
   );
+  const vistas = new Set<number>();
   return almacenes
     .filter((a): a is typeof a & { company_id: [number, string] } => Boolean(a.company_id))
-    .map((a) => ({ warehouseId: a.id, nombre: a.name, codigo: a.code || null, companyId: a.company_id[0], compania: a.company_id[1] }));
+    .map((a) => {
+      const principal = !vistas.has(a.company_id[0]);
+      vistas.add(a.company_id[0]);
+      return { warehouseId: a.id, nombre: a.name, codigo: a.code || null, companyId: a.company_id[0], compania: a.company_id[1], principal };
+    });
 }
 
 async function almacenesSiOdooResponde(): Promise<Map<number, AlmacenKiosco> | null> {

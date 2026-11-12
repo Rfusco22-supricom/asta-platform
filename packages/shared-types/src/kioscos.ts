@@ -50,6 +50,12 @@ export const almacenKioscoSchema = z.object({
   codigo: z.string().nullable(),
   companyId: odooIdSchema,
   compania: z.string(),
+  /**
+   * El almacén principal de su sede: el primero en el orden de Odoo (secuencia),
+   * el mismo que usan las alertas del inicio. Es el que se asigna al crear una
+   * tablet de Supricom eligiendo solo la sede.
+   */
+  principal: z.boolean().default(false),
 });
 
 export type AlmacenKiosco = z.infer<typeof almacenKioscoSchema>;

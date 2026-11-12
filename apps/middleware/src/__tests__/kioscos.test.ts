@@ -99,6 +99,9 @@ beforeAll(async () => {
   expect(almacenesKioscoRespuestaSchema.safeParse(r.body).success).toBe(true);
   // Lanza en vez de saltarse: sin un almacén no hay nada que probar.
   if (!r.body.data.length) throw new Error('Odoo no devolvió ningún almacén');
+  // Al crear una tablet se elige la sede: cada compañía tiene exactamente un almacén principal.
+  const companias = new Set(r.body.data.map((a) => a.companyId));
+  for (const c of companias) expect(r.body.data.filter((a) => a.companyId === c && a.principal)).toHaveLength(1);
   almacen = r.body.data[0]!;
   olvidarVistos();
 }, 120_000);
