@@ -198,7 +198,7 @@ export function Kioscos({
         </div>
         {!almacenes ? (
           <div className="notice error" style={{ margin: 0 }}>
-            <p>Odoo no responde: no se puede elegir el almacén.</p>
+            <p>Odoo no responde: no se puede elegir la sede.</p>
           </div>
         ) : (
           <form className="kio-formulario" onSubmit={pedirCodigo}>
@@ -307,7 +307,7 @@ export function Kioscos({
         <summary>Preparar una tablet a mano</summary>
         {!almacenes ? (
           <div className="notice error" style={{ margin: 0 }}>
-            <p>Odoo no responde: no se puede elegir el almacén.</p>
+            <p>Odoo no responde: no se puede elegir la sede.</p>
           </div>
         ) : (
           <form className="kio-formulario" onSubmit={registrar}>
@@ -330,31 +330,39 @@ export function Kioscos({
   );
 }
 
+/**
+ * La sede de la tablet, no el almacén: la lista de almacenes de Odoo (Mal
+ * Estado, RMA, Demo, Tránsito… de cada compañía) no la entiende nadie en la
+ * tienda. Se elige la sede y la tablet enseña las existencias de su almacén
+ * principal (`principal`, el primero de la compañía en Odoo), el mismo que
+ * usan las alertas del inicio. Se dice cuál, para que no sea una caja negra.
+ */
 function SelectorAlmacen({ almacenes }: { almacenes: AlmacenKiosco[] }) {
-  const porCompania = useMemo(() => {
-    const m = new Map<string, AlmacenKiosco[]>();
-    for (const a of almacenes) m.set(a.compania, [...(m.get(a.compania) ?? []), a]);
-    return [...m.entries()];
+  // Una por sede. Si Odoo no marcara ninguno (un middleware anterior), el primero de cada una.
+  const sedes = useMemo(() => {
+    const m = new Map<number, AlmacenKiosco>();
+    for (const a of almacenes) if (a.principal || !m.has(a.companyId)) m.set(a.companyId, a.principal ? a : (m.get(a.companyId) ?? a));
+    return [...m.values()].sort((x, y) => x.compania.localeCompare(y.compania));
   }, [almacenes]);
+  const [elegido, setElegido] = useState('');
+  const almacen = sedes.find((a) => String(a.warehouseId) === elegido);
 
   return (
     <label>
-      <span>Almacén de Odoo</span>
-      <select className="select" name="almacen" required defaultValue="">
+      <span>Sede</span>
+      <select className="select" name="almacen" required value={elegido} onChange={(e) => setElegido(e.target.value)}>
         <option value="" disabled>
-          Elige el almacén de la tienda…
+          Elige la sede de la tienda…
         </option>
-        {porCompania.map(([compania, as]) => (
-          <optgroup key={compania} label={compania}>
-            {as.map((a) => (
-              <option key={a.warehouseId} value={a.warehouseId}>
-                {a.nombre}
-                {a.codigo ? ` (${a.codigo})` : ''}
-              </option>
-            ))}
-          </optgroup>
+        {sedes.map((a) => (
+          <option key={a.warehouseId} value={a.warehouseId}>
+            {a.compania}
+          </option>
         ))}
       </select>
+      <small className="kio-ayuda">
+        {almacen ? `Enseñará las existencias de su almacén ${almacen.nombre}${almacen.codigo ? ` (${almacen.codigo})` : ''}.` : 'La tablet enseña lo que hay en el almacén principal de esa sede.'}
+      </small>
     </label>
   );
 }
