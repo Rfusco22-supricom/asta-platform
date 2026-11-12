@@ -49,7 +49,12 @@ export function Aplicacion() {
     setToken(tokenGuardado());
     // Solo en producción: en desarrollo, el código de Next no lleva hash y la caché serviría uno viejo.
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/aplicacion/sw.js', { scope: '/aplicacion' }).catch(() => undefined);
+      navigator.serviceWorker.register('/aplicacion/sw.js', { scope: '/aplicacion/' }).catch(() => undefined);
+      // El de la primera versión tenía alcance `/aplicacion` (sin barra): se quita.
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((rs) => rs.filter((r) => r.scope.endsWith('/aplicacion')).forEach((r) => void r.unregister()))
+        .catch(() => undefined);
     }
   }, []);
 
@@ -65,6 +70,44 @@ export function Aplicacion() {
   return (
 <AplicacionActiva key={token} token={token} alRechazar={rechazado} />
   );
+}
+
+/**
+ * El aviso de instalación de Chrome en Android (`beforeinstallprompt`): se
+ * guarda para enseñar nuestro propio botón «Instalar aplicación», que lo lanza
+ * con un toque. En iPad/iPhone no existe: allí se instala desde Compartir.
+ */
+type AvisoInstalar = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+let avisoGuardado: AvisoInstalar | null = null;
+const oyentesInstalar = new Set<() => void>();
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    avisoGuardado = e as AvisoInstalar;
+    oyentesInstalar.forEach((f) => f());
+  });
+  window.addEventListener('appinstalled', () => {
+    avisoGuardado = null;
+    oyentesInstalar.forEach((f) => f());
+  });
+}
+
+function useInstalar(): (() => void) | null {
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    const f = () => setVersion((v) => v + 1);
+    oyentesInstalar.add(f);
+    return () => void oyentesInstalar.delete(f);
+  }, []);
+  if (!avisoGuardado) return null;
+  const aviso = avisoGuardado;
+  return () => {
+    void aviso.prompt().catch(() => undefined);
+    void aviso.userChoice.finally(() => {
+      avisoGuardado = null;
+      oyentesInstalar.forEach((f) => f());
+    });
+  };
 }
 
 /** Que la pantalla no se apague durante la jornada (si el navegador lo permite). */
@@ -166,11 +209,19 @@ function useInstalada() {
 /** Cómo dejarla en la pantalla de inicio, según la tablet. */
 function ComoInstalar() {
   const [esIos, setEsIos] = useState(false);
+  const instalar = useInstalar();
   useEffect(() => setEsIos(/iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1), []);
   return (
     <div className="aa-instalar">
-      <b>Primero, instálala en esta tablet</b>
-      {esIos ? (
+      <b>Primero, instálala en este equipo</b>
+      {instalar ? (
+        <>
+          <span>Así queda con su icono y se abre a pantalla completa, sin la barra del navegador. Luego activa con el código.</span>
+          <button type="button" className="aa-boton aa-boton-marca aa-boton-instalar" onClick={instalar}>
+            Instalar aplicación
+          </button>
+        </>
+      ) : esIos ? (
         <span>
           En Safari, toca <b>Compartir</b> (el cuadrado con la flecha) → <b>Añadir a pantalla de inicio</b>, y ábrela desde el icono de ASTA. Luego activa con el código.
         </span>
@@ -352,14 +403,35 @@ const EJEMPLOS: [string, string][] = [
 /** Lo que se ve cuando nadie la usa: una frase grande, y toda la pantalla es el botón. */
 function Atraccion({ conexion, alEmpezar }: { conexion: Conexion; alEmpezar: () => void }) {
   const [indice, setIndice] = useState(0);
+  // Abierta en el navegador y Chrome deja instalarla: un botón discreto para el personal.
+  const instalar = useInstalar();
   useEffect(() => {
     const id = setInterval(() => setIndice((i) => (i + 1) % EJEMPLOS.length), 3_200);
     return () => clearInterval(id);
   }, []);
   const [linea, modelo] = EJEMPLOS[indice]!;
   return (
-    <button type="button" className="aa-atraccion" onClick={alEmpezar} aria-label="Empezar a buscar tu tóner">
+    <div
+      className="aa-atraccion"
+      role="button"
+      tabIndex={0}
+      onClick={alEmpezar}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && alEmpezar()}
+      aria-label="Empezar a buscar tu tóner"
+    >
       <span className="aa-atraccion-conexion">
+        {instalar && (
+          <button
+            type="button"
+            className="aa-chip-instalar"
+            onClick={(e) => {
+              e.stopPropagation();
+              instalar();
+            }}
+          >
+            Instalar aplicación
+          </button>
+        )}
         <IndicadorConexion conexion={conexion} sobreAzul />
       </span>
       <span className="aa-atraccion-izq">
@@ -384,7 +456,7 @@ function Atraccion({ conexion, alEmpezar }: { conexion: Conexion; alEmpezar: () 
         </span>
         <span className="aa-atraccion-pie">Suele estar impreso en el frente o en la tapa. Basta con las letras y los números.</span>
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -606,7 +678,7 @@ function Teclado({ alEscribir, alBorrar, alBuscar, puedeBuscar }: { alEscribir: 
             if (p.tipo === 'borrar') {
               return (
                 <button key={k} type="button" style={flex} className="aa-tecla secundaria" aria-label="Borrar" onPointerDown={(e) => pulsar(e, alBorrar)}>
-                  ⌫ Borrar
+                  ⌫<span className="aa-solo-ancho">&nbsp;Borrar</span>
                 </button>
               );
             }

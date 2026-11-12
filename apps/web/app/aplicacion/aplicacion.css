@@ -375,7 +375,8 @@
 }
 @media (max-width: 900px) {
   .aa-atraccion { grid-template-columns: 1fr; padding: 40px 32px; align-content: center; }
-  .aa-atraccion-der { display: none; }
+  /* En vertical, la placa va debajo, más pequeña; si no hay alto, no sale. */
+  .aa-atraccion-der { margin-top: 40px; max-width: 560px; gap: 14px; }
   .aa-barra { padding: 12px 20px; gap: 12px; }
   .aa-buscar, .aa-resultados { padding-left: 20px; padding-right: 20px; }
   .aa-con-asta { flex-direction: column; gap: 16px; overflow-y: auto; }
@@ -386,12 +387,149 @@
   .aa-aviso-fila { flex-direction: column; align-items: flex-start; gap: 20px; }
   .aa-aviso-botones { grid-template-columns: 1fr; }
 }
+/* ── Teléfono ─────────────────────────────────────────────────────────────
+ * Lo mismo, a la medida de una pantalla de 360–430 px: letra y botones más
+ * pequeños (siguen siendo grandes para el dedo), la barra en una línea, el
+ * teclado a todo lo ancho y los resultados en una columna que se desplaza.
+ */
 @media (max-width: 600px) {
-  .aa { font-size: 20px; }
-  .aa-conexion { font-size: 0; gap: 0; }
-  .aa-conexion i { width: 14px; height: 14px; }
-  .aa-teclado { padding: 8px; gap: 6px; }
-  .aa-teclado-fila { gap: 5px; }
-  .aa-tecla { border-radius: 10px !important; font-size: 20px !important; }
-  .aa-tecla.secundaria, .aa-tecla-buscar { font-size: 16px !important; }
+  .aa { font-size: 18px; --aa-boton: 56px; --aa-radio: 14px; }
+  .aa-t48 { font-size: 30px; }
+  .aa-t40 { font-size: 28px; }
+  .aa-t34 { font-size: 24px; }
+  .aa-t28 { font-size: 22px; }
+  .aa-t24 { font-size: 18px; }
+  .aa-cuerpo { font-size: 17px; }
+  .aa-cuerpo20 { font-size: 16px; }
+  .aa-etiqueta-mayus { font-size: 12px; }
+  .aa-boton { padding: 0 22px; font-size: 19px; }
+  .aa-boton-borde, .aa-boton-azul-borde { height: 44px; padding: 0 14px; font-size: 15px; }
+  .aa-guardados { padding: 14px 16px; font-size: 15px; border-left-width: 6px; }
+
+  /* Activación */
+  .aa-activacion { padding: 16px; align-items: flex-start; padding-top: max(24px, env(safe-area-inset-top, 0)); }
+  .aa-activacion-cuerpo { padding: 22px 18px; gap: 16px; }
+  .aa-codigo-campo { flex-basis: 100%; height: 60px; font-size: 28px; }
+  .aa-activacion-fila .aa-boton { flex: 1 1 100%; }
+  .aa-instalar { padding: 14px 16px; font-size: 15px; }
+  .aa-instalar > b { font-size: 16px; }
+
+  /* Atracción */
+  .aa-atraccion { gap: 0; padding: 72px 22px 32px; padding-top: max(72px, calc(env(safe-area-inset-top, 0) + 56px)); align-content: center; }
+  .aa-atraccion-izq { gap: 22px; }
+  .aa-atraccion .aa-logo { width: 130px !important; height: 52px !important; }
+  .aa-atraccion-titulo { font-size: clamp(32px, 9.5vw, 42px); line-height: 1.06; }
+  .aa-atraccion-sub { font-size: 18px; }
+  .aa-atraccion-boton { align-self: stretch; justify-content: space-between; height: 64px; padding: 0 26px; font-size: 22px; gap: 12px; white-space: nowrap; }
+  .aa-atraccion-boton b { font-size: 26px; }
+  .aa-atraccion-conexion { right: 16px; top: max(16px, env(safe-area-inset-top, 0)); }
+  .aa-atraccion-der { margin-top: 36px; gap: 10px; }
+  .aa-placa { gap: 14px; padding: 14px; border-radius: 20px; }
+  .aa-placa-ranura { height: 12px; margin: 0 28px; }
+  .aa-placa-bandeja { height: 10px; margin: 0 44px; }
+  .aa-placa-pantalla { min-height: 96px; padding: 14px; border-radius: 12px; }
+  .aa-placa-linea { font-size: 15px; }
+  .aa-placa-modelo { font-size: 28px; border-width: 3px; padding: 1px 10px; }
+  .aa-atraccion-pie { font-size: 15px; }
+
+  /* Barra */
+  .aa-barra { gap: 10px; padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top, 0)); }
+  .aa-barra .aa-logo { width: 72px !important; height: 29px !important; }
+  .aa-pasos { visibility: hidden; }
+  .aa-conexion { font-size: 0; gap: 0; height: 28px; padding: 0 !important; background: none !important; }
+  .aa-conexion i { width: 12px; height: 12px; }
+
+  /* Buscar */
+  .aa-buscar { gap: 10px; padding: 12px 12px 10px; padding-bottom: max(10px, env(safe-area-inset-bottom, 0)); }
+  .aa-campo { height: 60px; padding: 0 8px 0 16px; border-width: 2px !important; }
+  .aa-campo-texto { font-size: 28px; }
+  .aa-cursor { height: 32px; }
+  .aa-campo-ejemplo { margin-left: 8px; font-size: 17px; overflow: hidden; text-overflow: ellipsis; }
+  .aa-campo-corregir { padding: 0 8px; font-size: 15px; }
+  .aa-campo-limpiar { width: 48px; height: 48px; font-size: 24px; }
+  .aa-consejo { font-size: 14px; }
+  .aa-teclado { padding: 6px; gap: 6px; border-radius: 14px; }
+  .aa-teclado-fila { gap: 4px; height: clamp(42px, 6.6vh, 54px); }
+  .aa-tecla { border-radius: 8px !important; font-size: 20px !important; box-shadow: inset 0 -3px 0 var(--aa-linea); }
+  .aa-tecla.secundaria { font-size: 13px !important; }
+  .aa-solo-ancho { display: none; }
+  .aa-tecla.secundaria[aria-label='Borrar'] { font-size: 22px !important; }
+  .aa-tecla-buscar { font-size: 17px !important; }
+  .aa-lista { gap: 10px; }
+  .aa-lista-titulo { font-size: 15px; }
+  .aa-impresoras { gap: 10px; }
+  .aa-impresora { min-height: 72px; border-left-width: 6px !important; }
+  .aa-impresora-texto { padding: 10px 14px; }
+  .aa-impresora-marca { font-size: 13px; }
+  .aa-impresora-nombre { font-size: 24px; }
+  .aa-impresora-flecha { padding-right: 14px; font-size: 36px; }
+  .aa-mensaje { padding-top: 12px; }
+
+  /* Resultados: todo en una columna que se desplaza */
+  .aa-resultados { gap: 12px; padding: 10px 12px 12px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0)); overflow-y: auto; }
+  .aa-cabecera { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .aa-cabecera-impresora { font-size: 22px; white-space: normal; }
+  .aa-con-asta { flex: none; overflow: visible; gap: 12px; }
+  .aa-respuesta { padding: 16px; gap: 6px; }
+  .aa-respuesta-codigo { font-size: 30px; }
+  .aa-respuesta-resumen { font-size: 15px; }
+  .aa-recomendamos { margin-top: 8px; padding: 12px; }
+  .aa-recomendamos .aa-etiqueta-mayus { font-size: 11px; }
+  .aa-recomendamos b { font-size: 17px; }
+  .aa-opciones { gap: 10px; }
+  .aa-opciones-lista { gap: 10px; padding: 2px; }
+  .aa-producto { min-height: 0; }
+  .aa-producto-franja { width: 6px; }
+  .aa-producto-texto { padding: 12px 12px; }
+  .aa-producto-titulo { font-size: 17px; white-space: normal; }
+  .aa-producto-nombre { font-size: 12px; }
+  .aa-producto-stock { width: 92px; padding: 6px; }
+  .aa-producto-stock b { font-size: 14px; }
+  .aa-producto-stock span, .aa-producto-elegido { font-size: 13px; }
+  .aa-sello { font-size: 11px; padding: 1px 6px; }
+  .aa-pie { position: sticky; bottom: 0; min-height: 0; padding: 12px 4px 4px; font-size: 15px; background: var(--aa-papel); }
+  .aa-nota { margin-top: 8px; }
+  .aa-nota-cuerpo { padding: 20px 18px; gap: 10px; }
+
+  /* Aviso de sesión */
+  .aa-velo { padding: 16px; }
+  .aa-aviso-cuerpo { padding: 22px 18px; gap: 20px; }
+  .aa-cuenta { width: 88px; height: 88px; border-width: 6px; }
+  .aa-cuenta b { font-size: 36px; }
 }
+
+/* Teléfono en horizontal: poca altura, la atracción en una sola columna y sin márgenes de sobra. */
+@media (max-height: 720px) and (max-width: 900px) {
+  .aa-atraccion-der { display: none; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .aa-atraccion { grid-template-columns: 1fr; padding: 20px 32px; }
+  .aa-atraccion-der { display: none; }
+  .aa-atraccion-izq { gap: 14px; }
+  .aa-atraccion-titulo { font-size: 32px; }
+  .aa-atraccion-sub { font-size: 17px; }
+  .aa-atraccion-boton { height: 56px; font-size: 20px; }
+  .aa-atraccion .aa-logo { width: 110px !important; height: 44px !important; }
+  .aa-barra { padding-top: 6px; padding-bottom: 6px; }
+  .aa-buscar { gap: 8px; padding-top: 8px; }
+  .aa-buscar > h1 { display: none; }
+  .aa-campo { height: 52px; }
+  .aa-consejo { display: none; }
+  .aa-teclado-fila { height: 38px; }
+  .aa-tecla { font-size: 18px !important; }
+}
+
+/* El botón «Instalar aplicación» (Android) */
+.aa-boton-instalar { justify-self: start; margin-top: 4px; }
+.aa-chip-instalar {
+  height: 40px;
+  padding: 0 16px !important;
+  margin-right: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  color: #fff !important;
+  font-size: 16px !important;
+  font-weight: 600;
+}
+.aa-atraccion-conexion { display: flex; align-items: center; }

@@ -1,5 +1,5 @@
 /**
- * Service worker de la aplicación ASTA web (`/aplicacion`).
+ * Service worker de la aplicación ASTA web (`/aplicacion/inicio`).
  *
  * Solo para que la aplicación ABRA sin red: si la tienda se queda sin internet
  * y alguien recarga o reinicia la tablet, la página sale de aquí en vez de la
@@ -11,12 +11,11 @@
  *     de la caché si están; si no, de la red, y se guardan.
  *   · La API (`/api/…`): nunca se guarda aquí.
  *
- * Se sirve con `Service-Worker-Allowed: /aplicacion` (ver `next.config.ts`)
- * para que su alcance cubra `/aplicacion` sin la barra final.
+ * Su alcance es la carpeta `/aplicacion/`, el mismo que el del manifiesto.
  */
 
-const VERSION = 'asta-app-v1';
-const PAGINA = '/aplicacion';
+const VERSION = 'asta-app-v2';
+const PAGINA = '/aplicacion/inicio';
 const FIJOS = ['/aplicacion/manifest.webmanifest', '/aplicacion/icono-192.png', '/aplicacion/icono-512.png', '/aplicacion/logo.png'];
 
 self.addEventListener('install', (e) => {
