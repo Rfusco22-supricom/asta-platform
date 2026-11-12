@@ -1,10 +1,9 @@
-import { Aplicacion } from './Aplicacion';
+import { redirect } from 'next/navigation';
 
 /**
- * `/aplicacion`: la aplicación ASTA para tablets, en el navegador. Pública: no
- * pide la sesión del panel. La tablet se activa con el código de 6 dígitos que
- * se saca en el panel (Tablets → «Añadir tablet»), como la nativa.
+ * `/aplicacion` es la dirección que se escribe o que lleva el QR del panel; la
+ * aplicación vive en `/aplicacion/inicio` (ver allí por qué).
  */
-export default function AplicacionPage() {
-  return <Aplicacion />;
+export default function AplicacionRedirige() {
+  redirect('/aplicacion/inicio');
 }
