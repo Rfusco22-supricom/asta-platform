@@ -16,6 +16,8 @@ import { montoSchema, odooIdSchema } from './common.js';
  *
  * Mínimos subidos el 2026-10-30 a petición de Marketing: Bronce de 250 a 500,
  * Plata de 600 a 900 y Diamante de 3.000 a 4.500 al mes; Oro sigue en 1.500.
+ * Subidos otra vez el 2026-11-12: Plata a 1.000, Oro a 2.000 y Diamante a
+ * 15.000 al mes; Bronce sigue en 500.
  * Son también las cuotas mensuales del programa trimestral (`cuotasDe`).
  */
 
@@ -37,9 +39,9 @@ export interface ReglaCategoria {
 
 /** De más alta a más baja: el orden en que se prueban. */
 export const CATEGORIAS_ASTA: readonly ReglaCategoria[] = [
-  { clave: 'DIAMANTE', nombre: 'Diamante', minimoMensual: 4500, minimoMeses: 3, metaClientes: 6, metaCompraMensual: 21600 },
-  { clave: 'ORO', nombre: 'Oro', minimoMensual: 1500, minimoMeses: 3, metaClientes: 12, metaCompraMensual: 24000 },
-  { clave: 'PLATA', nombre: 'Plata', minimoMensual: 900, minimoMeses: 3, metaClientes: 24, metaCompraMensual: 22800 },
+  { clave: 'DIAMANTE', nombre: 'Diamante', minimoMensual: 15000, minimoMeses: 3, metaClientes: 6, metaCompraMensual: 21600 },
+  { clave: 'ORO', nombre: 'Oro', minimoMensual: 2000, minimoMeses: 3, metaClientes: 12, metaCompraMensual: 24000 },
+  { clave: 'PLATA', nombre: 'Plata', minimoMensual: 1000, minimoMeses: 3, metaClientes: 24, metaCompraMensual: 22800 },
   { clave: 'BRONCE', nombre: 'Bronce', minimoMensual: 500, minimoMeses: 2, metaClientes: 45, metaCompraMensual: 18000 },
   { clave: 'GENERAL', nombre: 'Cliente general', minimoMensual: 0, minimoMeses: 0, metaClientes: null, metaCompraMensual: 13600 },
 ];
