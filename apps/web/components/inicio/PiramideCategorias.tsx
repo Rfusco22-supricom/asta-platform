@@ -29,7 +29,7 @@ export interface NivelPiramide {
   compra: string;
   /** «meta $24 mil al mes». */
   meta: string;
-  /** «≥ 1.500/mes y 3 de 4 meses». */
+  /** «≥ 2.000/mes y 3 de 4 meses». */
   regla: string;
   /** Avance hacia la meta de clientes, 0–100, o `null` sin meta. */
   avance: number | null;

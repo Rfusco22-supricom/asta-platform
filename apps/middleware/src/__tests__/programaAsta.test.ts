@@ -21,7 +21,7 @@ const REPORTADO: EntradaEvaluacion['sellout'] = [true, true, true];
 const entrada = (e: Partial<EntradaEvaluacion>): EntradaEvaluacion => ({
   trimestre: '2026-Q4',
   nivel: 'PLATA',
-  compras: [1000, 950, 900],
+  compras: [1100, 1050, 1000],
   mesesTerminados: TERMINADO,
   sellout: REPORTADO,
   referenciasCompradas: 10,
@@ -62,7 +62,7 @@ describe('Trimestres', () => {
 describe('Las reglas', () => {
   it('cumple los tres obligatorios: sube uno y gana 12 tokens', () => {
     const e = evaluar(entrada({}));
-    expect(e).toMatchObject({ cuotaMensual: 900, cuotaTrimestral: 2700, compraTrimestre: 2850, nivelFinal: 'ORO', tokens: 12, definitiva: true });
+    expect(e).toMatchObject({ cuotaMensual: 1000, cuotaTrimestral: 3000, compraTrimestre: 3150, nivelFinal: 'ORO', tokens: 12, definitiva: true });
     expect(e.obligatorios).toEqual({ mensual: true, trimestral: true, sellout: true });
   });
 
@@ -85,15 +85,16 @@ describe('Las reglas', () => {
   });
 
   it('Oro que cumple se queda; el excedente de cada nivel', () => {
-    // Oro necesita el 130 %: 1.950 de media.
-    const oro = evaluar(entrada({ nivel: 'ORO', compras: [1950, 1950, 1950] }));
+    // Oro necesita el 130 %: 2.600 de media.
+    const oro = evaluar(entrada({ nivel: 'ORO', compras: [2600, 2600, 2600] }));
     expect(oro).toMatchObject({ nivelFinal: 'ORO', tokens: 13 });
     expect(oro.extras.excedente).toBe(true);
     // Bronce necesita el 150 %: 750 de media.
     expect(evaluar(entrada({ nivel: 'BRONCE', compras: [750, 750, 750] })).extras.excedente).toBe(true);
     expect(evaluar(entrada({ nivel: 'BRONCE', compras: [749, 749, 749] })).extras.excedente).toBe(false);
-    // Plata, el 140 %: 1.260.
-    expect(evaluar(entrada({ compras: [1260, 1260, 1260] })).extras.excedente).toBe(true);
+    // Plata, el 140 %: 1.400.
+    expect(evaluar(entrada({ compras: [1400, 1400, 1400] })).extras.excedente).toBe(true);
+    expect(evaluar(entrada({ compras: [1399, 1399, 1399] })).extras.excedente).toBe(false);
   });
 
   it('la racha pide este trimestre y el anterior sin fallos; la variedad, el 20 % de las referencias', () => {
@@ -101,11 +102,11 @@ describe('Las reglas', () => {
     expect(evaluar(entrada({ anteriorSinFallos: true, compras: [3000, 100, 100] })).extras.racha).toBe(false);
     expect(evaluar(entrada({ referenciasCompradas: 34 })).extras.variedad).toBe(true);
     expect(evaluar(entrada({ referenciasCompradas: 33 })).extras.variedad).toBe(false);
-    expect(evaluar(entrada({ anteriorSinFallos: true, referenciasCompradas: 34, compras: [1300, 1300, 1300] }))).toMatchObject({ tokens: 15 });
+    expect(evaluar(entrada({ anteriorSinFallos: true, referenciasCompradas: 34, compras: [1400, 1400, 1400] }))).toMatchObject({ tokens: 15 });
   });
 
   it('a mitad de trimestre: lo pendiente es null, lo logrado ya cuenta, y si cerrara hoy bajaría', () => {
-    const e = evaluar(entrada({ mesesTerminados: [true, false, false], compras: [1000, 950, 0], sellout: [true, null, null] }));
+    const e = evaluar(entrada({ mesesTerminados: [true, false, false], compras: [1100, 1050, 0], sellout: [true, null, null] }));
     expect(e.meses.map((m) => m.cumpleMinimo)).toEqual([true, true, null]);
     expect(e.obligatorios).toEqual({ mensual: null, trimestral: null, sellout: null });
     expect(e).toMatchObject({ definitiva: false, nivelFinal: 'BRONCE', tokens: 0 });
