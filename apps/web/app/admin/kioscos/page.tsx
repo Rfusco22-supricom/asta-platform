@@ -48,6 +48,7 @@ export default async function KioscosPage() {
         inicial={datos.kioscos.data}
         revisionInicial={datos.revision}
         almacenes={datos.almacenes}
+        conTiendas={!!(process.env.APP_IOS_URL || process.env.APP_ANDROID_URL)}
       />
     </Marco>
   );

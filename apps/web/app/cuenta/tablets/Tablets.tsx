@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { CodigoTablet as Codigo, Kiosco } from '@asta/shared-types';
 import { CodigoTablet } from '@/components/CodigoTablet';
+import { InstalarAplicacion } from '@/components/InstalarAplicacion';
 
 /**
  * Las tablets de la tienda del cliente: añadir una (con un código de 6 dígitos)
@@ -91,6 +92,9 @@ export function Tablets({ inicial, descargas }: { inicial: Kiosco[]; descargas: 
           }}
         />
       )}
+
+      {/* Mientras no esté en las tiendas: la aplicación web, con su QR. */}
+      {!hayDescargas && <InstalarAplicacion />}
 
       <section className="kio-alta" aria-labelledby="tab-alta-titulo">
         <div className="kio-alta-cabecera">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { AlmacenKiosco, CodigoRevision, CodigoTablet as Codigo, Kiosco } from '@asta/shared-types';
+import { InstalarAplicacion } from '@/components/InstalarAplicacion';
 import { CodigoTablet } from '@/components/CodigoTablet';
 
 /**
@@ -52,10 +53,13 @@ export function Kioscos({
   inicial,
   almacenes,
   revisionInicial,
+  conTiendas = false,
 }: {
   inicial: Kiosco[];
   almacenes: AlmacenKiosco[] | null;
   revisionInicial: CodigoRevision | null;
+  /** Ya hay enlaces de App Store o Google Play: el bloque de la aplicación web sobra. */
+  conTiendas?: boolean;
 }) {
   const [kioscos, setKioscos] = useState(inicial);
   const [codigo, setCodigo] = useState<{ codigo: Codigo; revision: boolean } | null>(null);
@@ -175,6 +179,7 @@ export function Kioscos({
 
   return (
     <div className="kio">
+      {!conTiendas && <InstalarAplicacion />}
       {codigo && (
         <CodigoTablet
           codigo={codigo.codigo}
