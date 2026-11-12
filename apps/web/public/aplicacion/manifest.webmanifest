@@ -1,0 +1,19 @@
+{
+  "id": "/aplicacion",
+  "name": "ASTA · Encuentra tu tóner",
+  "short_name": "ASTA",
+  "description": "Escribe el modelo de tu impresora y te decimos qué tóner ASTA le sirve.",
+  "lang": "es",
+  "start_url": "/aplicacion",
+  "scope": "/aplicacion",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#EDF2F8",
+  "theme_color": "#2A86F0",
+  "icons": [
+    { "src": "/aplicacion/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/aplicacion/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/aplicacion/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

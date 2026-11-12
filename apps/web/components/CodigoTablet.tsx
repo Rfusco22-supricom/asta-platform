@@ -44,6 +44,9 @@ export function CodigoTablet({
   const [qr, setQr] = useState<string | null>(null);
   const [reloj, setReloj] = useState(() => quedan(codigo.expiraEn));
   const [estado, setEstado] = useState<EstadoCodigoTablet | null>(null);
+  // El dominio del panel, para decir dónde está la aplicación web. Solo en el navegador.
+  const [origen, setOrigen] = useState('');
+  useEffect(() => setOrigen(window.location.origin.replace(/^https?:\/\//, '')), []);
 
   // El QR se dibuja en el navegador: el código no sale de esta pantalla.
   // Oscuro sobre blanco siempre, también en el tema oscuro: es lo que leen bien las cámaras.
@@ -112,6 +115,10 @@ export function CodigoTablet({
                 <>
                   <p className="kio-token-aviso">
                     Escríbelo en la tablet o escanea el QR · caduca en <strong className="kio-reloj">{reloj}</strong>
+                  </p>
+                  {/* Mientras no estén las tiendas de apps, la aplicación web (`app/aplicacion`). */}
+                  <p className="kio-token-aviso">
+                    ¿La tablet no tiene la aplicación? Abre <strong>{origen}/aplicacion</strong> en su navegador, instálala en la pantalla de inicio y escribe ahí el código.
                   </p>
                 </>
               ) : (
