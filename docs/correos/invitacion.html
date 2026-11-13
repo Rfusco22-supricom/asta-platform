@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Tu acceso al panel de ASTA</title>
+</head>
+<body style="margin:0;padding:0;background:#edf2f8;-webkit-text-size-adjust:100%;">
+<!-- Lo que se ve en la bandeja junto al asunto. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Elige tu contraseña y entra a tu panel de ASTA: compras, nivel, flyers y la aplicación para tu tienda.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#edf2f8;">
+  <tr><td align="center" style="padding:28px 12px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(18,52,96,0.12);">
+      <!-- Banner -->
+      <tr><td style="padding:0;line-height:0;">
+        <img src="{{banner}}" width="600" alt="ASTA · Ya puedes entrar a tu panel" style="display:block;width:100%;max-width:600px;height:auto;border:0;">
+      </td></tr>
+      <!-- Saludo -->
+      <tr><td style="padding:34px 40px 8px;font-family:Helvetica,Arial,sans-serif;color:#0f2236;">
+        <p style="margin:0 0 14px;font-size:22px;font-weight:bold;line-height:1.3;">Hola, {{nombre}}</p>
+        <p style="margin:0;font-size:16px;line-height:1.6;color:#44546a;">Te damos acceso al <b style="color:#0f2236;">panel de ASTA</b>. Para entrar solo falta un paso: elige tu contraseña con el botón de abajo.</p>
+      </td></tr>
+      <!-- Botón -->
+      <tr><td align="center" style="padding:26px 40px 10px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td align="center" bgcolor="#2a86f0" style="border-radius:14px;background:#2a86f0;background-image:linear-gradient(135deg,#27a9f1,#4f86f7 55%,#7c5cff);">
+            <a href="{{enlace}}" target="_blank" style="display:inline-block;padding:16px 38px;font-family:Helvetica,Arial,sans-serif;font-size:17px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;">Elegir mi contraseña&nbsp;&nbsp;→</a>
+          </td>
+        </tr></table>
+        <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#66768b;">El enlace caduca en {{dias}} días y solo sirve una vez.</p>
+      </td></tr>
+      <!-- Qué hay en el panel -->
+      <tr><td style="padding:26px 40px 6px;font-family:Helvetica,Arial,sans-serif;">
+        <p style="margin:0 0 14px;font-size:12px;font-weight:bold;letter-spacing:2px;color:#1b63c9;">QUÉ ENCUENTRAS EN TU PANEL</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td width="34" valign="top" style="padding:0 0 14px;font-size:20px;">📈</td>
+            <td valign="top" style="padding:0 0 14px;font-size:15px;line-height:1.5;color:#44546a;"><b style="color:#0f2236;">Tus compras y tu nivel ASTA.</b> Lo que llevas en el trimestre, cuánto te falta para subir y los beneficios de cada nivel.</td>
+          </tr>
+          <tr>
+            <td width="34" valign="top" style="padding:0 0 14px;font-size:20px;">🖼️</td>
+            <td valign="top" style="padding:0 0 14px;font-size:15px;line-height:1.5;color:#44546a;"><b style="color:#0f2236;">Flyers con tu tienda.</b> Diseños de ASTA con tu logo y tus datos, listos para Instagram y WhatsApp.</td>
+          </tr>
+          <tr>
+            <td width="34" valign="top" style="padding:0 0 14px;font-size:20px;">📱</td>
+            <td valign="top" style="padding:0 0 14px;font-size:15px;line-height:1.5;color:#44546a;"><b style="color:#0f2236;">La aplicación ASTA para tu mostrador.</b> Tus clientes escriben el modelo de su impresora y ven qué tóner ASTA le sirve.</td>
+          </tr>
+          <tr>
+            <td width="34" valign="top" style="padding:0 0 4px;font-size:20px;">🧾</td>
+            <td valign="top" style="padding:0 0 4px;font-size:15px;line-height:1.5;color:#44546a;"><b style="color:#0f2236;">Tus facturas y pedidos.</b> Lo que debes, lo que vence y tus pedidos, cuando quieras.</td>
+          </tr>
+        </table>
+      </td></tr>
+      <!-- Cómo entrar -->
+      <tr><td style="padding:22px 40px 30px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e6f2fd;border-radius:14px;">
+          <tr><td style="padding:18px 22px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#44546a;">
+            <b style="color:#1b63c9;">Cómo entrar después</b><br>
+            Ve a <a href="https://asta-panel.larlxe.easypanel.host" style="color:#1b63c9;font-weight:bold;text-decoration:none;">asta-panel.larlxe.easypanel.host</a> y entra con <b style="color:#0f2236;">{{para}}</b> y la contraseña que elijas.
+          </td></tr>
+        </table>
+      </td></tr>
+      <!-- Pie -->
+      <tr><td style="padding:20px 40px 26px;border-top:1px solid #dce5ef;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#66768b;">
+        ¿El botón no funciona? Copia y pega este enlace en tu navegador:<br>
+        <a href="{{enlace}}" style="color:#1b63c9;word-break:break-all;">{{enlace}}</a><br><br>
+        Si no esperabas este correo, puedes ignorarlo: nadie entrará a tu panel sin este enlace.<br>
+        ASTA · Supricom
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
