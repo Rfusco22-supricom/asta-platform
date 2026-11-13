@@ -13,7 +13,7 @@ no viva solo dentro de n8n. Si se cambia en n8n, hay que cambiarlo también aqu�
 | Invitación | `invitacion.html` | `{{nombre}}`, `{{enlace}}`, `{{dias}}`, `{{para}}`, `{{banner}}` |
 
 `{{banner}}` es la imagen de cabecera, publicada por el panel:
-`https://asta-panel.larlxe.easypanel.host/correo/banner-invitacion.png`
+`https://asta-panel.larlxe.easypanel.host/correo/banner-invitacion.jpg`
 (`apps/web/public/correo/`). Tiene que ser una dirección absoluta y pública: los
 programas de correo no ven nada del panel que no lo sea.
 
