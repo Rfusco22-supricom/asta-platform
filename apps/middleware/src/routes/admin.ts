@@ -4,6 +4,7 @@ import { authJwt } from '../middleware/authJwt.js';
 import { autorizar } from '../middleware/autorizar.js';
 import { marcarHuerfanos, sincronizarPartners } from '../services/sync.service.js';
 import { reconciliar, resincronizarUno } from '../services/reconciliation.service.js';
+import { CorreoNoValido, cambiarCorreoAcceso } from '../services/correoAcceso.service.js';
 import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS } from '../services/invitation.service.js';
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
@@ -493,6 +494,27 @@ adminRouter.post('/users/:userId/invite', autorizar('admin.usuarios.gestionar'),
   } catch (error) {
     if (error instanceof InvitacionInvalida) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ese usuario no existe.' } });
+      return;
+    }
+    next(error);
+  }
+});
+
+/**
+ * Fija el correo de acceso de un cliente que no puede usar el de Odoo, o lo
+ * devuelve al de Odoo con `email: null`. Ver `correoAcceso.service`.
+ */
+adminRouter.put('/users/:userId/correo-acceso', autorizar('admin.usuarios.gestionar'), async (req, res, next) => {
+  try {
+    const cuerpo = z.object({ email: z.string().trim().min(3).max(255).nullable() }).safeParse(req.body);
+    if (!cuerpo.success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Correo no válido.' } });
+      return;
+    }
+    res.json({ data: await cambiarCorreoAcceso(String(req.params.userId), cuerpo.data.email, req.identity.appUserId, req.ip) });
+  } catch (error) {
+    if (error instanceof CorreoNoValido) {
+      res.status(409).json({ error: { code: 'CONFLICT', message: error.message } });
       return;
     }
     next(error);

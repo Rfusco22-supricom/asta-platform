@@ -356,6 +356,8 @@ const sinAccesoSchema = z.object({
       nombre: z.string(),
       role: z.string(),
       invitacionPendiente: z.boolean(),
+      // Opcional: un middleware anterior no lo manda.
+      emailFijado: z.boolean().default(false),
     }),
   ),
   meta: z.object({

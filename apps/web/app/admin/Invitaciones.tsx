@@ -22,6 +22,8 @@ interface Candidato {
   nombre: string;
   role: string;
   invitacionPendiente: boolean;
+  /** El correo lo puso un administrador; no es el de Odoo. */
+  emailFijado: boolean;
 }
 
 interface Generada {
@@ -46,6 +48,35 @@ export function Invitaciones({
   const [generada, setGenerada] = useState<Generada | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [fallo, setFallo] = useState<string | null>(null);
+  // Cuentas cuyo correo se cambió aquí: se ve al momento, sin recargar.
+  const [cambiados, setCambiados] = useState<Record<string, { email: string; emailFijado: boolean }>>({});
+  const [editando, setEditando] = useState<string | null>(null);
+  const [nuevo, setNuevo] = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardarCorreo(c: Candidato, email: string | null) {
+    setGuardando(true);
+    setFallo(null);
+    try {
+      const res = await fetch(`/api/usuarios/${c.id}/correo`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setFallo(body?.error?.message ?? 'No se pudo cambiar el correo.');
+        return;
+      }
+      setCambiados((m) => ({ ...m, [c.id]: body.data }));
+      setEditando(null);
+      setGenerada(null);
+    } catch {
+      setFallo('No se pudo contactar con el servidor.');
+    } finally {
+      setGuardando(false);
+    }
+  }
 
   async function invitar(c: Candidato) {
     setGenerando(c.id);
@@ -58,7 +89,7 @@ export function Invitaciones({
         setFallo(body?.error?.message ?? 'No se pudo generar el enlace.');
         return;
       }
-      setGenerada({ url: body.data.url, expiraEl: body.data.expiraEl, email: c.email, enviadoPorCorreo: body.data.enviadoPorCorreo === true });
+      setGenerada({ url: body.data.url, expiraEl: body.data.expiraEl, email: cambiados[c.id]?.email ?? c.email, enviadoPorCorreo: body.data.enviadoPorCorreo === true });
     } catch {
       setFallo('No se pudo contactar con el servidor.');
     } finally {
@@ -166,14 +197,67 @@ export function Invitaciones({
               </tr>
             </thead>
             <tbody>
-              {candidatos.map((c) => (
+              {candidatos.map((c) => {
+                const correo = cambiados[c.id] ?? { email: c.email, emailFijado: c.emailFijado };
+                const esCliente = c.role !== 'SUPERADMIN' && c.role !== 'VENDEDOR';
+                return (
                 <tr key={c.id}>
                   <td>
                     <div className="cliente-fila">
                       <Avatar nombre={c.nombre} tamano="s" />
                       <span className="cliente-datos">
                         <span className="cliente-nombre">{c.nombre}</span>
-                        <span className="cliente-contacto">{c.email}</span>
+                        <span className="cliente-contacto">
+                          {correo.email}
+                          {correo.emailFijado && <span className="correo-fijado"> · puesto en el panel, no el de Odoo</span>}
+                        </span>
+                        {esCliente && editando !== c.id && (
+                          <span className="correo-acciones">
+                            <button
+                              type="button"
+                              className="btn-link"
+                              onClick={() => {
+                                setEditando(c.id);
+                                setNuevo('');
+                                setFallo(null);
+                              }}
+                            >
+                              Cambiar correo
+                            </button>
+                            {correo.emailFijado && (
+                              <button type="button" className="btn-link" disabled={guardando} onClick={() => void guardarCorreo(c, null)}>
+                                Volver al de Odoo
+                              </button>
+                            )}
+                          </span>
+                        )}
+                        {editando === c.id && (
+                          <form
+                            className="correo-form"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              void guardarCorreo(c, nuevo);
+                            }}
+                          >
+                            <input
+                              className="input"
+                              type="email"
+                              required
+                              autoFocus
+                              value={nuevo}
+                              onChange={(e) => setNuevo(e.target.value)}
+                              placeholder="Correo con el que entrará"
+                              aria-label={`Nuevo correo de acceso de ${c.nombre}`}
+                            />
+                            <button type="submit" className="btn btn-inline" disabled={guardando}>
+                              {guardando ? 'Guardando…' : 'Guardar'}
+                            </button>
+                            <button type="button" className="btn-link" onClick={() => setEditando(null)}>
+                              Cancelar
+                            </button>
+                            <span className="correo-nota">Solo para entrar al panel: Odoo no cambia y las facturas siguen yendo a su correo.</span>
+                          </form>
+                        )}
                       </span>
                     </div>
                   </td>
@@ -188,11 +272,12 @@ export function Invitaciones({
                       disabled={generando === c.id}
                     >
                       {/* Con correo sale sola; sin él, el aviso dice que se copie. */}
-                      {generando === c.id ? 'Invitando…' : c.invitacionPendiente ? 'Reenviar' : 'Invitar'}
+                      {generando === c.id ? 'Invitando…' : c.invitacionPendiente && !cambiados[c.id] ? 'Reenviar' : 'Invitar'}
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -79,6 +79,9 @@ export type AuditAction =
   | 'pedido.enviado'
   | 'pedido.atendido'
   | 'user.invitado'
+  /// Un administrador fijó (o quitó) el correo de acceso de un cliente que no
+  /// puede usar el de Odoo (`correoAcceso.service`).
+  | 'user.correo_acceso'
   | 'user.invitacion_aceptada'
   /// Alguien pidió restablecer una contraseña (#53). El resultado —enviado, sin
   /// cuenta, límite por hora…— va en los metadatos: la respuesta al usuario es
