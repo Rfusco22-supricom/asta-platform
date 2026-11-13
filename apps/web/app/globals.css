@@ -620,6 +620,11 @@ tbody tr.linked:hover .cliente-nombre { color: var(--accent); }
 .aviso-pendiente strong { color: var(--text-2); font-weight: 600; }
 
 /* ── Enlace de invitación ─────────────────────────────────────────────────── */
+.correo-fijado { color: var(--text-3); font-size: 12px; }
+.correo-acciones { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-size: 12.5px; }
+.correo-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.correo-form .input { flex: 1 1 240px; min-width: 0; }
+.correo-nota { flex-basis: 100%; font-size: 12px; color: var(--text-3); }
 
 .enlace-copiable {
   display: flex;

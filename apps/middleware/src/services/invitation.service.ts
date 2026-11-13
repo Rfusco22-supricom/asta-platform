@@ -250,6 +250,8 @@ export interface SinAcceso {
   nombre: string;
   role: string;
   invitacionPendiente: boolean;
+  /** El correo lo puso un administrador; no es el de Odoo. */
+  emailFijado: boolean;
 }
 
 /**
@@ -285,6 +287,7 @@ export async function listarSinAcceso(
         email: true,
         fullName: true,
         role: true,
+        emailFijado: true,
         authTokens: {
           where: { purpose: 'INVITE', usedAt: null, expiresAt: { gt: new Date() } },
           select: { id: true },
@@ -306,6 +309,7 @@ export async function listarSinAcceso(
       nombre: u.fullName,
       role: u.role,
       invitacionPendiente: u.authTokens.length > 0,
+      emailFijado: u.emailFijado,
     })),
     total,
     coincidencias: coincidencias === -1 ? total : coincidencias,

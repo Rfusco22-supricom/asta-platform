@@ -291,7 +291,8 @@ export async function resincronizarUno(
     where: { email },
     select: { odooPartnerId: true },
   });
-  if (enUso && enUso.odooPartnerId !== odooPartnerId) {
+  const fijado = await prisma.appUser.findUnique({ where: { odooPartnerId }, select: { emailFijado: true } });
+  if (enUso && enUso.odooPartnerId !== odooPartnerId && !fijado?.emailFijado) {
     return {
       ok: false,
       mensaje: `El correo ${email} ya pertenece al partner ${enUso.odooPartnerId}.`,
@@ -325,7 +326,9 @@ export async function resincronizarUno(
   }
 
   // El rol no se toca, igual que en el sync masivo: el de staff lo decide un
-  // humano y el nivel de un cliente, la pasada de niveles.
-  await prisma.appUser.update({ where: { id: existente.id }, data: datos });
+  // humano y el nivel de un cliente, la pasada de niveles. Ni el correo, si lo
+  // fijó un administrador (`correoAcceso.service`).
+  const { email: _correoOdoo, ...sinCorreo } = datos;
+  await prisma.appUser.update({ where: { id: existente.id }, data: fijado?.emailFijado ? sinCorreo : datos });
   return { ok: true, mensaje: 'Cuenta actualizada.' };
 }

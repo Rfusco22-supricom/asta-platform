@@ -168,6 +168,9 @@ model AppUser {
   /// SIEMPRE normalizado con `normalizarEmail()` antes de escribir o buscar.
   /// La columna es utf8mb4_bin: la base no perdona mayúsculas. Ver nota 3.
   email    String  @unique(map: "uq_app_users_email") @db.VarChar(255)
+  /// El correo lo puso un administrador en el panel (el cliente no puede usar
+  /// el de Odoo, y Odoo no se cambia): el sync deja de copiarlo desde Odoo.
+  emailFijado Boolean @default(false) @map("email_fijado")
   fullName String  @map("full_name") @db.VarChar(255)
   phone    String? @db.VarChar(50)
 

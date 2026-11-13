@@ -318,7 +318,7 @@ export async function sincronizarPartners(
 
         const existente = await prisma.appUser.findUnique({
           where: { odooPartnerId: f.id },
-          select: { id: true, email: true, fullName: true, role: true, odooPricelistId: true, phone: true },
+          select: { id: true, email: true, emailFijado: true, fullName: true, role: true, odooPricelistId: true, phone: true },
         });
 
         if (!existente) {
@@ -331,7 +331,8 @@ export async function sincronizarPartners(
 
         // El sync NO toca `role`: el de staff lo decide un humano, y el nivel de
         // un cliente lo pone la pasada de niveles (ver `NIVEL_DE_CUENTA_NUEVA`).
-        const cambios = { ...datos };
+        // Tampoco el correo si lo fijó un administrador (`correoAcceso.service`).
+        const cambios = { ...datos, ...(existente.emailFijado ? { email: existente.email } : {}) };
 
         const igual =
           existente.email === cambios.email &&
