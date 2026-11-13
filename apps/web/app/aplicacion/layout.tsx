@@ -16,7 +16,9 @@ const mono = DM_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--
 export const metadata: Metadata = {
   title: 'ASTA · Encuentra tu tóner',
   description: 'Escribe el modelo de tu impresora y te decimos qué tóner ASTA le sirve.',
-  manifest: '/aplicacion/manifest.webmanifest',
+  // Archivo e identificador nuevos (2026-11-13): la primera instalación en Android
+  // dejaba restos con la identidad anterior (`/aplicacion`) y la nueva no se instalaba.
+  manifest: '/aplicacion/asta.webmanifest',
   applicationName: 'ASTA',
   appleWebApp: { capable: true, title: 'ASTA', statusBarStyle: 'black-translucent' },
   icons: { icon: '/aplicacion/icono-192.png', apple: '/aplicacion/icono-180.png' },
