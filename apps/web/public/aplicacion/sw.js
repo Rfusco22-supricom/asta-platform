@@ -14,9 +14,9 @@
  * Su alcance es la carpeta `/aplicacion/`, el mismo que el del manifiesto.
  */
 
-const VERSION = 'asta-app-v2';
+const VERSION = 'asta-app-v3';
 const PAGINA = '/aplicacion/inicio';
-const FIJOS = ['/aplicacion/manifest.webmanifest', '/aplicacion/icono-192.png', '/aplicacion/icono-512.png', '/aplicacion/logo.png'];
+const FIJOS = ['/aplicacion/asta.webmanifest', '/aplicacion/icono-192.png', '/aplicacion/icono-512.png', '/aplicacion/logo.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
