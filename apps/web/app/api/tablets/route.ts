@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { kioscoRespuestaSchema } from '@asta/shared-types';
+import { respuestaFiltrada } from '@/lib/filtrar';
 import { getSession } from '@/lib/session';
 
 /**
@@ -27,8 +29,7 @@ export async function PATCH(req: Request) {
       body: JSON.stringify({ activo }),
       cache: 'no-store',
     });
-    const body = await res.json().catch(() => null);
-    return NextResponse.json(body ?? {}, { status: res.status });
+    return respuestaFiltrada(res, kioscoRespuestaSchema);
   } catch {
     return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'El middleware no responde.' } }, { status: 503 });
   }

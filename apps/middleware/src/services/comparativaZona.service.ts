@@ -1,4 +1,4 @@
-import { MIN_CLIENTES_ZONA, PARTE_ALTA_ZONA, type ComparativaZona, type GrupoZona, type MedidaZona } from '@asta/shared-types';
+import { MIN_CLIENTES_ZONA, PARTE_ALTA_ZONA, redondoDeGrupo, type ComparativaZona, type GrupoZona, type MedidaZona } from '@asta/shared-types';
 import { readGroup, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { ultimosDoceMeses, type RangoPedido } from './rango.js';
@@ -116,8 +116,9 @@ export function cuantil(ordenados: number[], q: number): number {
 
 function medida(valores: number[], tuyo: number): MedidaZona {
   const o = [...valores].sort((a, b) => a - b);
-  // Redondeado: el grupo se dice en cifras redondas, no con la de un cliente al céntimo.
-  return { tuyo, tipico: Math.round(cuantil(o, 0.5)), parteAlta: Math.round(cuantil(o, 1 - PARTE_ALTA_ZONA)) };
+  // Redondeado a dos cifras: el grupo se dice en cifras redondas, nunca con la
+  // compra de otro cliente al dólar (un cuantil puede caer justo en uno).
+  return { tuyo, tipico: redondoDeGrupo(cuantil(o, 0.5)), parteAlta: redondoDeGrupo(cuantil(o, 1 - PARTE_ALTA_ZONA)) };
 }
 
 export function grupo(ambito: GrupoZona['ambito'], nombre: string, miembros: CompraCliente[], suyo: CompraCliente | undefined): GrupoZona {

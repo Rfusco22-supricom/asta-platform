@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { MIN_CLIENTES_ZONA, comparativaZonaSchema, porcentajeArriba } from '@asta/shared-types';
+import { MIN_CLIENTES_ZONA, comparativaZonaSchema, porcentajeArriba, redondoDeGrupo } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { emitirAccessToken } from '../auth/jwt.js';
@@ -52,18 +52,20 @@ describe('Las cuentas', () => {
 describe('La comparativa', () => {
   const c = (compras: number, zona: string | null, referencias = 1, meses = 1): CompraCliente => ({ compras, referencias, meses, zona });
 
-  // Seis en Carabobo (1–6), dos en Apure (7–8), uno sin estado (9).
+  // Ocho en Carabobo (1–6, 13, 14), dos en Apure (7–8), uno sin estado (9).
   const tabla: TablaZonas = {
     clientes: new Map([
-      [1, c(100, 'carabobo', 2, 1)],
-      [2, c(200, 'carabobo', 3, 2)],
-      [3, c(300, 'carabobo', 4, 3)],
-      [4, c(400, 'carabobo', 5, 4)],
-      [5, c(500, 'carabobo', 6, 5)],
-      [6, c(600, 'carabobo', 7, 6)],
-      [7, c(1000, 'apure')],
+      [1, c(1234, 'carabobo', 2, 1)],
+      [2, c(2345, 'carabobo', 3, 2)],
+      [3, c(3456, 'carabobo', 4, 3)],
+      [4, c(4567, 'carabobo', 5, 4)],
+      [5, c(5678, 'carabobo', 6, 5)],
+      [6, c(6789, 'carabobo', 7, 6)],
+      [13, c(7890, 'carabobo', 8, 7)],
+      [14, c(8901, 'carabobo', 9, 8)],
+      [7, c(10000, 'apure')],
       [8, c(50, 'apure')],
-      [9, c(700, null)],
+      [9, c(9500, null)],
     ]),
     nombres: new Map([
       ['carabobo', 'Carabobo'],
@@ -74,10 +76,11 @@ describe('La comparativa', () => {
   it('su puesto y las cifras de su estado', () => {
     const r = compararCon(tabla, 4, 'Carabobo (VE)');
     expect(r.estado).toBe('Carabobo');
-    expect(r.zona).toMatchObject({ ambito: 'ZONA', nombre: 'Carabobo', clientes: 6, puesto: 3 });
-    expect(r.zona!.compras).toEqual({ tuyo: 400, tipico: 350, parteAlta: 475 });
+    expect(r.zona).toMatchObject({ ambito: 'ZONA', nombre: 'Carabobo', clientes: 8, puesto: 5 });
+    // Típico 5.122,5 y parte alta 7.064,25, redondeados: lo suyo exacto, lo del grupo no.
+    expect(r.zona!.compras).toEqual({ tuyo: 4567, tipico: 5100, parteAlta: 7100 });
     expect(r.zona!.referencias.tuyo).toBe(5);
-    expect(r.pais).toMatchObject({ ambito: 'PAIS', clientes: 9, puesto: 5 });
+    expect(r.pais).toMatchObject({ ambito: 'PAIS', clientes: 11, puesto: 7 });
   });
 
   it(`con menos de ${MIN_CLIENTES_ZONA} clientes en su estado, solo el país`, () => {
@@ -91,7 +94,7 @@ describe('La comparativa', () => {
     const r = compararCon(tabla, 99, 'Carabobo (VE)');
     expect(r.zona!.puesto).toBeNull();
     expect(r.zona!.compras.tuyo).toBe(0);
-    expect(r.zona!.clientes).toBe(6);
+    expect(r.zona!.clientes).toBe(8);
   });
 
   it('sin estado en su ficha, solo el país', () => {
@@ -102,9 +105,24 @@ describe('La comparativa', () => {
   });
 
   it('los empates comparten puesto', () => {
-    const empate: TablaZonas = { ...tabla, clientes: new Map([...tabla.clientes, [10, c(400, 'carabobo')]]) };
-    expect(compararCon(empate, 4, 'Carabobo (VE)').zona!.puesto).toBe(3);
-    expect(compararCon(empate, 10, 'Carabobo (VE)').zona!.puesto).toBe(3);
+    const empate: TablaZonas = { ...tabla, clientes: new Map([...tabla.clientes, [10, c(4567, 'carabobo')]]) };
+    expect(compararCon(empate, 4, 'Carabobo (VE)').zona!.puesto).toBe(5);
+    expect(compararCon(empate, 10, 'Carabobo (VE)').zona!.puesto).toBe(5);
+  });
+
+  it('en un estado justo en el mínimo, ninguna cifra de grupo es la compra exacta de un cliente', () => {
+    const r = compararCon(tabla, 1, 'Carabobo (VE)');
+    const suyas = [...tabla.clientes.values()].map((x) => x.compras);
+    expect(suyas).not.toContain(r.zona!.compras.tipico);
+    expect(suyas).not.toContain(r.zona!.compras.parteAlta);
+  });
+
+  it('las cifras de grupo, a dos cifras significativas', () => {
+    expect(redondoDeGrupo(5122.5)).toBe(5100);
+    expect(redondoDeGrupo(7064.25)).toBe(7100);
+    expect(redondoDeGrupo(15_800)).toBe(16_000);
+    expect(redondoDeGrupo(87.4)).toBe(87);
+    expect(redondoDeGrupo(0)).toBe(0);
   });
 
   it('sin nadie que compre, no hay país', () => {

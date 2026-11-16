@@ -71,7 +71,7 @@ export type ApiScope = z.infer<typeof apiScopeSchema>;
  * integración. "INVENTORY_READ" no le dice nada a nadie.
  */
 export const SCOPE_DESCRIPTION: Record<ApiScope, string> = {
-  INVENTORY_READ: 'Consultar el catálogo y las existencias',
+  INVENTORY_READ: 'Consultar el catálogo ASTA y sus existencias',
   PRICING_READ: 'Ver los precios de su tarifa',
   INVOICES_READ: 'Consultar sus facturas y saldos',
   ORDERS_READ: 'Consultar sus pedidos',

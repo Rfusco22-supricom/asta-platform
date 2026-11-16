@@ -12,6 +12,7 @@ import { searchRead } from '../odoo/client.js';
 import { prisma } from '../config/prisma.js';
 import { issueApiKey } from '../services/apiKey.service.js';
 import { vaciarCachesInventario } from '../services/inventory.service.js';
+import { MARCA_ASTA } from '../services/asta.service.js';
 import { normalizarModelo } from '../services/recomendador/normalizar.js';
 import { vaciarCachesRecomendador } from '../services/recomendador/recomendador.service.js';
 
@@ -266,13 +267,26 @@ describe('#39 · Productos compatibles', () => {
     expect(rangos).toEqual([...rangos].sort((a, b) => a - b));
   });
 
-  it('la existencia es la misma que publica /inventory para ese cliente', async () => {
+  it('la existencia es la misma que publica /inventory para ese cliente', async (ctx) => {
+    // `/inventory` solo publica ASTA: lo de otras marcas que se recomienda no
+    // sale ahí, y se comparan solo los que sí.
     const conSku = r.body.data.filter((p) => p.sku);
-    expect(conSku.length).toBeGreaterThan(0);
+    let comparados = 0;
     for (const p of conSku) {
       const inv = await get<{ data: Array<{ id: number; stock: string }> }>(`/inventory?sku=${encodeURIComponent(p.sku!)}`);
-      expect(inv.body.data.find((i) => i.id === p.id)?.stock, p.sku!).toBe(p.stock);
+      const enInventario = inv.body.data.find((i) => i.id === p.id);
+      if (!enInventario) {
+        // Si no sale en /inventory, tiene que ser de otra marca.
+        const deAsta = await searchRead<{ id: number }>('product.product', [['id', '=', p.id], ['product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA]], ['id']);
+        expect(deAsta, `${p.sku} es ASTA y no sale en /inventory`).toEqual([]);
+        continue;
+      }
+      expect(enInventario.stock, p.sku!).toBe(p.stock);
+      comparados++;
     }
+    // Si esta impresora solo tiene compatibles de otras marcas, no hay con qué
+    // comparar: sale como «saltado», no en verde.
+    if (comparados === 0) ctx.skip();
   });
 
   it('soloDisponibles=true no devuelve agotados', async () => {

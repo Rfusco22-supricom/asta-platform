@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { dominioInventario, estadoDeStock, umbralStockBajo } from '../services/inventory.service.js';
+import { MARCA_ASTA } from '../services/asta.service.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 
 /**
@@ -37,12 +38,14 @@ describe('#30 · estadoDeStock', () => {
 });
 
 describe('#30 · dominioInventario', () => {
-  it('siempre filtra vendible, almacenable y compañía, con o sin filtros del cliente', () => {
+  it('siempre filtra vendible, almacenable, compañía y marca ASTA, con o sin filtros del cliente', () => {
     for (const consulta of [{ soloDisponibles: false }, { sku: 'X', q: 'toner', soloDisponibles: true }]) {
       const d = dominioInventario(consulta, 9);
       expect(d).toContainEqual(['sale_ok', '=', true]);
       expect(d).toContainEqual(['detailed_type', '=', 'product']);
       expect(d).toContainEqual(['company_id', 'in', [false, 9]]);
+      // Otras marcas son catálogo de la empresa: no salen por la API.
+      expect(d).toContainEqual(['product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA]);
     }
   });
 

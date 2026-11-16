@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { codigoTabletRespuestaSchema, estadoCodigoTabletRespuestaSchema } from '@asta/shared-types';
+import type { z } from 'zod';
+import { respuestaFiltrada } from '@/lib/filtrar';
 import { getSession } from '@/lib/session';
 
 /**
@@ -12,7 +15,7 @@ import { getSession } from '@/lib/session';
 
 const MIDDLEWARE_URL = process.env.MIDDLEWARE_URL ?? 'http://localhost:3001';
 
-async function proxy(ruta: string, metodo: 'GET' | 'POST', cuerpo?: unknown): Promise<NextResponse> {
+async function proxy(ruta: string, metodo: 'GET' | 'POST', exito: z.ZodType, cuerpo?: unknown): Promise<NextResponse> {
   const sesion = await getSession();
   if (!sesion) return NextResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Sin sesión.' } }, { status: 401 });
   try {
@@ -22,8 +25,7 @@ async function proxy(ruta: string, metodo: 'GET' | 'POST', cuerpo?: unknown): Pr
       body: metodo === 'POST' ? JSON.stringify(cuerpo ?? {}) : undefined,
       cache: 'no-store',
     });
-    const body = await res.json().catch(() => null);
-    return NextResponse.json(body ?? {}, { status: res.status });
+    return respuestaFiltrada(res, exito);
   } catch {
     return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'El middleware no responde.' } }, { status: 503 });
   }
@@ -32,11 +34,11 @@ async function proxy(ruta: string, metodo: 'GET' | 'POST', cuerpo?: unknown): Pr
 const idValido = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id);
 
 export async function POST(req: Request) {
-  return proxy('/api/v1/account/tablets/codigos', 'POST', await req.json().catch(() => null));
+  return proxy('/api/v1/account/tablets/codigos', 'POST', codigoTabletRespuestaSchema, await req.json().catch(() => null));
 }
 
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
   if (!idValido(id)) return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Falta el código.' } }, { status: 400 });
-  return proxy(`/api/v1/account/tablets/codigos/${id}`, 'GET');
+  return proxy(`/api/v1/account/tablets/codigos/${id}`, 'GET', estadoCodigoTabletRespuestaSchema);
 }

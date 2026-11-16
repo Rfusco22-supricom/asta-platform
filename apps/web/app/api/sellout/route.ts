@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { reporteSellOutRespuestaSchema, validacionSellOutRespuestaSchema, validacionSellOutSchema } from '@asta/shared-types';
+import { respuestaFiltrada } from '@/lib/filtrar';
 import { getSession } from '@/lib/session';
 
 /**
@@ -24,8 +26,9 @@ export async function POST(req: Request) {
       body: JSON.stringify(cuerpo),
       cache: 'no-store',
     });
-    const body = await res.json().catch(() => null);
-    return NextResponse.json(body ?? {}, { status: res.status });
+    // Al navegador, solo lo del contrato (`lib/filtrar.ts`). Si no se guardó por
+    // errores (422), van también las filas con errores.
+    return respuestaFiltrada(res, guardar === true ? reporteSellOutRespuestaSchema : validacionSellOutRespuestaSchema, validacionSellOutSchema);
   } catch {
     return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'El middleware no responde.' } }, { status: 503 });
   }
