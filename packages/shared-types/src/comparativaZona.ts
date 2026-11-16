@@ -15,18 +15,35 @@ import { z } from 'zod';
  * el estado de su ficha en Odoo.
  */
 
-/** Clientes que tiene que tener un estado para compararse con él. */
-export const MIN_CLIENTES_ZONA = 5;
+/**
+ * Clientes que tiene que tener un estado para compararse con él. Con 5, en un
+ * estado de 5 «el cliente típico» era exactamente lo que compró uno de ellos
+ * (el cuantil cae justo en un cliente). Con 8, los dos cuantiles se interpolan
+ * entre dos clientes, y además las cifras de grupo salen redondeadas
+ * (`redondoDeGrupo`).
+ */
+export const MIN_CLIENTES_ZONA = 8;
 
 /** «Los que más compran»: el cuarto de arriba. */
 export const PARTE_ALTA_ZONA = 0.25;
 
+/**
+ * Una cifra de grupo, a dos cifras significativas: 5.122 → 5.100, 7.064 → 7.100,
+ * 87 → 87. El cliente ve «unos $5.100», nunca la compra de otro al dólar.
+ */
+export function redondoDeGrupo(x: number): number {
+  if (!(x > 0)) return 0;
+  if (x < 100) return Math.round(x);
+  const paso = 10 ** (Math.floor(Math.log10(x)) - 1);
+  return Math.round(x / paso) * paso;
+}
+
 /** Una medida: lo suyo frente al grupo. */
 export const medidaZonaSchema = z.object({
   tuyo: z.number().nonnegative(),
-  /** El cliente típico: la mitad del grupo está por encima y la mitad por debajo. */
+  /** El cliente típico: la mitad del grupo está por encima y la mitad por debajo. Redondeado (`redondoDeGrupo`). */
   tipico: z.number().nonnegative(),
-  /** Desde cuánto se está en el `PARTE_ALTA_ZONA` que más tiene. */
+  /** Desde cuánto se está en el `PARTE_ALTA_ZONA` que más tiene. Redondeado (`redondoDeGrupo`). */
   parteAlta: z.number().nonnegative(),
 });
 export type MedidaZona = z.infer<typeof medidaZonaSchema>;

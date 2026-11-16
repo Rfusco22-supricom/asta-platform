@@ -44,12 +44,39 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   /**
+   * Cabeceras de todas las páginas, y el service worker sin caché.
+   *
+   *   · Ninguna web ajena puede meter el panel en un iframe (`frame-ancestors`
+   *     y `X-Frame-Options`, para navegadores viejos): así nadie le pone una
+   *     página falsa encima a un cliente para que pulse donde no quiere.
+   *   · Al salir del panel a otra web no se manda la ruta, que puede llevar
+   *     ids (`Referrer-Policy`).
+   *   · El navegador no adivina tipos de archivo (`nosniff`), siempre HTTPS
+   *     (`Strict-Transport-Security`, sin subdominios: no son todos nuestros) y
+   *     sin cámara, micrófono ni ubicación, que el panel no usa.
+   *
+   * No hay CSP de scripts: Next mete scripts en línea y una política estricta
+   * pide nonces en cada página. `frame-ancestors` va sola, que no toca nada más.
+   *
    * El service worker de la aplicación ASTA web (`/aplicacion/sw.js`), sin
    * caché: una versión nueva tiene que llegar a las tablets en cuanto se
    * despliega.
    */
   async headers() {
-    return [{ source: '/aplicacion/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] }];
+    return [
+      {
+        source: '/:ruta*',
+        headers: [
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+      { source: '/aplicacion/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
+    ];
   },
 
   webpack: (config) => {

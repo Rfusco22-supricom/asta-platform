@@ -2,6 +2,7 @@ import type { ErrorCode, InventoryQuery, PublicInventoryItem, StockStatus } from
 import { executeKw, searchRead, type OdooDomain } from '../odoo/client.js';
 import { CacheTtl } from '../utils/cacheTtl.js';
 import { anotarCacheHit } from '../utils/contextoPeticion.js';
+import { MARCA_ASTA } from './asta.service.js';
 
 /**
  * Existencias del catálogo para la API pública (#30).
@@ -39,6 +40,10 @@ import { anotarCacheHit } from '../utils/contextoPeticion.js';
  * Costos ni precios. Los campos que se piden a Odoo son una lista cerrada, y la
  * respuesta se construye campo a campo: aunque alguien añada `standard_price`
  * a la lista, no llega al cliente sin tocar también `aItem`.
+ *
+ * Tampoco otras marcas: solo productos ASTA (decisión del 2026-11-16). Cualquier
+ * cliente puede crearse una key, y el catálogo y la existencia de lo que no es
+ * ASTA son datos de la empresa, no suyos.
  */
 
 /** Campos que se leen de Odoo. Cerrada a propósito: ver arriba. */
@@ -189,6 +194,8 @@ export function dominioInventario(
     // Hoy ningún producto tiene compañía. Si alguno la tuviera, otro cliente no
     // debe verlo: el catálogo global no es excusa para filtrar productos ajenos.
     ['company_id', 'in', [false, companyId]],
+    // Solo ASTA: ver «Qué NUNCA sale de aquí».
+    ['product_tmpl_id.spiff_brand_id', '=', MARCA_ASTA],
   ];
   if (consulta.sku) dominio.push(['default_code', '=', consulta.sku]);
   if (consulta.q) dominio.push('|', ['name', 'ilike', consulta.q], ['default_code', 'ilike', consulta.q]);

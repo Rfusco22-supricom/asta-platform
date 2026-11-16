@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getImpulsa, getRevisionCompatibilidades } from '@/lib/api';
 import { getSession } from '@/lib/session';
@@ -9,7 +10,7 @@ import { getSession } from '@/lib/session';
  *   · Administrador → `/admin/compatibilidades`: las propuestas sin revisar.
  *
  * Lo pide el menú al cargar y cada pocos minutos (`components/NavLateral.tsx`).
- * Se guarda aquí 3 minutos por usuario: varias pestañas abiertas, o ir de una
+ * Se guarda aquí 3 minutos por sesión: varias pestañas abiertas, o ir de una
  * pantalla a otra, no repiten la lectura. Las dos lecturas ya tienen su propia
  * caché en el middleware; esta evita además el viaje.
  *
@@ -40,7 +41,10 @@ export async function GET(req: Request) {
   const sesion = await getSession();
   if (!sesion) return NextResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Sin sesión.' } }, { status: 401 });
 
-  const clave = sesion.usuario.id;
+  // La clave es la SESIÓN (el token, en hash), no el `id` de la cookie `asta_u`:
+  // esa cookie no va firmada, y con el id de otro usuario se leerían sus números
+  // guardados sin que el middleware llegara a ver el token.
+  const clave = createHash('sha256').update(sesion.accessToken).digest('hex');
   const ahora = Date.now();
   const fresco = new URL(req.url).searchParams.get('fresco') === '1';
   let guardado = guardados.get(clave);

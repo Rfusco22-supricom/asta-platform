@@ -409,7 +409,7 @@ export const OPERACIONES: Operacion[] = [
     id: 'listarInventario',
     resumen: 'Consultar existencias',
     descripcion:
-      'Productos a la venta con su existencia en el almacén que te vende, descontando lo ya reservado. Se publica como estado, no como cantidad. Sin precios: pídelos a `/pricing` con el `sku`. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
+      'Productos ASTA a la venta con su existencia en el almacén que te vende, descontando lo ya reservado. Se publica como estado, no como cantidad. Sin precios: pídelos a `/pricing` con el `sku`. Las respuestas pueden venir de una cache de hasta 60 segundos (`meta.desdeCache`).',
     scope: 'INVENTORY_READ',
     query: inventoryQuerySchema,
     exito: {

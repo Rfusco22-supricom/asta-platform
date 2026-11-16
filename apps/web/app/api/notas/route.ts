@@ -53,7 +53,9 @@ export async function POST(req: Request) {
     partnerId?: number;
     texto?: string;
   };
-  if (!partnerId) {
+  // Un entero de verdad: va dentro de la ruta del middleware, y un texto con
+  // «../» la cambiaría.
+  if (!Number.isInteger(partnerId) || partnerId! <= 0) {
     return NextResponse.json(
       { error: { code: 'INVALID_PARTNER_ID', message: 'Falta el cliente.' } },
       { status: 400 },
@@ -67,11 +69,11 @@ export async function DELETE(req: Request) {
     partnerId?: number;
     notaId?: string;
   };
-  if (!partnerId || !notaId) {
+  if (!Number.isInteger(partnerId) || partnerId! <= 0 || typeof notaId !== 'string' || !notaId) {
     return NextResponse.json(
       { error: { code: 'VALIDATION_ERROR', message: 'Faltan datos.' } },
       { status: 400 },
     );
   }
-  return proxy('DELETE', `/api/v1/salesperson/clients/${partnerId}/notes/${notaId}`);
+  return proxy('DELETE', `/api/v1/salesperson/clients/${partnerId}/notes/${encodeURIComponent(notaId)}`);
 }

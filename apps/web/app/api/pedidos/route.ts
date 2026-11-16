@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { pedidoClienteRespuestaSchema } from '@asta/shared-types';
+import { respuestaFiltrada } from '@/lib/filtrar';
 import { getSession } from '@/lib/session';
 
 /**
@@ -22,8 +24,7 @@ export async function POST(req: Request) {
       body: JSON.stringify(cuerpo),
       cache: 'no-store',
     });
-    const body = await res.json().catch(() => null);
-    return NextResponse.json(body ?? {}, { status: res.status });
+    return respuestaFiltrada(res, pedidoClienteRespuestaSchema);
   } catch {
     return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'El middleware no responde.' } }, { status: 503 });
   }

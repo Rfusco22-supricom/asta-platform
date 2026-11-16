@@ -39,7 +39,7 @@ export async function POST(
   const { userId } = await params;
 
   try {
-    const res = await fetch(`${MIDDLEWARE_URL}/api/v1/admin/users/${userId}/invite`, {
+    const res = await fetch(`${MIDDLEWARE_URL}/api/v1/admin/users/${encodeURIComponent(userId)}/invite`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${sesion.accessToken}` },
       cache: 'no-store',
