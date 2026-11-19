@@ -24,6 +24,7 @@ import { MARCA_ASTA } from './asta.service.js';
 import { categoriasAsta } from './categoriasAsta.service.js';
 import { normalizarRif, rifUtilizable } from './duplicados.js';
 import { dePantalla } from './pantallas.js';
+import { enPeriodoDeLaFactura } from './criterioFacturacion.js';
 import { LINEAS_ASTA } from './ventasAsta.service.js';
 
 /**
@@ -166,19 +167,23 @@ export async function clavesDe(ids: number[]): Promise<Map<number, string>> {
   return new Map([...new Set(ids)].map((id) => [id, claveDe(id, ficha)]));
 }
 
-/** clave → lo comprado cada mes, y cuánto compró cada ficha (la que más, da nombre). */
+/**
+ * ficha → lo comprado cada mes. Una nota de crédito resta en el mes de la
+ * factura que corrige (`enPeriodoDeLaFactura`): devolver en noviembre algo de
+ * octubre no deja noviembre en negativo.
+ */
 async function comprasPorMes(meses: string[]): Promise<Map<number, number>[]> {
   const grupos = await Promise.all(
     meses.map((mes) =>
       readGroup<{ partner_id: [number, string] | false; balance: number }>(
         'account.move.line',
-        [...LINEAS_ASTA, ['invoice_date', '>=', `${mes}-01`], ['invoice_date', '<=', finDeMes(mes)]],
+        [...LINEAS_ASTA, ...enPeriodoDeLaFactura(`${mes}-01`, finDeMes(mes))],
         ['balance:sum'],
         ['partner_id'],
       ),
     ),
   );
-  return grupos.map((lista) => new Map(lista.flatMap((g) => (g.partner_id ? [[g.partner_id[0], -g.balance] as [number, number]] : []))));
+  return grupos.map((lista) => new Map(lista.flatMap((g) => (g.partner_id ? [[g.partner_id[0], -g.balance || 0] as [number, number]] : []))));
 }
 
 /** ficha → productos ASTA distintos que compró en el trimestre (neto de devoluciones). */
