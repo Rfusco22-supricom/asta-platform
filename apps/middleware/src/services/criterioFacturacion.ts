@@ -44,6 +44,28 @@ export const TIPO_FACTURADO: Clausula = ['move_type', 'in', TIPOS_FACTURADO];
 /** La misma cláusula, para `account.move.line`. */
 export const TIPO_FACTURADO_LINEA: Clausula = ['move_id.move_type', 'in', TIPOS_FACTURADO];
 
+/**
+ * Las líneas de factura de un periodo, con cada nota de crédito en el periodo
+ * de la FACTURA QUE CORRIGE, no en el suyo. Para `account.move.line`.
+ *
+ * Es lo que pide la compra mensual de un cliente (Programa ASTA, ritmo del mes):
+ * si en noviembre devuelve parte de lo que compró en octubre, lo que baja es su
+ * octubre. Con la fecha de la nota, su noviembre salía en negativo sin haber
+ * comprado nada ese mes. Una nota sin factura de origen (`reversed_entry_id`
+ * vacío) cuenta en su propia fecha, como antes.
+ *
+ * Los totales de facturación (inicio, ventas, informes) siguen con la fecha de
+ * cada documento: son contabilidad, y deben cuadrar con Odoo.
+ */
+export function enPeriodoDeLaFactura(desde: string, hasta: string): Array<Clausula | '&' | '|'> {
+  return [
+    '|',
+    '&', ['move_id.reversed_entry_id', '=', false],
+    '&', ['invoice_date', '>=', desde], ['invoice_date', '<=', hasta],
+    '&', ['move_id.reversed_entry_id.invoice_date', '>=', desde], ['move_id.reversed_entry_id.invoice_date', '<=', hasta],
+  ];
+}
+
 /** Criterio que viaja en las respuestas, para que la pantalla diga cómo suma. */
 export const CRITERIO = { netoDeDevoluciones: true } as const;
 

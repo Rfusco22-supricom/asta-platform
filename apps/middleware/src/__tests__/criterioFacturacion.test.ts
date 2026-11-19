@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, plegarPorTipo } from '../services/criterioFacturacion.js';
+import { TIPO_FACTURADO, TIPO_FACTURADO_LINEA, enPeriodoDeLaFactura, plegarPorTipo } from '../services/criterioFacturacion.js';
 
 /*
  * #26 · «Total facturado» es neto de devoluciones, en todo el panel.
@@ -67,5 +67,16 @@ describe('#26 · Plegado', () => {
       ['amount_total_signed'],
     ).get(9);
     expect(r).toEqual({ sumas: { amount_total_signed: -50 }, facturas: 0 });
+  });
+});
+
+describe('Compra del mes: la nota de crédito, en el mes de su factura', () => {
+  it('sin factura de origen, por su fecha; con factura de origen, por la fecha de la factura', () => {
+    expect(enPeriodoDeLaFactura('2026-11-01', '2026-11-30')).toEqual([
+      '|',
+      '&', ['move_id.reversed_entry_id', '=', false],
+      '&', ['invoice_date', '>=', '2026-11-01'], ['invoice_date', '<=', '2026-11-30'],
+      '&', ['move_id.reversed_entry_id.invoice_date', '>=', '2026-11-01'], ['move_id.reversed_entry_id.invoice_date', '<=', '2026-11-30'],
+    ]);
   });
 });
