@@ -13,6 +13,7 @@ import {
   topar,
   trimestreAnterior,
   trimestreDe,
+  clientTierSchema,
   type CategoriasAsta,
   type ClaveCategoria,
   type ClientePrograma,
@@ -35,16 +36,18 @@ import { LINEAS_ASTA } from './ventasAsta.service.js';
  * ── El nivel de partida ──────────────────────────────────────────────────────
  *
  * El nivel con el que un cliente empieza un trimestre es con el que acabó el
- * anterior (`programa_trimestres.nivel_fin`). En el primer trimestre del
- * programa no hay anterior: es su categoría de antes (#131) el día que empezó,
- * con los cuatro meses completos previos. Si el anterior todavía no se ha
- * cerrado, se usa con el que acabaría.
+ * anterior (`programa_trimestres.nivel_fin`). Si el anterior todavía no se ha
+ * cerrado, se usa con el que acabaría. Quien entra al programa en el trimestre
+ * —y todos en el primero, que no tiene anterior— empieza en Cliente general.
  *
- * ── Quién entra ──────────────────────────────────────────────────────────────
+ * ── Quién entra (2026-11-20) ─────────────────────────────────────────────────
  *
- * Todo cliente con un nivel por encima de Cliente general (aunque no compre:
- * entonces baja), y todo el que compró ASTA en el trimestre. Agrupados por RIF,
- * como las categorías: el mismo `clave`.
+ * Solo los clientes con acceso al panel: las cuentas de cliente activas que ya
+ * entraron alguna vez (`app_users.primer_acceso_at`). Llevar el nivel de quien
+ * no puede verlo no tiene sentido. Su programa empieza el mes de su primer
+ * acceso (hora de Caracas): ese trimestre se le mira solo desde ese mes
+ * (`evaluar`, `desde`). Agrupados por RIF, como las categorías: el mismo
+ * `clave`; si varias cuentas comparten RIF, cuenta la que entró primero.
  */
 
 /** Qué hace falta para evaluar a un cliente: lo que se lee de Odoo y de la base. */
@@ -61,6 +64,11 @@ export interface EntradaEvaluacion {
   referenciasTotal: number;
   /** El trimestre anterior cumplió la cuota mensual los tres meses. `null` si no se sabe. */
   anteriorSinFallos: boolean | null;
+  /**
+   * Desde qué mes del trimestre (0, 1 o 2) está en el programa: el de su primer
+   * acceso al panel, si fue en este trimestre. Los meses de antes no cuentan.
+   */
+  desde?: number;
 }
 
 const redondear = (x: number) => Math.round(x * 100) / 100;
@@ -79,20 +87,29 @@ function todos(xs: Array<boolean | null>): boolean | null {
  * que ya se alcanzó no vuelve atrás: quien pasó el mínimo de un mes a mitad de
  * mes ya lo cumple. El nivel con el que acabaría trata lo pendiente como no
  * cumplido: es lo que pasaría si el trimestre cerrara hoy.
+ *
+ * Con `desde`, los meses de antes de entrar al programa no se piden: compra 0,
+ * ni cumplen ni fallan, y la cuota trimestral es la mensual por los meses que
+ * quedan.
  */
 export function evaluar(e: EntradaEvaluacion): EvaluacionTrimestre {
-  const cuota = cuotasDe(e.nivel);
+  const desde = Math.min(Math.max(e.desde ?? 0, 0), 2);
+  const enPrograma = [0, 1, 2].map((i) => i >= desde);
+  const activos = <T>(xs: T[]) => xs.filter((_, i) => enPrograma[i]);
+  const cuota = cuotasDe(e.nivel, 3 - desde);
   const meses = mesesDelTrimestre(e.trimestre);
   const terminado = e.mesesTerminados.every(Boolean);
-  const compraTrimestre = redondear(e.compras.reduce((s, x) => s + x, 0));
+  const compras = e.compras.map((c, i) => (enPrograma[i] ? c : 0));
+  const sellouts = e.sellout.map((x, i) => (enPrograma[i] ? x : null));
+  const compraTrimestre = redondear(compras.reduce((s, x) => s + x, 0));
 
-  const cumpleMinimo = e.compras.map((c, i) => (c >= cuota.mensual ? true : e.mesesTerminados[i] ? false : null));
+  const cumpleMinimo = compras.map((c, i) => (!enPrograma[i] ? null : c >= cuota.mensual ? true : e.mesesTerminados[i] ? false : null));
   const alcanzado = (logrado: boolean) => (logrado ? true : terminado ? false : null);
 
-  const mensual = todos(cumpleMinimo);
+  const mensual = todos(activos(cumpleMinimo));
   const trimestral = alcanzado(compraTrimestre >= cuota.trimestral);
-  const sellout = todos(e.sellout);
-  const excedente = alcanzado(compraTrimestre / 3 >= cuota.mensual * EXCEDENTE[e.nivel]);
+  const sellout = todos(activos(sellouts));
+  const excedente = alcanzado(compraTrimestre / (3 - desde) >= cuota.mensual * EXCEDENTE[e.nivel]);
   const racha = mensual === false || e.anteriorSinFallos === false ? false : mensual === true && e.anteriorSinFallos === true ? true : null;
   const variedad = alcanzado(e.referenciasTotal > 0 && e.referenciasCompradas >= Math.ceil(e.referenciasTotal * VARIEDAD));
 
@@ -105,14 +122,14 @@ export function evaluar(e: EntradaEvaluacion): EvaluacionTrimestre {
     nivel: e.nivel,
     cuotaMensual: cuota.mensual,
     cuotaTrimestral: cuota.trimestral,
-    meses: meses.map((mes, i) => ({ mes, compra: redondear(e.compras[i]!), cumpleMinimo: cumpleMinimo[i]!, sellout: e.sellout[i]! })),
+    meses: meses.map((mes, i) => ({ mes, compra: redondear(compras[i]!), cumpleMinimo: cumpleMinimo[i]!, sellout: sellouts[i]!, enPrograma: enPrograma[i]! })),
     compraTrimestre,
     obligatorios: { mensual, trimestral, sellout },
     extras: { excedente, racha, variedad },
     referencias: { compradas: e.referenciasCompradas, total: e.referenciasTotal },
     tokens,
     nivelFinal,
-    definitiva: terminado && e.sellout.every((s) => s !== null),
+    definitiva: terminado && activos(sellouts).every((s) => s !== null),
   };
 }
 
@@ -165,6 +182,44 @@ function claveDe(id: number, ficha: Map<number, Ficha>): string {
 export async function clavesDe(ids: number[]): Promise<Map<number, string>> {
   const ficha = await fichas(ids);
   return new Map([...new Set(ids)].map((id) => [id, claveDe(id, ficha)]));
+}
+
+/** Lo que un cliente (su grupo por RIF) compró de ASTA en un mes. */
+export interface CompraDelMes {
+  clave: string;
+  /** La ficha que más compró del grupo. */
+  partnerId: number;
+  nombre: string;
+  vendedor: string | null;
+  vendedorOdooUserId: number | null;
+  compra: number;
+}
+
+/**
+ * Lo comprado de ASTA en `mes` por TODOS los clientes, estén o no en el
+ * programa, con el mismo criterio que el programa (`comprasPorMes`). Para el
+ * ritmo del mes de las alertas.
+ */
+export async function comprasDelMesPorCliente(mes: string): Promise<CompraDelMes[]> {
+  const [porFicha] = await comprasPorMes([mes]);
+  const ficha = await fichas([...porFicha!.keys()]);
+  const grupos = new Map<string, Map<number, number>>();
+  for (const [id, monto] of porFicha!) {
+    const k = claveDe(id, ficha);
+    grupos.set(k, (grupos.get(k) ?? new Map()).set(id, monto));
+  }
+  return [...grupos].map(([clave, deFicha]) => {
+    const principal = [...deFicha].sort((a, b) => b[1] - a[1])[0]![0];
+    const f = ficha.get(principal);
+    return {
+      clave,
+      partnerId: principal,
+      nombre: limpiarEspacios(f?.name || `Cliente #${principal}`),
+      vendedor: f?.user_id ? nombrePersona(f.user_id[1]) : null,
+      vendedorOdooUserId: f?.user_id ? f.user_id[0] : null,
+      compra: redondear([...deFicha.values()].reduce((s, x) => s + x, 0)),
+    };
+  });
 }
 
 /**
@@ -225,6 +280,51 @@ async function selloutEnPlazo(meses: string[]): Promise<Map<number, Set<string>>
   return r;
 }
 
+/** Un cliente del programa: el mes en que entró (el de su primer acceso) y su ficha. */
+export interface Miembro {
+  /** «AAAA-MM», en hora de Caracas. */
+  desde: string;
+  partnerId: number;
+}
+
+/** «AAAA-MM» de un instante, en Caracas (UTC−4 todo el año). */
+function mesEnCaracas(d: Date): string {
+  return new Date(d.getTime() - 4 * 3_600_000).toISOString().slice(0, 7);
+}
+
+/**
+ * Quién está en el programa antes de `hasta`: las cuentas de cliente activas que
+ * ya entraron al panel. Por RIF (o la ficha comercial sin RIF utilizable, como
+ * las cuentas en `aplicarNiveles`); de un grupo, la cuenta que entró primero.
+ */
+export async function miembrosDelPrograma(hasta: Date): Promise<Map<string, Miembro>> {
+  const cuentas = await prisma.appUser.findMany({
+    where: { role: { in: clientTierSchema.options }, isActive: true, primerAccesoAt: { not: null, lt: hasta } },
+    select: { odooPartnerId: true, primerAccesoAt: true },
+  });
+  if (cuentas.length === 0) return new Map();
+  const ficha = new Map(
+    (
+      await searchRead<{ id: number; vat: string | false; commercial_partner_id: [number, string] | false }>(
+        'res.partner',
+        [['id', 'in', [...new Set(cuentas.map((c) => c.odooPartnerId))]]],
+        ['vat', 'commercial_partner_id'],
+        { context: { active_test: false } },
+      )
+    ).map((f) => [f.id, f]),
+  );
+  const r = new Map<string, Miembro>();
+  for (const c of cuentas) {
+    const f = ficha.get(c.odooPartnerId);
+    const rif = normalizarRif(f?.vat || null);
+    const clave = rifUtilizable(rif) ? rif! : `p${f?.commercial_partner_id ? f.commercial_partner_id[0] : c.odooPartnerId}`;
+    const desde = mesEnCaracas(c.primerAccesoAt!);
+    const ya = r.get(clave);
+    if (!ya || desde < ya.desde) r.set(clave, { desde, partnerId: c.odooPartnerId });
+  }
+  return r;
+}
+
 interface Partida {
   nivel: ClaveCategoria;
   /** Si el trimestre anterior cumplió la cuota mensual los tres meses, si se sabe. */
@@ -242,18 +342,8 @@ async function partida(trimestre: string, hoy: Date): Promise<Map<string, Partid
   if (cerrados.length > 0) {
     return new Map(cerrados.map((c) => [c.clave, { nivel: c.nivelFin, sinFallos: c.cumpleMensual, partnerId: c.odooPartnerId }]));
   }
-  if (trimestre <= PRIMER_TRIMESTRE) {
-    const [a, q] = trimestre.split('-Q').map(Number) as [number, number];
-    // El día que empezó el trimestre: la ventana son los cuatro meses completos de antes.
-    const categorias = await categoriasAsta({ hoy: new Date(Date.UTC(a, (q - 1) * 3, 1, 12)) });
-    // Los tres últimos de esos cuatro meses son el trimestre anterior: con ellos, la racha.
-    return new Map(
-      categorias.clientes.map((c) => [
-        c.clave,
-        { nivel: topar(c.categoria), sinFallos: c.porMes.slice(-3).every((x) => x >= cuotasDe(topar(c.categoria)).mensual), partnerId: c.partnerId },
-      ]),
-    );
-  }
+  // El primero no tiene anterior: todos empiezan en Cliente general.
+  if (trimestre <= PRIMER_TRIMESTRE) return new Map();
   // El anterior aún no se cerró: con lo que acabaría.
   const previos = await evaluarTrimestre(anterior, hoy);
   return new Map(previos.map((c) => [c.clave, { nivel: c.evaluacion.nivelFinal, sinFallos: c.evaluacion.obligatorios.mensual, partnerId: c.partnerId }]));
@@ -263,9 +353,10 @@ async function partida(trimestre: string, hoy: Date): Promise<Map<string, Partid
  * Cómo va cada cliente en `trimestre` a fecha `hoy`: el trimestre en curso, o
  * uno ya terminado (entonces es el cierre que tocaría).
  */
-export async function evaluarTrimestre(trimestre: string, hoy = new Date()): Promise<ClientePrograma[]> {
+export async function evaluarTrimestre(trimestre: string, hoy = new Date(), opciones: { miembros?: Map<string, Miembro> } = {}): Promise<ClientePrograma[]> {
   const meses = mesesDelTrimestre(trimestre);
-  const [inicio, compras, refs, total, sellout, saldos] = await Promise.all([
+  const [miembros, inicio, compras, refs, total, sellout, saldos] = await Promise.all([
+    opciones.miembros ?? miembrosDelPrograma(limiteSellout(meses[2])),
     partida(trimestre, hoy),
     comprasPorMes(meses),
     referenciasCompradas(meses),
@@ -275,7 +366,7 @@ export async function evaluarTrimestre(trimestre: string, hoy = new Date()): Pro
   ]);
 
   // El RIF de todas las fichas que aparecen: las que compraron, las que reportaron y las de partida.
-  const ids = [...compras.flatMap((m) => [...m.keys()]), ...refs.keys(), ...sellout.keys(), ...[...inicio.values()].map((p) => p.partnerId)];
+  const ids = [...compras.flatMap((m) => [...m.keys()]), ...refs.keys(), ...sellout.keys(), ...[...miembros.values()].map((m) => m.partnerId)];
   const ficha = await fichas(ids);
 
   interface Acumulado {
@@ -305,25 +396,26 @@ export async function evaluarTrimestre(trimestre: string, hoy = new Date()): Pro
   const terminados = meses.map((m) => terminoElMes(m, hoy)) as [boolean, boolean, boolean];
   const plazoVencido = meses.map((m) => hoy > limiteSellout(m));
 
-  const claves = new Set([...grupos.keys(), ...[...inicio.entries()].filter(([, p]) => p.nivel !== 'GENERAL').map(([k]) => k)]);
+  // Solo los que tienen acceso al panel (ver la cabecera): las compras de los demás no se miran.
   const clientes: ClientePrograma[] = [];
-  for (const clave of claves) {
+  for (const [clave, m] of miembros) {
     const g = grupos.get(clave);
-    const p = inicio.get(clave);
-    const total3 = g ? g.compras.reduce((s, x) => s + x, 0) : 0;
-    // Solo devoluciones, sin nivel: no está en el programa.
-    if (!p && total3 <= 0) continue;
-    const principal = g && g.porFicha.size ? [...g.porFicha.entries()].sort((a, b) => b[1] - a[1])[0]![0] : p!.partnerId;
+    // Entró en este trimestre: empieza en Cliente general y desde el mes de su primer acceso.
+    const nuevo = m.desde >= meses[0];
+    const p = nuevo ? undefined : inicio.get(clave);
+    const principal = g && g.porFicha.size ? [...g.porFicha.entries()].sort((a, b) => b[1] - a[1])[0]![0] : m.partnerId;
     const evaluacion = evaluar({
       trimestre,
       // Nadie empieza por encima de `NIVEL_MAXIMO` (Diamante, bloqueado).
       nivel: topar(p?.nivel ?? 'GENERAL'),
       compras: g?.compras ?? [0, 0, 0],
       mesesTerminados: terminados,
-      sellout: meses.map((m, i) => (g?.sellout.has(m) ? true : plazoVencido[i] ? false : null)) as EntradaEvaluacion['sellout'],
+      sellout: meses.map((mes, i) => (g?.sellout.has(mes) ? true : plazoVencido[i] ? false : null)) as EntradaEvaluacion['sellout'],
       referenciasCompradas: g?.referencias.size ?? 0,
       referenciasTotal: total,
-      anteriorSinFallos: p?.sinFallos ?? null,
+      // Sin trimestre anterior en el programa no hay racha.
+      anteriorSinFallos: p?.sinFallos ?? false,
+      desde: nuevo ? Math.max(0, meses.indexOf(m.desde)) : 0,
     });
     const f = ficha.get(principal);
     clientes.push({
@@ -449,17 +541,13 @@ export async function cerrarTrimestre(
 
 /**
  * El nivel de cada cliente hoy, para las cuentas (`aplicarNiveles`): con el que
- * acabó su último trimestre cerrado. Antes del primer cierre, su categoría el
- * día que empezó el programa. Los que no salen aquí son Cliente general. Nadie
- * pasa de `NIVEL_MAXIMO`: con Diamante bloqueado, quien compra para él es Oro.
+ * acabó su último trimestre cerrado. Antes del primer cierre, todos son Cliente
+ * general (el programa empieza ahí). Los que no salen aquí son Cliente general.
+ * Nadie pasa de `NIVEL_MAXIMO`: con Diamante bloqueado, quien compra para él es Oro.
  */
 export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
   const ultimo = await prisma.programaTrimestre.aggregate({ _max: { trimestre: true } });
-  if (!ultimo._max.trimestre) {
-    const [a, q] = PRIMER_TRIMESTRE.split('-Q').map(Number) as [number, number];
-    const categorias = await categoriasAsta({ hoy: new Date(Date.UTC(a, (q - 1) * 3, 1, 12)) });
-    return new Map(categorias.clientes.map((c) => [c.clave, topar(c.categoria)]));
-  }
+  if (!ultimo._max.trimestre) return new Map();
   const filas = await prisma.programaTrimestre.findMany({ where: { trimestre: ultimo._max.trimestre }, select: { clave: true, nivelFin: true } });
   return new Map(filas.map((f) => [f.clave, topar(f.nivelFin)]));
 }
@@ -468,9 +556,10 @@ export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
  * El programa de UN cliente en el trimestre en curso, para «Mis métricas».
  *
  * Sale de la misma evaluación de todos (`evaluarTrimestre`, guardada un rato):
- * así el cliente ve lo mismo que Supricom. Si no está en ella —Cliente general
- * que no ha comprado este trimestre— se le evalúa con cero, contra Bronce, con
- * el sell-out que sí haya reportado.
+ * así el cliente ve lo mismo que Supricom. Si no está en ella —todavía no ha
+ * entrado al panel, como cuando el administrador mira su panel— se le evalúa
+ * como si entrara hoy: Cliente general desde este mes, con cero y con el
+ * sell-out que sí haya reportado.
  */
 export async function programaDeCliente(partnerId: number, hoy = new Date()): Promise<{ saldoTokens: number; evaluacion: EvaluacionTrimestre }> {
   const trimestre = trimestreDe(hoy);
@@ -501,7 +590,8 @@ export async function programaDeCliente(partnerId: number, hoy = new Date()): Pr
     sellout: meses.map((m) => (enPlazo.has(m) ? true : hoy > limiteSellout(m) ? false : null)) as EntradaEvaluacion['sellout'],
     referenciasCompradas: 0,
     referenciasTotal: total,
-    anteriorSinFallos: null,
+    anteriorSinFallos: false,
+    desde: Math.max(0, meses.indexOf(mesEnCaracas(hoy))),
   });
   return { saldoTokens: saldo._sum.tokens ?? 0, evaluacion };
 }

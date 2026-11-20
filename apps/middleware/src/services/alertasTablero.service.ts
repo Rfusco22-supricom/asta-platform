@@ -1,12 +1,12 @@
 import {
   SEDES,
   UMBRALES_ALERTAS as U,
-  mesesDelTrimestre,
   trimestreDe,
   type AlertaConcentracion,
   type AlertaRitmo,
   type AlertaTendencia,
   type AlertasTablero,
+  type ClienteCategoria,
   type ClientePrograma,
   type EstadoAlerta,
   type ProductoEnRiesgo,
@@ -18,7 +18,7 @@ import { MARCA_ASTA } from './asta.service.js';
 import { FACTURA } from './criterioFacturacion.js';
 import { SIN_INTERCOMPANIA_LINEA_PEDIDO, SIN_INTERCOMPANIA_PEDIDO } from './intercompania.js';
 import { dePantalla } from './pantallas.js';
-import { clavesDe, evaluarTrimestre } from './programaAsta.service.js';
+import { categoriasDelPrograma, clavesDe, comprasDelMesPorCliente, evaluarTrimestre, type CompraDelMes } from './programaAsta.service.js';
 import { enSede } from './sede.js';
 import { LINEAS_ASTA } from './ventasAsta.service.js';
 
@@ -28,9 +28,12 @@ import { LINEAS_ASTA } from './ventasAsta.service.js';
  *
  * ── De dónde sale cada cifra ─────────────────────────────────────────────────
  *
- *   · Ritmo: el objetivo y la ejecución salen del Programa ASTA del trimestre
- *     (`evaluarTrimestre`, la misma evaluación que ve el cliente): los clientes
- *     con nivel, su cuota mensual y lo que llevan comprado este mes.
+ *   · Ritmo: TODOS los clientes (2026-11-20). El objetivo de cada uno es la
+ *     cuota mensual de su nivel en el Programa ASTA (`evaluarTrimestre`, la
+ *     misma evaluación que ve el cliente) o, si no tiene nivel, lo que compra
+ *     de media al mes en los cuatro meses completos anteriores
+ *     (`categoriasAsta`). La ejecución, lo que lleva comprado este mes, con el
+ *     criterio del programa: una nota de crédito resta en el mes de su factura.
  *   · Concentración: lo facturado de ASTA en el mes, por cliente (agrupado por
  *     RIF, como el programa) y por referencia.
  *   · Cobertura: de los clientes con nivel, cuántos compraron ASTA en los
@@ -349,24 +352,57 @@ async function enRiesgoEnSede(sede: { id: number; nombre: string }, semanas: Arr
 // Las tres alertas
 // ─────────────────────────────────────────────────────────────────────────────
 
-function alertaRitmo(programados: ClientePrograma[], indiceMes: number, mes: string, dias: AlertaRitmo['diasHabiles']): AlertaRitmo {
-  const compraDelMes = (c: ClientePrograma) => c.evaluacion.meses[indiceMes]?.compra ?? 0;
-  const objetivo = programados.reduce((s, c) => s + c.evaluacion.cuotaMensual, 0);
-  const ejecucion = programados.reduce((s, c) => s + compraDelMes(c), 0);
+function alertaRitmo(
+  programados: ClientePrograma[],
+  habitual: ClienteCategoria[],
+  compras: CompraDelMes[],
+  mes: string,
+  dias: AlertaRitmo['diasHabiles'],
+): AlertaRitmo {
+  // Por cliente (RIF). El vendedor y el objetivo del programa mandan sobre los de la media.
+  interface Fila {
+    vendedor: string | null;
+    odooUserId: number | null;
+    objetivo: number;
+    ejecucion: number;
+  }
+  const filas = new Map<string, Fila>();
+  const fila = (clave: string, de: { vendedor: string | null; vendedorOdooUserId: number | null }) =>
+    filas.get(clave) ?? filas.set(clave, { vendedor: de.vendedor, odooUserId: de.vendedorOdooUserId, objetivo: 0, ejecucion: 0 }).get(clave)!;
+  for (const c of habitual) fila(c.clave, c).objetivo = Math.max(0, c.compraMensual);
+  for (const c of compras) fila(c.clave, c).ejecucion = c.compra;
+  for (const c of programados) {
+    const f = fila(c.clave, c);
+    Object.assign(f, { vendedor: c.vendedor, odooUserId: c.vendedorOdooUserId, objetivo: c.evaluacion.cuotaMensual });
+  }
+  // Sin objetivo y sin compras este mes, no aporta nada.
+  const cuentan = [...filas.values()].filter((f) => f.objetivo > 0 || f.ejecucion !== 0);
 
-  const porVendedor = new Map<number | null, ClientePrograma[]>();
-  for (const c of programados) porVendedor.set(c.vendedorOdooUserId, [...(porVendedor.get(c.vendedorOdooUserId) ?? []), c]);
-  const vendedores: RitmoVendedor[] = [...porVendedor].map(([odooUserId, cs]) => {
-    const o = cs.reduce((s, c) => s + c.evaluacion.cuotaMensual, 0);
-    const e = cs.reduce((s, c) => s + compraDelMes(c), 0);
+  const objetivo = cuentan.reduce((s, f) => s + f.objetivo, 0);
+  const ejecucion = cuentan.reduce((s, f) => s + f.ejecucion, 0);
+
+  const porVendedor = new Map<number | null, Fila[]>();
+  for (const f of cuentan) porVendedor.set(f.odooUserId, [...(porVendedor.get(f.odooUserId) ?? []), f]);
+  const vendedores: RitmoVendedor[] = [...porVendedor].map(([odooUserId, fs]) => {
+    const o = fs.reduce((s, f) => s + f.objetivo, 0);
+    const e = fs.reduce((s, f) => s + f.ejecucion, 0);
     const r = evaluarRitmo(o, e, dias);
-    return { vendedor: cs[0]!.vendedor, odooUserId, clientes: cs.length, objetivo: redondear(o), ejecucion: redondear(e), proyeccion: r.proyeccion, estado: r.estado };
+    return { vendedor: fs[0]!.vendedor, odooUserId, clientes: fs.length, objetivo: redondear(o), ejecucion: redondear(e), proyeccion: r.proyeccion, estado: r.estado };
   });
   // Primero los que van peor: menos proyección frente a su objetivo.
   const cumplimiento = (v: RitmoVendedor) => (v.objetivo > 0 ? v.proyeccion / v.objetivo : 1);
   vendedores.sort((a, b) => GRAVEDAD[b.estado] - GRAVEDAD[a.estado] || cumplimiento(a) - cumplimiento(b));
 
-  return { mes, diasHabiles: dias, objetivo: redondear(objetivo), ejecucion: redondear(ejecucion), clientes: programados.length, vendedores, ...evaluarRitmo(objetivo, ejecucion, dias) };
+  return {
+    mes,
+    diasHabiles: dias,
+    objetivo: redondear(objetivo),
+    ejecucion: redondear(ejecucion),
+    clientes: cuentan.length,
+    clientesConNivel: programados.length,
+    vendedores,
+    ...evaluarRitmo(objetivo, ejecucion, dias),
+  };
 }
 
 export async function alertasTablero(ahora = new Date()): Promise<AlertasTablero> {
@@ -378,9 +414,11 @@ export async function alertasTablero(ahora = new Date()): Promise<AlertasTablero
   const semanas = semanasCompletas(hoy, U.semanasVenta);
   const desdeActivo = sumarDias(hoy, -(U.diasActivo - 1));
 
-  const [programa, delMes, porProducto, recientes, tendencia, ...enRiesgo] = await Promise.all([
+  const [programa, habitual, comprasDelMes, delMes, porProducto, recientes, tendencia, ...enRiesgo] = await Promise.all([
     // La misma clave que `programaEnCurso`: lo comparten el inicio, el programa y esto.
     dePantalla(`programa:${trimestre}`, () => evaluarTrimestre(trimestre, ahora)),
+    categoriasDelPrograma(),
+    comprasDelMesPorCliente(mes),
     facturadoPor<{ partner_id: [number, string] | false }>(`${mes}-01`, hoy, ['partner_id']),
     facturadoPor<{ product_id: [number, string] | false }>(`${mes}-01`, hoy, ['product_id']),
     facturadoPor<{ partner_id: [number, string] | false }>(desdeActivo, hoy, ['partner_id']),
@@ -389,7 +427,7 @@ export async function alertasTablero(ahora = new Date()): Promise<AlertasTablero
   ]);
 
   const programados = programa.filter((c) => c.evaluacion.nivel !== 'GENERAL');
-  const ritmo = alertaRitmo(programados, mesesDelTrimestre(trimestre).indexOf(mes), mes, dias);
+  const ritmo = alertaRitmo(programados, habitual.clientes, comprasDelMes, mes, dias);
 
   // ── Concentración y cobertura
   const ids = [...delMes, ...recientes].flatMap((g) => (g.partner_id ? [g.partner_id[0]] : []));

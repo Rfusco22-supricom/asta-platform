@@ -2,27 +2,23 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../config/prisma.js';
 
 /**
- * El nivel de cada cuenta es su categoría de ASTA (#131).
+ * El nivel de cada cuenta es su nivel en el Programa ASTA (`nivelesActuales`:
+ * el del último trimestre cerrado).
  *
- * Odoo y el cálculo de categorías se simulan: tres grupos de cliente por RIF
- * (uno Oro, uno Plata y uno sin compra), y una cuenta de staff que no se toca.
+ * Odoo y los niveles del programa se simulan: tres grupos de cliente por RIF
+ * (uno Oro, uno Plata y uno sin nivel), y una cuenta de staff que no se toca.
  */
 
 const RIF_ORO = 'J999000111';
 const RIF_PLATA = 'J999000222';
 const PARTNER = { oro1: 3_970_000_001, oro2: 3_970_000_002, plata: 3_970_000_003, nada: 3_970_000_004, staff: 3_970_000_005 };
 
-vi.mock('../services/categoriasAsta.service.js', () => ({
-  categoriasAsta: async () => ({
-    meses: ['2026-06', '2026-07', '2026-08', '2026-09'],
-    compraMensual: 0,
-    meta: 100000,
-    porCategoria: [],
-    clientes: [
-      { clave: RIF_ORO, categoria: 'ORO' },
-      { clave: RIF_PLATA, categoria: 'PLATA' },
-    ],
-  }),
+vi.mock('../services/programaAsta.service.js', () => ({
+  nivelesActuales: async () =>
+    new Map([
+      [RIF_ORO, 'ORO'],
+      [RIF_PLATA, 'PLATA'],
+    ]),
 }));
 
 vi.mock('../odoo/client.js', async (original) => {

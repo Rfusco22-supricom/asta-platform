@@ -30,6 +30,14 @@ import { claveCategoriaSchema, reglaDe, type ClaveCategoria } from './categorias
  *   · variedad  — compró al menos `VARIEDAD` de las referencias ASTA que vendemos.
  *
  * Los tokens se acumulan y no caducan. Las reglas viven solo aquí.
+ *
+ * ── Quién está en el programa (2026-11-20) ───────────────────────────────────
+ *
+ * Solo los clientes con acceso al panel: el programa de cada uno empieza el mes
+ * de su primer acceso (`app_users.primer_acceso_at`), en Cliente general. Si
+ * entra a mitad de trimestre, ese trimestre se le mira solo desde ese mes: los
+ * meses de antes no cuentan (`enPrograma: false`) y la cuota trimestral es su
+ * mínimo mensual por los meses que le quedan.
  */
 
 export const TOKENS = { mensual: 4, trimestral: 4, sellout: 4, excedente: 1, racha: 1, variedad: 1 } as const;
@@ -60,7 +68,7 @@ export function plazoSellout(hoy: Date = new Date()): { mes: string; ultimoDia: 
   return { mes: `${a}-${String(m + 1).padStart(2, '0')}`, ultimoDia, dias: ultimoDia - caracas.getUTCDate() + 1 };
 }
 
-/** El primer trimestre del programa: el nivel de partida es la categoría de antes al empezarlo. */
+/** El primer trimestre del programa: no hay uno anterior, y todos empiezan en Cliente general. */
 export const PRIMER_TRIMESTRE = '2026-Q4';
 
 export const trimestreSchema = z.string().regex(/^\d{4}-Q[1-4]$/);
@@ -112,10 +120,14 @@ export function nombreTrimestre(trimestre: string): string {
   return ['ene–mar', 'abr–jun', 'jul–sep', 'oct–dic'][Number(q) - 1] + ` ${a}`;
 }
 
-/** Contra qué cuotas se mira a un nivel: un Cliente general, contra las de Bronce. */
-export function cuotasDe(nivel: ClaveCategoria): { mensual: number; trimestral: number } {
+/**
+ * Contra qué cuotas se mira a un nivel: un Cliente general, contra las de
+ * Bronce. `meses` son los del trimestre en que está en el programa (3, salvo el
+ * trimestre en que entra).
+ */
+export function cuotasDe(nivel: ClaveCategoria, meses = 3): { mensual: number; trimestral: number } {
   const regla = reglaDe(nivel === 'GENERAL' ? 'BRONCE' : nivel);
-  return { mensual: regla.minimoMensual, trimestral: regla.minimoMensual * 3 };
+  return { mensual: regla.minimoMensual, trimestral: regla.minimoMensual * meses };
 }
 
 /** Un nivel más, sin pasar de `NIVEL_MAXIMO`. Quien ya está arriba se queda. */
@@ -138,6 +150,11 @@ export const mesProgramaSchema = z.object({
   cumpleMinimo: z.boolean().nullable(),
   /** Reportó el sell-out de ese mes dentro de plazo. */
   sellout: z.boolean().nullable(),
+  /**
+   * Si el mes cuenta: `false` en los meses de antes de su primer acceso al
+   * panel. Esos meses no se le piden (compra 0, sin cumplir ni fallar).
+   */
+  enPrograma: z.boolean(),
 });
 
 export type MesPrograma = z.infer<typeof mesProgramaSchema>;
