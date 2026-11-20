@@ -5,10 +5,11 @@ import { Marco } from '@/components/Marco';
 import { Periodos, fechasDe } from '@/components/Periodos';
 import { nombrePeriodo } from '@/lib/meses';
 import { Sedes, sedeDeParams, urlCon } from '@/components/Sedes';
-import type { SedeId } from '@asta/shared-types';
+import { nombreSede, type SedeId } from '@asta/shared-types';
 import { Serie, etiquetaMes } from '@/components/Reporte';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
 import { Ranking } from '@/components/inicio/Ranking';
+import { RankingVendedores } from '@/components/inicio/RankingVendedores';
 import { Atencion } from '@/components/inicio/Atencion';
 import { getAlertasTablero, getCategoriasAstaEmpresa, getReporteEmpresa } from '@/lib/api';
 import { BarraAlertas } from '@/components/alertas/BarraAlertas';
@@ -108,15 +109,12 @@ async function Ventas({ token, rango, sede }: { token: string; rango: Rango; sed
         <Serie puntos={r.serieMensual} sede={sede} />
       </section>
 
-      <Ranking
-        area="vendedores"
-        titulo="Vendedores"
+      <RankingVendedores
         filas={(r.porVendedor ?? []).slice(0, 8)}
-        nombre={(v) => v.nombre}
-        valor={(v) => v.facturado}
-        pie={(v) => facturas(v.facturas)}
+        rango={rango}
+        sede={sede}
+        periodo={sede === null ? periodo : `${periodo} · ${nombreSede(sede)}`}
         enlace={{ href: urlCon('/admin/agentes', { sede }), texto: 'Todos los vendedores' }}
-        privado
       />
 
       <Ranking

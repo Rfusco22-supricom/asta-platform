@@ -14,6 +14,8 @@ import {
   agentesRespuestaSchema,
   astaRespuestaSchema,
   reporteRespuestaSchema,
+  facturasDelVendedorRespuestaSchema,
+  type FacturasDelVendedor,
   reporteProductosRespuestaSchema,
   type ReporteProductos,
   type ReporteRespuesta,
@@ -518,6 +520,16 @@ export const getReporteEmpresa = (
   rango?: { desde: string; hasta: string },
   sede: number | null = null,
 ) => pedirReporte('/api/v1/admin/reportes', accessToken, rango, sede);
+
+/** Las facturas con ASTA de un vendedor en el periodo: el detalle de su fila en el Inicio (administración). */
+export async function getFacturasVendedor(
+  accessToken: string,
+  odooUserId: number,
+  rango: { desde: string; hasta: string },
+  sede: number | null = null,
+): Promise<FacturasDelVendedor> {
+  return (await request(`/api/v1/admin/reportes/vendedores/${odooUserId}/facturas${consulta(rango, sede)}`, facturasDelVendedorRespuestaSchema, accessToken)).data;
+}
 
 /** El reporte de ASTA de UN vendedor, para su página en Vendedores (administración). */
 export const getReporteVendedor = (accessToken: string, odooUserId: number, rango?: { desde: string; hasta: string }) =>
