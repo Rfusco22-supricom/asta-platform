@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { bajar, mesesAntesDe, mesesDelTrimestre, nivelBloqueado, nivelDeEntrada, plazoSellout, subir, topar, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
+import { bajar, compraDeEntrada, mesesAntesDe, mesesDelTrimestre, nivelBloqueado, nivelDeEntrada, plazoSellout, subir, topar, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { CierreNoPermitido, cerrarTrimestre, conNivelesDelPrograma, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
 
@@ -116,6 +116,14 @@ describe('Las reglas', () => {
 describe('El nivel con el que entra al programa', () => {
   it('el más alto cuya cuota supera en un 50 % con su media: Bronce desde 750, Plata desde 1.500, Oro desde 3.000', () => {
     expect([0, 749.99, 750, 1499, 1500, 2999, 3000].map(nivelDeEntrada)).toEqual(['GENERAL', 'GENERAL', 'BRONCE', 'BRONCE', 'PLATA', 'PLATA', 'ORO']);
+  });
+
+  it('la compra de entrada es la mayor entre la media de los tres meses anteriores y lo que lleva en el mes en que entra', () => {
+    // Sin historial y 5.295 en el mes en que entra: Oro.
+    expect(nivelDeEntrada(compraDeEntrada([0, 0, 0], 5295))).toBe('ORO');
+    // Con historial de Plata y un mes de entrada flojo: la media manda.
+    expect(compraDeEntrada([1800, 1500, 1200], 100)).toBe(1500);
+    expect(nivelDeEntrada(compraDeEntrada([1800, 1500, 1200], 100))).toBe('PLATA');
   });
 
   it('nunca en Diamante mientras esté bloqueado', () => {

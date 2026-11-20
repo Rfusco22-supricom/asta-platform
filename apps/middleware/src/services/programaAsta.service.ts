@@ -2,6 +2,7 @@ import {
   ESCALERA,
   EXCEDENTE,
   MESES_ENTRADA,
+  compraDeEntrada,
   PRIMER_TRIMESTRE,
   TOKENS,
   VARIEDAD,
@@ -331,22 +332,28 @@ export async function miembrosDelPrograma(hasta: Date): Promise<Map<string, Miem
 }
 
 /**
- * El nivel de entrada de los que llegan al programa (`nivelDeEntrada`): su
- * compra media de los `MESES_ENTRADA` meses completos antes del mes de su primer
- * acceso, por RIF y con el criterio del programa (`comprasPorMes`). Solo salen
- * los que entran por encima de Cliente general.
+ * El nivel de entrada de los que llegan al programa (`nivelDeEntrada`), con su
+ * compra de entrada (`compraDeEntrada`): la mayor entre su media de los
+ * `MESES_ENTRADA` meses completos antes del mes de su primer acceso y lo que
+ * lleva comprado ese mes. Por RIF y con el criterio del programa
+ * (`comprasPorMes`). Solo salen los que entran por encima de Cliente general.
  */
 export async function nivelesDeEntrada(nuevos: Map<string, Miembro>): Promise<Map<string, ClaveCategoria>> {
   const r = new Map<string, ClaveCategoria>();
   const porMes = new Map<string, string[]>();
   for (const [clave, m] of nuevos) porMes.set(m.desde, [...(porMes.get(m.desde) ?? []), clave]);
   for (const [mes, claves] of porMes) {
-    const compras = await comprasPorMes(mesesAntesDe(mes, MESES_ENTRADA));
+    // Los meses anteriores y, al final, el mes en que entra.
+    const compras = await comprasPorMes([...mesesAntesDe(mes, MESES_ENTRADA), mes]);
     const ficha = await fichas(compras.flatMap((c) => [...c.keys()]));
-    const total = new Map<string, number>();
-    for (const c of compras) for (const [id, monto] of c) total.set(claveDe(id, ficha), (total.get(claveDe(id, ficha)) ?? 0) + monto);
+    const porMesYClave = compras.map((c) => {
+      const m = new Map<string, number>();
+      for (const [id, monto] of c) m.set(claveDe(id, ficha), (m.get(claveDe(id, ficha)) ?? 0) + monto);
+      return m;
+    });
     for (const clave of claves) {
-      const nivel = nivelDeEntrada((total.get(clave) ?? 0) / MESES_ENTRADA);
+      const cifras = porMesYClave.map((m) => m.get(clave) ?? 0);
+      const nivel = nivelDeEntrada(compraDeEntrada(cifras.slice(0, MESES_ENTRADA), cifras[MESES_ENTRADA]!));
       if (nivel !== 'GENERAL') r.set(clave, nivel);
     }
   }
