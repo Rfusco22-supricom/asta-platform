@@ -239,7 +239,8 @@ describe('El cierre, contra MySQL', () => {
 
   it('la meta y la pirámide cuentan a cada cliente en su nivel del programa, no en su categoría de compra', async () => {
     const base = { porMes: [0, 0, 0, 0], mesesConCompra: 4, rif: null, vendedor: null, vendedorOdooUserId: null, siguiente: null };
-    const programa = [cliente('ZZPROG1', 'ORO', 'ORO', 0), cliente('ZZPROG2', 'PLATA', 'PLATA', 0)];
+    // ZZPROG4 está en Oro y no compró en los meses de la ventana: cuenta igual.
+    const programa = [cliente('ZZPROG1', 'ORO', 'ORO', 0), cliente('ZZPROG2', 'PLATA', 'PLATA', 0), cliente('ZZPROG4', 'ORO', 'ORO', 0)];
     const r = await conNivelesDelPrograma({
       meses: ['2099-01', '2099-02', '2099-03', '2099-04'],
       compraMensual: 3000,
@@ -257,10 +258,10 @@ describe('El cierre, contra MySQL', () => {
         { ...base, clave: 'ZZPROG3', partnerId: 3, nombre: 'tres', compraMensual: 300, categoria: 'BRONCE' },
       ],
     }, programa);
-    expect(r.clientes.map((c) => c.categoria)).toEqual(['ORO', 'PLATA', 'GENERAL']);
+    expect(r.clientes.map((c) => c.categoria)).toEqual(['ORO', 'PLATA', 'GENERAL', 'ORO']);
     const de = (k: string) => r.porCategoria.find((p) => p.categoria === k)!;
-    expect([de('ORO').clientes, de('ORO').compraMensual, de('DIAMANTE').clientes, de('GENERAL').clientes]).toEqual([1, 2000, 0, 1]);
+    expect([de('ORO').clientes, de('ORO').compraMensual, de('DIAMANTE').clientes, de('GENERAL').clientes]).toEqual([2, 2000, 0, 1]);
     // En el programa están todos los que tienen acceso, con nivel o sin él.
-    expect(r.enPrograma).toBe(2);
+    expect(r.enPrograma).toBe(3);
   });
 });

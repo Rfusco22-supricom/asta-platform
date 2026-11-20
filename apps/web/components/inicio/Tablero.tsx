@@ -105,7 +105,10 @@ export function HeroMeta({
       clave,
       nombre: regla.nombre,
       color: COLORES_CATEGORIAS[i]!,
-      clientes: enCartera || metaClientes === null ? `${n(clientes)} ${clientes === 1 ? 'cliente' : 'clientes'}` : `${n(clientes)} de ${n(metaClientes)} clientes`,
+      clientes:
+        enCartera || metaClientes === null
+          ? `${n(clientes)} ${clientes === 1 ? 'cliente' : 'clientes'}`
+          : `${n(clientes)} ${clientes === 1 ? 'cliente' : 'clientes'} · meta ${n(metaClientes)}`,
       compra: `${corto(c?.compraMensual ?? 0)} al mes`,
       meta: enCartera ? `${pct(parte)} de lo que compra tu cartera` : `meta ${corto(c?.metaCompraMensual ?? 0)} al mes`,
       regla:

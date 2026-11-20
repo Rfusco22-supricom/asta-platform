@@ -645,13 +645,33 @@ export function programaEnCurso(hoy = new Date()): Promise<ClientePrograma[]> {
  * nivel está cada cliente —y cuántos hay en cada uno— es el del programa. Así
  * la pirámide, la meta y la tabla dicen lo mismo que el cliente ve.
  *
- * Un cliente con nivel que no compró en esos cuatro meses no sale aquí (no
- * aporta a la meta); en la tabla del programa sí.
+ * Un cliente con nivel que no compró en esos cuatro meses (un cliente nuevo que
+ * entró comprando este mes) cuenta en su nivel con compra media 0: las tarjetas
+ * de cada nivel dicen lo mismo que la tabla del programa.
  */
 export async function conNivelesDelPrograma(categorias: CategoriasAsta, programa?: ClientePrograma[]): Promise<CategoriasAsta> {
   const lista = programa ?? (await programaEnCurso());
   const niveles = await nivelesActuales(lista);
-  const clientes = categorias.clientes.map((c) => ({ ...c, categoria: niveles.get(c.clave) ?? ('GENERAL' as const) }));
+  const conCompra = categorias.clientes.map((c) => ({ ...c, categoria: niveles.get(c.clave) ?? ('GENERAL' as const) }));
+  // Los del programa con nivel que no compraron en esos meses (un cliente nuevo que
+  // entró comprando este mes) también están en su nivel: cuentan, con compra media 0.
+  const ya = new Set(conCompra.map((c) => c.clave));
+  const sinCompra = lista
+    .filter((c) => c.evaluacion.nivel !== 'GENERAL' && !ya.has(c.clave))
+    .map((c) => ({
+      clave: c.clave,
+      partnerId: c.partnerId,
+      nombre: c.nombre,
+      rif: null,
+      vendedor: c.vendedor,
+      vendedorOdooUserId: c.vendedorOdooUserId,
+      porMes: categorias.meses.map(() => 0),
+      compraMensual: 0,
+      mesesConCompra: 0,
+      categoria: topar(c.evaluacion.nivel),
+      siguiente: null,
+    }));
+  const clientes = [...conCompra, ...sinCompra];
   const redondo = (x: number) => Math.round(x * 100) / 100;
   return {
     ...categorias,

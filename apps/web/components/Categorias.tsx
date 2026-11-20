@@ -112,7 +112,9 @@ export function CaminoMeta({
               <InsigniaCategoria categoria={c.categoria} />
               <div className="cat-nivel-cifra">
                 <strong>{n(c.clientes)}</strong>
-                {c.metaClientes !== null && <span> de {n(c.metaClientes)}</span>}
+                <span> {c.clientes === 1 ? 'cliente' : 'clientes'}</span>
+                {/* La meta de clientes para llegar a la meta de la empresa: un objetivo, no un tope. */}
+                {c.metaClientes !== null && <span className="cat-nivel-meta"> · meta {n(c.metaClientes)}</span>}
               </div>
               {pctClientes !== null && (
                 <div className="cat-nivel-barra" aria-hidden="true">
