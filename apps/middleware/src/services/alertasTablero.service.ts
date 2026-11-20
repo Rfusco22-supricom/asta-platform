@@ -35,7 +35,7 @@ import { LINEAS_ASTA } from './ventasAsta.service.js';
  *     de media al mes en los cuatro meses completos anteriores
  *     (`categoriasAsta`). La ejecución, lo que lleva comprado este mes, con el
  *     criterio del programa: una nota de crédito resta en el mes de su factura.
- *     Solo los clientes de los vendedores con cuenta de vendedor activa en el
+ *     Solo los clientes de los vendedores con cuenta del personal activa en el
  *     panel (`vendedoresDelRitmo`): ni los que ya no están, ni los puestos
  *     («Asistente de Ventas»), ni los clientes sin vendedor.
  *   · Concentración: lo facturado de ASTA en el mes, por cliente (agrupado por
@@ -358,13 +358,15 @@ async function enRiesgoEnSede(sede: { id: number; nombre: string }, semanas: Arr
 
 /**
  * Los vendedores que cuentan en el ritmo (su usuario de Odoo): los que tienen
- * cuenta de VENDEDOR activa en el panel. Quien se va deja de tener acceso
+ * cuenta del personal activa en el panel, VENDEDOR o SUPERADMIN (hay quien vende
+ * y además administra). Un administrador sin cartera no sale: las filas salen
+ * de los clientes, y no tiene ninguno asignado. Quien se va deja de tener acceso
  * (Personas → acceso del personal) y con eso sale también de aquí. Un puesto
  * («Asistente de Ventas…») no es una persona a la que medir, aunque tenga cuenta.
  */
 async function vendedoresDelRitmo(): Promise<Set<number>> {
   const cuentas = await prisma.appUser.findMany({
-    where: { role: 'VENDEDOR', isActive: true, odooUserId: { not: null } },
+    where: { role: { in: ['VENDEDOR', 'SUPERADMIN'] }, isActive: true, odooUserId: { not: null } },
     select: { odooUserId: true, fullName: true },
   });
   return new Set(cuentas.filter((c) => !/^\s*asistente\b/i.test(c.fullName)).map((c) => c.odooUserId!));
