@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { AppRole } from '@asta/shared-types';
+import { clientTierSchema, trimestreDe, type AppRole } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { authEnv } from '../config/authEnv.js';
 import { normalizarEmail } from '../auth/email.js';
@@ -7,6 +7,7 @@ import { hashPassword, necesitaRehash, verifyPassword } from '../auth/password.j
 import { caducaEnDias, emitirSecreto, hashSecreto } from '../auth/tokens.js';
 import { emitirAccessToken } from '../auth/jwt.js';
 import { recordAudit } from './audit.service.js';
+import { olvidarPantalla } from './pantallas.js';
 import { autenticarEnOdoo, searchRead } from '../odoo/client.js';
 
 /**
@@ -368,9 +369,13 @@ async function emitirSesion(
 ): Promise<SesionEmitida> {
   const e = authEnv();
   const refresh = emitirSecreto();
+  const ahora = new Date();
+  let primerAcceso = false;
   const sesion = await prisma.$transaction(async (tx) => {
     await alEntrar(tx);
-    await tx.appUser.update({ where: { id: usuario.id }, data: { lastLoginAt: new Date() } });
+    await tx.appUser.update({ where: { id: usuario.id }, data: { lastLoginAt: ahora } });
+    // El primer acceso se escribe una sola vez: con él empieza el Programa ASTA del cliente.
+    primerAcceso = (await tx.appUser.updateMany({ where: { id: usuario.id, primerAccesoAt: null }, data: { primerAccesoAt: ahora } })).count > 0;
     return tx.userSession.create({
       data: {
         userId: usuario.id,
@@ -382,6 +387,9 @@ async function emitirSesion(
       select: { id: true },
     });
   });
+
+  // Un cliente que entra por primera vez pasa a estar en el programa: que se vea ya, sin esperar a que caduque lo guardado.
+  if (primerAcceso && (clientTierSchema.options as readonly string[]).includes(usuario.role)) olvidarPantalla(`programa:${trimestreDe(ahora)}`);
 
   const accessToken = await emitirAccessToken({
     sub: usuario.id,

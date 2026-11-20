@@ -7,9 +7,10 @@ import { claveCategoriaSchema } from './categoriasAsta.js';
  * ASTA» (octubre de 2026). Tres, y solo de ASTA:
  *
  *   1. Ritmo proyectado — la proyección del mes por días hábiles queda por
- *      debajo del `ritmoMinimo` del objetivo. El objetivo es la suma de las
- *      cuotas mensuales de los clientes con nivel en el Programa ASTA, y la
- *      ejecución, lo que esos clientes llevan comprado.
+ *      debajo del `ritmoMinimo` del objetivo. Cuentan todos los clientes: el
+ *      objetivo de cada uno es la cuota mensual de su nivel en el Programa
+ *      ASTA o, si no tiene nivel, lo que compra de media al mes; la ejecución,
+ *      lo que lleva comprado este mes.
  *   2. Concentración y cobertura — más del `concentracionVolumen` de lo vendido
  *      en el mes sale de menos del `concentracionBase` de los clientes o de las
  *      referencias, o compra menos del `coberturaMinima` de los clientes con
@@ -82,9 +83,9 @@ export const alertaRitmoSchema = z.object({
   /** «2026-10». */
   mes: z.string().regex(/^\d{4}-\d{2}$/),
   diasHabiles: diasHabilesSchema,
-  /** Suma de las cuotas mensuales de los clientes con nivel. */
+  /** Suma de los objetivos: la cuota de los clientes con nivel y la compra media de los demás. */
   objetivo: montoSchema,
-  /** Lo que esos clientes llevan comprado de ASTA este mes. */
+  /** Lo que los clientes llevan comprado de ASTA este mes. */
   ejecucion: montoSchema,
   /** Lo que tendrían que llevar hoy para acabar en el objetivo. */
   esperadoAHoy: montoSchema,
@@ -95,7 +96,10 @@ export const alertaRitmoSchema = z.object({
   ritmoNecesario: montoSchema.nullable(),
   /** Cuánto hay que acelerar: 0,25 es un 25 % más por día. `null` si no hace falta o no se puede. */
   aceleracion: z.number().nullable(),
+  /** Los clientes que cuentan: con objetivo o con compras este mes. */
   clientes: z.number().int().nonnegative(),
+  /** De ellos, los que tienen nivel en el Programa ASTA (su objetivo es su cuota). */
+  clientesConNivel: z.number().int().nonnegative(),
   vendedores: z.array(ritmoVendedorSchema),
 });
 export type AlertaRitmo = z.infer<typeof alertaRitmoSchema>;

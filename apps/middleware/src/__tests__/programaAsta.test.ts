@@ -113,6 +113,36 @@ describe('Las reglas', () => {
   });
 });
 
+describe('Entra al programa a mitad de trimestre (primer acceso al panel)', () => {
+  const general = (e: Partial<EntradaEvaluacion>) => evaluar(entrada({ nivel: 'GENERAL', anteriorSinFallos: false, ...e }));
+
+  it('los meses de antes no cuentan: compra 0, ni cumplen ni fallan, y la cuota trimestral es la de los meses que quedan', () => {
+    const e = general({ desde: 1, compras: [5000, 600, 550], sellout: [false, true, true] });
+    expect(e.meses.map((m) => [m.enPrograma, m.compra, m.cumpleMinimo, m.sellout])).toEqual([
+      [false, 0, null, null],
+      [true, 600, true, true],
+      [true, 550, true, true],
+    ]);
+    expect([e.cuotaMensual, e.cuotaTrimestral, e.compraTrimestre]).toEqual([500, 1000, 1150]);
+    // Sin el sell-out de octubre, que no se le pedía, sube igual.
+    expect(e).toMatchObject({ obligatorios: { mensual: true, trimestral: true, sellout: true }, nivelFinal: 'BRONCE', definitiva: true });
+  });
+
+  it('el excedente se mide con la media de sus meses; sin trimestre anterior no hay racha', () => {
+    expect(general({ desde: 2, compras: [0, 0, 760] }).extras).toMatchObject({ excedente: true, racha: false });
+    expect(general({ desde: 2, compras: [0, 0, 740] }).extras.excedente).toBe(false);
+  });
+
+  it('con un mes pendiente de los suyos, todavía no es definitiva', () => {
+    const e = general({ desde: 2, mesesTerminados: [true, true, false], sellout: [false, false, null], compras: [0, 0, 100] });
+    expect(e).toMatchObject({ definitiva: false, obligatorios: { mensual: null, sellout: null } });
+  });
+
+  it('sin `desde`, todo el trimestre cuenta, como antes', () => {
+    expect(evaluar(entrada({})).meses.every((m) => m.enPrograma)).toBe(true);
+  });
+});
+
 describe('El cierre, contra MySQL', () => {
   const T = '2099-Q1';
   const DESPUES = new Date('2099-04-01T05:00:00Z');
@@ -167,11 +197,20 @@ describe('El cierre, contra MySQL', () => {
     const niveles = await nivelesActuales();
     expect([niveles.get('ZZPROG1'), niveles.get('ZZPROG2')]).toEqual(['ORO', 'PLATA']);
 
-    // 2099-Q2: sin compras en Odoo, los dos están en el programa por su nivel, y bajarían.
-    const siguiente = await evaluarTrimestre('2099-Q2', new Date('2099-05-15T12:00:00Z'));
+    // 2099-Q2: sin compras en Odoo, los dos (con acceso desde enero) siguen en su nivel, y bajarían.
+    // ZZPROG3 entra en mayo: Cliente general desde mayo. ZZPROG4 no ha entrado: no está.
+    const miembros = new Map([
+      ['ZZPROG1', { desde: '2099-01', partnerId: 3_990_000_001 }],
+      ['ZZPROG2', { desde: '2099-01', partnerId: 3_990_000_002 }],
+      ['ZZPROG3', { desde: '2099-05', partnerId: 3_990_000_003 }],
+    ]);
+    const siguiente = await evaluarTrimestre('2099-Q2', new Date('2099-05-15T12:00:00Z'), { miembros });
     const de = (clave: string) => siguiente.find((c) => c.clave === clave)!;
+    expect(siguiente.map((c) => c.clave).sort()).toEqual(['ZZPROG1', 'ZZPROG2', 'ZZPROG3']);
     expect(de('ZZPROG1')).toMatchObject({ saldoTokens: 12, evaluacion: { nivel: 'ORO', nivelFinal: 'PLATA', definitiva: false } });
     expect(de('ZZPROG2')).toMatchObject({ saldoTokens: 4, evaluacion: { nivel: 'PLATA' } });
+    expect(de('ZZPROG3').evaluacion).toMatchObject({ nivel: 'GENERAL', cuotaTrimestral: 1000 });
+    expect(de('ZZPROG3').evaluacion.meses.map((m) => m.enPrograma)).toEqual([false, true, true]);
   }, 120_000);
 
   it('la meta y la pirámide cuentan a cada cliente en su nivel del programa, no en su categoría de compra', async () => {

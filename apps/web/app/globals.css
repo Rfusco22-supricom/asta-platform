@@ -3885,6 +3885,7 @@ html[data-cargando='navegando'] .contenido {
 .prog-punto { width: 10px; height: 10px; border-radius: 50%; border: 1px dashed var(--border-strong); background: var(--surface-2); }
 .prog-punto.ok { border: 0; background: var(--pi-ok); }
 .prog-punto.no { border: 0; background: var(--danger); }
+.prog-punto.fuera { opacity: .35; }
 .prog-cierre { font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--text-2); }
 .prog-cierre.ok { color: var(--pi-ok); }
 .prog-cierre.no { color: var(--danger); }
@@ -4240,6 +4241,7 @@ button.serie-col .serie-barra { display: block; }
 .prog-mes { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-2); }
 .prog-mes.ok { color: var(--pi-ok); border-color: color-mix(in srgb, var(--pi-ok) 45%, var(--border)); }
 .prog-mes.no { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.prog-mes.fuera { color: var(--text-3, var(--text-2)); border-style: dashed; opacity: .7; }
 .prog-avance { display: flex; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .prog-avance .proporcion-barra { display: block; flex: 1; max-width: 260px; }
 .prog-pie { margin: 2px 0 0; }

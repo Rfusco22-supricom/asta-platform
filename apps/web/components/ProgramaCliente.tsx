@@ -29,6 +29,12 @@ function limite(mes: string): string {
 }
 
 /** El mes que empieza el trimestre siguiente: cuando se cierra. */
+/** «en los tres meses», o los que le quedan si entró al programa a mitad de trimestre. */
+function enLosMeses(e: EvaluacionTrimestre): string {
+  const cuantos = e.meses.filter((m) => m.enPrograma).length;
+  return cuantos === 3 ? 'en los tres meses' : cuantos === 2 ? 'en tus dos meses del trimestre' : 'en tu mes del trimestre';
+}
+
 function cierre(trimestre: string): string {
   const [a, q] = trimestre.split('-Q').map(Number) as [number, number];
   return q === 4 ? `enero de ${a + 1}` : ['abril', 'julio', 'octubre'][q - 1]!;
@@ -121,13 +127,13 @@ export function ProgramaCliente({ programa }: { programa: MetricasCliente['progr
         <Obligatorio titulo="Cuota mensual" tokens={TOKENS.mensual} estado={e.obligatorios.mensual} regla={`Al menos ${moneyEntero(e.cuotaMensual)} cada mes`}>
           <span className="prog-meses">
             {e.meses.map((m) => (
-              <span key={m.mes} className={`prog-mes ${m.cumpleMinimo === true ? 'ok' : m.cumpleMinimo === false ? 'no' : ''}`}>
-                {etiquetaMes(m.mes)} · {moneyEntero(m.compra)}
+              <span key={m.mes} className={`prog-mes ${!m.enPrograma ? 'fuera' : m.cumpleMinimo === true ? 'ok' : m.cumpleMinimo === false ? 'no' : ''}`}>
+                {etiquetaMes(m.mes)} · {m.enPrograma ? moneyEntero(m.compra) : 'aún no estabas'}
               </span>
             ))}
           </span>
         </Obligatorio>
-        <Obligatorio titulo="Cuota del trimestre" tokens={TOKENS.trimestral} estado={e.obligatorios.trimestral} regla={`Al menos ${moneyEntero(e.cuotaTrimestral)} en los tres meses`}>
+        <Obligatorio titulo="Cuota del trimestre" tokens={TOKENS.trimestral} estado={e.obligatorios.trimestral} regla={`Al menos ${moneyEntero(e.cuotaTrimestral)} ${enLosMeses(e)}`}>
           <span className="prog-avance">
             <span className="proporcion-barra" aria-hidden="true">
               <span style={{ width: `${Math.min(100, (e.compraTrimestre / e.cuotaTrimestral) * 100)}%` }} />
@@ -138,8 +144,9 @@ export function ProgramaCliente({ programa }: { programa: MetricasCliente['progr
         <Obligatorio titulo="Sell-out" tokens={TOKENS.sellout} estado={e.obligatorios.sellout} regla="Repórtalo cada mes en «Sell-out», hasta su último día">
           <span className="prog-meses">
             {e.meses.map((m) => (
-              <span key={m.mes} className={`prog-mes ${m.sellout === true ? 'ok' : m.sellout === false ? 'no' : ''}`}>
-                {etiquetaMes(m.mes)} · {m.sellout === true ? 'reportado' : m.sellout === false ? 'sin reportar' : `hasta el ${limite(m.mes)}`}
+              <span key={m.mes} className={`prog-mes ${!m.enPrograma ? 'fuera' : m.sellout === true ? 'ok' : m.sellout === false ? 'no' : ''}`}>
+                {etiquetaMes(m.mes)} ·{' '}
+                {!m.enPrograma ? 'aún no estabas' : m.sellout === true ? 'reportado' : m.sellout === false ? 'sin reportar' : `hasta el ${limite(m.mes)}`}
               </span>
             ))}
           </span>

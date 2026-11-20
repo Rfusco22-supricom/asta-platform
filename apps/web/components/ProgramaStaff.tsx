@@ -30,9 +30,9 @@ export function loQueLeFalta(e: EvaluacionTrimestre): string {
   const partes: string[] = [];
   const falta = e.cuotaTrimestral - e.compraTrimestre;
   if (e.obligatorios.trimestral === null && falta > 0) partes.push(`faltan ${moneyEntero(falta)} del trimestre`);
-  const sinMinimo = e.meses.filter((m) => m.cumpleMinimo === null).map((m) => etiquetaMes(m.mes).split(' ')[0]);
+  const sinMinimo = e.meses.filter((m) => m.enPrograma && m.cumpleMinimo === null).map((m) => etiquetaMes(m.mes).split(' ')[0]);
   if (sinMinimo.length) partes.push(`mínimo de ${enumerar(sinMinimo)}`);
-  const sinSellout = e.meses.filter((m) => m.sellout === null).map((m) => etiquetaMes(m.mes).split(' ')[0]);
+  const sinSellout = e.meses.filter((m) => m.enPrograma && m.sellout === null).map((m) => etiquetaMes(m.mes).split(' ')[0]);
   if (sinSellout.length) partes.push(`sell-out de ${enumerar(sinSellout)}`);
   return partes.join(' · ');
 }
@@ -54,14 +54,14 @@ function filtrar(clientes: ClientePrograma[], filtro: string): ClientePrograma[]
   return clientes.filter((c) => c.evaluacion.nivel !== 'GENERAL');
 }
 
-function Puntos({ estados, titulo }: { estados: Array<{ mes: string; estado: boolean | null }>; titulo: string }) {
+function Puntos({ estados, titulo }: { estados: Array<{ mes: string; estado: boolean | null; enPrograma: boolean }>; titulo: string }) {
   return (
     <span className="prog-puntos" aria-label={titulo}>
       {estados.map((s) => (
         <span
           key={s.mes}
-          className={`prog-punto ${s.estado === true ? 'ok' : s.estado === false ? 'no' : ''}`}
-          title={`${etiquetaMes(s.mes)}: ${s.estado === true ? 'cumplido' : s.estado === false ? 'no cumplido' : 'pendiente'}`}
+          className={`prog-punto ${!s.enPrograma ? 'fuera' : s.estado === true ? 'ok' : s.estado === false ? 'no' : ''}`}
+          title={`${etiquetaMes(s.mes)}: ${!s.enPrograma ? 'antes de su primer acceso, no cuenta' : s.estado === true ? 'cumplido' : s.estado === false ? 'no cumplido' : 'pendiente'}`}
         />
       ))}
     </span>
@@ -133,13 +133,13 @@ export function TablaPrograma({ datos, filtro, base, conVendedor }: { datos: Pro
                       <InsigniaCategoria categoria={e.nivel} />
                     </td>
                     <td data-etiqueta={`Mínimo ${moneyEntero(e.cuotaMensual)}/mes`}>
-                      <Puntos titulo="Cuota mensual" estados={e.meses.map((m) => ({ mes: m.mes, estado: m.cumpleMinimo }))} />
+                      <Puntos titulo="Cuota mensual" estados={e.meses.map((m) => ({ mes: m.mes, estado: m.cumpleMinimo, enPrograma: m.enPrograma }))} />
                     </td>
                     <td className="num" data-etiqueta="Trimestre">
                       {moneyEntero(e.compraTrimestre)} <span className="stat-sub">de {moneyEntero(e.cuotaTrimestral)}</span>
                     </td>
                     <td data-etiqueta="Sell-out">
-                      <Puntos titulo="Sell-out" estados={e.meses.map((m) => ({ mes: m.mes, estado: m.sellout }))} />
+                      <Puntos titulo="Sell-out" estados={e.meses.map((m) => ({ mes: m.mes, estado: m.sellout, enPrograma: m.enPrograma }))} />
                     </td>
                     <td className="num" data-etiqueta="Extras">
                       {extras}/3

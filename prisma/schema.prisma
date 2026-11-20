@@ -201,6 +201,9 @@ model AppUser {
 
   isActive    Boolean   @default(true) @map("is_active")
   lastLoginAt DateTime? @map("last_login_at") @db.DateTime(3)
+  /// El primer acceso al panel. Con él empieza el Programa ASTA del cliente:
+  /// quien nunca entró no está en el programa.
+  primerAccesoAt DateTime? @map("primer_acceso_at") @db.DateTime(3)
 
   syncStatus SyncStatus @default(PENDING) @map("sync_status")
   syncedAt   DateTime?  @map("synced_at") @db.DateTime(3)
