@@ -42,9 +42,14 @@ import { claveCategoriaSchema, reglaDe, type ClaveCategoria } from './categorias
  * ── El nivel con el que entra (2026-11-20) ───────────────────────────────────
  *
  * El más alto cuya cuota mensual supera en un 50 % (`ENTRADA`) con su compra
- * media de los `MESES_ENTRADA` meses completos antes de su primer acceso
- * (`nivelDeEntrada`): Bronce desde 750, Plata desde 1.500, Oro desde 3.000. Si
- * no llega, Cliente general. Desde ahí, las reglas de siempre.
+ * de entrada (`nivelDeEntrada`): Bronce desde 750, Plata desde 1.500, Oro desde
+ * 3.000. Si no llega, Cliente general. Desde ahí, las reglas de siempre.
+ *
+ * La compra de entrada (`compraDeEntrada`) es la mayor de dos: su media de los
+ * `MESES_ENTRADA` meses completos antes de su primer acceso, o lo que lleva
+ * comprado en el mes en que entra (decidido con Supricom el 2026-11-20: un
+ * cliente nuevo que entra comprando fuerte no empieza desde abajo). Mientras
+ * dura ese mes, el nivel de entrada puede subir con cada compra.
  */
 
 export const TOKENS = { mensual: 4, trimestral: 4, sellout: 4, excedente: 1, racha: 1, variedad: 1 } as const;
@@ -144,9 +149,18 @@ export const ENTRADA = 1.5;
 export const MESES_ENTRADA = 3;
 
 /**
- * El nivel con el que un cliente entra al programa, por su compra media mensual
- * (ver la cabecera): el más alto, sin pasar de `NIVEL_MAXIMO`, cuya cuota
- * mensual por `ENTRADA` alcanza.
+ * La compra con la que se decide el nivel de entrada (ver la cabecera): la media
+ * de los meses anteriores o la del mes en que entra, la mayor.
+ */
+export function compraDeEntrada(mesesAnteriores: number[], mesDeEntrada: number): number {
+  const media = mesesAnteriores.length > 0 ? mesesAnteriores.reduce((s, x) => s + x, 0) / mesesAnteriores.length : 0;
+  return Math.max(media, mesDeEntrada);
+}
+
+/**
+ * El nivel con el que un cliente entra al programa, por su compra de entrada
+ * (`compraDeEntrada`, ver la cabecera): el más alto, sin pasar de
+ * `NIVEL_MAXIMO`, cuya cuota mensual por `ENTRADA` alcanza.
  */
 export function nivelDeEntrada(mediaMensual: number): ClaveCategoria {
   for (const nivel of [...ESCALERA].reverse()) {
