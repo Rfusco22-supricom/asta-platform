@@ -90,6 +90,12 @@ export function rangoDelAnio(anio: number, hoy = new Date()): { desde: string; h
   return { desde: `${anio}-01-01`, hasta: hasta > hoyIso(hoy) ? hoyIso(hoy) : hasta };
 }
 
+/** «Compra media al mes (jul 2026 – oct 2026)»: la cifra de las categorías, con su nombre completo. */
+export function compraMediaDe(meses: string[]): string {
+  if (meses.length === 0) return 'compra media al mes';
+  return `compra media al mes (${nombrePeriodo(`${meses[0]}-01`, rangoDeMes(meses.at(-1)!)!.hasta)})`;
+}
+
 /** La media mensual de unos meses «YYYY-MM» completos: «media de jun – sep 2026». */
 export function mediaDe(meses: string[]): string {
   if (meses.length === 0) return 'media mensual';

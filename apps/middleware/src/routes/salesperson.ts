@@ -210,10 +210,12 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
     }
     const t0 = Date.now();
     // Se calcula una vez para todos y se filtra: el nivel no depende de quién mira.
-    const todas = await categoriasDelPrograma();
+    const [todas, programa] = await Promise.all([categoriasDelPrograma(), programaEnCurso()]);
     const clientes = todas.clientes.filter((c) => c.vendedorOdooUserId === odooUserId);
     const data = {
       ...todas,
+      // Los de SU cartera en el programa (con acceso al panel), no los de toda la empresa.
+      enPrograma: programa.filter((c) => c.vendedorOdooUserId === odooUserId).length,
       compraMensual: Math.round(clientes.reduce((s, c) => s + c.compraMensual, 0) * 100) / 100,
       porCategoria: todas.porCategoria.map((p) => {
         const de = clientes.filter((c) => c.categoria === p.categoria);

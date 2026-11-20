@@ -1,13 +1,16 @@
 import {
   ESCALERA,
   EXCEDENTE,
+  MESES_ENTRADA,
   PRIMER_TRIMESTRE,
   TOKENS,
   VARIEDAD,
   bajar,
   cuotasDe,
   limpiarEspacios,
+  mesesAntesDe,
   mesesDelTrimestre,
+  nivelDeEntrada,
   nombrePersona,
   subir,
   topar,
@@ -38,7 +41,9 @@ import { LINEAS_ASTA } from './ventasAsta.service.js';
  * El nivel con el que un cliente empieza un trimestre es con el que acabó el
  * anterior (`programa_trimestres.nivel_fin`). Si el anterior todavía no se ha
  * cerrado, se usa con el que acabaría. Quien entra al programa en el trimestre
- * —y todos en el primero, que no tiene anterior— empieza en Cliente general.
+ * —y todos en el primero, que no tiene anterior— empieza con su nivel de
+ * entrada (`nivelesDeEntrada`): el que le da su compra media de los tres meses
+ * completos antes de su primer acceso (ver `nivelDeEntrada`).
  *
  * ── Quién entra (2026-11-20) ─────────────────────────────────────────────────
  *
@@ -325,6 +330,29 @@ export async function miembrosDelPrograma(hasta: Date): Promise<Map<string, Miem
   return r;
 }
 
+/**
+ * El nivel de entrada de los que llegan al programa (`nivelDeEntrada`): su
+ * compra media de los `MESES_ENTRADA` meses completos antes del mes de su primer
+ * acceso, por RIF y con el criterio del programa (`comprasPorMes`). Solo salen
+ * los que entran por encima de Cliente general.
+ */
+export async function nivelesDeEntrada(nuevos: Map<string, Miembro>): Promise<Map<string, ClaveCategoria>> {
+  const r = new Map<string, ClaveCategoria>();
+  const porMes = new Map<string, string[]>();
+  for (const [clave, m] of nuevos) porMes.set(m.desde, [...(porMes.get(m.desde) ?? []), clave]);
+  for (const [mes, claves] of porMes) {
+    const compras = await comprasPorMes(mesesAntesDe(mes, MESES_ENTRADA));
+    const ficha = await fichas(compras.flatMap((c) => [...c.keys()]));
+    const total = new Map<string, number>();
+    for (const c of compras) for (const [id, monto] of c) total.set(claveDe(id, ficha), (total.get(claveDe(id, ficha)) ?? 0) + monto);
+    for (const clave of claves) {
+      const nivel = nivelDeEntrada((total.get(clave) ?? 0) / MESES_ENTRADA);
+      if (nivel !== 'GENERAL') r.set(clave, nivel);
+    }
+  }
+  return r;
+}
+
 interface Partida {
   nivel: ClaveCategoria;
   /** Si el trimestre anterior cumplió la cuota mensual los tres meses, si se sabe. */
@@ -397,12 +425,13 @@ export async function evaluarTrimestre(trimestre: string, hoy = new Date(), opci
   const plazoVencido = meses.map((m) => hoy > limiteSellout(m));
 
   // Solo los que tienen acceso al panel (ver la cabecera): las compras de los demás no se miran.
+  // Los que entraron en este trimestre empiezan con su nivel de entrada, desde el mes de su primer acceso.
+  const entrada = await nivelesDeEntrada(new Map([...miembros].filter(([, m]) => m.desde >= meses[0])));
   const clientes: ClientePrograma[] = [];
   for (const [clave, m] of miembros) {
     const g = grupos.get(clave);
-    // Entró en este trimestre: empieza en Cliente general y desde el mes de su primer acceso.
     const nuevo = m.desde >= meses[0];
-    const p = nuevo ? undefined : inicio.get(clave);
+    const p = nuevo ? { nivel: entrada.get(clave) ?? ('GENERAL' as const), sinFallos: false, partnerId: m.partnerId } : inicio.get(clave);
     const principal = g && g.porFicha.size ? [...g.porFicha.entries()].sort((a, b) => b[1] - a[1])[0]![0] : m.partnerId;
     const evaluacion = evaluar({
       trimestre,
@@ -540,16 +569,15 @@ export async function cerrarTrimestre(
 }
 
 /**
- * El nivel de cada cliente hoy, para las cuentas (`aplicarNiveles`): con el que
- * acabó su último trimestre cerrado. Antes del primer cierre, todos son Cliente
- * general (el programa empieza ahí). Los que no salen aquí son Cliente general.
+ * El nivel de cada cliente hoy, para las cuentas (`aplicarNiveles`), la pirámide
+ * y las metas: con el que está en el trimestre en curso. Es el del último cierre
+ * o, si entró al programa en este trimestre, su nivel de entrada. Los que no
+ * salen aquí (sin acceso al panel, o en Cliente general) son Cliente general.
  * Nadie pasa de `NIVEL_MAXIMO`: con Diamante bloqueado, quien compra para él es Oro.
  */
-export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
-  const ultimo = await prisma.programaTrimestre.aggregate({ _max: { trimestre: true } });
-  if (!ultimo._max.trimestre) return new Map();
-  const filas = await prisma.programaTrimestre.findMany({ where: { trimestre: ultimo._max.trimestre }, select: { clave: true, nivelFin: true } });
-  return new Map(filas.map((f) => [f.clave, topar(f.nivelFin)]));
+export async function nivelesActuales(programa?: ClientePrograma[]): Promise<Map<string, ClaveCategoria>> {
+  const lista = programa ?? (await programaEnCurso());
+  return new Map(lista.filter((c) => c.evaluacion.nivel !== 'GENERAL').map((c) => [c.clave, topar(c.evaluacion.nivel)]));
 }
 
 /**
@@ -558,8 +586,8 @@ export async function nivelesActuales(): Promise<Map<string, ClaveCategoria>> {
  * Sale de la misma evaluación de todos (`evaluarTrimestre`, guardada un rato):
  * así el cliente ve lo mismo que Supricom. Si no está en ella —todavía no ha
  * entrado al panel, como cuando el administrador mira su panel— se le evalúa
- * como si entrara hoy: Cliente general desde este mes, con cero y con el
- * sell-out que sí haya reportado.
+ * como si entrara hoy: con su nivel de entrada desde este mes, con cero y con
+ * el sell-out que sí haya reportado.
  */
 export async function programaDeCliente(partnerId: number, hoy = new Date()): Promise<{ saldoTokens: number; evaluacion: EvaluacionTrimestre }> {
   const trimestre = trimestreDe(hoy);
@@ -576,22 +604,24 @@ export async function programaDeCliente(partnerId: number, hoy = new Date()): Pr
   const suyo = todos.find((c) => c.clave === clave);
   if (suyo) return { saldoTokens: suyo.saldoTokens, evaluacion: suyo.evaluacion };
 
-  const [reportes, saldo, total] = await Promise.all([
+  const mesHoy = mesEnCaracas(hoy);
+  const [reportes, saldo, total, entrada] = await Promise.all([
     prisma.sellOutReporte.findMany({ where: { odooPartnerId: partnerId, mes: { in: meses } }, select: { mes: true, createdAt: true } }),
     prisma.programaTrimestre.aggregate({ where: { clave }, _sum: { tokens: true } }),
     todos[0] ? Promise.resolve(todos[0].evaluacion.referencias.total) : referenciasAsta(),
+    nivelesDeEntrada(new Map([[clave, { desde: mesHoy, partnerId }]])),
   ]);
   const enPlazo = new Set(reportes.filter((r) => r.createdAt <= limiteSellout(r.mes)).map((r) => r.mes));
   const evaluacion = evaluar({
     trimestre,
-    nivel: 'GENERAL',
+    nivel: topar(entrada.get(clave) ?? 'GENERAL'),
     compras: [0, 0, 0],
     mesesTerminados: meses.map((m) => terminoElMes(m, hoy)) as EntradaEvaluacion['mesesTerminados'],
     sellout: meses.map((m) => (enPlazo.has(m) ? true : hoy > limiteSellout(m) ? false : null)) as EntradaEvaluacion['sellout'],
     referenciasCompradas: 0,
     referenciasTotal: total,
     anteriorSinFallos: false,
-    desde: Math.max(0, meses.indexOf(mesEnCaracas(hoy))),
+    desde: Math.max(0, meses.indexOf(mesHoy)),
   });
   return { saldoTokens: saldo._sum.tokens ?? 0, evaluacion };
 }
@@ -611,13 +641,15 @@ export function programaEnCurso(hoy = new Date()): Promise<ClientePrograma[]> {
  * Un cliente con nivel que no compró en esos cuatro meses no sale aquí (no
  * aporta a la meta); en la tabla del programa sí.
  */
-export async function conNivelesDelPrograma(categorias: CategoriasAsta): Promise<CategoriasAsta> {
-  const niveles = await nivelesActuales();
+export async function conNivelesDelPrograma(categorias: CategoriasAsta, programa?: ClientePrograma[]): Promise<CategoriasAsta> {
+  const lista = programa ?? (await programaEnCurso());
+  const niveles = await nivelesActuales(lista);
   const clientes = categorias.clientes.map((c) => ({ ...c, categoria: niveles.get(c.clave) ?? ('GENERAL' as const) }));
   const redondo = (x: number) => Math.round(x * 100) / 100;
   return {
     ...categorias,
     clientes,
+    enPrograma: lista.length,
     porCategoria: categorias.porCategoria.map((p) => {
       const de = clientes.filter((c) => c.categoria === p.categoria);
       return { ...p, clientes: de.length, compraMensual: redondo(de.reduce((s, c) => s + c.compraMensual, 0)) };

@@ -102,6 +102,11 @@ export const categoriasAstaSchema = z.object({
   ),
   /** De más compra mensual a menos. Solo los que compraron algo en la ventana. */
   clientes: z.array(clienteCategoriaSchema),
+  /**
+   * Los clientes en el Programa ASTA (los que tienen acceso al panel), tengan
+   * nivel o no. No sale en la categoría «pura», sin el programa.
+   */
+  enPrograma: z.number().int().nonnegative().optional(),
 });
 export type CategoriasAsta = z.infer<typeof categoriasAstaSchema>;
 

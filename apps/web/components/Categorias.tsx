@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@asta/shared-types';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
-import { mediaDe } from '@/lib/meses';
+import { compraMediaDe } from '@/lib/meses';
+
+const mayuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 
 /** El color de cada categoría, el mismo que su lámina en la pirámide 3D del Inicio. */
@@ -36,17 +38,34 @@ export function InsigniaCategoria({ categoria }: { categoria: ClaveCategoria }) 
 
 /**
  * Cuánto se compra al mes frente a la meta, y cada categoría frente a la suya.
- * `titulo` y `enlace` cambian entre el inicio y la página de categorías.
+ *
+ * Con `mes` (el administrador), la cifra grande es lo vendido en ese mes, como
+ * en el Inicio: es la misma meta y tiene que decir lo mismo. La compra media de
+ * los meses de las categorías va debajo, con su nombre, porque es de la que
+ * salen las metas de cada nivel. Sin `mes` (el vendedor), la media.
  */
-export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: { href: string; texto: string } }) {
-  const avance = datos.meta > 0 ? Math.min(100, (datos.compraMensual / datos.meta) * 100) : 0;
-  const enPrograma = datos.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
+export function CaminoMeta({
+  datos,
+  enlace,
+  mes,
+}: {
+  datos: CategoriasAsta;
+  enlace?: { href: string; texto: string };
+  mes?: { vendido: number; nombre: string; enCurso: boolean } | null;
+}) {
+  const cifra = mes ? mes.vendido : datos.compraMensual;
+  const avance = datos.meta > 0 ? Math.min(100, (cifra / datos.meta) * 100) : 0;
+  // Los que tienen acceso al panel, con nivel o sin él.
+  const enPrograma = datos.enPrograma ?? datos.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
+  const falta = Math.max(0, datos.meta - cifra);
   return (
     <section className="panel cat-meta">
       <div className="cat-meta-cabeza">
         <div>
           <h2>Camino a {moneyEntero(datos.meta)} al mes</h2>
-          <p className="panel-nota">{n(enPrograma)} clientes en el programa</p>
+          <p className="panel-nota">
+            {n(enPrograma)} {enPrograma === 1 ? 'cliente' : 'clientes'} en el programa
+          </p>
         </div>
         {enlace && (
           <Link className="dash-mas" href={enlace.href}>
@@ -57,20 +76,32 @@ export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: 
 
       <div className="cat-avance">
         <div className="cat-avance-cifras">
-          <strong>{moneyCompact(datos.compraMensual)}</strong>
+          <strong>{moneyCompact(cifra)}</strong>
           <span>
-            de {moneyCompact(datos.meta)} al mes · faltan {moneyCompact(Math.max(0, datos.meta - datos.compraMensual))} · {mediaDe(datos.meses)}
+            {mes ? `vendido en ${mes.nombre}` : compraMediaDe(datos.meses)} · de {moneyCompact(datos.meta)} al mes ·{' '}
+            {mes && cifra >= datos.meta ? 'meta cumplida' : `${mes && !mes.enCurso ? 'faltaron' : 'faltan'} ${moneyCompact(falta)}`}
           </span>
         </div>
-        {/* Un tramo por categoría, del ancho de lo que pone: se ve quién empuja. */}
-        <div className="cat-avance-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)}>
-          {datos.porCategoria.map((c) => {
-            const ancho = datos.meta > 0 ? (c.compraMensual / datos.meta) * 100 : 0;
-            return ancho > 0 ? (
-              <span key={c.categoria} style={{ width: `${ancho}%`, background: COLOR[c.categoria] }} title={`${reglaDe(c.categoria).nombre}: ${corto(c.compraMensual)}/mes`} />
-            ) : null;
-          })}
-        </div>
+        {mes ? (
+          <div className="cat-avance-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)}>
+            {avance > 0 && <span style={{ width: `${avance}%`, background: 'linear-gradient(90deg, #1c8cdb, var(--violeta))' }} />}
+          </div>
+        ) : (
+          /* Un tramo por categoría, del ancho de lo que pone: se ve quién empuja. */
+          <div className="cat-avance-barra" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(avance)}>
+            {datos.porCategoria.map((c) => {
+              const ancho = datos.meta > 0 ? (c.compraMensual / datos.meta) * 100 : 0;
+              return ancho > 0 ? (
+                <span key={c.categoria} style={{ width: `${ancho}%`, background: COLOR[c.categoria] }} title={`${reglaDe(c.categoria).nombre}: ${corto(c.compraMensual)}/mes`} />
+              ) : null;
+            })}
+          </div>
+        )}
+        {mes && (
+          <p className="panel-nota cat-media">
+            {mayuscula(compraMediaDe(datos.meses))}: <strong>{moneyCompact(datos.compraMensual)}</strong>. Con ella se miden las metas de cada nivel.
+          </p>
+        )}
       </div>
 
       <div className="cat-niveles">
@@ -89,7 +120,7 @@ export function CaminoMeta({ datos, enlace }: { datos: CategoriasAsta; enlace?: 
                 </div>
               )}
               <div className="stat-sub">
-                {corto(c.compraMensual)}/mes · meta {corto(c.metaCompraMensual)}
+                media {corto(c.compraMensual)}/mes · meta {corto(c.metaCompraMensual)}
               </div>
               <div className="cat-nivel-regla">
                 {c.categoria === 'GENERAL'

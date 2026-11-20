@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { bajar, mesesDelTrimestre, nivelBloqueado, plazoSellout, subir, topar, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
+import { bajar, mesesAntesDe, mesesDelTrimestre, nivelBloqueado, nivelDeEntrada, plazoSellout, subir, topar, trimestreAnterior, trimestreDe, type ClientePrograma } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
 import { CierreNoPermitido, cerrarTrimestre, conNivelesDelPrograma, evaluar, evaluarTrimestre, limiteSellout, nivelesActuales, type EntradaEvaluacion } from '../services/programaAsta.service.js';
 
@@ -113,6 +113,21 @@ describe('Las reglas', () => {
   });
 });
 
+describe('El nivel con el que entra al programa', () => {
+  it('el más alto cuya cuota supera en un 50 % con su media: Bronce desde 750, Plata desde 1.500, Oro desde 3.000', () => {
+    expect([0, 749.99, 750, 1499, 1500, 2999, 3000].map(nivelDeEntrada)).toEqual(['GENERAL', 'GENERAL', 'BRONCE', 'BRONCE', 'PLATA', 'PLATA', 'ORO']);
+  });
+
+  it('nunca en Diamante mientras esté bloqueado', () => {
+    expect(nivelDeEntrada(50_000)).toBe('ORO');
+  });
+
+  it('la media es de los tres meses completos antes del mes de su primer acceso', () => {
+    expect(mesesAntesDe('2026-11', 3)).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(mesesAntesDe('2027-02', 3)).toEqual(['2026-11', '2026-12', '2027-01']);
+  });
+});
+
 describe('Entra al programa a mitad de trimestre (primer acceso al panel)', () => {
   const general = (e: Partial<EntradaEvaluacion>) => evaluar(entrada({ nivel: 'GENERAL', anteriorSinFallos: false, ...e }));
 
@@ -193,10 +208,7 @@ describe('El cierre, contra MySQL', () => {
     await expect(cerrarTrimestre(T, { aplicar: true, hoy: DESPUES, evaluarCon })).rejects.toThrow(/ya está cerrado/);
   });
 
-  it('el nivel de hoy es el del último cierre, y el trimestre siguiente empieza ahí con el saldo de tokens', async () => {
-    const niveles = await nivelesActuales();
-    expect([niveles.get('ZZPROG1'), niveles.get('ZZPROG2')]).toEqual(['ORO', 'PLATA']);
-
+  it('el trimestre siguiente empieza donde acabó este, con el saldo de tokens; y ese es el nivel de hoy', async () => {
     // 2099-Q2: sin compras en Odoo, los dos (con acceso desde enero) siguen en su nivel, y bajarían.
     // ZZPROG3 entra en mayo: Cliente general desde mayo. ZZPROG4 no ha entrado: no está.
     const miembros = new Map([
@@ -211,10 +223,15 @@ describe('El cierre, contra MySQL', () => {
     expect(de('ZZPROG2')).toMatchObject({ saldoTokens: 4, evaluacion: { nivel: 'PLATA' } });
     expect(de('ZZPROG3').evaluacion).toMatchObject({ nivel: 'GENERAL', cuotaTrimestral: 1000 });
     expect(de('ZZPROG3').evaluacion.meses.map((m) => m.enPrograma)).toEqual([false, true, true]);
+
+    // El nivel de hoy, para las cuentas y la pirámide: con el que está en el trimestre. Cliente general no sale.
+    const niveles = await nivelesActuales(siguiente);
+    expect([niveles.get('ZZPROG1'), niveles.get('ZZPROG2'), niveles.get('ZZPROG3')]).toEqual(['ORO', 'PLATA', undefined]);
   }, 120_000);
 
   it('la meta y la pirámide cuentan a cada cliente en su nivel del programa, no en su categoría de compra', async () => {
     const base = { porMes: [0, 0, 0, 0], mesesConCompra: 4, rif: null, vendedor: null, vendedorOdooUserId: null, siguiente: null };
+    const programa = [cliente('ZZPROG1', 'ORO', 'ORO', 0), cliente('ZZPROG2', 'PLATA', 'PLATA', 0)];
     const r = await conNivelesDelPrograma({
       meses: ['2099-01', '2099-02', '2099-03', '2099-04'],
       compraMensual: 3000,
@@ -231,9 +248,11 @@ describe('El cierre, contra MySQL', () => {
         { ...base, clave: 'ZZPROG2', partnerId: 2, nombre: 'dos', compraMensual: 700, categoria: 'PLATA' },
         { ...base, clave: 'ZZPROG3', partnerId: 3, nombre: 'tres', compraMensual: 300, categoria: 'BRONCE' },
       ],
-    });
+    }, programa);
     expect(r.clientes.map((c) => c.categoria)).toEqual(['ORO', 'PLATA', 'GENERAL']);
     const de = (k: string) => r.porCategoria.find((p) => p.categoria === k)!;
     expect([de('ORO').clientes, de('ORO').compraMensual, de('DIAMANTE').clientes, de('GENERAL').clientes]).toEqual([1, 2000, 0, 1]);
+    // En el programa están todos los que tienen acceso, con nivel o sin él.
+    expect(r.enPrograma).toBe(2);
   });
 });

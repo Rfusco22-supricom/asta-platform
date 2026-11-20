@@ -34,10 +34,17 @@ import { claveCategoriaSchema, reglaDe, type ClaveCategoria } from './categorias
  * ── Quién está en el programa (2026-11-20) ───────────────────────────────────
  *
  * Solo los clientes con acceso al panel: el programa de cada uno empieza el mes
- * de su primer acceso (`app_users.primer_acceso_at`), en Cliente general. Si
- * entra a mitad de trimestre, ese trimestre se le mira solo desde ese mes: los
- * meses de antes no cuentan (`enPrograma: false`) y la cuota trimestral es su
- * mínimo mensual por los meses que le quedan.
+ * de su primer acceso (`app_users.primer_acceso_at`). Si entra a mitad de
+ * trimestre, ese trimestre se le mira solo desde ese mes: los meses de antes no
+ * cuentan (`enPrograma: false`) y la cuota trimestral es su mínimo mensual por
+ * los meses que le quedan.
+ *
+ * ── El nivel con el que entra (2026-11-20) ───────────────────────────────────
+ *
+ * El más alto cuya cuota mensual supera en un 50 % (`ENTRADA`) con su compra
+ * media de los `MESES_ENTRADA` meses completos antes de su primer acceso
+ * (`nivelDeEntrada`): Bronce desde 750, Plata desde 1.500, Oro desde 3.000. Si
+ * no llega, Cliente general. Desde ahí, las reglas de siempre.
  */
 
 export const TOKENS = { mensual: 4, trimestral: 4, sellout: 4, excedente: 1, racha: 1, variedad: 1 } as const;
@@ -128,6 +135,34 @@ export function nombreTrimestre(trimestre: string): string {
 export function cuotasDe(nivel: ClaveCategoria, meses = 3): { mensual: number; trimestral: number } {
   const regla = reglaDe(nivel === 'GENERAL' ? 'BRONCE' : nivel);
   return { mensual: regla.minimoMensual, trimestral: regla.minimoMensual * meses };
+}
+
+/** Cuánto por encima de la cuota mensual de un nivel hay que comprar para entrar en él al llegar al programa. */
+export const ENTRADA = 1.5;
+
+/** Los meses completos antes del primer acceso con cuya media se decide el nivel de entrada. */
+export const MESES_ENTRADA = 3;
+
+/**
+ * El nivel con el que un cliente entra al programa, por su compra media mensual
+ * (ver la cabecera): el más alto, sin pasar de `NIVEL_MAXIMO`, cuya cuota
+ * mensual por `ENTRADA` alcanza.
+ */
+export function nivelDeEntrada(mediaMensual: number): ClaveCategoria {
+  for (const nivel of [...ESCALERA].reverse()) {
+    if (nivel === 'GENERAL' || nivelBloqueado(nivel)) continue;
+    if (mediaMensual >= cuotasDe(nivel).mensual * ENTRADA) return nivel;
+  }
+  return 'GENERAL';
+}
+
+/** Los `n` meses anteriores a `mes`, del más antiguo al más reciente: («2026-11», 3) → [2026-08, 2026-09, 2026-10]. */
+export function mesesAntesDe(mes: string, n: number): string[] {
+  const [a, m] = mes.split('-').map(Number) as [number, number];
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(a, m - 1 - n + i, 1));
+    return d.toISOString().slice(0, 7);
+  });
 }
 
 /** Un nivel más, sin pasar de `NIVEL_MAXIMO`. Quien ya está arriba se queda. */
