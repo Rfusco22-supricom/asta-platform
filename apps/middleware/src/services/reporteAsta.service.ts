@@ -3,10 +3,10 @@ import { productosEnCompetencia } from './asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO } from './criterioFacturacion.js';
 import { carteraDe, mesDelGrupo, mesesDe, totalDeProductos, type RangoFechas, type Reporte } from './reportes.service.js';
 import { enSede } from './sede.js';
-import { compras, deSede, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
+import { claveCompra, compras, deSede, enRango as enRangoSb, smartbit, type VentaSmartbit } from './smartbit.service.js';
 import { SIN_INTERCOMPANIA } from './intercompania.js';
-import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea, saldoAstaPorCliente } from './ventasAsta.service.js';
-import { limpiarEspacios, nombrePersona, type SedeId } from '@asta/shared-types';
+import { FACTURA_CON_ASTA, LINEAS_ASTA, carteraDesdeFactura, carteraDesdeLinea, saldoAsta, saldoAstaPorCliente } from './ventasAsta.service.js';
+import { limpiarEspacios, nombrePersona, type FacturaDelVendedor, type FacturasDelVendedor, type SedeId } from '@asta/shared-types';
 
 /**
  * El reporte SOLO ASTA (ver `ventasAsta.service`), de la cartera de un vendedor
@@ -210,6 +210,107 @@ export function reporteAstaDelVendedor(odooUserId: number, rango: RangoFechas): 
 /** El reporte de toda la empresa o de una sede, solo ASTA: la vista de administración. */
 export function reporteAstaDeLaEmpresa(rango: RangoFechas, sede: SedeId | null = null): Promise<Reporte> {
   return reporteAsta(null, rango, sede);
+}
+
+/**
+ * Las facturas con ASTA de UN vendedor en el periodo: lo que hay detrás de su
+ * fila en el ranking del Inicio (`porVendedorDeLaEmpresa`), con el mismo
+ * criterio. De Odoo, cada factura o nota de crédito de los clientes que tiene
+ * asignados, con lo ASTA de sus líneas y la parte ASTA de su saldo. De
+ * Smartbit, cada compra (un cliente en un día) que hizo él.
+ *
+ * Solo montos de ASTA: de una factura con otras marcas sale solo su parte ASTA.
+ */
+export async function facturasAstaDelVendedor(odooUserId: number, rango: RangoFechas, sede: SedeId | null = null, hoy = new Date()): Promise<FacturasDelVendedor> {
+  const lineas = [
+    ...LINEAS_ASTA,
+    ['partner_id.user_id', '=', odooUserId],
+    ['invoice_date', '>=', rango.desde],
+    ['invoice_date', '<=', rango.hasta],
+    ...enSede(sede),
+  ];
+  const [porDocumento, sb, [usuario]] = await Promise.all([
+    readGroup<{ move_id: [number, string] | false; balance: number }>('account.move.line', lineas as never, ['balance:sum'], ['move_id']),
+    smartbit(),
+    searchRead<{ id: number; name: string }>('res.users', [['id', '=', odooUserId]], ['name'], { context: { active_test: false } }),
+  ]);
+
+  const asta = new Map(porDocumento.flatMap((g) => (g.move_id ? [[g.move_id[0], -g.balance] as [number, number]] : [])));
+  const ids = [...asta.keys()];
+  const documentos: Array<{
+    id: number;
+    name: string;
+    invoice_date: string | false;
+    invoice_date_due: string | false;
+    move_type: string;
+    commercial_partner_id: [number, string] | false;
+    amount_residual_signed: number;
+    amount_untaxed_signed: number;
+  }> = [];
+  for (let i = 0; i < ids.length; i += 1000) {
+    documentos.push(
+      ...(await searchRead<(typeof documentos)[number]>(
+        'account.move',
+        [['id', 'in', ids.slice(i, i + 1000)]],
+        ['name', 'invoice_date', 'invoice_date_due', 'move_type', 'commercial_partner_id', 'amount_residual_signed', 'amount_untaxed_signed'],
+      )),
+    );
+  }
+
+  const hoyIso = hoy.toISOString().slice(0, 10);
+  const facturas: FacturaDelVendedor[] = documentos.map((d) => {
+    const monto = asta.get(d.id) ?? 0;
+    const porCobrar = redondear(saldoAsta(d.amount_residual_signed, monto, d.amount_untaxed_signed));
+    return {
+      id: d.id,
+      numero: d.name,
+      fecha: d.invoice_date || '',
+      tipo: d.move_type === NOTA_DE_CREDITO ? 'nota' : 'factura',
+      partnerId: d.commercial_partner_id ? d.commercial_partner_id[0] : null,
+      cliente: d.commercial_partner_id ? limpiarEspacios(d.commercial_partner_id[1]) : 'Sin cliente',
+      monto: redondear(monto),
+      porCobrar,
+      vencida: porCobrar > 0 && Boolean(d.invoice_date_due) && d.invoice_date_due! < hoyIso,
+    };
+  });
+
+  // Smartbit: cada compra (un cliente en un día) suma sus ventas, devoluciones incluidas.
+  const delVendedor = sb.ventas.filter((v) => v.vendedorId === odooUserId && enRangoSb(v, rango) && deSede(v, sede));
+  const porCompra = new Map<string, FacturaDelVendedor>();
+  for (const v of delVendedor) {
+    const k = claveCompra(v);
+    const f = porCompra.get(k) ?? {
+      id: null,
+      numero: null,
+      fecha: v.fecha,
+      tipo: 'smartbit' as const,
+      partnerId: v.partnerId,
+      cliente: limpiarEspacios(v.cliente),
+      monto: 0,
+      porCobrar: 0,
+      vencida: false,
+    };
+    f.monto += v.venta;
+    porCompra.set(k, f);
+  }
+  for (const f of porCompra.values()) if (Math.abs(f.monto) >= 0.005) facturas.push({ ...f, monto: redondear(f.monto) });
+
+  facturas.sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.numero ?? '').localeCompare(a.numero ?? ''));
+  const clientes = new Set(facturas.map((f) => (f.partnerId ? `p${f.partnerId}` : `n${f.cliente}`)));
+  return {
+    odooUserId,
+    nombre: usuario ? nombrePersona(usuario.name) : `Vendedor #${odooUserId}`,
+    periodo: { desde: rango.desde, hasta: rango.hasta },
+    totales: {
+      facturado: redondear(facturas.reduce((s, f) => s + f.monto, 0)),
+      porCobrar: redondear(facturas.reduce((s, f) => s + f.porCobrar, 0)),
+      // Como en el ranking: facturas de venta y compras de Smartbit; una nota de crédito no es una compra.
+      facturas: facturas.filter((f) => f.tipo === 'factura' || (f.tipo === 'smartbit' && f.monto > 0)).length,
+      notas: facturas.filter((f) => f.tipo === 'nota').length,
+      clientes: clientes.size,
+    },
+    facturas,
+  };
 }
 
 function redondear(n: number): number {

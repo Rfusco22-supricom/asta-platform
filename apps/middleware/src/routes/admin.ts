@@ -9,7 +9,7 @@ import { crearInvitacion, listarSinAcceso, InvitacionInvalida, INVITACION_DIAS }
 import { enviarCorreo, plantillaInvitacion } from '../services/correo.service.js';
 import { estadisticasAgentes } from '../services/agentes.service.js';
 import { AccesoImposible, buscarUsuariosOdoo, darAccesoPorId, listarConAcceso, quitarAccesoPersonal } from '../services/accesoPersonal.service.js';
-import { reporteAstaDeLaEmpresa, reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
+import { facturasAstaDelVendedor, reporteAstaDeLaEmpresa, reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
 import { dePantalla, olvidarPantalla } from '../services/pantallas.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
@@ -394,6 +394,30 @@ adminRouter.get('/reportes', autorizar('admin.reportes.ver'), async (req, res, n
     res.json(
       await dePantalla(`admin:reportes:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () => reporteAstaDeLaEmpresa(rango, sede)),
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Las facturas con ASTA de un vendedor en el periodo (y la sede): el detalle de
+ * su fila en el ranking del Inicio. Solo montos de ASTA.
+ */
+adminRouter.get('/reportes/vendedores/:odooUserId/facturas', autorizar('admin.reportes.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = Number(req.params.odooUserId);
+    if (!Number.isInteger(odooUserId) || odooUserId <= 0) {
+      res.status(400).json({ error: { code: 'INVALID_QUERY', message: 'odooUserId inválido.' } });
+      return;
+    }
+    const query = req.query as Record<string, unknown>;
+    const rango = rangoDeLaPeticion(query);
+    const sede = sedeDeLaPeticion(query);
+    res.json({
+      data: await dePantalla(`admin:facturas-vendedor:${odooUserId}:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () =>
+        facturasAstaDelVendedor(odooUserId, rango, sede),
+      ),
+    });
   } catch (error) {
     next(error);
   }

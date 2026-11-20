@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
-import { cotizacionDetalleRespuestaSchema, nivelBloqueado, programaClienteRespuestaSchema, programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
+import { cotizacionDetalleRespuestaSchema, facturasDelVendedorRespuestaSchema, nivelBloqueado, programaClienteRespuestaSchema, programaEmpresaRespuestaSchema, trimestreDe } from '@asta/shared-types';
 import { createApp } from '../server.js';
 import { prisma } from '../config/prisma.js';
 import { emitirAccessToken } from '../auth/jwt.js';
@@ -97,5 +97,19 @@ describe('El programa para Supricom', () => {
     expect(valido.data!.data.lineas.length).toBeGreaterThan(0);
     expect((await pedir(`/api/v1/salesperson/cotizaciones/${id}`, 'vendedorSinCartera')).status).toBe(404);
     expect((await pedir(`/api/v1/admin/cotizaciones/${id}`, 'cliente')).status).toBe(403);
+  }, 180_000);
+
+  it('las facturas de un vendedor (Inicio): solo el administrador, solo ASTA y cuadran con sus totales', async () => {
+    const ruta = '/api/v1/admin/reportes/vendedores/380/facturas?desde=2026-11-01&hasta=2026-11-30';
+    const r = await pedir(ruta, 'admin');
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    const valido = facturasDelVendedorRespuestaSchema.safeParse(r.body);
+    expect(valido.success, JSON.stringify(valido.error?.issues?.slice(0, 3))).toBe(true);
+    const { totales, facturas } = valido.data!.data;
+    expect(totales.facturado).toBeCloseTo(facturas.reduce((s, f) => s + f.monto, 0), 2);
+    expect(totales.facturas).toBe(facturas.filter((f) => f.tipo === 'factura' || (f.tipo === 'smartbit' && f.monto > 0)).length);
+    expect((await pedir(ruta, 'vendedorSinCartera')).status).toBe(403);
+    expect((await pedir(ruta, 'cliente')).status).toBe(403);
+    expect((await pedir('/api/v1/admin/reportes/vendedores/abc/facturas', 'admin')).status).toBe(400);
   }, 180_000);
 });

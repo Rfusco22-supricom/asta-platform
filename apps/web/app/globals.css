@@ -3553,6 +3553,27 @@ a.enlace-ficha:hover { color: var(--primario); }
 .dash-nombre small { display: block; font-size: 11.5px; font-weight: 400; color: var(--text-3); margin-top: 1px; }
 .dash-ranking .proporcion { font-size: 12.5px; }
 .dash-ranking .proporcion-barra { width: 56px; }
+/* Vendedores: cada fila se pulsa para ver sus facturas. */
+.dash-ranking li:has(> .dash-fila) { display: block; padding: 0; }
+.dash-fila {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.dash-fila { grid-template-columns: 22px minmax(0, 1fr) auto 12px; margin: 0 -8px; padding: 8px; width: calc(100% + 16px); border-radius: 12px; cursor: pointer; transition: background 0.15s ease; }
+button.dash-fila:hover { background: color-mix(in srgb, var(--surface) 80%, transparent); }
+button.dash-fila:hover .dash-nombre > span { color: var(--primario); }
+button.dash-fila:focus-visible { outline: 2px solid var(--cian); outline-offset: 1px; }
+.dash-fila-ir { color: var(--text-3); font-size: 18px; line-height: 1; }
+button.dash-fila:hover .dash-fila-ir { color: var(--primario); }
 
 /* La oportunidad: la cuota en un anillo y lo que se va a otras marcas. */
 .dash-cuota { display: flex; align-items: center; gap: 18px; }
@@ -4369,6 +4390,49 @@ button.serie-col .serie-barra { display: block; }
 }
 
 /* El detalle, en la ventana: sin la caja de panel, que ya la pone la ventana. */
+/* Las facturas de un vendedor (Inicio del administrador). */
+.vendedor-modal { width: min(760px, calc(100vw - 32px)); }
+.vendedor-cifras { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.vendedor-cifras .stat-sub { font-size: 12px; }
+.vendedor-vencido { color: var(--danger); }
+.vendedor-controles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.vendedor-controles .pi-buscar { flex: 1 1 180px; min-width: 160px; max-width: none; }
+.vendedor-controles .select { border-radius: var(--radius-pill); flex: none; }
+.pi-vistas button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-weight: 550;
+  cursor: pointer;
+}
+.pi-vistas button:hover { color: var(--text); background: var(--surface); }
+.pi-vistas button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 2px 8px -4px rgba(17, 24, 39, 0.18); }
+.pi-vistas button[aria-pressed='true'] .pi-cuenta { background: var(--primario); color: #fff; }
+.pi-vistas button:focus-visible { outline: 2px solid var(--primario); outline-offset: 1px; }
+.vendedor-facturas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.vendedor-factura { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 2px; border-top: 1px solid var(--border); }
+.vendedor-factura:first-child { border-top: 0; }
+.vendedor-factura-cliente { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 560; overflow-wrap: anywhere; }
+.vendedor-factura-cliente a { color: var(--text); }
+.vendedor-factura-cliente a:hover { color: var(--primario); }
+.vendedor-factura small { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.vendedor-factura-monto { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.vendedor-factura-monto strong { font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vendedor-factura-monto small.pendiente { color: var(--warning, var(--text-2)); }
+.vendedor-factura-monto small.vencida { color: var(--danger); }
+.vendedor-factura.es-nota .vendedor-factura-monto strong { color: var(--danger); }
+.vendedor-cuantas { margin: -6px 0 0; font-size: 12.5px; color: var(--text-3); text-align: right; }
+@media (max-width: 640px) {
+  .vendedor-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .alerta-modal { width: min(880px, calc(100vw - 32px)); }
 .alerta-modal .mes-detalle-caja { position: relative; padding: 22px 24px 20px; }
 .alerta-modal-cerrar { position: absolute; top: 14px; right: 14px; z-index: 1; }

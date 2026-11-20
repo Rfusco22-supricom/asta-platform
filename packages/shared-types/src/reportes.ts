@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { montoSchema } from './common.js';
+import { montoSchema, odooIdSchema } from './common.js';
 
 /**
  * Reportes de facturación por periodo.
@@ -85,3 +85,48 @@ export const reporteRespuestaSchema = z.object({
 });
 
 export type ReporteRespuesta = z.infer<typeof reporteRespuestaSchema>;
+
+/**
+ * Las facturas con ASTA de UN vendedor en un periodo: el detalle de su fila en
+ * el ranking del Inicio. Mismo criterio que `porVendedor`: los clientes que
+ * tiene asignados (lo de Odoo) y las ventas que hizo él (lo de Smartbit, antes
+ * del 1-abr-2026, sin número de factura). Solo la parte ASTA de cada documento.
+ */
+export const facturaDelVendedorSchema = z.object({
+  /** El id del documento en Odoo; `null` en una compra de Smartbit. */
+  id: odooIdSchema.nullable(),
+  /** El número de la factura o nota de crédito; `null` en Smartbit. */
+  numero: z.string().nullable(),
+  /** «AAAA-MM-DD». */
+  fecha: z.string(),
+  tipo: z.enum(['factura', 'nota', 'smartbit']),
+  partnerId: odooIdSchema.nullable(),
+  cliente: z.string(),
+  /** Lo ASTA del documento, sin IVA; negativo en una nota de crédito. */
+  monto: montoSchema,
+  /** La parte ASTA de su saldo pendiente. */
+  porCobrar: montoSchema,
+  /** Con saldo y la fecha de vencimiento ya pasada. */
+  vencida: z.boolean(),
+});
+
+export type FacturaDelVendedor = z.infer<typeof facturaDelVendedorSchema>;
+
+export const facturasDelVendedorSchema = z.object({
+  odooUserId: odooIdSchema,
+  nombre: z.string(),
+  periodo: z.object({ desde: z.string(), hasta: z.string() }),
+  totales: z.object({
+    facturado: montoSchema,
+    porCobrar: montoSchema,
+    facturas: z.number().int().nonnegative(),
+    notas: z.number().int().nonnegative(),
+    clientes: z.number().int().nonnegative(),
+  }),
+  /** De la más reciente a la más antigua. */
+  facturas: z.array(facturaDelVendedorSchema),
+});
+
+export type FacturasDelVendedor = z.infer<typeof facturasDelVendedorSchema>;
+
+export const facturasDelVendedorRespuestaSchema = z.object({ data: facturasDelVendedorSchema });
