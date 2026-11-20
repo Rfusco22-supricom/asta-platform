@@ -13,6 +13,7 @@ import {
   type RitmoVendedor,
   type SemanaTendencia,
 } from '@asta/shared-types';
+import { prisma } from '../config/prisma.js';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { MARCA_ASTA } from './asta.service.js';
 import { FACTURA } from './criterioFacturacion.js';
@@ -34,6 +35,9 @@ import { LINEAS_ASTA } from './ventasAsta.service.js';
  *     de media al mes en los cuatro meses completos anteriores
  *     (`categoriasAsta`). La ejecución, lo que lleva comprado este mes, con el
  *     criterio del programa: una nota de crédito resta en el mes de su factura.
+ *     Solo los clientes de los vendedores con cuenta de vendedor activa en el
+ *     panel (`vendedoresDelRitmo`): ni los que ya no están, ni los puestos
+ *     («Asistente de Ventas»), ni los clientes sin vendedor.
  *   · Concentración: lo facturado de ASTA en el mes, por cliente (agrupado por
  *     RIF, como el programa) y por referencia.
  *   · Cobertura: de los clientes con nivel, cuántos compraron ASTA en los
@@ -352,10 +356,25 @@ async function enRiesgoEnSede(sede: { id: number; nombre: string }, semanas: Arr
 // Las tres alertas
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Los vendedores que cuentan en el ritmo (su usuario de Odoo): los que tienen
+ * cuenta de VENDEDOR activa en el panel. Quien se va deja de tener acceso
+ * (Personas → acceso del personal) y con eso sale también de aquí. Un puesto
+ * («Asistente de Ventas…») no es una persona a la que medir, aunque tenga cuenta.
+ */
+async function vendedoresDelRitmo(): Promise<Set<number>> {
+  const cuentas = await prisma.appUser.findMany({
+    where: { role: 'VENDEDOR', isActive: true, odooUserId: { not: null } },
+    select: { odooUserId: true, fullName: true },
+  });
+  return new Set(cuentas.filter((c) => !/^\s*asistente\b/i.test(c.fullName)).map((c) => c.odooUserId!));
+}
+
 function alertaRitmo(
   programados: ClientePrograma[],
   habitual: ClienteCategoria[],
   compras: CompraDelMes[],
+  vendedoresActivos: Set<number>,
   mes: string,
   dias: AlertaRitmo['diasHabiles'],
 ): AlertaRitmo {
@@ -375,8 +394,10 @@ function alertaRitmo(
     const f = fila(c.clave, c);
     Object.assign(f, { vendedor: c.vendedor, odooUserId: c.vendedorOdooUserId, objetivo: c.evaluacion.cuotaMensual });
   }
-  // Sin objetivo y sin compras este mes, no aporta nada.
-  const cuentan = [...filas.values()].filter((f) => f.objetivo > 0 || f.ejecucion !== 0);
+  // Solo clientes de un vendedor en activo; y sin objetivo ni compras este mes, no aporta nada.
+  const cuentan = [...filas.values()].filter(
+    (f) => f.odooUserId !== null && vendedoresActivos.has(f.odooUserId) && (f.objetivo > 0 || f.ejecucion !== 0),
+  );
 
   const objetivo = cuentan.reduce((s, f) => s + f.objetivo, 0);
   const ejecucion = cuentan.reduce((s, f) => s + f.ejecucion, 0);
@@ -414,11 +435,12 @@ export async function alertasTablero(ahora = new Date()): Promise<AlertasTablero
   const semanas = semanasCompletas(hoy, U.semanasVenta);
   const desdeActivo = sumarDias(hoy, -(U.diasActivo - 1));
 
-  const [programa, habitual, comprasDelMes, delMes, porProducto, recientes, tendencia, ...enRiesgo] = await Promise.all([
+  const [programa, habitual, comprasDelMes, vendedoresActivos, delMes, porProducto, recientes, tendencia, ...enRiesgo] = await Promise.all([
     // La misma clave que `programaEnCurso`: lo comparten el inicio, el programa y esto.
     dePantalla(`programa:${trimestre}`, () => evaluarTrimestre(trimestre, ahora)),
     categoriasDelPrograma(),
     comprasDelMesPorCliente(mes),
+    vendedoresDelRitmo(),
     facturadoPor<{ partner_id: [number, string] | false }>(`${mes}-01`, hoy, ['partner_id']),
     facturadoPor<{ product_id: [number, string] | false }>(`${mes}-01`, hoy, ['product_id']),
     facturadoPor<{ partner_id: [number, string] | false }>(desdeActivo, hoy, ['partner_id']),
@@ -427,7 +449,7 @@ export async function alertasTablero(ahora = new Date()): Promise<AlertasTablero
   ]);
 
   const programados = programa.filter((c) => c.evaluacion.nivel !== 'GENERAL');
-  const ritmo = alertaRitmo(programados, habitual.clientes, comprasDelMes, mes, dias);
+  const ritmo = alertaRitmo(programados, habitual.clientes, comprasDelMes, vendedoresActivos, mes, dias);
 
   // ── Concentración y cobertura
   const ids = [...delMes, ...recientes].flatMap((g) => (g.partner_id ? [g.partner_id[0]] : []));
