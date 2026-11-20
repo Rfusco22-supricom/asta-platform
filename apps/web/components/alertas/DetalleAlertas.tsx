@@ -152,7 +152,7 @@ export function Ritmo({ r }: { r: AlertaRitmo }) {
         </div>
       </dl>
       <p className="panel-nota">
-        Cuentan los {n(r.clientes)} clientes con objetivo o con compras en {mes}. El objetivo de cada uno es la cuota mensual de su nivel en el Programa
+        Cuentan los {n(r.clientes)} clientes de los vendedores en activo con objetivo o con compras en {mes}. El objetivo de cada uno es la cuota mensual de su nivel en el Programa
         ASTA ({n(r.clientesConNivel)} con nivel) o, si no tiene nivel, lo que compra de media al mes en los cuatro meses anteriores. «Llevan» es lo que han
         comprado de ASTA en {mes}; una nota de crédito resta en el mes de la factura que corrige. Salta si la proyección por días hábiles queda por debajo
         del {pctEntero(U.ritmoMinimo)}.

@@ -96,7 +96,7 @@ export const alertaRitmoSchema = z.object({
   ritmoNecesario: montoSchema.nullable(),
   /** Cuánto hay que acelerar: 0,25 es un 25 % más por día. `null` si no hace falta o no se puede. */
   aceleracion: z.number().nullable(),
-  /** Los clientes que cuentan: con objetivo o con compras este mes. */
+  /** Los clientes que cuentan: de un vendedor con cuenta activa en el panel, con objetivo o con compras este mes. */
   clientes: z.number().int().nonnegative(),
   /** De ellos, los que tienen nivel en el Programa ASTA (su objetivo es su cuota). */
   clientesConNivel: z.number().int().nonnegative(),
