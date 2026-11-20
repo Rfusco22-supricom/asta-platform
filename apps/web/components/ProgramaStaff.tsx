@@ -51,7 +51,8 @@ function filtrar(clientes: ClientePrograma[], filtro: string): ClientePrograma[]
   if (filtro === 'suben') return clientes.filter((c) => alCerrar(c.evaluacion) === 'sube');
   if (filtro === 'bajan') return clientes.filter((c) => alCerrar(c.evaluacion) === 'baja' && c.evaluacion.nivel !== 'GENERAL');
   if ((ESCALERA as readonly string[]).includes(filtro)) return clientes.filter((c) => c.evaluacion.nivel === filtro);
-  return clientes.filter((c) => c.evaluacion.nivel !== 'GENERAL');
+  // «En el programa»: todos los que tienen acceso al panel, con nivel o sin él.
+  return clientes;
 }
 
 function Puntos({ estados, titulo }: { estados: Array<{ mes: string; estado: boolean | null; enPrograma: boolean }>; titulo: string }) {

@@ -3900,6 +3900,9 @@ html[data-cargando='navegando'] .contenido {
 .cat-nivel-regla { font-size: 11px; color: var(--text-3); }
 
 .cat-filtros { margin: 18px 0 12px; flex-wrap: wrap; }
+/* La compra media de las categorías, debajo de lo vendido en el mes. */
+.cat-media { margin: 10px 0 0; }
+.cat-media strong { color: var(--text); }
 
 /* La tabla del trimestre del programa: un punto por mes y qué pasa al cerrar. */
 .prog-puntos { display: inline-flex; gap: 5px; }

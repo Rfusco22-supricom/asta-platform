@@ -3,7 +3,7 @@ import { cuotasDe, reglaDe, type CategoriasAsta, type ClaveCategoria } from '@as
 import { COLORES_CATEGORIAS } from '@/components/tres/colores';
 import { esRedireccion, type Reporte } from '@/lib/api';
 import { moneyCompact, moneyEntero } from '@/lib/formato';
-import { mediaDe } from '@/lib/meses';
+import { compraMediaDe } from '@/lib/meses';
 import { PiramideCategorias, type NivelPiramide } from './PiramideCategorias';
 
 /**
@@ -89,7 +89,8 @@ export function HeroMeta({
   const delMes = !enCartera && mes ? mes : null;
   const cifra = delMes ? delMes.vendido : r.compraMensual;
   const avance = r.meta > 0 ? Math.min(100, (cifra / r.meta) * 100) : 0;
-  const enPrograma = r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
+  // Los que tienen acceso al panel, con nivel o sin él (ver `enPrograma`).
+  const enPrograma = r.enPrograma ?? r.porCategoria.filter((c) => c.categoria !== 'GENERAL').reduce((s, c) => s + c.clientes, 0);
   const porClave = new Map(r.porCategoria.map((c) => [c.categoria, c]));
   // En la cartera, la barra es el 100 % de lo que compra; en la empresa, la meta.
   const total = enCartera ? r.compraMensual : r.meta;
@@ -124,7 +125,7 @@ export function HeroMeta({
           <strong>{corto(cifra)}</strong>
           <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
         </div>
-        <p className="hero-periodo">{delMes ? `vendido en ${delMes.nombre}` : mediaDe(r.meses)}</p>
+        <p className="hero-periodo">{delMes ? `vendido en ${delMes.nombre}` : compraMediaDe(r.meses)}</p>
 
         {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
         <div

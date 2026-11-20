@@ -3,7 +3,9 @@ import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
 import { BeneficiosPorNivel } from '@/components/Beneficios';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
-import { getCategoriasAstaEmpresa, getProgramaEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { Periodos } from '@/components/Periodos';
+import { getCategoriasAstaEmpresa, getProgramaEmpresa, getReporteEmpresa, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { nombrePeriodo } from '@/lib/meses';
 
 /**
  * El programa de ASTA de toda la empresa: cómo va el conjunto hacia la meta
@@ -12,6 +14,10 @@ import { getCategoriasAstaEmpresa, getProgramaEmpresa, ApiError, esRedireccion, 
  *
  * Lo calcula el middleware (`programaAsta.service`). Esta página lo enseña y lo
  * filtra.
+ *
+ * La cifra grande es la del Inicio: lo vendido en el mes del filtro (el último
+ * mes del periodo; por defecto, el que va en curso) frente a la misma meta. La
+ * compra media de las categorías va debajo, con su nombre.
  */
 
 export const dynamic = 'force-dynamic';
@@ -28,13 +34,27 @@ function Tabla({ programa, ...resto }: { programa: Awaited<ReturnType<typeof get
   return <TablaPrograma datos={programa} {...resto} />;
 }
 
-export default async function CategoriasAdminPage({ searchParams }: { searchParams: Promise<{ ver?: string }> }) {
-  const sesion = await requireSession();
-  const { ver } = await searchParams;
-  const filtro = FILTROS_PROGRAMA.some((f) => f.valor === ver) ? ver! : 'programa';
+/** El mes en curso, del día 1 a hoy. */
+function mesEnCurso(): { desde: string; hasta: string } {
+  const hoy = new Date().toISOString().slice(0, 10);
+  return { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy };
+}
 
-  // La tabla va aparte: si falla, la meta sale igual.
+export default async function CategoriasAdminPage({ searchParams }: { searchParams: Promise<{ ver?: string; desde?: string; hasta?: string }> }) {
+  const sesion = await requireSession();
+  const { ver, desde, hasta } = await searchParams;
+  const filtro = FILTROS_PROGRAMA.some((f) => f.valor === ver) ? ver! : 'programa';
+  const rango = desde && hasta && /^\d{4}-\d{2}-\d{2}$/.test(desde) && /^\d{4}-\d{2}-\d{2}$/.test(hasta) ? { desde, hasta } : mesEnCurso();
+  // El mes del filtro, como en el Inicio: el último del periodo.
+  const delMes = { desde: `${rango.hasta.slice(0, 7)}-01`, hasta: rango.hasta };
+  const enCurso = rango.hasta.slice(0, 7) === new Date().toISOString().slice(0, 7);
+
+  // La tabla y lo vendido en el mes van aparte: si fallan, la meta sale igual.
   const programa = getProgramaEmpresa(sesion.accessToken).catch(() => null);
+  const ventas = getReporteEmpresa(sesion.accessToken, delMes, null).catch((e: unknown) => {
+    if (esRedireccion(e)) throw e;
+    return null;
+  });
   let datos;
   try {
     datos = await getCategoriasAstaEmpresa(sesion.accessToken);
@@ -53,7 +73,8 @@ export default async function CategoriasAdminPage({ searchParams }: { searchPara
 
   return (
     <Marco usuario={sesion.usuario} titulo="Niveles y trimestre">
-      <CaminoMeta datos={datos} />
+      <Periodos base="/admin/categorias" periodo={rango} />
+      <CaminoMeta datos={datos} mes={await ventas.then((v) => (v ? { vendido: v.totales.facturado, nombre: nombrePeriodo(delMes.desde, delMes.hasta), enCurso } : null))} />
       <Tabla programa={await programa} filtro={filtro} base="/admin/categorias" conVendedor />
       <BeneficiosPorNivel />
     </Marco>
