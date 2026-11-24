@@ -44,7 +44,6 @@ export async function PuestoSede({ token, rango }: { token: string; rango: { des
           </li>
         ))}
       </ol>
-      <p className="panel-nota">Por lo vendido de ASTA a tu cartera en el mes, sin IVA. No se enseñan montos de nadie.</p>
     </section>
   );
 }

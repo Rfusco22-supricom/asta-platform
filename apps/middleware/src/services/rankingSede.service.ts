@@ -1,5 +1,4 @@
 import { SEDES, nombrePersona, type RankingSede } from '@asta/shared-types';
-import { prisma } from '../config/prisma.js';
 import { searchRead } from '../odoo/client.js';
 import { dePantalla } from './pantallas.js';
 import type { RangoFechas } from './reportes.service.js';
@@ -10,10 +9,11 @@ import { reporteAstaDeLaEmpresa } from './reporteAsta.service.js';
  * ASTA quiere que cada uno sepa si va primero, segundo o tercero.
  *
  *   · Su sede es la compañía de su usuario de Odoo (Valencia u Caracas).
- *   · Compiten los de esa sede con cuenta de VENDEDOR activa en el panel, y los
- *     administradores que venden (con ventas de su cartera en el periodo): un
- *     administrador sin cartera no es un rival. Sin los puestos («Asistente de
- *     Ventas…»). El que mira, siempre.
+ *   · Compiten TODOS los vendedores de esa sede: los usuarios de Odoo de esa
+ *     compañía que vendieron ASTA en los últimos doce meses y siguen activos
+ *     en Odoo, más quien haya vendido en el mes aunque esté de baja. Tengan o
+ *     no cuenta en el panel. Sin los puestos («Asistente de Ventas…»). El que
+ *     mira, siempre.
  *   · Se ordenan por lo vendido de ASTA a su cartera en el periodo, con el
  *     mismo criterio que el ranking del administrador (`porVendedor`).
  *
@@ -27,26 +27,34 @@ interface Competidor {
   facturado: number;
 }
 
+/** Los doce meses que acaban en `hasta`: del día 1 del mes de hace once meses a `hasta`. */
+function doceMesesHasta(hasta: string): RangoFechas {
+  const [a, m] = hasta.split('-').map(Number) as [number, number];
+  return { desde: new Date(Date.UTC(a, m - 12, 1)).toISOString().slice(0, 10), hasta };
+}
+
+const esPuesto = (nombre: string) => /^\s*asistente\b/i.test(nombre);
+
 /** Los de una sede, de más a menos vendido. Se calcula una vez por sede y periodo. */
 async function competidores(sede: number, rango: RangoFechas, incluir: number): Promise<Competidor[]> {
-  const cuentas = await prisma.appUser.findMany({
-    where: { role: { in: ['VENDEDOR', 'SUPERADMIN'] }, isActive: true, odooUserId: { not: null } },
-    select: { odooUserId: true, fullName: true, role: true },
-  });
-  const esVendedor = new Set(cuentas.filter((c) => c.role === 'VENDEDOR').map((c) => c.odooUserId!));
-  const ids = [...new Set([...cuentas.filter((c) => !/^\s*asistente\b/i.test(c.fullName)).map((c) => c.odooUserId!), incluir])];
-  const [usuarios, reporte] = await Promise.all([
-    searchRead<{ id: number; name: string; company_id: [number, string] | false }>('res.users', [['id', 'in', ids]], ['name', 'company_id'], {
-      context: { active_test: false },
-    }),
-    // La misma clave que el reporte de la empresa del administrador: se comparte lo guardado.
+  const anio = doceMesesHasta(rango.hasta);
+  // Las mismas claves que el reporte de la empresa del administrador: se comparte lo guardado.
+  const [delMes, delAnio] = await Promise.all([
     dePantalla(`admin:reportes:todas:${rango.desde}:${rango.hasta}`, () => reporteAstaDeLaEmpresa(rango, null)),
+    dePantalla(`admin:reportes:todas:${anio.desde}:${anio.hasta}`, () => reporteAstaDeLaEmpresa(anio, null)),
   ]);
-  const vendido = new Map((reporte.porVendedor ?? []).flatMap((v) => (v.odooUserId ? [[v.odooUserId, v.facturado] as [number, number]] : [])));
+  const vendido = new Map((delMes.porVendedor ?? []).flatMap((v) => (v.odooUserId ? [[v.odooUserId, v.facturado] as [number, number]] : [])));
+  const vendieron = (delAnio.porVendedor ?? []).flatMap((v) => (v.odooUserId && v.facturado > 0 ? [v.odooUserId] : []));
+  const ids = [...new Set([...vendieron, ...vendido.keys(), incluir])];
+  const usuarios = await searchRead<{ id: number; name: string; active: boolean; company_id: [number, string] | false }>(
+    'res.users',
+    ['|', ['active', '=', true], ['active', '=', false], ['id', 'in', ids]],
+    ['name', 'active', 'company_id'],
+  );
   return usuarios
-    .filter((u) => (u.company_id ? u.company_id[0] : null) === sede && !/^\s*asistente\b/i.test(u.name))
-    // Un administrador compite solo si vende (tiene ventas de su cartera en el periodo).
-    .filter((u) => u.id === incluir || esVendedor.has(u.id) || (vendido.get(u.id) ?? 0) > 0)
+    .filter((u) => (u.company_id ? u.company_id[0] : null) === sede && !esPuesto(u.name))
+    // De baja en Odoo solo si vendió en el mes: quien se fue no está en la lista.
+    .filter((u) => u.id === incluir || u.active || (vendido.get(u.id) ?? 0) > 0)
     .map((u) => ({ odooUserId: u.id, nombre: nombrePersona(u.name), facturado: vendido.get(u.id) ?? 0 }))
     .sort((a, b) => b.facturado - a.facturado || a.nombre.localeCompare(b.nombre));
 }
