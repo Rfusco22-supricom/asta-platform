@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { contextoCliente } from '@/lib/vistaCliente';
@@ -6,13 +5,12 @@ import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
 import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { ProgramaCliente } from '@/components/ProgramaCliente';
 import { Beneficios } from '@/components/Beneficios';
-import { ComparativaZona } from '@/components/ComparativaZona';
 import { getMetricasCliente, ApiError, esRedireccion, ContractError } from '@/lib/api';
 
 /**
  * «Mi nivel y beneficios»: el programa de ASTA del cliente en detalle. Cómo va
  * en el trimestre (meses, cuotas, sell-out, tokens extra), sus beneficios y los
- * del nivel siguiente, y cómo va frente a su zona. El Inicio lo resume
+ * del nivel siguiente. El Inicio lo resume
  * (`NivelCorto`) y enlaza aquí (reorganización del 2026-11-10).
  */
 
@@ -54,9 +52,6 @@ export default async function NivelPage({ searchParams }: { searchParams: Promis
       {comoCliente && <BannerVista vista={comoCliente} destino="/cuenta/nivel" />}
       <ProgramaCliente programa={programa} />
       {programa && <Beneficios nivel={programa.evaluacion.nivel} para="cliente" />}
-      <Suspense fallback={<div className="panel dash-esqueleto" style={{ minHeight: 220 }} aria-busy="true" />}>
-        <ComparativaZona token={sesion.accessToken} cliente={cliente} />
-      </Suspense>
     </Marco>
   );
 }

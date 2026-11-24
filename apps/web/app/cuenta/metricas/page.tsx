@@ -19,8 +19,8 @@ import { DIAS_VENCE_PRONTO, plazoSellout, type FacturasCliente, type MetricasCli
  * romper enlaces): los avisos (facturas, sell-out), su nivel en corto con lo
  * que le falta, atajos a lo que hace cada mes, sus compras de ASTA de los
  * últimos doce meses, qué compra y lo que se busca en sus tablets. El detalle
- * del nivel, sus beneficios y la comparativa con su zona están en «Mi nivel y
- * beneficios» (`/cuenta/nivel`). Reorganizado el 2026-11-10.
+ * del nivel y sus beneficios están en «Mi nivel y beneficios»
+ * (`/cuenta/nivel`). Reorganizado el 2026-11-10.
  *
  * Cada bloque sale aunque otro no se haya podido leer.
  */
