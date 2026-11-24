@@ -121,8 +121,8 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
                   <th>Factura</th>
                   <th>Emitida</th>
                   <th>Vence</th>
-                  <th className="num">ASTA</th>
-                  <th className="num">Saldo de ASTA</th>
+                  {/* Una sola cifra: en «Por pagar», lo que debe; en «Todas», lo que se facturó. */}
+                  <th className="num">{vista === 'pendientes' ? 'Por pagar' : 'Importe ASTA'}</th>
                   <th>Estado</th>
                   <th aria-label="PDF" />
                 </tr>
@@ -140,10 +140,11 @@ export default async function FacturasPage({ searchParams }: { searchParams: Pro
                         {fecha(f.vencimiento)}
                         {v && <div className={`factura-vence${v.tono ? ` factura-${v.tono}` : ''}`}>{v.texto}</div>}
                       </td>
-                      <td className="num">{money(f.total)}</td>
-                      <td className="num">{f.saldo > 0 ? <strong>{money(f.saldo)}</strong> : '—'}</td>
+                      <td className="num">{vista === 'pendientes' ? <strong>{money(f.saldo)}</strong> : money(f.total)}</td>
                       <td>
                         <span className={`tag factura-estado-${f.estadoPago}`}>{PAYMENT_STATE_LABEL[f.estadoPago]}</span>
+                        {/* En «Todas», lo que aún debe de una factura pagada solo en parte. */}
+                        {vista !== 'pendientes' && f.saldo > 0 && f.saldo < f.total && <div className="stat-sub">debe {money(f.saldo)}</div>}
                       </td>
                       <td>
                         <a className="btn-link" href={`/api/facturas/${f.id}/pdf`} download>

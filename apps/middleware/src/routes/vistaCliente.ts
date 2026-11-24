@@ -7,7 +7,6 @@ import { mesDe, porMarcar, resumenSellOut } from '../services/sellOut.service.js
 import { pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
 import { datosFlyer } from '../services/flyers.service.js';
 import { calculadora } from '../services/calculadora.service.js';
-import { comparativaZona } from '../services/comparativaZona.service.js';
 import { dePantalla } from '../services/pantallas.js';
 import { responderFacturas, responderFotoProducto, responderPdfFactura } from './respuestasCliente.js';
 
@@ -47,14 +46,6 @@ vistaClienteRouter.use((req, res, next) => {
 vistaClienteRouter.get('/metricas', async (req, res, next) => {
   try {
     res.json({ data: await metricasDeCliente(partnerDe(req)!) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-vistaClienteRouter.get('/zona', async (req, res, next) => {
-  try {
-    res.json({ data: await comparativaZona(partnerDe(req)!) });
   } catch (error) {
     next(error);
   }
