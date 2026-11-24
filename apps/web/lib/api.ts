@@ -14,6 +14,8 @@ import {
   agentesRespuestaSchema,
   astaRespuestaSchema,
   reporteRespuestaSchema,
+  rankingSedeRespuestaSchema,
+  type RankingSede,
   facturasDelVendedorRespuestaSchema,
   type FacturasDelVendedor,
   reporteProductosRespuestaSchema,
@@ -532,6 +534,11 @@ export async function getFacturasVendedor(
 /** El reporte de ASTA de UN vendedor, para su página en Vendedores (administración). */
 export const getReporteVendedor = (accessToken: string, odooUserId: number, rango?: { desde: string; hasta: string }) =>
   pedirReporte(`/api/v1/admin/agentes/${odooUserId}/reportes`, accessToken, rango);
+
+/** Su puesto entre los vendedores de su sede en el periodo, sin montos (el spiff de ASTA). */
+export async function getRankingSede(accessToken: string, rango: { desde: string; hasta: string }): Promise<RankingSede> {
+  return (await request(`/api/v1/salesperson/ranking${consulta(rango)}`, rankingSedeRespuestaSchema, accessToken)).data;
+}
 
 export const getReporteCartera = (
   accessToken: string,

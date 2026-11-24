@@ -14,6 +14,7 @@ import { oportunidadesAsta } from '../services/asta.service.js';
 import { hermanosDe } from '../services/hermanos.service.js';
 import { proximaOferta } from '../services/proximaOferta.service.js';
 import { reporteAstaDelVendedor } from '../services/reporteAsta.service.js';
+import { rankingDeSede } from '../services/rankingSede.service.js';
 import { reporteProductos } from '../services/reporteProductos.service.js';
 import { rangoDeLaPeticion } from '../services/rango.js';
 import { cotizaciones, detalleCotizacion, estadoDeLaPeticion } from '../services/cotizaciones.service.js';
@@ -224,6 +225,23 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
       clientes,
     };
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Su puesto entre los vendedores de su sede en el periodo (el spiff de ASTA):
+ * puesto y nombre de cada uno, SIN montos (`rankingSede.service`).
+ */
+salespersonRouter.get('/ranking', autorizar('asta.propias.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
+      return;
+    }
+    res.json({ data: await rankingDeSede(odooUserId, rangoDeLaPeticion(req.query as Record<string, unknown>)) });
   } catch (error) {
     next(error);
   }

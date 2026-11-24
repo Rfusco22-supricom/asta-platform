@@ -99,6 +99,11 @@ describe('El programa para Supricom', () => {
     expect((await pedir(`/api/v1/admin/cotizaciones/${id}`, 'cliente')).status).toBe(403);
   }, 180_000);
 
+  it('el puesto en la sede: el cliente no lo ve, y quien no tiene cartera tampoco', async () => {
+    expect((await pedir('/api/v1/salesperson/ranking', 'cliente')).status).toBe(403);
+    expect((await pedir('/api/v1/salesperson/ranking', 'vendedorSinCartera')).status).toBe(403);
+  });
+
   it('las facturas de un vendedor (Inicio): solo el administrador, solo ASTA y cuadran con sus totales', async () => {
     const ruta = '/api/v1/admin/reportes/vendedores/380/facturas?desde=2026-11-01&hasta=2026-11-30';
     const r = await pedir(ruta, 'admin');
