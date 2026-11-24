@@ -12,6 +12,7 @@ import { urlCon } from '@/components/Sedes';
 import { nombrePeriodo } from '@/lib/meses';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
 import { TareasVendedor } from '@/components/inicio/TareasVendedor';
+import { PuestoSede } from '@/components/inicio/PuestoSede';
 import { getCategoriasAstaCartera, getReporteCartera } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
 
@@ -20,6 +21,8 @@ import { money, moneyCompact } from '@/lib/formato';
  *
  *   · Arriba, su cartera en ASTA con la pirámide de categorías en 3D: cuánto
  *     compran sus clientes al mes y cuánto aporta a la meta de la empresa.
+ *   · Su puesto entre los vendedores de su sede en el mes, sin montos
+ *     (`PuestoSede`, el spiff de ASTA).
  *   · Sus cifras del periodo y la serie mes a mes.
  *   · «Para hoy» (`TareasVendedor`): UNA lista de tareas con lo que antes
  *     estaba repartido entre este Inicio, Impulsa y Cotizaciones —pedidos y
@@ -154,6 +157,9 @@ export default async function InicioVendedorPage({ searchParams }: { searchParam
         </Suspense>
         <Suspense fallback={<Esqueleto area="hoy" alto={520} />}>
           <TareasVendedor token={token} />
+        </Suspense>
+        <Suspense fallback={<Esqueleto area="puesto" alto={320} />}>
+          <PuestoSede token={token} rango={rango} />
         </Suspense>
       </div>
     </Marco>

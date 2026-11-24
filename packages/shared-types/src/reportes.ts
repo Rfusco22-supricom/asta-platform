@@ -130,3 +130,32 @@ export const facturasDelVendedorSchema = z.object({
 export type FacturasDelVendedor = z.infer<typeof facturasDelVendedorSchema>;
 
 export const facturasDelVendedorRespuestaSchema = z.object({ data: facturasDelVendedorSchema });
+
+/**
+ * El puesto de un vendedor entre los de su sede, para su Inicio (el spiff de
+ * ASTA): quién va primero, segundo, tercero… por lo vendido de ASTA a su
+ * cartera en el mes. SIN montos: ni los suyos ni los de nadie. Solo el puesto y
+ * el nombre.
+ */
+export const rankingSedeSchema = z.object({
+  /** El nombre de su sede, o `null` si su usuario de Odoo no es de ninguna. */
+  sede: z.string().nullable(),
+  periodo: z.object({ desde: z.string(), hasta: z.string() }),
+  /** Su puesto (1 = el primero); `null` si no está en el ranking. */
+  posicion: z.number().int().positive().nullable(),
+  total: z.number().int().nonnegative(),
+  /** Del primero al último. Con empate, el mismo puesto (1, 2, 2, 4). */
+  filas: z.array(
+    z.object({
+      posicion: z.number().int().positive(),
+      nombre: z.string(),
+      tuyo: z.boolean(),
+      /** Todavía sin ventas de ASTA en el mes. */
+      sinVentas: z.boolean(),
+    }),
+  ),
+});
+
+export type RankingSede = z.infer<typeof rankingSedeSchema>;
+
+export const rankingSedeRespuestaSchema = z.object({ data: rankingSedeSchema });

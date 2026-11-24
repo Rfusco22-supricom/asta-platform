@@ -3998,8 +3998,19 @@ html[data-cargando='navegando'] .contenido {
   grid-template-areas:
     'meta meta meta'
     'kpis kpis kpis'
+    'hoy hoy puesto'
     'hoy hoy serie';
 }
+/* Su puesto en la sede (el spiff de ASTA): el número grande y la lista, sin montos. */
+.dash-puesto { grid-area: puesto; }
+.dash-puesto .dash-ranking li, .dash-puesto li { grid-template-columns: 22px minmax(0, 1fr); }
+.puesto-destacado { display: flex; align-items: center; gap: 14px; margin: 2px 0 12px; }
+.puesto-destacado strong { font-size: 44px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.puesto-podio strong { background: var(--degradado); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.puesto-destacado span { display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; color: var(--text-2); }
+.puesto-destacado small { font-size: 12.5px; color: var(--text-3); }
+.dash-puesto li.puesto-tuyo { margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: 12px; background: color-mix(in srgb, var(--primario) 14%, transparent); }
+.dash-puesto li.puesto-tuyo .dash-nombre { color: var(--text); font-weight: 650; }
 .dash-vendedor .dash-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dash-hoy { grid-area: hoy; display: flex; flex-direction: column; }
 .dash-cerca { grid-area: cerca; display: flex; flex-direction: column; }
@@ -4036,13 +4047,13 @@ html[data-cargando='navegando'] .contenido {
     grid-template-areas:
       'meta meta'
       'kpis kpis'
-      'hoy hoy'
-      'serie serie';
+      'puesto serie'
+      'hoy hoy';
   }
   .dash-vendedor .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
-  .dash-vendedor { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'kpis' 'hoy' 'serie'; }
+  .dash-vendedor { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'meta' 'puesto' 'kpis' 'hoy' 'serie'; }
 }
 
 /* ── Contadores del menú (`useContadores` en NavLateral.tsx) ──────────────── */
