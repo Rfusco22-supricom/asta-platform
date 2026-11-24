@@ -20,7 +20,7 @@ import { money, moneyCompact } from '@/lib/formato';
  * «Hoy», la portada del vendedor: cómo va su cartera y a quién llamar hoy.
  *
  *   · Arriba, su cartera en ASTA con la pirámide de categorías en 3D: cuánto
- *     compran sus clientes al mes y cuánto aporta a la meta de la empresa.
+ *     ha vendido en el mes y cuánto aporta a la meta de la empresa.
  *   · Su puesto entre los vendedores de su sede en el mes, sin montos
  *     (`PuestoSede`, el spiff de ASTA).
  *   · Sus cifras del periodo y la serie mes a mes.
@@ -39,10 +39,18 @@ const categorias = cache((token: string) => getCategoriasAstaCartera(token));
 
 // ── Su cartera en ASTA, con la pirámide ────────────────────────────────────────
 
-async function Meta({ token }: { token: string }) {
-  const r = await intentar(() => categorias(token));
+/**
+ * La cifra grande es lo vendido en ASTA en el último mes del periodo elegido
+ * (el mes del filtro, o el que va en curso), como en el Inicio del
+ * administrador: es la misma lectura que «Vendido en ASTA» con ese mes.
+ */
+async function Meta({ token, rango }: { token: string; rango: { desde: string; hasta: string } }) {
+  const delMes = { desde: `${rango.hasta.slice(0, 7)}-01`, hasta: rango.hasta };
+  const [r, ventas] = await Promise.all([intentar(() => categorias(token)), intentar(() => getReporteCartera(token, delMes))]);
   if (!r) return <Fallo area="meta" titulo="Tu cartera en ASTA" />;
-  return <HeroMeta datos={r} alcance="cartera" base="/categorias" />;
+  const enCurso = rango.hasta.slice(0, 7) === new Date().toISOString().slice(0, 7);
+  const mes = ventas ? { vendido: ventas.totales.facturado, nombre: nombrePeriodo(delMes.desde, delMes.hasta), enCurso } : null;
+  return <HeroMeta datos={r} alcance="cartera" base="/categorias" mes={mes} />;
 }
 
 // ── Cifras y serie: su reporte del periodo elegido ─────────────────────────────
@@ -150,7 +158,7 @@ export default async function InicioVendedorPage({ searchParams }: { searchParam
       <Periodos base="/inicio" periodo={rango} />
       <div className="dash dash-vendedor">
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
-          <Meta token={token} />
+          <Meta token={token} rango={rango} />
         </Suspense>
         <Suspense fallback={<EsqueletoVentas />}>
           <Ventas token={token} rango={rango} />
