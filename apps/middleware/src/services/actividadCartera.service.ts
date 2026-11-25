@@ -1,6 +1,6 @@
 import type { ActividadCartera, ActividadCliente, ClaseCliente, EstadoCliente } from '@asta/shared-types';
 import { readGroup, type OdooDomain } from '../odoo/client.js';
-import { CacheTtl } from '../utils/cacheTtl.js';
+import { dePantalla, vaciarCachePantallas } from './pantallas.js';
 import { FACTURA } from './criterioFacturacion.js';
 import { idsDeCartera } from './partners.service.js';
 import { UMBRAL_ATENCION_DIAS, UMBRAL_INACTIVO_DIAS, clasificarRecencia } from './profile.service.js';
@@ -58,14 +58,11 @@ export const BASE_MINIMA_TENDENCIA = 50;
 
 const MS_DIA = 86_400_000;
 
-const cache = new CacheTtl<Omit<ActividadCartera, 'meta'> & { meta: Omit<ActividadCartera['meta'], 'desdeCache'> }>(
-  10 * 60_000,
-  500,
-);
+type Calculada = Omit<ActividadCartera, 'meta'> & { meta: Omit<ActividadCartera['meta'], 'desdeCache'> };
 
 /** Para los tests. */
 export function vaciarCacheActividad(): void {
-  cache.vaciar();
+  vaciarCachePantallas();
 }
 
 function redondear(n: number): number {
@@ -152,11 +149,19 @@ function inicioDeDoceMeses(hoy: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-export async function actividadDeCartera(odooUserId: number, ahora = new Date()): Promise<ActividadCartera> {
-  const clave = String(odooUserId);
-  const enCache = cache.get(clave);
-  if (enCache) return { ...enCache, meta: { ...enCache.meta, desdeCache: true } };
+/**
+ * En la cache de pantallas (`pantallas.ts`), que se renueva por detrás mientras
+ * el vendedor la use: en frío tardaba 7 s (medido el 25-nov-2026).
+ */
+export async function actividadDeCartera(odooUserId: number, ahora?: Date): Promise<ActividadCartera> {
+  const pedido = Date.now();
+  // La fecha, al leer y no al pedir: la cache vuelve a correr esta lectura por
+  // detrás (`renovarPantallas`), y pasada la medianoche tiene que ser la de hoy.
+  const r = await dePantalla(`vendedor:${odooUserId}:actividad`, () => calcular(odooUserId, ahora ?? new Date()));
+  return { ...r, meta: { ...r.meta, desdeCache: Date.parse(r.meta.generadoEn) < pedido } };
+}
 
+async function calcular(odooUserId: number, ahora: Date): Promise<Calculada> {
   const hoy = ahora.toISOString().slice(0, 10);
   const desde = inicioDeDoceMeses(hoy);
   const meses = mesesDe({ desde, hasta: hoy });
@@ -234,6 +239,5 @@ export async function actividadDeCartera(odooUserId: number, ahora = new Date())
       generadoEn: ahora.toISOString(),
     },
   };
-  cache.set(clave, resultado);
-  return { ...resultado, meta: { ...resultado.meta, desdeCache: false } };
+  return resultado;
 }

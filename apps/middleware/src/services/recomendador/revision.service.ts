@@ -36,7 +36,9 @@ const CATEGORIA_CONSUMIBLES = 2614;
 
 /** Las ventas cambian despacio y la consulta recorre un año de líneas de pedido. */
 const cacheVentas = new CacheTtl<Map<number, number>>(60 * 60_000, 1);
-const cachePlantillas = new CacheTtl<{ nombre: string; sku: string | null; activo: boolean }>(10 * 60_000, 5_000);
+// Una hora: nombre, referencia y si se vende cambian poco, y los lotes de la
+// revisión (en el Inicio del administrador) leen cientos (medido el 25-nov-2026).
+const cachePlantillas = new CacheTtl<{ nombre: string; sku: string | null; activo: boolean }>(60 * 60_000, 5_000);
 
 /** Solo para tests. */
 export function vaciarCachesRevision(): void {

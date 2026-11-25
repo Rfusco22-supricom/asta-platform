@@ -434,7 +434,9 @@ adminRouter.get('/reportes/vendedores/:odooUserId/facturas', autorizar('admin.re
 adminRouter.get('/reportes/productos', autorizar('admin.reportes.ver'), async (req, res, next) => {
   try {
     const query = req.query as Record<string, unknown>;
-    res.json(await reporteProductos(null, rangoDeLaPeticion(query), sedeDeLaPeticion(query)));
+    const rango = rangoDeLaPeticion(query);
+    const sede = sedeDeLaPeticion(query);
+    res.json(await dePantalla(`admin:productos:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () => reporteProductos(null, rango, sede)));
   } catch (error) {
     next(error);
   }
@@ -653,7 +655,8 @@ adminRouter.get('/demanda', autorizar('admin.recomendador.ver'), async (req, res
 adminRouter.get('/recomendador/estadisticas', autorizar('admin.recomendador.ver'), async (req, res, next) => {
   try {
     const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
-    res.json({ data: await estadisticasRecomendador(rango) });
+    // En la cache de pantallas: lo pide el Inicio del administrador (7 s en frío).
+    res.json({ data: await dePantalla(`admin:recomendador:${rango.desde}:${rango.hasta}`, () => estadisticasRecomendador(rango)) });
   } catch (error) {
     next(error);
   }
@@ -1001,7 +1004,8 @@ adminRouter.get('/kioscos', autorizar('admin.kioscos.gestionar'), async (_req, r
 /** Los almacenes de Odoo, para elegir de cuál es la tablet. */
 adminRouter.get('/kioscos/almacenes', autorizar('admin.kioscos.gestionar'), async (_req, res, next) => {
   try {
-    res.json({ data: await almacenesDeOdoo() });
+    // Los mismos que la lista de tablets, guardados en la cache de pantallas (13 s en frío).
+    res.json({ data: await dePantalla('admin:almacenes', almacenesDeOdoo) });
   } catch (error) {
     next(error);
   }
