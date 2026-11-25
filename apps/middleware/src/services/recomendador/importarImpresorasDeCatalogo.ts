@@ -85,7 +85,7 @@ export function agruparPorModelo(productos: ProductoImpresora[]): {
 }
 
 /** ¿Es este modelo de la base la misma impresora? */
-function esLaMisma(nombreNormalizado: string, impresora: ImpresoraDeCatalogo): boolean {
+export function esLaMisma(nombreNormalizado: string, impresora: ImpresoraDeCatalogo): boolean {
   if (nombreNormalizado === impresora.nombreNormalizado || nombreNormalizado === impresora.clave) return true;
   const claveFiable = impresora.clave.length >= 4 && /[a-z]/.test(impresora.clave) && /\d/.test(impresora.clave);
   return claveFiable && nombreNormalizado.endsWith(impresora.clave);

@@ -46,6 +46,7 @@ import {
 import { aplicarRevision, corregirTipoCartucho, listarParaRevision } from '../services/recomendador/revision.service.js';
 import { estadisticasRecomendador } from '../services/recomendador/estadisticas.service.js';
 import { demandaAsta } from '../services/recomendador/demanda.service.js';
+import { semaforoClientes } from '../services/semaforo.service.js';
 import { vistaClienteRouter } from './vistaCliente.js';
 import {
   anadirAlias,
@@ -609,6 +610,19 @@ adminRouter.delete('/personal/:odooUserId', autorizar('admin.usuarios.gestionar'
   } catch (error) {
     if (error instanceof AccesoImposible) conflicto(res, error);
     else next(error);
+  }
+});
+
+/**
+ * El semáforo de clientes de la empresa o de una sede: impresoras compradas y si
+ * se les compra el tóner ASTA (`semaforo.service`).
+ */
+adminRouter.get('/semaforo', autorizar('admin.asta.ver'), async (req, res, next) => {
+  try {
+    const sede = sedeDeLaPeticion(req.query as Record<string, unknown>);
+    res.json({ data: await dePantalla(`admin:semaforo:${claveSede(sede)}`, () => semaforoClientes({ odooUserId: null, sede })) });
+  } catch (error) {
+    next(error);
   }
 });
 

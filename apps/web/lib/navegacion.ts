@@ -58,6 +58,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/admin', titulo: 'Inicio', icono: 'resumen' },
         { href: '/admin/reportes', titulo: 'Ventas', icono: 'reportes' },
         { href: '/admin/asta', titulo: 'Clientes', icono: 'cartera', tambien: ['/cuenta/metricas', '/cuenta/nivel', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
+        { href: '/admin/semaforo', titulo: 'Semáforo de clientes', icono: 'semaforo', corto: 'Semáforo' },
         { href: '/admin/agentes', titulo: 'Vendedores', icono: 'agentes', prefijo: true },
         { href: '/admin/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
       ],
@@ -95,6 +96,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         // clientes en ASTA; «Programa ASTA», los niveles de su cartera.
         { href: '/inicio', titulo: 'Hoy', icono: 'resumen', tambien: ['/impulsa'] },
         { href: '/cartera', titulo: 'Mi cartera', icono: 'cartera', prefijo: true, corto: 'Cartera' },
+        { href: '/semaforo', titulo: 'Semáforo de clientes', icono: 'semaforo', corto: 'Semáforo' },
         { href: '/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
         { href: '/reportes', titulo: 'Mis ventas', icono: 'reportes', prefijo: true, corto: 'Ventas', tambien: ['/asta'] },
         { href: '/categorias', titulo: 'Programa ASTA', icono: 'categorias', corto: 'Programa' },

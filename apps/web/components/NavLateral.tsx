@@ -176,6 +176,16 @@ export function Icono({ nombre }: { nombre: string }) {
           <path d="M9 8h6M9 12h6M9 16h3" />
         </svg>
       );
+    case 'semaforo':
+      // Un semáforo: el semáforo de clientes.
+      return (
+        <svg {...comun}>
+          <rect x="7.5" y="2.5" width="9" height="19" rx="3" />
+          <circle cx="12" cy="7" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="12" cy="17" r="1.6" />
+        </svg>
+      );
     case 'calidad':
       // Una hoja de comprobaciones con su visto bueno.
       return (

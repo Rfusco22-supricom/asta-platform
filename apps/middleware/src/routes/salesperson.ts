@@ -26,6 +26,7 @@ import { anadirCompatibilidad, propuestasDe } from '../services/recomendador/rev
 import { recordAudit } from '../services/audit.service.js';
 import { categoriasDelPrograma, programaDeCliente, programaEnCurso } from '../services/programaAsta.service.js';
 import { auditContext } from '../middleware/auditContext.js';
+import { semaforoClientes } from '../services/semaforo.service.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -225,6 +226,23 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
       clientes,
     };
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * El semáforo de su cartera: las impresoras que le compran sus clientes y si les
+ * compran el tóner ASTA (`semaforo.service`). La cartera sale del token.
+ */
+salespersonRouter.get('/semaforo', autorizar('asta.propias.ver'), async (req, res, next) => {
+  try {
+    const odooUserId = req.identity.odooUserId;
+    if (odooUserId === null) {
+      res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
+      return;
+    }
+    res.json({ data: await dePantalla(`vendedor:${odooUserId}:semaforo`, () => semaforoClientes({ odooUserId })) });
   } catch (error) {
     next(error);
   }

@@ -15,6 +15,8 @@ import {
   astaRespuestaSchema,
   reporteRespuestaSchema,
   rankingSedeRespuestaSchema,
+  semaforoRespuestaSchema,
+  type Semaforo,
   type RankingSede,
   facturasDelVendedorRespuestaSchema,
   type FacturasDelVendedor,
@@ -536,6 +538,16 @@ export const getReporteVendedor = (accessToken: string, odooUserId: number, rang
   pedirReporte(`/api/v1/admin/agentes/${odooUserId}/reportes`, accessToken, rango);
 
 /** Su puesto entre los vendedores de su sede en el periodo, sin montos (el spiff de ASTA). */
+/** El semáforo de su cartera: impresoras que le compran y si compran su tóner ASTA. */
+export async function getSemaforoCartera(accessToken: string): Promise<Semaforo> {
+  return (await request('/api/v1/salesperson/semaforo', semaforoRespuestaSchema, accessToken)).data;
+}
+
+/** El semáforo de la empresa o de una sede. */
+export async function getSemaforoEmpresa(accessToken: string, sede: number | null = null): Promise<Semaforo> {
+  return (await request(`/api/v1/admin/semaforo${consulta(undefined, sede)}`, semaforoRespuestaSchema, accessToken)).data;
+}
+
 export async function getRankingSede(accessToken: string, rango: { desde: string; hasta: string }): Promise<RankingSede> {
   return (await request(`/api/v1/salesperson/ranking${consulta(rango)}`, rankingSedeRespuestaSchema, accessToken)).data;
 }
