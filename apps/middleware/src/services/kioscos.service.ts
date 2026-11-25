@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, randomInt } from 'node:crypto';
 import type { AlmacenKiosco, CodigoRevision, CodigoTablet, ErrorCode, EstadoCodigoTablet, Kiosco, NuevoKiosco, VincularTablet } from '@asta/shared-types';
+import { dePantalla } from './pantallas.js';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { getUid, searchRead } from '../odoo/client.js';
@@ -126,7 +127,9 @@ export async function almacenesDeOdoo(): Promise<AlmacenKiosco[]> {
 
 async function almacenesSiOdooResponde(): Promise<Map<number, AlmacenKiosco> | null> {
   try {
-    return new Map((await almacenesDeOdoo()).map((a) => [a.warehouseId, a]));
+    // Los almacenes casi no cambian: en la cache de pantallas, que se renueva
+    // por detrás. Las tablets se leen siempre de MySQL (las cambia el panel).
+    return new Map((await dePantalla('admin:almacenes', almacenesDeOdoo)).map((a) => [a.warehouseId, a]));
   } catch {
     return null;
   }

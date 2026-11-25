@@ -1,7 +1,7 @@
 import type { ClienteImpulsa, EstadoImpulsa, ImpulsaRespuesta, MarcarImpulsa, SugerenciaPasale } from '@asta/shared-types';
 import { prisma } from '../../config/prisma.js';
 import { readGroup, searchRead } from '../../odoo/client.js';
-import { CacheTtl } from '../../utils/cacheTtl.js';
+import { dePantalla, vaciarCachePantallas } from '../pantallas.js';
 import { MARCA_ASTA } from '../asta.service.js';
 import { FACTURA, NOTA_DE_CREDITO, TIPO_FACTURADO_LINEA } from '../criterioFacturacion.js';
 import { carteraDesdeLinea } from '../ventasAsta.service.js';
@@ -195,11 +195,10 @@ export function aplicarMarcas(clientes: ClienteSinMarcas[], marcas: Marca[], hoy
     .sort((a, b) => b.enJuego - a.enJuego || a.nombre.localeCompare(b.nombre, 'es'));
 }
 
-const cache = new CacheTtl<{ clientes: ClienteSinMarcas[]; generadoEn: string; desde: string; hasta: string }>(10 * 60_000, 500);
 
 /** Para los tests. */
 export function vaciarCachePasale(): void {
-  cache.vaciar();
+  vaciarCachePantallas();
 }
 
 /** Los ASTA vendibles con sus existencias en cada almacén, en una lectura por almacén. */
@@ -235,10 +234,14 @@ async function catalogosPorCliente(partnerIds: number[]): Promise<(partnerId: nu
 }
 
 async function calcular(odooUserId: number, hoy: string): Promise<{ clientes: ClienteSinMarcas[]; generadoEn: string; desde: string; hasta: string; desdeCache: boolean }> {
-  const clave = `${odooUserId}:${hoy}`;
-  const enCache = cache.get(clave);
-  if (enCache) return { ...enCache, desdeCache: true };
+  // En la cache de pantallas (`pantallas.ts`), que se renueva por detrás
+  // mientras el vendedor la use: en frío tardaba 10 s (medido el 25-nov-2026).
+  const pedido = Date.now();
+  const r = await dePantalla(`vendedor:${odooUserId}:pasale:${hoy}`, () => leerDeOdoo(odooUserId, hoy));
+  return { ...r, desdeCache: Date.parse(r.generadoEn) < pedido };
+}
 
+async function leerDeOdoo(odooUserId: number, hoy: string): Promise<{ clientes: ClienteSinMarcas[]; generadoEn: string; desde: string; hasta: string }> {
   const desde = restarDias(hoy, DIAS_VENTANA);
   const grupos = await readGroup<GrupoConsumible>(
     'account.move.line',
@@ -265,8 +268,7 @@ async function calcular(odooUserId: number, hoy: string): Promise<{ clientes: Cl
   const catalogoDe = await catalogosPorCliente(partners);
 
   const resultado = { clientes: construirSugerencias(grupos, fichas, catalogoDe, hoy), generadoEn: new Date().toISOString(), desde, hasta: hoy };
-  cache.set(clave, resultado);
-  return { ...resultado, desdeCache: false };
+  return resultado;
 }
 
 /** Las sugerencias del vendedor, con lo que ya hizo con ellas. */

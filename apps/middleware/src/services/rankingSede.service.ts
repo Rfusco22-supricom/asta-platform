@@ -61,9 +61,12 @@ async function competidores(sede: number, rango: RangoFechas, incluir: number): 
 
 /** El puesto de `odooUserId` en su sede y la lista, sin montos. */
 export async function rankingDeSede(odooUserId: number, rango: RangoFechas): Promise<RankingSede> {
-  const [usuario] = await searchRead<{ id: number; company_id: [number, string] | false }>('res.users', [['id', '=', odooUserId]], ['company_id'], {
-    context: { active_test: false },
-  });
+  // Su compañía casi no cambia: en la cache de pantallas, como la lista.
+  const [usuario] = await dePantalla(`vendedor:${odooUserId}:compania`, () =>
+    searchRead<{ id: number; company_id: [number, string] | false }>('res.users', [['id', '=', odooUserId]], ['company_id'], {
+      context: { active_test: false },
+    }),
+  );
   const sede = SEDES.find((s) => s.id === (usuario?.company_id ? usuario.company_id[0] : null));
   if (!sede) return { sede: null, periodo: rango, posicion: null, total: 0, filas: [] };
 

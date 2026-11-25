@@ -1,7 +1,7 @@
 import type { CalidadDatos, ClaveRevision, Gravedad, Hallazgo, Revision } from '@asta/shared-types';
 import { readGroup, searchRead } from '../odoo/client.js';
 import { esEmailPlausible } from '../auth/email.js';
-import { CacheTtl } from '../utils/cacheTtl.js';
+import { dePantalla, olvidarPantalla } from './pantallas.js';
 import { nombrePartner } from '../utils/nombrePartner.js';
 import { TIPO_FACTURADO, plegarPorTipo } from './criterioFacturacion.js';
 import { problemaRif, problemasNombreVendedor, tieneEspaciosDeMas } from './calidadDatos.js';
@@ -30,14 +30,19 @@ import { nombrePersona } from '@asta/shared-types';
  * listarlos esconde los que sí.
  */
 
-const cache = new CacheTtl<CalidadDatos & { generadoEn: string; duracionMs: number }>(10 * 60_000, 1);
+/**
+ * Guardado en la cache de pantallas (`pantallas.ts`), que se renueva por detrás
+ * mientras alguien la use: lo pide el Inicio del administrador, y en frío
+ * tardaba 15 s (medido el 25-nov-2026).
+ */
+const CLAVE = 'admin:calidad';
 
 /** Cuántas filas de cada revisión van en la respuesta. */
 const MUESTRA = 100;
 
 /** Solo para tests. */
 export function vaciarCacheCalidad(): void {
-  cache.vaciar();
+  olvidarPantalla(CLAVE);
 }
 
 interface FilaPartner {
@@ -102,9 +107,14 @@ function revision(
 export async function calidadDeDatos({ fresco = false } = {}): Promise<
   CalidadDatos & { generadoEn: string; duracionMs: number; desdeCache: boolean }
 > {
-  const enCache = fresco ? undefined : cache.get('todo');
-  if (enCache) return { ...enCache, desdeCache: true };
+  if (fresco) olvidarPantalla(CLAVE);
+  const pedido = Date.now();
+  const informe = await dePantalla(CLAVE, calcular);
+  // Leído en esta petición o guardado de antes.
+  return { ...informe, desdeCache: Date.parse(informe.generadoEn) < pedido };
+}
 
+async function calcular(): Promise<CalidadDatos & { generadoEn: string; duracionMs: number }> {
   const t0 = Date.now();
   const desde = haceUnAnio();
 
@@ -251,6 +261,5 @@ export async function calidadDeDatos({ fresco = false } = {}): Promise<
   ];
 
   const informe = { clientes: activos.length, revisiones, generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 };
-  cache.set('todo', informe);
-  return { ...informe, desdeCache: false };
+  return informe;
 }

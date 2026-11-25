@@ -19,12 +19,22 @@
  * vuelve a intentar en la siguiente petición. Un fallo sin nada guardado sí,
  * porque no hay qué contestar.
  *
+ * ── Mantenerlas calientes ────────────────────────────────────────────────────
+ *
+ * Con solo lo de arriba, quien vuelve a una pantalla pasados `maximoMs` espera
+ * a Odoo entera (medido el 25-nov-2026: el Inicio del administrador, 20 s en
+ * frío y 0,6 s en caliente). `renovarUsadas` vuelve a leer por detrás las
+ * claves que alguien pidió hace poco antes de que caduquen, con el mismo
+ * `cargar` de su última petición: lo programa el servidor (`pantallas.ts`).
+ *
  * En memoria del proceso y con tamaño acotado, como `CacheTtl` (#14). La clave
  * la decide quien llama, y tiene que llevar todo lo que cambia la respuesta: el
  * vendedor, el periodo… Nunca debe poder pedirse la de otro.
  */
 export class CacheConRefresco<V> {
   private readonly entradas = new Map<string, { valor: V; guardado: number }>();
+  /** Cuándo se pidió cada clave por última vez, y con qué lectura: lo que usa `renovarUsadas`. */
+  private readonly usadas = new Map<string, { usado: number; cargar: () => Promise<V> }>();
   private readonly enCurso = new Map<string, Promise<V>>();
   /**
    * Cuántas veces se olvidó cada clave. Una lectura recuerda la versión con la
@@ -41,6 +51,12 @@ export class CacheConRefresco<V> {
   ) {}
 
   async obtener(clave: string, cargar: () => Promise<V>): Promise<V> {
+    this.usadas.delete(clave);
+    this.usadas.set(clave, { usado: this.ahora(), cargar });
+    if (this.usadas.size > this.maxEntradas) {
+      const masAntigua = this.usadas.keys().next().value;
+      if (masAntigua !== undefined) this.usadas.delete(masAntigua);
+    }
     const e = this.entradas.get(clave);
     const edad = e ? this.ahora() - e.guardado : Infinity;
     if (e && edad < this.frescoMs) return e.valor;
@@ -51,7 +67,55 @@ export class CacheConRefresco<V> {
     return this.leer(clave, cargar);
   }
 
+  /**
+   * Vuelve a leer, por detrás, lo que alguien pidió hace menos de `usadasEnMs`
+   * y se guardó hace más de `masViejasDeMs`: así sigue caliente cuando vuelva.
+   * Las más recientes primero, como mucho `maximo`, y `enParalelo` a la vez
+   * para no cargar a Odoo. Un fallo deja lo que había, como al renovar por
+   * detrás en `obtener`.
+   */
+  async renovarUsadas(opciones: {
+    usadasEnMs: number;
+    masViejasDeMs: number;
+    maximo: number;
+    enParalelo: number;
+    /**
+     * Si todavía vale renovar lo pedido en `usado`. La lectura que se repite es
+     * la de esa petición, con lo que ella sabía (la fecha de hoy, por ejemplo):
+     * pasado un cambio de día ya no se debe repetir.
+     */
+    vigente?: (usado: number, ahora: number) => boolean;
+  }): Promise<{ renovadas: number; fallidas: number }> {
+    const ahora = this.ahora();
+    const pendientes = [...this.usadas.entries()]
+      .filter(([clave, u]) => {
+        if (ahora - u.usado >= opciones.usadasEnMs) return false;
+        if (opciones.vigente && !opciones.vigente(u.usado, ahora)) return false;
+        const e = this.entradas.get(clave);
+        return !e || ahora - e.guardado > opciones.masViejasDeMs;
+      })
+      .sort((a, b) => b[1].usado - a[1].usado)
+      .slice(0, opciones.maximo);
+    let renovadas = 0;
+    let fallidas = 0;
+    const cola = [...pendientes];
+    const trabajar = async () => {
+      for (let siguiente = cola.shift(); siguiente; siguiente = cola.shift()) {
+        const [clave, u] = siguiente;
+        try {
+          await this.leer(clave, u.cargar);
+          renovadas++;
+        } catch {
+          fallidas++;
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, opciones.enParalelo) }, trabajar));
+    return { renovadas, fallidas };
+  }
+
   vaciar(): void {
+    this.usadas.clear();
     this.entradas.clear();
     this.enCurso.clear();
     this.version.clear();

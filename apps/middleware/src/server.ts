@@ -24,6 +24,7 @@ import { version } from './config/version.js';
 import { VigilanteCambios } from './services/vigilanteCambios.js';
 import { pasarAlertas, resumirPasada } from './services/pasadaAlertas.service.js';
 import { programarCada } from './services/programador.js';
+import { renovarPantallas } from './services/pantallas.js';
 import { aplicarNiveles } from './services/nivelesCliente.service.js';
 import { smartbit } from './services/smartbit.service.js';
 import { sincronizarPartners } from './services/sync.service.js';
@@ -324,6 +325,23 @@ if (
     : null;
   if (niveles) console.log('  niveles   cada día, desde este proceso (#131)');
 
+  // Las pantallas que se usaron en las últimas horas, renovadas por detrás antes
+  // de que caduquen (`pantallas.ts`): volver a una sección no espera a Odoo.
+  // Medido el 25-nov-2026: el Inicio del administrador, 20 s en frío y 0,6 s en
+  // caliente. `PANTALLAS_CALIENTES` manda, como arriba.
+  const calientes = encendido('PANTALLAS_CALIENTES')
+    ? programarCada(
+        'pantallas',
+        async () => {
+          const t0 = Date.now();
+          const r = await renovarPantallas();
+          return `pantallas: ${r.renovadas} renovadas · ${r.fallidas} fallidas · ${((Date.now() - t0) / 1000).toFixed(1)} s`;
+        },
+        { cadaMs: 4 * 60_000, primeraEnMs: 4 * 60_000 },
+      )
+    : null;
+  if (calientes) console.log('  pantallas calientes cada 4 min, las usadas en las últimas 8 h');
+
   // Cierre ordenado: deja terminar los requests en vuelo antes de morir.
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.on(signal, () => {
@@ -332,6 +350,7 @@ if (
       alertas?.parar();
       sync?.parar();
       niveles?.parar();
+      calientes?.parar();
       server.close(() => process.exit(0));
       setTimeout(() => process.exit(1), 10_000).unref();
     });
