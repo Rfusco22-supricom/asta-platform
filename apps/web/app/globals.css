@@ -4837,3 +4837,5 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .semaforo-hace { white-space: nowrap; }
 .semaforo-frio .semaforo-hace { color: var(--warning); font-weight: 600; }
 .semaforo-frio small { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.semaforo-mas summary { cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 600; }
+.semaforo-mas[open] summary { margin-bottom: 6px; }

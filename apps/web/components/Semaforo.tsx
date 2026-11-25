@@ -131,6 +131,7 @@ export function TablaSemaforo({
               <tbody>
                 {filtrados.slice(0, TOPE).map((c) => {
                   const ofrecer = queOfrecer(c);
+                  const reponer = c.enfriado && c.cubiertas === c.conAsta ? 'reponer, ' : '';
                   return (
                     <tr key={c.partnerId}>
                       <td>
@@ -182,10 +183,24 @@ export function TablaSemaforo({
                           <ul className="semaforo-ofrecer">
                             {ofrecer.slice(0, 4).map((o) => (
                               <li key={o.sku}>
-                                <strong>{o.sku}</strong> <span className="stat-sub">{c.enfriado && c.cubiertas === c.conAsta ? 'reponer, ' : ''}para {o.impresora}</span>
+                                <strong>{o.sku}</strong> <span className="stat-sub">{reponer}para {o.impresora}</span>
                               </li>
                             ))}
-                            {ofrecer.length > 4 && <li className="stat-sub">y {ofrecer.length - 4} más</li>}
+                            {/* El resto, desplegable: que se vea qué es «y N más». */}
+                            {ofrecer.length > 4 && (
+                              <li>
+                                <details className="semaforo-mas">
+                                  <summary>Ver {ofrecer.length - 4} más</summary>
+                                  <ul className="semaforo-ofrecer">
+                                    {ofrecer.slice(4).map((o) => (
+                                      <li key={o.sku}>
+                                        <strong>{o.sku}</strong> <span className="stat-sub">{reponer}para {o.impresora}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              </li>
+                            )}
                           </ul>
                         )}
                       </td>
