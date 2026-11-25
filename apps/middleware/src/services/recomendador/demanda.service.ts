@@ -23,7 +23,7 @@ import type { RangoPedido } from '../rango.js';
 /** Las plantillas ASTA que la aplicación puede enseñar. Cambian poco: una hora. */
 const cachePlantillas = new CacheTtl<Set<number>>(3600_000, 1);
 
-async function plantillasAsta(): Promise<Set<number>> {
+export async function plantillasAsta(): Promise<Set<number>> {
   const enCache = cachePlantillas.get('asta');
   if (enCache) return enCache;
   const ids = await executeKw<number[]>('product.template', 'search', [
