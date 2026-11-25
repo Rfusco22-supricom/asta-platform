@@ -4839,3 +4839,4 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .semaforo-frio small { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
 .semaforo-mas summary { cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 600; }
 .semaforo-mas[open] summary { margin-bottom: 6px; }
+.semaforo-buscar { flex: 1 1 260px; min-width: 0; max-width: 420px; }

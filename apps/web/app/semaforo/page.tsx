@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export default async function SemaforoVendedorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
   if (sesion.usuario.role !== 'VENDEDOR') redirect(destinoPara(sesion.usuario.role));
-  const { color, tamano } = leerFiltros(await searchParams);
+  const { color, tamano, q } = leerFiltros(await searchParams);
 
   let d;
   try {
@@ -34,7 +34,7 @@ export default async function SemaforoVendedorPage({ searchParams }: { searchPar
 
   return (
     <Marco usuario={sesion.usuario} titulo="Semáforo de clientes">
-      <TablaSemaforo datos={d} base="/semaforo" color={color} tamano={tamano} conVendedor={false} />
+      <TablaSemaforo datos={d} base="/semaforo" color={color} tamano={tamano} q={q} conVendedor={false} />
     </Marco>
   );
 }

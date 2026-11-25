@@ -16,7 +16,7 @@ export default async function SemaforoAdminPage({ searchParams }: { searchParams
   const sesion = await requireSession();
   const params = await searchParams;
   const sede = sedeDeParams(params);
-  const { color, tamano } = leerFiltros(params);
+  const { color, tamano, q } = leerFiltros(params);
 
   let d;
   try {
@@ -36,7 +36,7 @@ export default async function SemaforoAdminPage({ searchParams }: { searchParams
   return (
     <Marco usuario={sesion.usuario} titulo="Semáforo de clientes">
       <Sedes base="/admin/semaforo" sede={sede} />
-      <TablaSemaforo datos={d} base="/admin/semaforo" color={color} tamano={tamano} sede={sede} conVendedor />
+      <TablaSemaforo datos={d} base="/admin/semaforo" color={color} tamano={tamano} q={q} sede={sede} conVendedor />
     </Marco>
   );
 }
