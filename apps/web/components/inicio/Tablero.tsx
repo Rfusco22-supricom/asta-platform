@@ -70,9 +70,11 @@ const DE_ABAJO_ARRIBA: ClaveCategoria[] = ['GENERAL', 'BRONCE', 'PLATA', 'ORO', 
  *     le enseñan: a un vendedor «0 de 6 Diamante» le diría que va mal cuando
  *     esa meta no es suya. En su lugar, qué parte de su cartera pone cada una.
  *
- * En la empresa, la cifra grande es lo vendido en ASTA en el mes del filtro
- * (`mes`: el último mes del periodo elegido) frente a la meta, que es la misma
- * todos los meses. La pirámide sigue con la media de los meses de la categoría.
+ * En los dos, la cifra grande es lo vendido en ASTA en el mes del filtro
+ * (`mes`: el último mes del periodo elegido). En la empresa, frente a la meta,
+ * que es la misma todos los meses; en la cartera, lo que aporta a esa meta. Con
+ * la media de varios meses, los vendedores la leían como su venta del mes. La
+ * pirámide sigue con la media de los meses de la categoría.
  */
 export function HeroMeta({
   datos: r,
@@ -86,7 +88,7 @@ export function HeroMeta({
   mes?: { vendido: number; nombre: string; enCurso: boolean } | null;
 }) {
   const enCartera = alcance === 'cartera';
-  const delMes = !enCartera && mes ? mes : null;
+  const delMes = mes ?? null;
   const cifra = delMes ? delMes.vendido : r.compraMensual;
   const avance = r.meta > 0 ? Math.min(100, (cifra / r.meta) * 100) : 0;
   // Los que tienen acceso al panel, con nivel o sin él (ver `enPrograma`).
@@ -126,18 +128,18 @@ export function HeroMeta({
         <span className="hero-etiqueta">{enCartera ? 'Tu cartera en ASTA' : `Camino a ${moneyEntero(r.meta)} al mes`}</span>
         <div className="hero-cifra">
           <strong>{corto(cifra)}</strong>
-          <span>{enCartera ? 'al mes en ASTA' : `de ${moneyCompact(r.meta)} al mes`}</span>
+          <span>{enCartera ? (delMes ? 'en ASTA' : 'al mes en ASTA') : `de ${moneyCompact(r.meta)} al mes`}</span>
         </div>
         <p className="hero-periodo">{delMes ? `vendido en ${delMes.nombre}` : compraMediaDe(r.meses)}</p>
 
         {/* Cuánto pone cada categoría: un tramo de su color por categoría. */}
         <div
           className="hero-barra"
-          role={enCartera ? 'img' : 'progressbar'}
-          aria-valuemin={enCartera ? undefined : 0}
-          aria-valuemax={enCartera ? undefined : 100}
-          aria-valuenow={enCartera ? undefined : Math.round(avance)}
-          aria-label={enCartera ? 'Lo que pone cada categoría' : 'Avance hacia la meta'}
+          role={delMes ? 'progressbar' : 'img'}
+          aria-valuemin={delMes ? 0 : undefined}
+          aria-valuemax={delMes ? 100 : undefined}
+          aria-valuenow={delMes ? Math.round(avance) : undefined}
+          aria-label={delMes ? (enCartera ? 'Lo que aporta a la meta de la empresa' : 'Avance hacia la meta') : 'Lo que pone cada categoría'}
         >
           {delMes ? (
             avance > 0 && <span style={{ width: `${avance}%`, background: 'linear-gradient(90deg, #1c8cdb, var(--violeta))' }} title={`${pct(avance)} de la meta`} />
@@ -151,7 +153,8 @@ export function HeroMeta({
         <p className="hero-nota">
           {enCartera ? (
             <>
-              Aporta el <strong>{pct(avance)}</strong> de la meta de la empresa, {moneyEntero(r.meta)} al mes.
+              {delMes ? (delMes.enCurso ? 'Lleva' : 'Aportó') : 'Aporta'} el <strong>{pct(avance)}</strong> de la meta de la empresa,{' '}
+              {moneyEntero(r.meta)} al mes.
             </>
           ) : (
             <>
