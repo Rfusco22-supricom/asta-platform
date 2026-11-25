@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { DIAS_SIN_ASTA, type ClienteSemaforo, type ColorSemaforo, type Semaforo, type TamanoTienda } from '@asta/shared-types';
 import { Cifra, type ColorCifra, type IconoCifra } from '@/components/Cifras';
 import { nombrePeriodo } from '@/lib/meses';
+import { BuscarSemaforo } from '@/components/BuscarSemaforo';
 
 /**
  * El semáforo de clientes (`semaforo.ts` en shared-types): a quién le vendemos
@@ -44,11 +45,12 @@ export function queOfrecer(c: ClienteSemaforo): Array<{ sku: string; impresora: 
   return [...vistos.entries()].map(([sku, impresora]) => ({ sku, impresora }));
 }
 
-function enlace(base: string, color: ColorSemaforo | null, tamano: TamanoTienda | null, sede: number | null): string {
+function enlace(base: string, color: ColorSemaforo | null, tamano: TamanoTienda | null, sede: number | null, q: string): string {
   const qs = new URLSearchParams();
   if (color) qs.set('color', color);
   if (tamano) qs.set('tamano', tamano);
   if (sede !== null) qs.set('sede', String(sede));
+  if (q) qs.set('q', q);
   const s = qs.toString();
   return s ? `${base}?${s}` : base;
 }
@@ -61,10 +63,27 @@ function haceCuanto(dias: number | null): string {
   return `hace ${Math.round(dias / 30)} meses`;
 }
 
-export function leerFiltros(params: Record<string, string | string[] | undefined>): { color: ColorSemaforo | null; tamano: TamanoTienda | null } {
+export function leerFiltros(params: Record<string, string | string[] | undefined>): { color: ColorSemaforo | null; tamano: TamanoTienda | null; q: string } {
   const color = typeof params.color === 'string' && params.color in LUZ ? (params.color as ColorSemaforo) : null;
   const tamano = typeof params.tamano === 'string' && params.tamano in TAMANO ? (params.tamano as TamanoTienda) : null;
-  return { color, tamano };
+  const q = typeof params.q === 'string' ? params.q.trim().slice(0, 80) : '';
+  return { color, tamano, q };
+}
+
+/** Sin acentos ni mayúsculas: «Peña» se encuentra escribiendo «pena». */
+const normalizar = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+/** El cliente (y su vendedor, en la vista de administración) contiene todo lo buscado. */
+export function coincide(c: ClienteSemaforo, q: string): boolean {
+  if (!q) return true;
+  const donde = normalizar(`${c.nombre} ${c.vendedor ?? ''}`);
+  return normalizar(q)
+    .split(/\s+/)
+    .every((palabra) => donde.includes(palabra));
 }
 
 export function TablaSemaforo({
@@ -72,6 +91,7 @@ export function TablaSemaforo({
   base,
   color,
   tamano,
+  q = '',
   sede = null,
   conVendedor,
 }: {
@@ -79,10 +99,12 @@ export function TablaSemaforo({
   base: string;
   color: ColorSemaforo | null;
   tamano: TamanoTienda | null;
+  /** Lo buscado (`?q=`): por nombre del cliente, y del vendedor en la vista de administración. */
+  q?: string;
   sede?: number | null;
   conVendedor: boolean;
 }) {
-  const filtrados = d.clientes.filter((c) => (!color || c.color === color) && (!tamano || c.tamano === tamano));
+  const filtrados = d.clientes.filter((c) => (!color || c.color === color) && (!tamano || c.tamano === tamano) && coincide(c, q));
   const periodo = nombrePeriodo(d.desde, d.hasta);
   const total = d.totales.ROJO + d.totales.AMARILLO + d.totales.VERDE;
 
@@ -90,7 +112,7 @@ export function TablaSemaforo({
     <>
       <section className="stats semaforo-cifras" aria-label="Clientes por color">
         {(['ROJO', 'AMARILLO', 'VERDE'] as const).map((k) => (
-          <Link key={k} href={enlace(base, color === k ? null : k, tamano, sede)} className={`semaforo-cifra semaforo-${k.toLowerCase()}${color === k ? ' activa' : ''}`}>
+          <Link key={k} href={enlace(base, color === k ? null : k, tamano, sede, q)} className={`semaforo-cifra semaforo-${k.toLowerCase()}${color === k ? ' activa' : ''}`}>
             <Cifra {...LUZ[k].cifra} etiqueta={LUZ[k].texto} valor={n(d.totales[k])} nota={LUZ[k].nota} />
           </Link>
         ))}
@@ -102,19 +124,24 @@ export function TablaSemaforo({
       </p>
 
       <nav className="pestanas-reporte" aria-label="Tamaño de la tienda">
-        <Link href={enlace(base, color, null, sede)} className={tamano === null ? 'activa' : undefined}>
+        <Link href={enlace(base, color, null, sede, q)} className={tamano === null ? 'activa' : undefined}>
           Todas
         </Link>
         {(['GRANDE', 'MEDIANA', 'PEQUENA'] as const).map((t) => (
-          <Link key={t} href={enlace(base, color, t, sede)} className={tamano === t ? 'activa' : undefined}>
+          <Link key={t} href={enlace(base, color, t, sede, q)} className={tamano === t ? 'activa' : undefined}>
             {TAMANO[t]}
           </Link>
         ))}
       </nav>
 
       <section className="panel">
+        <BuscarSemaforo
+          inicial={q}
+          conVendedor={conVendedor}
+          cuenta={`${filtrados.length.toLocaleString('es-VE')} de ${d.clientes.length.toLocaleString('es-VE')} clientes`}
+        />
         {filtrados.length === 0 ? (
-          <div className="empty">Ningún cliente con estos filtros.</div>
+          <div className="empty">{q ? `Ningún cliente con «${q}» y estos filtros.` : 'Ningún cliente con estos filtros.'}</div>
         ) : (
           <div className="table-wrap" style={{ border: 0 }}>
             <table className="semaforo-tabla">
