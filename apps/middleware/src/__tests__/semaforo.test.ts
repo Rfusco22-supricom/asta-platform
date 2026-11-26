@@ -77,4 +77,20 @@ describe('Semáforo contra Odoo', () => {
     // Todos del mismo vendedor.
     expect(nombres.size).toBeLessThanOrEqual(1);
   }, 240_000);
+
+  it('con un periodo, todo se mira dentro de él', async () => {
+    const rango = { desde: '2026-10-01', hasta: '2026-10-31' };
+    const r = await semaforoClientes({ odooUserId: VENDEDOR, rango });
+    expect(semaforoSchema.safeParse(r).success).toBe(true);
+    expect({ desde: r.desde, hasta: r.hasta }).toEqual(rango);
+    for (const c of r.clientes) {
+      if (c.ultimaCompraAsta) {
+        expect(c.ultimaCompraAsta >= rango.desde && c.ultimaCompraAsta <= rango.hasta).toBe(true);
+        expect(c.diasSinAsta).toBe(diasDesde(c.ultimaCompraAsta, rango.hasta));
+      }
+    }
+    // Un mes tiene menos impresoras vendidas que doce.
+    const anio = await semaforoClientes({ odooUserId: VENDEDOR });
+    expect(r.totales.impresoras).toBeLessThanOrEqual(anio.totales.impresoras);
+  }, 240_000);
 });

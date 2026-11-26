@@ -622,7 +622,10 @@ adminRouter.delete('/personal/:odooUserId', autorizar('admin.usuarios.gestionar'
 adminRouter.get('/semaforo', autorizar('admin.asta.ver'), async (req, res, next) => {
   try {
     const sede = sedeDeLaPeticion(req.query as Record<string, unknown>);
-    res.json({ data: await dePantalla(`admin:semaforo:${claveSede(sede)}`, () => semaforoClientes({ odooUserId: null, sede })) });
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json({
+      data: await dePantalla(`admin:semaforo:${claveSede(sede)}:${rango.desde}:${rango.hasta}`, () => semaforoClientes({ odooUserId: null, sede, rango })),
+    });
   } catch (error) {
     next(error);
   }

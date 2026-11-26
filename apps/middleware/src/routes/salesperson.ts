@@ -242,7 +242,8 @@ salespersonRouter.get('/semaforo', autorizar('asta.propias.ver'), async (req, re
       res.status(403).json({ error: { code: 'ROLE_NOT_ALLOWED', message: 'Tu usuario no tiene cartera asociada en Odoo.' } });
       return;
     }
-    res.json({ data: await dePantalla(`vendedor:${odooUserId}:semaforo`, () => semaforoClientes({ odooUserId })) });
+    const rango = rangoDeLaPeticion(req.query as Record<string, unknown>);
+    res.json({ data: await dePantalla(`vendedor:${odooUserId}:semaforo:${rango.desde}:${rango.hasta}`, () => semaforoClientes({ odooUserId, rango })) });
   } catch (error) {
     next(error);
   }

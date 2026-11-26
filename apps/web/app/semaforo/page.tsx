@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/session';
 import { destinoPara } from '@/lib/navegacion';
 import { Marco } from '@/components/Marco';
 import { TablaSemaforo, leerFiltros } from '@/components/Semaforo';
+import { Periodos, fechasDe } from '@/components/Periodos';
 import { getSemaforoCartera, esRedireccion } from '@/lib/api';
 
 /**
@@ -15,11 +16,13 @@ export const dynamic = 'force-dynamic';
 export default async function SemaforoVendedorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sesion = await requireSession();
   if (sesion.usuario.role !== 'VENDEDOR') redirect(destinoPara(sesion.usuario.role));
-  const { color, tamano, q } = leerFiltros(await searchParams);
+  const params = await searchParams;
+  const { color, tamano, q } = leerFiltros(params);
+  const rango = typeof params.desde === 'string' && typeof params.hasta === 'string' ? { desde: params.desde, hasta: params.hasta } : fechasDe('12m');
 
   let d;
   try {
-    d = await getSemaforoCartera(sesion.accessToken);
+    d = await getSemaforoCartera(sesion.accessToken, rango);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     return (
@@ -34,6 +37,7 @@ export default async function SemaforoVendedorPage({ searchParams }: { searchPar
 
   return (
     <Marco usuario={sesion.usuario} titulo="Semáforo de clientes">
+      <Periodos base="/semaforo" periodo={rango} />
       <TablaSemaforo datos={d} base="/semaforo" color={color} tamano={tamano} q={q} conVendedor={false} />
     </Marco>
   );
