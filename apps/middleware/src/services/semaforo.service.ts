@@ -103,12 +103,13 @@ export function modeloDelProducto(nombre: string, referencia: string | null, m: 
  * marcas) en el periodo, como percentil entre todos los que compraron. De toda
  * la empresa siempre, para que «grande» signifique lo mismo en cada cartera.
  */
-async function tamanos(desde: string): Promise<Map<number, TamanoTienda>> {
-  const enCache = cacheTamanos.get(desde);
+async function tamanos(desde: string, hasta: string): Promise<Map<number, TamanoTienda>> {
+  const clave = `${desde}:${hasta}`;
+  const enCache = cacheTamanos.get(clave);
   if (enCache) return enCache;
   const grupos = await readGroup<{ commercial_partner_id: [number, string] | false; move_type: string; amount_untaxed_signed: number; __count: number }>(
     'account.move',
-    [TIPO_FACTURADO, ['state', '=', 'posted'], SIN_INTERCOMPANIA, ['invoice_date', '>=', desde]] as never,
+    [TIPO_FACTURADO, ['state', '=', 'posted'], SIN_INTERCOMPANIA, ['invoice_date', '>=', desde], ['invoice_date', '<=', hasta]] as never,
     ['amount_untaxed_signed:sum'],
     ['commercial_partner_id', 'move_type'],
   );
@@ -117,7 +118,7 @@ async function tamanos(desde: string): Promise<Map<number, TamanoTienda>> {
   const orden = [...total.entries()].filter(([, v]) => v > 0).sort((a, b) => a[1] - b[1]);
   const r = new Map<number, TamanoTienda>();
   orden.forEach(([id], i) => r.set(id, tamanoDe(orden.length > 1 ? i / (orden.length - 1) : 1)));
-  cacheTamanos.set(desde, r);
+  cacheTamanos.set(clave, r);
   return r;
 }
 
@@ -137,19 +138,38 @@ function unidades(grupos: Grupo[]): Map<number, Map<number, number>> {
   return r;
 }
 
-export async function semaforoClientes(opciones: { odooUserId: number | null; sede?: SedeId | null; hoy?: Date }): Promise<Semaforo> {
+/**
+ * `rango`: el periodo del filtro (#323). Sin él, los últimos `MESES_SEMAFORO`
+ * meses hasta hoy. Todo se mira dentro del periodo: las impresoras, lo que
+ * compró de ASTA, su última compra (los días sin ASTA se cuentan hasta el final
+ * del periodo) y el tamaño de la tienda.
+ */
+export async function semaforoClientes(opciones: {
+  odooUserId: number | null;
+  sede?: SedeId | null;
+  rango?: { desde: string; hasta: string };
+  hoy?: Date;
+}): Promise<Semaforo> {
   const hoy = opciones.hoy ?? new Date();
-  const desde = desdeDe(hoy);
-  const hasta = hoy.toISOString().slice(0, 10);
+  const desde = opciones.rango?.desde ?? desdeDe(hoy);
+  const hasta = opciones.rango?.hasta ?? hoy.toISOString().slice(0, 10);
   const alcance = [...(opciones.odooUserId === null ? [] : carteraDesdeLinea(opciones.odooUserId)), ...enSede(opciones.sede ?? null)];
-  const base = [['parent_state', '=', 'posted'], TIPO_FACTURADO_LINEA, ['display_type', '=', 'product'], SIN_INTERCOMPANIA_LINEA, ['invoice_date', '>=', desde], ...alcance];
+  const base = [
+    ['parent_state', '=', 'posted'],
+    TIPO_FACTURADO_LINEA,
+    ['display_type', '=', 'product'],
+    SIN_INTERCOMPANIA_LINEA,
+    ['invoice_date', '>=', desde],
+    ['invoice_date', '<=', hasta],
+    ...alcance,
+  ];
 
   const [gruposImpresoras, gruposAsta, m, tamanoDeCliente] = await Promise.all([
     readGroup<Grupo>('account.move.line', [...base, ['product_id.categ_id', 'child_of', CATEGORIA_IMPRESORAS]] as never, ['quantity:sum'], ['partner_id', 'product_id', 'move_type']),
     // Con la fecha de la última factura de cada grupo: de ahí, cuánto lleva sin comprar ASTA.
     readGroup<Grupo>('account.move.line', [...base, LINEA_ASTA] as never, ['quantity:sum', 'invoice_date:max'], ['partner_id', 'product_id', 'move_type']),
     modelos(),
-    tamanos(desde),
+    tamanos(desde, hasta),
   ]);
   const impresorasDe = unidades(gruposImpresoras);
   const astaDe = unidades(gruposAsta);

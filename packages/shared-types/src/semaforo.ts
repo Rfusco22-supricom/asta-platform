@@ -8,8 +8,10 @@ import { z } from 'zod';
  *
  * ── Las reglas ───────────────────────────────────────────────────────────────
  *
- *   · Impresoras: las facturadas al cliente en los últimos `MESES_SEMAFORO`
- *     meses, netas de devoluciones, reconocidas en `printer_models`.
+ *   · Impresoras: las facturadas al cliente en el periodo del filtro (por
+ *     defecto, los últimos `MESES_SEMAFORO` meses), netas de devoluciones,
+ *     reconocidas en `printer_models`. Lo de ASTA, la última compra y el
+ *     tamaño se miran en el mismo periodo.
  *   · Una impresora está CUBIERTA si el cliente compró en ese tiempo alguno de
  *     sus tóners ASTA (compatibilidad VALIDADA). Las que no tienen tóner ASTA
  *     no cuentan para el color: no hay nada que ofrecerle.

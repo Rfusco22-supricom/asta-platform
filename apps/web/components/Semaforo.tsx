@@ -45,8 +45,10 @@ export function queOfrecer(c: ClienteSemaforo): Array<{ sku: string; impresora: 
   return [...vistos.entries()].map(([sku, impresora]) => ({ sku, impresora }));
 }
 
-function enlace(base: string, color: ColorSemaforo | null, tamano: TamanoTienda | null, sede: number | null, q: string): string {
+function enlace(base: string, color: ColorSemaforo | null, tamano: TamanoTienda | null, sede: number | null, q: string, periodo: { desde: string; hasta: string }): string {
   const qs = new URLSearchParams();
+  qs.set('desde', periodo.desde);
+  qs.set('hasta', periodo.hasta);
   if (color) qs.set('color', color);
   if (tamano) qs.set('tamano', tamano);
   if (sede !== null) qs.set('sede', String(sede));
@@ -57,7 +59,7 @@ function enlace(base: string, color: ColorSemaforo | null, tamano: TamanoTienda 
 
 /** «hace 45 días», «hace 5 meses», o sin compras en el periodo. */
 function haceCuanto(dias: number | null): string {
-  if (dias === null) return 'ninguna en 12 meses';
+  if (dias === null) return 'ninguna en el periodo';
   if (dias <= 1) return dias === 1 ? 'ayer' : 'hoy';
   if (dias < 60) return `hace ${dias} días`;
   return `hace ${Math.round(dias / 30)} meses`;
@@ -106,13 +108,14 @@ export function TablaSemaforo({
 }) {
   const filtrados = d.clientes.filter((c) => (!color || c.color === color) && (!tamano || c.tamano === tamano) && coincide(c, q));
   const periodo = nombrePeriodo(d.desde, d.hasta);
+  const fechas = { desde: d.desde, hasta: d.hasta };
   const total = d.totales.ROJO + d.totales.AMARILLO + d.totales.VERDE;
 
   return (
     <>
       <section className="stats semaforo-cifras" aria-label="Clientes por color">
         {(['ROJO', 'AMARILLO', 'VERDE'] as const).map((k) => (
-          <Link key={k} href={enlace(base, color === k ? null : k, tamano, sede, q)} className={`semaforo-cifra semaforo-${k.toLowerCase()}${color === k ? ' activa' : ''}`}>
+          <Link key={k} href={enlace(base, color === k ? null : k, tamano, sede, q, fechas)} className={`semaforo-cifra semaforo-${k.toLowerCase()}${color === k ? ' activa' : ''}`}>
             <Cifra {...LUZ[k].cifra} etiqueta={LUZ[k].texto} valor={n(d.totales[k])} nota={LUZ[k].nota} />
           </Link>
         ))}
@@ -124,11 +127,11 @@ export function TablaSemaforo({
       </p>
 
       <nav className="pestanas-reporte" aria-label="Tamaño de la tienda">
-        <Link href={enlace(base, color, null, sede, q)} className={tamano === null ? 'activa' : undefined}>
+        <Link href={enlace(base, color, null, sede, q, fechas)} className={tamano === null ? 'activa' : undefined}>
           Todas
         </Link>
         {(['GRANDE', 'MEDIANA', 'PEQUENA'] as const).map((t) => (
-          <Link key={t} href={enlace(base, color, t, sede, q)} className={tamano === t ? 'activa' : undefined}>
+          <Link key={t} href={enlace(base, color, t, sede, q, fechas)} className={tamano === t ? 'activa' : undefined}>
             {TAMANO[t]}
           </Link>
         ))}

@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
 import { Sedes, sedeDeParams } from '@/components/Sedes';
 import { TablaSemaforo, leerFiltros } from '@/components/Semaforo';
+import { Periodos, fechasDe } from '@/components/Periodos';
 import { getSemaforoEmpresa, esRedireccion } from '@/lib/api';
 
 /**
@@ -17,10 +18,11 @@ export default async function SemaforoAdminPage({ searchParams }: { searchParams
   const params = await searchParams;
   const sede = sedeDeParams(params);
   const { color, tamano, q } = leerFiltros(params);
+  const rango = typeof params.desde === 'string' && typeof params.hasta === 'string' ? { desde: params.desde, hasta: params.hasta } : fechasDe('12m');
 
   let d;
   try {
-    d = await getSemaforoEmpresa(sesion.accessToken, sede);
+    d = await getSemaforoEmpresa(sesion.accessToken, rango, sede);
   } catch (error) {
     if (esRedireccion(error)) throw error;
     return (
@@ -35,7 +37,8 @@ export default async function SemaforoAdminPage({ searchParams }: { searchParams
 
   return (
     <Marco usuario={sesion.usuario} titulo="Semáforo de clientes">
-      <Sedes base="/admin/semaforo" sede={sede} />
+      <Sedes base="/admin/semaforo" sede={sede} periodo={rango} />
+      <Periodos base="/admin/semaforo" periodo={rango} sede={sede} />
       <TablaSemaforo datos={d} base="/admin/semaforo" color={color} tamano={tamano} q={q} sede={sede} conVendedor />
     </Marco>
   );
