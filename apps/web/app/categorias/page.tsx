@@ -3,12 +3,19 @@ import { Marco } from '@/components/Marco';
 import { CaminoMeta } from '@/components/Categorias';
 import { BeneficiosPorNivel } from '@/components/Beneficios';
 import { FILTROS_PROGRAMA, TablaPrograma } from '@/components/ProgramaStaff';
-import { getCategoriasAstaCartera, getProgramaCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { Periodos } from '@/components/Periodos';
+import { getCategoriasAstaCartera, getProgramaCartera, getReporteCartera, ApiError, esRedireccion, ContractError } from '@/lib/api';
+import { nombrePeriodo } from '@/lib/meses';
 
 /**
  * El programa de ASTA de los clientes del vendedor: quién es Oro, Plata o
  * Bronce, y sobre todo «En juego», los que todavía pueden cumplir este
  * trimestre: la lista para llamar.
+ *
+ * La cifra grande, como en «Niveles y trimestre» del administrador y en su
+ * Inicio: lo vendido por su cartera en el mes del filtro (el último mes del
+ * periodo; por defecto, el que va en curso), no la media de varios meses, que
+ * se leía como la venta del mes.
  */
 
 export const dynamic = 'force-dynamic';
@@ -25,13 +32,27 @@ function Tabla({ programa, ...resto }: { programa: Awaited<ReturnType<typeof get
   return <TablaPrograma datos={programa} {...resto} />;
 }
 
-export default async function CategoriasVendedorPage({ searchParams }: { searchParams: Promise<{ ver?: string }> }) {
-  const sesion = await requireSession();
-  const { ver } = await searchParams;
-  const filtro = FILTROS_PROGRAMA.some((f) => f.valor === ver) ? ver! : 'juego';
+/** El mes en curso, del día 1 a hoy. */
+function mesEnCurso(): { desde: string; hasta: string } {
+  const hoy = new Date().toISOString().slice(0, 10);
+  return { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy };
+}
 
-  // La tabla va aparte: si falla, la meta sale igual.
+export default async function CategoriasVendedorPage({ searchParams }: { searchParams: Promise<{ ver?: string; desde?: string; hasta?: string }> }) {
+  const sesion = await requireSession();
+  const { ver, desde, hasta } = await searchParams;
+  const filtro = FILTROS_PROGRAMA.some((f) => f.valor === ver) ? ver! : 'juego';
+  const rango = desde && hasta && /^\d{4}-\d{2}-\d{2}$/.test(desde) && /^\d{4}-\d{2}-\d{2}$/.test(hasta) ? { desde, hasta } : mesEnCurso();
+  // El mes del filtro, como en el Inicio: el último del periodo.
+  const delMes = { desde: `${rango.hasta.slice(0, 7)}-01`, hasta: rango.hasta };
+  const enCurso = rango.hasta.slice(0, 7) === new Date().toISOString().slice(0, 7);
+
+  // La tabla y lo vendido en el mes van aparte: si fallan, la meta sale igual.
   const programa = getProgramaCartera(sesion.accessToken).catch(() => null);
+  const ventas = getReporteCartera(sesion.accessToken, delMes).catch((e: unknown) => {
+    if (esRedireccion(e)) throw e;
+    return null;
+  });
   let datos;
   try {
     datos = await getCategoriasAstaCartera(sesion.accessToken);
@@ -50,7 +71,8 @@ export default async function CategoriasVendedorPage({ searchParams }: { searchP
 
   return (
     <Marco usuario={sesion.usuario} titulo="Programa ASTA">
-      <CaminoMeta datos={datos} />
+      <Periodos base="/categorias" periodo={rango} />
+      <CaminoMeta datos={datos} mes={await ventas.then((v) => (v ? { vendido: v.totales.facturado, nombre: nombrePeriodo(delMes.desde, delMes.hasta), enCurso } : null))} />
       <Tabla programa={await programa} filtro={filtro} base="/categorias" conVendedor={false} />
       <BeneficiosPorNivel />
     </Marco>
