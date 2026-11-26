@@ -1,7 +1,6 @@
 import { Router, type Request } from 'express';
 import { mesSchema } from '@asta/shared-types';
 import { prisma } from '../config/prisma.js';
-import { autorizar } from '../middleware/autorizar.js';
 import { metricasDeCliente } from '../services/metricasCliente.service.js';
 import { mesDe, porMarcar, resumenSellOut } from '../services/sellOut.service.js';
 import { pedidoSugerido, pedidosDelCliente } from '../services/pedidoSugerido.service.js';
@@ -11,18 +10,23 @@ import { dePantalla } from '../services/pantallas.js';
 import { responderFacturas, responderFotoProducto, responderPdfFactura } from './respuestasCliente.js';
 
 /**
- * `/admin/vista-cliente/:partnerId/…`: el panel de un cliente tal como lo ve
- * él, para que el administrador lo revise. Las MISMAS lecturas que `/account`
+ * El panel de un cliente tal como lo ve él: las MISMAS lecturas que `/account`
  * (mismos servicios, mismas respuestas), con el cliente en la ruta en vez de en
- * el token.
+ * el token. Se monta en dos sitios, cada uno con su permiso delante:
+ *
+ *   · `/vista-cliente/:partnerId` (`server.ts`), con `cliente.vista.ver`: el
+ *     administrador, cualquier cliente; el vendedor, solo los de su cartera
+ *     (ámbito `partner-propio`), para hacerles la demostración;
+ *   · `/admin/vista-cliente/:partnerId`, con `admin.vista.cliente`, la de antes.
+ *
+ * Este router NO autoriza por sí mismo: montarlo sin un `autorizar` delante
+ * dejaría ver el panel de cualquier cliente.
  *
  * Solo GET. Lo que el cliente puede HACER en su panel —marcar lo vendido, subir
  * su sell-out, enviar un pedido— no tiene equivalente aquí: el administrador
  * mira, no actúa en su nombre.
  */
 export const vistaClienteRouter = Router({ mergeParams: true });
-
-vistaClienteRouter.use(autorizar('admin.vista.cliente'));
 
 function partnerDe(req: Request): number | null {
   const id = Number((req.params as { partnerId?: string }).partnerId);

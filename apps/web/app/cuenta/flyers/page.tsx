@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { requireSession } from '@/lib/session';
 import { COOKIE_PRESENTACION, presentacionDe } from '@/lib/presentacion';
 import { Marco } from '@/components/Marco';
-import { contextoCliente } from '@/lib/vistaCliente';
+import { contextoCliente, tituloSinPermiso } from '@/lib/vistaCliente';
 import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
 import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { getDatosFlyer, ApiError, esRedireccion, ContractError } from '@/lib/api';
@@ -21,12 +21,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function FlyersPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
-  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
-  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+  // El personal mira el panel de un cliente («Ver su panel»): primero, cuál.
+  const { esPersonal, vista: comoCliente } = await contextoCliente(sesion);
+  if (esPersonal && (!comoCliente || (await searchParams).elegir)) {
     return (
       <Marco usuario={sesion.usuario} titulo="Flyers">
-        <ElegirCliente token={sesion.accessToken} destino="/cuenta/flyers" />
+        <ElegirCliente token={sesion.accessToken} rol={sesion.usuario.role} destino="/cuenta/flyers" />
       </Marco>
     );
   }
@@ -40,7 +40,7 @@ export default async function FlyersPage({ searchParams }: { searchParams: Promi
     return (
       <Marco usuario={sesion.usuario} titulo="Flyers">
         <div className={esPermiso ? 'notice' : 'notice error'}>
-          <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudieron cargar tus flyers'}</h2>
+          <h2>{esPermiso ? tituloSinPermiso(comoCliente) : 'No se pudieron cargar tus flyers'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
         </div>
       </Marco>

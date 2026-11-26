@@ -59,6 +59,7 @@ export const accionSchema = z.enum([
   'admin.sellout.ver',
   'admin.pedidos.atender',
   'admin.vista.cliente',
+  'cliente.vista.ver',
   'pedidos.cartera.atender',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
@@ -251,6 +252,14 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver el panel de un cliente tal como lo ve él, sin poder cambiar nada',
+  },
+  'cliente.vista.ver': {
+    // Lo mismo, para el VENDEDOR con los clientes de SU cartera (nov-2026: para
+    // hacerles la demostración del panel). `partner-propio`: el middleware
+    // comprueba que el cliente sea suyo; el administrador ve cualquiera.
+    roles: STAFF,
+    ambito: 'partner-propio',
+    descripcion: 'Ver el panel de un cliente de su cartera tal como lo ve él, sin poder cambiar nada',
   },
   'admin.pedidos.atender': {
     roles: ['SUPERADMIN'],

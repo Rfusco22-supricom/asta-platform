@@ -1,6 +1,6 @@
 import { requireSession } from '@/lib/session';
 import { Marco } from '@/components/Marco';
-import { contextoCliente } from '@/lib/vistaCliente';
+import { contextoCliente, tituloSinPermiso } from '@/lib/vistaCliente';
 import { ElegirCliente } from '@/components/vistaCliente/ElegirCliente';
 import { BannerVista } from '@/components/vistaCliente/BannerVista';
 import { Cifra } from '@/components/Cifras';
@@ -27,12 +27,12 @@ const n = (x: number | null) => (x === null ? '—' : x.toLocaleString('es-VE', 
 
 export default async function SellOutPage({ searchParams }: { searchParams: Promise<{ elegir?: string }> }) {
   const sesion = await requireSession();
-  // El administrador mira el panel de un cliente («Ver su panel»): primero, cuál.
-  const { esAdmin, vista: comoCliente } = await contextoCliente(sesion);
-  if (esAdmin && (!comoCliente || (await searchParams).elegir)) {
+  // El personal mira el panel de un cliente («Ver su panel»): primero, cuál.
+  const { esPersonal, vista: comoCliente } = await contextoCliente(sesion);
+  if (esPersonal && (!comoCliente || (await searchParams).elegir)) {
     return (
       <Marco usuario={sesion.usuario} titulo="Sell-out">
-        <ElegirCliente token={sesion.accessToken} destino="/cuenta/sellout" />
+        <ElegirCliente token={sesion.accessToken} rol={sesion.usuario.role} destino="/cuenta/sellout" />
       </Marco>
     );
   }
@@ -50,7 +50,7 @@ export default async function SellOutPage({ searchParams }: { searchParams: Prom
     return (
       <Marco usuario={sesion.usuario} titulo="Sell-out">
         <div className={esPermiso ? 'notice' : 'notice error'}>
-          <h2>{esPermiso ? 'Esta pantalla es para clientes' : 'No se pudo cargar tu sell-out'}</h2>
+          <h2>{esPermiso ? tituloSinPermiso(comoCliente) : 'No se pudo cargar tu sell-out'}</h2>
           {!esPermiso && <p>{error instanceof ContractError || error instanceof ApiError ? error.message : 'Error inesperado.'}</p>}
         </div>
       </Marco>
@@ -76,7 +76,7 @@ export default async function SellOutPage({ searchParams }: { searchParams: Prom
 
       {porMarcar ? (
         comoCliente ? (
-          // Mirando como administrador: se ve, pero no se marca nada en su nombre.
+          // Mirando su panel desde el personal: se ve, pero no se marca nada en su nombre.
           <fieldset disabled className="solo-ver">
             <LoQueTeVendimos inicial={porMarcar} />
           </fieldset>

@@ -734,11 +734,11 @@ export async function getCodigoRevision(accessToken: string): Promise<CodigoRevi
 /** «Mis métricas» del cliente con sesión: compras de ASTA, nivel y tablets. */
 /**
  * La ruta de una pantalla del cliente: la suya (`/account`, el cliente sale del
- * token) o, con `cliente`, la vista del administrador sobre ese cliente
- * (`/admin/vista-cliente/:id`, solo lectura).
+ * token) o, con `cliente`, la vista del personal sobre ese cliente
+ * (`/vista-cliente/:id`, solo lectura; al vendedor, solo los de su cartera).
  */
 export function rutaCliente(ruta: string, cliente?: number | null): string {
-  return cliente ? `/api/v1/admin/vista-cliente/${cliente}${ruta}` : `/api/v1/account${ruta}`;
+  return cliente ? `/api/v1/vista-cliente/${cliente}${ruta}` : `/api/v1/account${ruta}`;
 }
 
 export async function getMetricasCliente(accessToken: string, cliente?: number | null): Promise<MetricasCliente> {
