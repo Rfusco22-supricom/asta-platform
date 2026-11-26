@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from 'react';
 
-/** Busca entre los clientes con cuenta y lleva a su panel (ver `/api/vista-cliente`). */
-export function BuscadorClientes({ clientes, destino }: { clientes: { id: number; nombre: string; nivel: string }[]; destino: string }) {
+/** Busca entre los clientes (con cuenta, o los de su cartera) y lleva a su panel (ver `/api/vista-cliente`). */
+export function BuscadorClientes({
+  clientes,
+  destino,
+  queLista = 'clientes con cuenta',
+}: {
+  clientes: { id: number; nombre: string; nivel: string }[];
+  destino: string;
+  queLista?: string;
+}) {
   const [q, setQ] = useState('');
   const encontrados = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -13,7 +21,7 @@ export function BuscadorClientes({ clientes, destino }: { clientes: { id: number
 
   return (
     <div className="vista-buscador">
-      <input className="input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Busca entre ${clientes.length.toLocaleString('es-VE')} clientes con cuenta`} aria-label="Buscar cliente" />
+      <input className="input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Busca entre ${clientes.length.toLocaleString('es-VE')} ${queLista}`} aria-label="Buscar cliente" />
       <ul>
         {encontrados.map((c) => (
           <li key={c.id}>

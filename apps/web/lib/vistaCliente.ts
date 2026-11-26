@@ -2,13 +2,15 @@ import { cookies } from 'next/headers';
 import type { Session } from '@/lib/session';
 
 /**
- * «Ver su panel» del administrador: ver el panel de un cliente tal como lo ve él.
+ * «Ver su panel»: el administrador, o el vendedor con un cliente de su cartera
+ * (para hacerle la demostración), ve el panel de un cliente tal como lo ve él.
  *
  * El cliente elegido viaja en una cookie (`asta_vista_cliente`), y no en la
  * URL, para que el menú lleve de una pantalla suya a otra sin perderlo. Las
- * pantallas (/cuenta/…) son las mismas del cliente: con la cookie y siendo
- * SUPERADMIN, piden sus datos a `/admin/vista-cliente/:id` (solo lectura) en
- * vez de a `/account`.
+ * pantallas (/cuenta/…) son las mismas del cliente: con la cookie, y siendo
+ * SUPERADMIN o VENDEDOR, piden sus datos a `/vista-cliente/:id` (solo lectura)
+ * en vez de a `/account`. Que el cliente sea de su cartera lo comprueba el
+ * middleware (`cliente.vista.ver`): la cookie no da acceso a nada por sí sola.
  */
 
 export const COOKIE_VISTA = 'asta_vista_cliente';
@@ -30,18 +32,30 @@ function leer(valor: string | undefined): VistaCliente | null {
   }
 }
 
+/** Quién puede mirar el panel de un cliente: el personal, no los clientes. */
+export const puedeVerPaneles = (rol: string) => rol === 'SUPERADMIN' || rol === 'VENDEDOR';
+
 /**
- * Para las pantallas del cliente: si quien mira es el administrador, a qué
- * cliente mira (o `null` si todavía no eligió). A un cliente, nunca: lo suyo
- * sale siempre de su token.
+ * Para las pantallas del cliente: si quien mira es del personal (administrador
+ * o vendedor), a qué cliente mira (o `null` si todavía no eligió). A un
+ * cliente, nunca: lo suyo sale siempre de su token.
  */
-export async function contextoCliente(sesion: Session): Promise<{ esAdmin: boolean; vista: VistaCliente | null }> {
-  if (sesion.usuario.role !== 'SUPERADMIN') return { esAdmin: false, vista: null };
+export async function contextoCliente(sesion: Session): Promise<{ esPersonal: boolean; vista: VistaCliente | null }> {
+  if (!puedeVerPaneles(sesion.usuario.role)) return { esPersonal: false, vista: null };
   const store = await cookies();
-  return { esAdmin: true, vista: leer(store.get(COOKIE_VISTA)?.value) };
+  return { esPersonal: true, vista: leer(store.get(COOKIE_VISTA)?.value) };
 }
 
-/** Para los puentes de `/api`: el cliente que mira el administrador, o `null`. */
+/** Para los puentes de `/api`: el cliente que mira el personal, o `null`. */
 export async function clienteDeLaVista(sesion: Session): Promise<number | null> {
   return (await contextoCliente(sesion)).vista?.id ?? null;
+}
+
+/**
+ * El título de un 403 en una pantalla del cliente. Mirando el panel de otro
+ * («Ver su panel»), es que ese cliente no es de su cartera (el middleware lo
+ * comprueba en cada lectura); si no, que la pantalla es de clientes.
+ */
+export function tituloSinPermiso(vista: VistaCliente | null): string {
+  return vista ? 'Ese cliente no es de tu cartera' : 'Esta pantalla es para clientes';
 }

@@ -8,6 +8,9 @@ import { metricasOdoo } from './odoo/metrics.js';
 import { salespersonRouter } from './routes/salesperson.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
+import { vistaClienteRouter } from './routes/vistaCliente.js';
+import { authJwt } from './middleware/authJwt.js';
+import { autorizar } from './middleware/autorizar.js';
 import { accountRouter } from './routes/account.js';
 import { crearPublicRouter } from './routes/public.js';
 import { crearKioskRouter } from './routes/kiosk.js';
@@ -90,6 +93,9 @@ export function createApp() {
   app.use('/api/v1/auth', corsPanel, authRouter);
   app.use('/api/v1/salesperson', corsPanel, salespersonRouter);
   app.use('/api/v1/admin', corsPanel, adminRouter);
+  // El panel de un cliente, solo lectura: el administrador, cualquiera; el
+  // vendedor, los de su cartera (`cliente.vista.ver`, ver `vistaCliente.ts`).
+  app.use('/api/v1/vista-cliente/:partnerId', corsPanel, authJwt(), autorizar('cliente.vista.ver'), vistaClienteRouter);
   app.use('/api/v1/account', corsPanel, accountRouter);
   app.use('/api/v1/public', crearPublicRouter());
   // Las tablets del kiosco, con su token de dispositivo (#120). Sin CORS: es una app, no un navegador.

@@ -95,7 +95,8 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         // (sigue abierto desde sus tareas); «Mis ventas», los reportes y sus
         // clientes en ASTA; «Programa ASTA», los niveles de su cartera.
         { href: '/inicio', titulo: 'Hoy', icono: 'resumen', tambien: ['/impulsa'] },
-        { href: '/cartera', titulo: 'Mi cartera', icono: 'cartera', prefijo: true, corto: 'Cartera' },
+        // Con «Ver su panel», las pantallas del cliente siguen marcando «Mi cartera».
+        { href: '/cartera', titulo: 'Mi cartera', icono: 'cartera', prefijo: true, corto: 'Cartera', tambien: ['/cuenta/metricas', '/cuenta/nivel', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
         { href: '/semaforo', titulo: 'Semáforo de clientes', icono: 'semaforo', corto: 'Semáforo' },
         { href: '/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
         { href: '/reportes', titulo: 'Mis ventas', icono: 'reportes', prefijo: true, corto: 'Ventas', tambien: ['/asta'] },

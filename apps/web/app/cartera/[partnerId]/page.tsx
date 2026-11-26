@@ -149,8 +149,9 @@ export default async function FichaCliente({ params, searchParams }: Props) {
           <span className="ficha-tarifa">{cliente.tier ?? 'Sin tarifa asignada'}</span>
         </div>
         <div className="ficha-acciones">
-          {/* El panel del cliente tal como lo ve él, solo lectura (ver `/api/vista-cliente`). */}
-          {sesion.usuario.role === 'SUPERADMIN' && (
+          {/* El panel del cliente tal como lo ve él, solo lectura (ver `/api/vista-cliente`):
+              el administrador para revisarlo, el vendedor para hacerle la demostración. */}
+          {(sesion.usuario.role === 'SUPERADMIN' || sesion.usuario.role === 'VENDEDOR') && (
             <a className="ficha-odoo" href={`/api/vista-cliente?id=${partnerId}&nombre=${encodeURIComponent(nombre)}&a=/cuenta/metricas`}>
               Ver su panel
             </a>

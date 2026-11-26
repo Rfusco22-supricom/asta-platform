@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { COOKIE_VISTA } from '@/lib/vistaCliente';
+import { COOKIE_VISTA, puedeVerPaneles } from '@/lib/vistaCliente';
+import { destinoPara } from '@/lib/navegacion';
 
 /**
- * Elegir (o dejar) el cliente cuyo panel mira el administrador en «Ver su panel».
+ * Elegir (o dejar) el cliente cuyo panel mira el personal en «Ver su panel»: el
+ * administrador, o el vendedor con un cliente de su cartera.
  *
  *   GET ?id=123&nombre=…&a=/cuenta/metricas → guarda el cliente y va a esa pantalla
  *   GET ?salir=1                            → lo olvida y vuelve al Inicio
  *
- * Solo el administrador; `a` solo puede ser una pantalla del cliente.
+ * Solo el personal; `a` solo puede ser una pantalla del cliente. La cookie no
+ * abre nada por sí sola: el middleware comprueba cada lectura
+ * (`cliente.vista.ver`), y a un vendedor solo le deja los de su cartera.
  *
  * Las redirecciones van con la ruta sola (`Location: /cuenta/…`), sin dominio:
  * detrás del proxy de EasyPanel, `req.url` es la dirección interna del
@@ -23,10 +27,10 @@ function irA(ruta: string): NextResponse {
 export async function GET(req: Request) {
   const sesion = await getSession();
   const url = new URL(req.url);
-  if (!sesion || sesion.usuario.role !== 'SUPERADMIN') return irA('/');
+  if (!sesion || !puedeVerPaneles(sesion.usuario.role)) return irA('/');
 
   if (url.searchParams.get('salir')) {
-    const res = irA('/admin');
+    const res = irA(destinoPara(sesion.usuario.role));
     res.cookies.delete(COOKIE_VISTA);
     return res;
   }

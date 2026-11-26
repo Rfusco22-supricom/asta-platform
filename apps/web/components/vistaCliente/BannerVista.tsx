@@ -4,7 +4,7 @@ import { PANTALLAS_VISTA_CLIENTE } from '@/lib/navegacion';
 import { PestanasSeccion } from '@/components/PestanasSeccion';
 
 /**
- * Arriba de cada pantalla del cliente cuando la mira el administrador: de quién
+ * Arriba de cada pantalla del cliente cuando la mira el personal: de quién
  * es, que es solo para mirar, y sus pantallas como pestañas (ya no están en el
  * menú: se llega desde «Ver su panel» en la ficha del cliente).
  */
