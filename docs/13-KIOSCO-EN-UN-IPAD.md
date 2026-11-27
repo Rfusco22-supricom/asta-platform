@@ -78,8 +78,9 @@ Si da `Unable to install` o `Untrusted Developer`, es el paso 6.
 Para cuando haya más de una tienda. Lo hace la cuenta de desarrollador:
 
 1. En App Store Connect, crear la app con el identificador
-   **`com.supricom.asta.kiosco`** (es el que pone `project.yml`; cambiarlo
-   obliga a crear otra app).
+   **`com.supricom.asta`** (es el que pone `project.yml`; cambiarlo
+   obliga a crear otra app). La publicación en la tienda, en
+   `14-TIENDAS.md`.
 2. Subir la versión: en Xcode, **Product → Archive** y luego *Distribute App →
    App Store Connect → Upload*.
 3. En App Store Connect, **TestFlight**, añadir al personal de tienda como

@@ -61,3 +61,7 @@ odoo-config-*.json.gz
 # apps/web/public/, que es la única carpeta de la que Next sirve estáticos.
 /public/
 
+# La firma de subida a Google Play: la clave y sus contraseñas no se versionan.
+apps/android/keystore.properties
+*.jks
+*.keystore

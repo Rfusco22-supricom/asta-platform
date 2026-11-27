@@ -17,7 +17,7 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
   AstaKiosco:
@@ -27,7 +27,8 @@ targets:
       - path: AstaKiosco
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.supricom.asta.kiosco
+        # El de las tiendas: no se puede cambiar una vez publicada.
+        PRODUCT_BUNDLE_IDENTIFIER: com.supricom.asta
         # Solo iPad: es una tablet en un soporte.
         TARGETED_DEVICE_FAMILY: "2"
         GENERATE_INFOPLIST_FILE: NO
@@ -64,6 +65,9 @@ targets:
         AstaApiKey: $(ASTA_API_KEY)
         # La cámara solo se usa para leer el QR del código que da el panel.
         NSCameraUsageDescription: La cámara se usa solo para leer el código QR que vincula esta tablet.
+        # Solo HTTPS del sistema: exenta de la declaración de exportación, y así
+        # App Store Connect no la pregunta en cada subida.
+        ITSAppUsesNonExemptEncryption: false
         # El middleware de desarrollo es http://localhost; producción va por https.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -78,7 +82,28 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "2"
+  # Las capturas de la App Store: ver AstaKioscoUITests/CapturasTests.swift.
+  AstaKioscoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: AstaKioscoUITests
+    dependencies:
+      - target: AstaKiosco
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "2"
+        TEST_TARGET_NAME: AstaKiosco
 schemes:
+  Capturas:
+    build:
+      targets:
+        AstaKiosco: all
+        AstaKioscoUITests: [test]
+    test:
+      targets:
+        - AstaKioscoUITests
   AstaKiosco:
     build:
       targets:
