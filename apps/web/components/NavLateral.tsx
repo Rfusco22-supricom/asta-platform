@@ -186,6 +186,14 @@ export function Icono({ nombre }: { nombre: string }) {
           <circle cx="12" cy="17" r="1.6" />
         </svg>
       );
+    case 'catalogo':
+      // Un libro abierto: el catálogo de productos.
+      return (
+        <svg {...comun}>
+          <path d="M3 5.5c3-1.3 6-1.3 9 .8 3-2.1 6-2.1 9-.8v13c-3-1.3-6-1.3-9 .8-3-2.1-6-2.1-9-.8z" />
+          <path d="M12 6.3v13" />
+        </svg>
+      );
     case 'calidad':
       // Una hoja de comprobaciones con su visto bueno.
       return (

@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
         // rastrea desde `apps/web` y se deja fuera lo que pnpm enlaza desde
         // arriba, incluido `@asta/shared-types`.
         outputFileTracingRoot: join(import.meta.dirname, '../..'),
+        // El PDF base del catálogo, sus huecos y la tipografía se leen del
+        // disco en la ruta de descarga, y el rastreo no ve un `readFile` con la
+        // ruta armada: sin esto no entran en la imagen y la descarga da 500
+        // solo en producción.
+        outputFileTracingIncludes: { '/api/catalogo/[version]': ['./privado/catalogo/**'] },
       }
     : {}),
 

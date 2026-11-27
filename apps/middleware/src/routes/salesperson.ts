@@ -28,6 +28,7 @@ import { categoriasDelPrograma, programaDeCliente, programaEnCurso } from '../se
 import { auditContext } from '../middleware/auditContext.js';
 import { semaforoClientes } from '../services/semaforo.service.js';
 import { abrirDemo } from '../services/demoAplicacion.service.js';
+import { catalogoAsta } from '../services/catalogo/catalogoAsta.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -248,6 +249,18 @@ salespersonRouter.post('/aplicacion/demo', autorizar('aplicacion.demo.abrir'), a
       metadata: { sede: demo.sede, caduca: demo.caduca },
     });
     res.status(201).json({ data: demo });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * El catálogo de productos ASTA con los precios de hoy de la tarifa de
+ * Valencia, para el personal (`services/catalogo/catalogoAsta`).
+ */
+salespersonRouter.get('/catalogo', autorizar('catalogo.asta.ver'), async (_req, res, next) => {
+  try {
+    res.json({ data: await catalogoAsta() });
   } catch (error) {
     next(error);
   }

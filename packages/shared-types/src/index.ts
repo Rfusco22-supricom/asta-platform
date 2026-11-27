@@ -51,3 +51,4 @@ export * from './semaforo.js';
 export * from './facturasCliente.js';
 export * from './flyers.js';
 export * from './calculadora.js';
+export * from './catalogoAsta.js';

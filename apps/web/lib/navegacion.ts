@@ -73,6 +73,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
     {
       titulo: 'Catálogo y aplicación',
       secciones: [
+        { href: '/catalogo', titulo: 'Catálogo', icono: 'catalogo' },
         { href: '/admin/compatibilidades', titulo: 'Compatibilidades', icono: 'compatibilidades', prefijo: true, corto: 'Compatibles' },
         { href: '/admin/recomendador', titulo: 'Búsquedas y demanda', icono: 'recomendador', corto: 'Búsquedas', tambien: ['/admin/demanda'] },
         { href: '/admin/kioscos', titulo: 'Tablets', icono: 'tablet' },
@@ -99,6 +100,7 @@ const POR_ROL: Record<Rol, GrupoNav[]> = {
         { href: '/cartera', titulo: 'Mi cartera', icono: 'cartera', prefijo: true, corto: 'Cartera', tambien: ['/cuenta/metricas', '/cuenta/nivel', '/cuenta/sellout', '/cuenta/pedido', '/cuenta/facturas', '/cuenta/flyers', '/cuenta/calculadora'] },
         { href: '/semaforo', titulo: 'Semáforo de clientes', icono: 'semaforo', corto: 'Semáforo' },
         { href: '/cotizaciones', titulo: 'Cotizaciones y pedidos', icono: 'cotizaciones', corto: 'Cotiza', prefijo: true },
+        { href: '/catalogo', titulo: 'Catálogo', icono: 'catalogo' },
         { href: '/reportes', titulo: 'Mis ventas', icono: 'reportes', prefijo: true, corto: 'Ventas', tambien: ['/asta'] },
         { href: '/categorias', titulo: 'Programa ASTA', icono: 'categorias', corto: 'Programa' },
       ],

@@ -61,6 +61,7 @@ export const accionSchema = z.enum([
   'admin.vista.cliente',
   'cliente.vista.ver',
   'aplicacion.demo.abrir',
+  'catalogo.asta.ver',
   'pedidos.cartera.atender',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
@@ -261,6 +262,13 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: STAFF,
     ambito: 'ninguno',
     descripcion: 'Abrir una demostración de la aplicación ASTA para enseñársela a un cliente',
+  },
+  'catalogo.asta.ver': {
+    // El catálogo ASTA con los precios de la tarifa de Valencia, para mandarlo
+    // a los clientes. Solo el personal: cada cliente tiene su propia tarifa.
+    roles: STAFF,
+    ambito: 'ninguno',
+    descripcion: 'Ver y descargar el catálogo de productos ASTA con sus precios',
   },
   'cliente.vista.ver': {
     // Lo mismo, para el VENDEDOR con los clientes de SU cartera (nov-2026: para

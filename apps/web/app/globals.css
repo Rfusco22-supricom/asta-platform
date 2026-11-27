@@ -4847,3 +4847,92 @@ fieldset.solo-ver { border: 0; margin: 0; padding: 0; min-width: 0; }
 .mostrar-aplicacion { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .mostrar-aplicacion button.ficha-odoo { font: inherit; cursor: pointer; color: inherit; }
 .mostrar-aplicacion-fallo { font-size: 12px; color: var(--danger); }
+
+/* ── Catálogo ASTA (`components/Catalogo.tsx`) ─────────────────────────────── */
+/* Las tarjetas del PDF del catálogo: foto sobre blanco (las fotos vienen con
+   fondo blanco, también en oscuro), marca con sus colores, título y los
+   códigos con su precio a la derecha. */
+.catalogo-descargas { display: inline-flex; align-items: center; gap: 12px; }
+.catalogo-buscar { flex: 1 1 280px; min-width: 0; max-width: 460px; }
+.catalogo-tipos { flex-wrap: wrap; }
+.catalogo-tipos button {
+  font: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 14px 10px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.catalogo-tipos button:hover { color: var(--text); }
+.catalogo-tipos button.activa { color: var(--primario); border-bottom-color: var(--primario); }
+.catalogo-tipos button:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; border-radius: 6px; }
+.catalogo-n { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; margin-left: 2px; }
+
+.catalogo-seccion { margin-bottom: 22px; }
+.catalogo-banda {
+  margin: 4px 0 12px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: var(--degradado);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  box-shadow: var(--sombra-azul);
+}
+.catalogo-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.catalogo-tarjeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px 10px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--sombra-card);
+}
+.catalogo-foto {
+  aspect-ratio: 1;
+  max-width: 100%;
+  border-radius: 10px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.catalogo-foto img { width: 100%; height: 100%; object-fit: contain; }
+.catalogo-sin-foto { font-weight: 800; letter-spacing: 3px; font-size: 22px; background: var(--degradado); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.catalogo-marca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.catalogo-colores { display: inline-flex; gap: 3px; }
+.catalogo-colores i, .catalogo-codigo i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--border-strong); }
+.catalogo-tarjeta h3 { margin: 4px 0 8px; font-size: 14.5px; font-weight: 650; line-height: 1.25; color: var(--text); text-wrap: balance; }
+.catalogo-variantes { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.catalogo-variantes li { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.catalogo-codigo { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; min-width: 0; }
+.catalogo-codigo code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--text); overflow-wrap: anywhere; }
+.catalogo-codigo small { font-size: 10.5px; color: var(--text-3); }
+.catalogo-variantes strong { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catalogo-para { margin: 8px 0 0; font-size: 11.5px; color: var(--positive); font-weight: 550; }
+@media (max-width: 520px) {
+  .catalogo-tipos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .catalogo-tipos button { white-space: nowrap; padding: 8px 10px 10px; }
+  .catalogo-rejilla { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .catalogo-tarjeta { padding: 8px 8px 10px; }
+  .catalogo-tarjeta h3 { font-size: 13px; }
+  .catalogo-variantes li { flex-direction: column; gap: 0; }
+}
