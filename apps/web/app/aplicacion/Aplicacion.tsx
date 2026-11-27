@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ClienteApi, Datos, activar, almacenNavegador, estaVivo, olvidarToken, tokenGuardado, type Informe, type MotivoFallo, type ResultadoActivacion } from './api';
+import { ClienteApi, Datos, activar, almacenNavegador, demoGuardada, estaVivo, olvidarToken, terminarDemo, tokenGuardado, type Demo, type Informe, type MotivoFallo, type ResultadoActivacion } from './api';
 import {
   AVISO_ANTES_MS,
   CacheLocal,
@@ -44,9 +44,13 @@ type Conexion = 'CONECTADO' | 'SIN_CONEXION' | 'SIN_DATOS_VIVOS';
 export function Aplicacion() {
   // `undefined` mientras se lee el token: en el servidor no hay `localStorage`.
   const [token, setToken] = useState<string | null | undefined>(undefined);
+  // La demostración de un vendedor, si la hay: manda sobre el token de la tablet.
+  const [demo, setDemo] = useState<Demo | null>(null);
 
   useEffect(() => {
-    setToken(tokenGuardado());
+    const d = demoGuardada();
+    setDemo(d);
+    setToken(d ? d.token : tokenGuardado());
     // Solo en producción: en desarrollo, el código de Next no lleva hash y la caché serviría uno viejo.
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/aplicacion/sw.js', { scope: '/aplicacion/' }).catch(() => undefined);
@@ -61,14 +65,54 @@ export function Aplicacion() {
   usePantallaEncendida();
   // Estable: el latido depende de ella y no puede rearmarse en cada repintado.
   const rechazado = useCallback(() => {
+    // Una demostración rechazada (caducada, o la cuenta del vendedor ya no
+    // vale) se borra ella sola: no toca la activación de la tablet, si la hay.
+    if (demo) {
+      terminarDemo();
+      setDemo(null);
+      setToken(tokenGuardado());
+      return;
+    }
     olvidarToken();
     setToken(null);
+  }, [demo]);
+
+  // Terminar la demostración: de vuelta al panel, de donde vino el vendedor.
+  const salirDeDemo = useCallback(() => {
+    terminarDemo();
+    window.location.href = '/';
   }, []);
 
   if (token === undefined) return <div className="aa-fondo" />;
   if (!token) return <Activacion alActivar={setToken} />;
+  if (!demo) return <AplicacionActiva key={token} token={token} alRechazar={rechazado} />;
+  // En una demostración, la aplicación va debajo de una franja que lo dice: no tapa nada.
   return (
-<AplicacionActiva key={token} token={token} alRechazar={rechazado} />
+    <>
+      <AvisoDemo demo={demo} alSalir={salirDeDemo} />
+      <div className="aa-con-demo">
+        <AplicacionActiva key={token} token={token} alRechazar={rechazado} />
+      </div>
+    </>
+  );
+}
+
+/**
+ * La franja de arriba mientras dura una demostración: que el vendedor (y el cliente)
+ * sepan que no es una tablet activada, de qué sede son las existencias, y cómo
+ * volver al panel.
+ */
+function AvisoDemo({ demo, alSalir }: { demo: Demo; alSalir: () => void }) {
+  return (
+    <div className="aa-demo" role="status">
+      <span>
+        <b>Demostración</b>
+        {demo.sede ? ` · existencias de ${demo.sede}` : ' · sin existencias'}
+      </span>
+      <button type="button" onClick={alSalir}>
+        Terminar
+      </button>
+    </div>
   );
 }
 

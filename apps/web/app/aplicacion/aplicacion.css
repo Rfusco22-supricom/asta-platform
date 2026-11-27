@@ -535,3 +535,36 @@
   font-weight: 600;
 }
 .aa-atraccion-conexion { display: flex; align-items: center; }
+
+/* La demostración de un vendedor («Mostrar la aplicación ASTA» en el panel): una
+   franja arriba, y la aplicación debajo de ella (`.aa-con-demo`), sin taparle nada. */
+.aa .aa-demo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--aa-tinta);
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 20;
+}
+.aa .aa-demo button {
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font: inherit;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+}
+.aa .aa-con-demo {
+  position: absolute;
+  inset: 36px 0 0 0;
+}

@@ -143,3 +143,18 @@ export const codigoRevisionRespuestaSchema = z.object({
 });
 
 export type CodigoRevision = z.infer<typeof codigoRevisionRespuestaSchema>['data'];
+
+/**
+ * La demostración de la aplicación ASTA que abre un vendedor en su teléfono
+ * para enseñársela a un cliente (`demoAplicacion.service`): un token firmado,
+ * sin tablet, que caduca al terminar el día.
+ */
+export const demoAplicacionSchema = z.object({
+  token: z.string().startsWith('asta_demo_'),
+  /** ISO: la medianoche de Caracas del día en que se abrió. */
+  caduca: z.string(),
+  /** De qué sede son las existencias; null si solo enseña compatibilidades. */
+  sede: z.string().nullable(),
+});
+export type DemoAplicacion = z.infer<typeof demoAplicacionSchema>;
+export const demoAplicacionRespuestaSchema = z.object({ data: demoAplicacionSchema });

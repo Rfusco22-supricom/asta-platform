@@ -437,9 +437,12 @@ export async function revocarCodigoRevision(ahora = new Date()): Promise<number>
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface KioscoAutenticado {
+  /** El id de la tablet; en una demostración, `demo:<app_users.id>` (solo para el límite por minuto). */
   deviceId: string;
   /** `null`: una tablet sin almacén, que enseña solo compatibilidades. */
   almacen: AlmacenCliente | null;
+  /** Una demostración de un vendedor, no una tablet (`demoAplicacion.service`). */
+  demo?: { appUserId: string };
 }
 
 const vistoEn = new Map<string, number>();

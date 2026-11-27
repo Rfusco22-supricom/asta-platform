@@ -72,6 +72,8 @@ export type AuditAction =
   | 'kiosco.codigo_creado'
   | 'kiosco.codigo_revision_creado'
   | 'kiosco.codigo_revision_revocado'
+  /// Un vendedor abrió una demostración de la aplicación ASTA (sin tablet), y de qué sede.
+  | 'aplicacion.demo_abierta'
   /// Un cliente subió su sell-out de un mes (ventas o inventario).
   | 'sellout.subido'
   /// Un cliente envió su pedido sugerido a su vendedor, y quién lo atendió

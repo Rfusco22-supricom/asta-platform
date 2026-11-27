@@ -127,6 +127,33 @@ export const tokenGuardado = (): string | null => {
 };
 export const olvidarToken = () => almacenNavegador.borrar(CLAVE_TOKEN);
 
+// ── Demostración del vendedor ────────────────────────────────────────────────
+
+/**
+ * Una demostración abierta desde el panel por un vendedor («Mostrar la
+ * aplicación ASTA»): va aparte del token de la tablet, para no pisar una
+ * activación de verdad, y caduca sola al terminar el día.
+ */
+export interface Demo {
+  token: string;
+  caduca: string;
+  sede: string | null;
+}
+const CLAVE_DEMO = 'asta.demo';
+
+export const demoGuardada = (ahora = Date.now()): Demo | null => {
+  try {
+    const d = JSON.parse(almacenNavegador.leer(CLAVE_DEMO) ?? 'null') as Demo | null;
+    if (d && typeof d.token === 'string' && d.token.startsWith('asta_demo_') && Date.parse(d.caduca) > ahora) return d;
+  } catch {
+    /* estropeada: como si no hubiera */
+  }
+  almacenNavegador.borrar(CLAVE_DEMO);
+  return null;
+};
+export const guardarDemo = (d: Demo) => almacenNavegador.guardar(CLAVE_DEMO, JSON.stringify(d));
+export const terminarDemo = () => almacenNavegador.borrar(CLAVE_DEMO);
+
 export type ResultadoActivacion = { tipo: 'ACTIVADA'; token: string } | { tipo: 'FORMATO_INVALIDO' | 'RECHAZADO' | 'DEMASIADOS_INTENTOS' | 'SIN_CONEXION' };
 
 /** «iPad · Safari», «Android · Chrome»: para reconocer la tablet en el panel. */
