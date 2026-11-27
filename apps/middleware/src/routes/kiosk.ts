@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { vincularTabletSchema } from '@asta/shared-types';
 import { MENSAJE_CODIGO_NO_VALIDO, verificarTokenKiosco, vincularTablet, type KioscoAutenticado } from '../services/kioscos.service.js';
 import { buscarImpresorasHandler, clicRecomendadorHandler, compatiblesHandler } from '../controllers/public.controller.js';
+import { PREFIJO_DEMO, verificarTokenDemo } from '../services/demoAplicacion.service.js';
 
 /**
  * Las rutas de las tablets del kiosco (#40, #120): el recomendador y nada más.
@@ -41,7 +42,8 @@ function authKiosco() {
         res.status(401).json({ error: { code: 'MISSING_API_KEY', message: 'Falta el token de la tablet en X-API-Key.' } });
         return;
       }
-      const kiosco = await verificarTokenKiosco(token, req.get('x-app-version') ?? undefined);
+      // Una demostración de un vendedor lleva su propio token firmado, sin tablet.
+      const kiosco = token.startsWith(PREFIJO_DEMO) ? await verificarTokenDemo(token) : await verificarTokenKiosco(token, req.get('x-app-version') ?? undefined);
       if (!kiosco) {
         req.log?.warn({ ip: req.ip }, 'token de kiosco rechazado');
         res.status(401).json({ error: { code: 'INVALID_API_KEY', message: 'Token de tablet inválido o desactivado.' } });

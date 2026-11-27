@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { MostrarAplicacion } from '@/components/MostrarAplicacion';
 import { notFound, redirect } from 'next/navigation';
 import type { PaymentState } from '@asta/shared-types';
 import { PAYMENT_STATE_LABEL } from '@asta/shared-types';
@@ -156,6 +157,8 @@ export default async function FichaCliente({ params, searchParams }: Props) {
               Ver su panel
             </a>
           )}
+          {/* La aplicación ASTA en este dispositivo, para enseñársela en la visita (sin activar una tablet). */}
+          {(sesion.usuario.role === 'SUPERADMIN' || sesion.usuario.role === 'VENDEDOR') && <MostrarAplicacion className="ficha-odoo" />}
           {ODOO_URL && (
             <a className="ficha-odoo" href={`${ODOO_URL}/web#id=${partnerId}&model=res.partner&view_type=form`} target="_blank" rel="noopener noreferrer">
               Abrir en Odoo ↗

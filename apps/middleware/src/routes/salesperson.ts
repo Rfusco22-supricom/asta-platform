@@ -27,6 +27,7 @@ import { recordAudit } from '../services/audit.service.js';
 import { categoriasDelPrograma, programaDeCliente, programaEnCurso } from '../services/programaAsta.service.js';
 import { auditContext } from '../middleware/auditContext.js';
 import { semaforoClientes } from '../services/semaforo.service.js';
+import { abrirDemo } from '../services/demoAplicacion.service.js';
 
 /**
  * Panel de vendedores (Fase 3).
@@ -226,6 +227,27 @@ salespersonRouter.get('/asta/categorias', autorizar('asta.propias.ver'), async (
       clientes,
     };
     res.json({ data, meta: { generadoEn: new Date().toISOString(), duracionMs: Date.now() - t0 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Una demostración de la aplicación ASTA para enseñársela a un cliente en una
+ * visita (`demoAplicacion.service`): un token firmado, sin tablet, con las
+ * existencias de su sede y hasta el final del día. Queda en la bitácora.
+ */
+salespersonRouter.post('/aplicacion/demo', autorizar('aplicacion.demo.abrir'), async (req, res, next) => {
+  try {
+    const demo = await abrirDemo(req.identity.appUserId, req.identity.odooUserId);
+    recordAudit({
+      action: 'aplicacion.demo_abierta',
+      ...auditContext(req),
+      targetType: 'aplicacion',
+      targetId: demo.sede ?? 'sin-sede',
+      metadata: { sede: demo.sede, caduca: demo.caduca },
+    });
+    res.status(201).json({ data: demo });
   } catch (error) {
     next(error);
   }

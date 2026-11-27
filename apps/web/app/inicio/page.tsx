@@ -13,12 +13,15 @@ import { nombrePeriodo } from '@/lib/meses';
 import { Esqueleto, Fallo, HeroMeta, facturas, intentar, n, pct, ultimoMes } from '@/components/inicio/Tablero';
 import { TareasVendedor } from '@/components/inicio/TareasVendedor';
 import { PuestoSede } from '@/components/inicio/PuestoSede';
+import { MostrarAplicacion } from '@/components/MostrarAplicacion';
 import { getCategoriasAstaCartera, getReporteCartera } from '@/lib/api';
 import { money, moneyCompact } from '@/lib/formato';
 
 /**
  * «Hoy», la portada del vendedor: cómo va su cartera y a quién llamar hoy.
  *
+ *   · Junto al periodo, «Mostrar la aplicación ASTA» (`MostrarAplicacion`):
+ *     para enseñársela a un cliente en una visita.
  *   · Arriba, su cartera en ASTA con la pirámide de categorías en 3D: cuánto
  *     ha vendido en el mes y cuánto aporta a la meta de la empresa.
  *   · Su puesto entre los vendedores de su sede en el mes, sin montos
@@ -155,7 +158,11 @@ export default async function InicioVendedorPage({ searchParams }: { searchParam
 
   return (
     <Marco usuario={sesion.usuario} titulo={nombre ? `Hola, ${nombre}` : 'Hola'}>
-      <Periodos base="/inicio" periodo={rango} />
+      {/* De visita en un cliente: la aplicación ASTA en su teléfono, sin activar una tablet. */}
+      <div className="inicio-barra">
+        <Periodos base="/inicio" periodo={rango} />
+        <MostrarAplicacion />
+      </div>
       <div className="dash dash-vendedor">
         <Suspense fallback={<Esqueleto area="meta" alto={420} />}>
           <Meta token={token} rango={rango} />

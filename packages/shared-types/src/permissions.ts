@@ -60,6 +60,7 @@ export const accionSchema = z.enum([
   'admin.pedidos.atender',
   'admin.vista.cliente',
   'cliente.vista.ver',
+  'aplicacion.demo.abrir',
   'pedidos.cartera.atender',
   'compatibilidades.proponer',
   'admin.recomendador.ver',
@@ -252,6 +253,14 @@ export const MATRIZ: Readonly<Record<Accion, Regla>> = {
     roles: ['SUPERADMIN'],
     ambito: 'ninguno',
     descripcion: 'Ver el panel de un cliente tal como lo ve él, sin poder cambiar nada',
+  },
+  'aplicacion.demo.abrir': {
+    // Abrir la aplicación ASTA en su teléfono para enseñársela a un cliente,
+    // sin activar una tablet (`demoAplicacion.service`). Solo el recomendador,
+    // con las existencias de su sede, hasta el final del día.
+    roles: STAFF,
+    ambito: 'ninguno',
+    descripcion: 'Abrir una demostración de la aplicación ASTA para enseñársela a un cliente',
   },
   'cliente.vista.ver': {
     // Lo mismo, para el VENDEDOR con los clientes de SU cartera (nov-2026: para

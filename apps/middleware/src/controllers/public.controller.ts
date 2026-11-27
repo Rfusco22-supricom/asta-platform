@@ -75,6 +75,8 @@ function kioscoDe(res: Response): KioscoAutenticado | undefined {
 
 function quienPide(req: Request, res: Response): Quien {
   const k = kioscoDe(res);
+  // Una demostración no es una tablet: la búsqueda queda a nombre del vendedor.
+  if (k?.demo) return { userId: k.demo.appUserId };
   return k ? { deviceId: k.deviceId } : { userId: usuarioDelToken(req) };
 }
 
