@@ -1,0 +1,2307 @@
+{
+ "actualizado": "2026-11-27",
+ "fichas": [
+  {
+   "id": "a-w2110a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP 206A · W2110A – W2113A",
+   "foto": "108096.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "W2110A",
+    "W2111A",
+    "W2113A",
+    "W2112A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro M255",
+    "HP Color LaserJet Pro M255dn",
+    "HP Color LaserJet Pro M255dw",
+    "HP Color LaserJet Pro MFP M282"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W2110A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2111A-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2113A-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2113A",
+     "color": "Magenta",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-W2112A-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2112A",
+     "color": "Amarillo",
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "a-w2120a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP 212A · W2120A – W2123A",
+   "foto": "109387.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "W2120A",
+    "W2121A",
+    "W2123A",
+    "W2122A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Enterprise Flow MFP M578c",
+    "HP Color LaserJet Enterprise Flow MFP M578z",
+    "HP Color LaserJet Enterprise M554dn",
+    "HP Color LaserJet Enterprise M555dn",
+    "HP Color LaserJet Enterprise M555x",
+    "HP Color LaserJet Enterprise MFP M578dn",
+    "HP Color LaserJet Enterprise MFP M578f"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W2120A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2121A-212A-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2123A-212A-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2122A-212A-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-w2310a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP 215A · W2310A – W2313A",
+   "foto": "108108.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "W2310A",
+    "W2311A",
+    "W2313A",
+    "W2312A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro M155",
+    "HP Color LaserJet Pro MFP M182",
+    "HP Color LaserJet Pro MFP M182nw",
+    "HP Color LaserJet Pro MFP M183"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W2310A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2311A",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2311A-215A-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2313A",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2313A-215A-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2312A",
+     "color": "Amarillo",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2312A-215A-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-w2020a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP 414A · W2020A – W2023A",
+   "foto": "108092.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "W2020A",
+    "W2021A",
+    "W2023A",
+    "W2022A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Enterprise M455dn",
+    "HP Color LaserJet Enterprise MFP M480f",
+    "HP Color LaserJet Pro MFP M479FDW",
+    "HP Color LaserJet Pro MFP M479fdn",
+    "HP LaserJet Pro M479DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W2020A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2021A-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2021A",
+     "color": "Cian",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-W2023A-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2023A",
+     "color": "Magenta",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-W2022A-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W2022A",
+     "color": "Amarillo",
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "a-cb435a-ce",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CB435A / CB436A / CE278A / CE285A",
+   "foto": "110688.jpg",
+   "colores": [],
+   "cartuchos": [
+    "CB435A",
+    "CB436A",
+    "CE278A",
+    "CB285A"
+   ],
+   "impresoras": [
+    "HP P1566",
+    "HP P1606"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CB435A-CE",
+     "color": null,
+     "detalle": null
+    },
+    {
+     "codigo": "A-CB435A-CE278A-CE285A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-ce255a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CE255A",
+   "foto": "108880.jpg",
+   "colores": [],
+   "cartuchos": [
+    "CE255A"
+   ],
+   "impresoras": [
+    "HP LaserJet P3010",
+    "HP LaserJet P3015d",
+    "HP LaserJet P3015dn",
+    "HP LaserJet P3015n",
+    "HP LaserJet P3015x",
+    "HP LaserJet P3016",
+    "HP MFP M525c",
+    "HP Pro M521"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CE255A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-ce310a-cf350a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CE310A – CE313A",
+   "foto": "108881.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "CE310A",
+    "CF350A",
+    "CE311A",
+    "CF351A",
+    "CE313A",
+    "CF353A",
+    "CE312A",
+    "CF352A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro MFP M176",
+    "HP Color LaserJet Pro MFP M177",
+    "HP LaserJet Pro CP1025",
+    "HP LaserJet Pro CP1025NW",
+    "HP LaserJet Pro M175",
+    "HP LaserJet Pro M275"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CE310A-CF350A",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE311A-CF351A",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE313A-CF353A",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE312A-CF352A",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-ce320a-cb540a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CE320A – CE323A",
+   "foto": "108885.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "CE320A",
+    "CB540A",
+    "CF210A",
+    "CE321A",
+    "CB541A",
+    "CF211A",
+    "CE323A",
+    "CB543A",
+    "CF213A",
+    "CE322A",
+    "CB542A",
+    "CF212A"
+   ],
+   "impresoras": [
+    "HP CM1415fnw",
+    "HP CP1525n",
+    "HP CP1525nw",
+    "HP Color LaserJet CM1300",
+    "HP Color LaserJet CM1312",
+    "HP Color LaserJet CP1210",
+    "HP Color LaserJet CP1215",
+    "HP Color LaserJet CP1515n",
+    "HP Color LaserJet CP1518ni",
+    "HP LaserJet Pro 200 color M251",
+    "HP LaserJet Pro 200 color M275",
+    "HP LaserJet Pro 200 color M276"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CE320A-CB540A",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE321A-CB541A",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE323A-CB543A",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CE322A-CB542A",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf217a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF217A",
+   "foto": "108099.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF217A"
+   ],
+   "impresoras": [
+    "HP LaserJet Pro M102",
+    "HP MFP M130fw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF217A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf226acrg052",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF226A / 052",
+   "foto": "108085.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF226A",
+    "052"
+   ],
+   "impresoras": [
+    "HP LaserJet Pro M402",
+    "HP LaserJet Pro M402dn",
+    "HP LaserJet Pro M402dw",
+    "HP LaserJet Pro M402n",
+    "HP LaserJet Pro MFP M426",
+    "HP LaserJet Pro MFP M426fdn",
+    "HP LaserJet Pro MFP M426fdw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF226ACRG052",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf258a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF258A (58A)",
+   "foto": "108889.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF258A",
+    "CF258"
+   ],
+   "impresoras": [
+    "HP LaserJet Enterprise M406dn",
+    "HP LaserJet Enterprise MFP M430f",
+    "HP M404DN",
+    "HP M404DW",
+    "HP M404N",
+    "HP MFP M428FDN",
+    "HP MFP M428FDW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF258A",
+     "color": "Negro",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-CF258ACC",
+     "color": null,
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-cf279a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF279A",
+   "foto": "108073.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF279A"
+   ],
+   "impresoras": [
+    "HP LaserJet Pro M12 MFP M26"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF279A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf280-ce505a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF280A / CE505A",
+   "foto": "108891.jpg",
+   "colores": [],
+   "cartuchos": [
+    "CF280",
+    "CE505A"
+   ],
+   "impresoras": [
+    "HP LaserJet P2030",
+    "HP LaserJet P2033",
+    "HP LaserJet P2034",
+    "HP LaserJet P2035",
+    "HP LaserJet P2036",
+    "HP LaserJet P2037",
+    "HP LaserJet P2050",
+    "HP LaserJet P2053",
+    "HP LaserJet P2054",
+    "HP LaserJet P2055",
+    "HP LaserJet P2056",
+    "HP LaserJet P2057"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF280-CE505A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf283a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF283A",
+   "foto": "108069.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF283A"
+   ],
+   "impresoras": [
+    "HP LJ ProMFP M125",
+    "HP LJ ProMFP M127",
+    "HP LJ ProMFP M201",
+    "HP LJ ProMFP M225"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF283A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf410a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF410A – CF413A",
+   "foto": "108892.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "CF410A",
+    "CF411A",
+    "CF413A",
+    "CF412A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro M452",
+    "HP MFP M477"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF410A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CF411A-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CF413A-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CF412A-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-cf500a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF500A – CF503A · Canon 054",
+   "foto": "108896.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "054",
+    "CF500A",
+    "CF501A",
+    "CF503A",
+    "CF502A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro M254",
+    "HP Color LaserJet Pro M254dw",
+    "HP Color LaserJet Pro MFP M280",
+    "HP Color LaserJet Pro MFP M281fdw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF500A",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CRG-054BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF501A",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF503A",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CRG-054M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF502A",
+     "color": "Amarillo",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CRG-054Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf510a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP CF510A – CF513A",
+   "foto": "108900.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "CF510A",
+    "CF511A",
+    "CF513A",
+    "CF512A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro M154a",
+    "HP Color LaserJet Pro M154nw",
+    "HP Color LaserJet Pro MFP M180",
+    "HP Color LaserJet Pro MFP M180n",
+    "HP Color LaserJet Pro MFP M180nw",
+    "HP Color LaserJet Pro MFP M181",
+    "HP Color LaserJet Pro MFP M181fw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF510A",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF511A",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF513A",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-CF512A",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-q2612a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP Q2612A / 104",
+   "foto": "108121.jpg",
+   "colores": [],
+   "cartuchos": [
+    "Q2612A",
+    "104"
+   ],
+   "impresoras": [
+    "Canon MF 4100",
+    "Canon MF 4600"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-Q2612A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-q5942x-q5945x",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP Q5942X / Q5945X",
+   "foto": "108120.jpg",
+   "colores": [],
+   "cartuchos": [
+    "Q5942X",
+    "Q5945X"
+   ],
+   "impresoras": [
+    "HP LaserJet 4240",
+    "HP LaserJet 4250",
+    "HP LaserJet 4250dtn",
+    "HP LaserJet 4250dtnsl",
+    "HP LaserJet 4250n",
+    "HP LaserJet 4250tn",
+    "HP LaserJet 4350",
+    "HP LaserJet 4350dtn",
+    "HP LaserJet 4350dtnsl",
+    "HP LaserJet 4350n",
+    "HP LaserJet 4350tn"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-Q5942X-Q5945X",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-q7551a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP Q7551A",
+   "foto": "108933.jpg",
+   "colores": [],
+   "cartuchos": [
+    "Q7551A"
+   ],
+   "impresoras": [
+    "HP LaserJet M3027MFP",
+    "HP LaserJet M3027xMFP",
+    "HP LaserJet M3035MFP",
+    "HP LaserJet M3035xsMFP",
+    "HP LaserJet P3005",
+    "HP LaserJet P3005d",
+    "HP LaserJet P3005dn",
+    "HP LaserJet P3005n",
+    "HP LaserJet P3005x"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-Q7551A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-q7553a-q5949a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP Q7553A / Q5949A",
+   "foto": "108934.jpg",
+   "colores": [],
+   "cartuchos": [
+    "Q7553A",
+    "Q5949A"
+   ],
+   "impresoras": [
+    "HP LaserJet 1160",
+    "HP LaserJet 1160LE",
+    "HP LaserJet 1320",
+    "HP LaserJet 1320n",
+    "HP LaserJet 1320nw",
+    "HP LaserJet 1320t",
+    "HP LaserJet 1320tn",
+    "HP LaserJet M2727mfsMFP",
+    "HP LaserJet M2727nfMFP",
+    "HP LaserJet M3390mfp",
+    "HP LaserJet M3392mfp",
+    "HP LaserJet P2014",
+    "HP LaserJet P2015"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-Q7553A-Q5949A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-q7553x",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP Q7553X",
+   "foto": "108935.jpg",
+   "colores": [],
+   "cartuchos": [
+    "Q7553X"
+   ],
+   "impresoras": [
+    "HP LaserJet M2727mfsMFP",
+    "HP LaserJet M2727nfMFP",
+    "HP LaserJet P2015"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-Q7553X",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w1103a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1103A",
+   "foto": "108939.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "W1103A"
+   ],
+   "impresoras": [
+    "HP NeverStop Laser 1000a",
+    "HP NeverStop Laser 1200a"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1103A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w1105acc",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1105A",
+   "foto": "108086.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1105A"
+   ],
+   "impresoras": [
+    "HP 107W",
+    "HP 135W",
+    "HP 137FNW",
+    "HP Laser 107",
+    "HP Laser 108",
+    "HP Laser 135",
+    "HP Laser 136",
+    "HP Laser 137",
+    "HP Laser 139",
+    "HP Laser MFP 135a",
+    "HP Laser MFP 135ag",
+    "HP Laser MFP 135r"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1105ACC",
+     "color": null,
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W1105A",
+     "color": null,
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-W1105V4",
+     "color": null,
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "a-w1105x",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1105X",
+   "foto": "108087.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1105X"
+   ],
+   "impresoras": [],
+   "variantes": [
+    {
+     "codigo": "A-W1105X",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w1330a-330a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1330A (330A)",
+   "foto": "111826.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1330A",
+    "330A"
+   ],
+   "impresoras": [
+    "HP Laser 408dn",
+    "HP Laser MFP 432fdn"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1330A/330A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w1360a-136a-ch",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1360A",
+   "foto": "108089.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "W1360A"
+   ],
+   "impresoras": [
+    "HP LaserJet MFP M236SDW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1360A-136A-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-W1360A-136A",
+     "color": "Negro",
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "a-w1500a",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1500A",
+   "foto": "108090.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1500A"
+   ],
+   "impresoras": [
+    "HP LaserJet M111W",
+    "HP LaserJet M111cw",
+    "HP LaserJet MFP M141a",
+    "HP LaserJet MFP M141ca",
+    "HP LaserJet MFP M141cw",
+    "HP M141W"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1500A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w1510x",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W1510X",
+   "foto": "108091.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1510X"
+   ],
+   "impresoras": [
+    "HP LaserJet MFP 4103DW",
+    "HP LaserJet MFP 4103FDW",
+    "HP LaserJet Pro 4003",
+    "HP LaserJet Pro 4003DW",
+    "HP LaserJet Pro 4003n",
+    "HP LaserJet Pro MFP 4103",
+    "HP LaserJet Pro MFP 4103dw",
+    "HP LaserJet Pro MFP 4103fdn",
+    "HP LaserJet Pro MFP 4103fdw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W1510X",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-w2300a-bk",
+   "tipo": "toner",
+   "marca": "HP",
+   "titulo": "Tóner HP W2300A – W2303A",
+   "foto": "108104.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "W2300A",
+    "W2301A",
+    "W2303A",
+    "W2302A"
+   ],
+   "impresoras": [
+    "HP Color LaserJet Pro 4203cdn",
+    "HP Color LaserJet Pro 4203dn",
+    "HP Color LaserJet Pro 4203dw",
+    "HP Color LaserJet Pro MFP 4303FDW",
+    "HP Color LaserJet Pro MFP 4303dw",
+    "HP Color LaserJet Pro MFP 4303fdn"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-W2300A-BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2301A-C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2302A-M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2303A-M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-W2302A-Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf230a",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon 051 / CF230A",
+   "foto": "108084.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "051",
+    "CF230A"
+   ],
+   "impresoras": [
+    "Canon MF267DW II",
+    "Canon imageCLASS MF264DW",
+    "HP LaserJet Pro M203DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF230A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-crg-055bk-ch",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon 055",
+   "foto": "108907.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "055"
+   ],
+   "impresoras": [
+    "Canon LBP664CDW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CRG-055BK-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CRG-055BK",
+     "color": "Negro",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-CRG-055C-CH",
+     "color": "Cian",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CRG-055C",
+     "color": "Cian",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-CRG-055M-CH",
+     "color": "Magenta",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CRG-055M",
+     "color": "Magenta",
+     "detalle": "sin chip"
+    },
+    {
+     "codigo": "A-CRG-055Y-CH",
+     "color": "Amarillo",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-CRG-055Y",
+     "color": "Amarillo",
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "a-057h",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon 057H / CF258X",
+   "foto": "108130.jpg",
+   "colores": [],
+   "cartuchos": [
+    "057H",
+    "CF258X"
+   ],
+   "impresoras": [
+    "Canon MF455DW",
+    "HP LaserJet Enterprise M406dn",
+    "HP LaserJet Enterprise MFP M430f",
+    "HP M404DN",
+    "HP M404DW",
+    "HP M404N",
+    "HP MFP M428FDN",
+    "HP MFP M428FDW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-057H",
+     "color": null,
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-crg-070h-ch",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon 070H",
+   "foto": "108082.jpg",
+   "colores": [],
+   "cartuchos": [
+    "070H"
+   ],
+   "impresoras": [
+    "Canon MF462DW",
+    "Canon MF465DW II",
+    "Canon imageCLASS MF465DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CRG-070H-CH",
+     "color": null,
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-crg-071h-ch",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon 071H",
+   "foto": "108083.jpg",
+   "colores": [],
+   "cartuchos": [
+    "071H"
+   ],
+   "impresoras": [
+    "Canon MF272DW",
+    "Canon imageCLASS MF273DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CRG-071H-CH",
+     "color": null,
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-gpr-22",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon GPR-22",
+   "foto": "108920.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "GPR-22"
+   ],
+   "impresoras": [
+    "Canon iR1018",
+    "Canon iR1019",
+    "Canon iR1020",
+    "Canon iR1022",
+    "Canon iR1023",
+    "Canon iR1024",
+    "Canon iR1025"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-GPR-22",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-t03",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon T03",
+   "foto": "108116.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "T03"
+   ],
+   "impresoras": [
+    "Canon DX 529IF",
+    "Canon imageRUNNER ADVANCE 525i III",
+    "Canon imageRUNNER ADVANCE 525iF III",
+    "Canon imageRUNNER ADVANCE 615i III",
+    "Canon imageRUNNER ADVANCE 615iF III",
+    "Canon imageRUNNER ADVANCE 715iFZ III",
+    "Canon imageRUNNER ADVANCE 715iZ III"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-T03",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-t06-ch",
+   "tipo": "toner",
+   "marca": "Canon",
+   "titulo": "Tóner Canon T06",
+   "foto": "108102.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "T06"
+   ],
+   "impresoras": [
+    "Canon 1643I II",
+    "Canon IF 1643F",
+    "Canon IR 1643IF II",
+    "Canon IR1643I",
+    "Canon IR1643I II",
+    "Canon MF1643"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-T06-CH",
+     "color": "Negro",
+     "detalle": "con chip"
+    },
+    {
+     "codigo": "A-T06",
+     "color": "Negro",
+     "detalle": "sin chip"
+    }
+   ]
+  },
+  {
+   "id": "tn-227bk",
+   "tipo": "toner",
+   "marca": "Brother",
+   "titulo": "Tóner Brother TN-227",
+   "foto": "108111.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "TN-227BK",
+    "TN-227C",
+    "TN-227M",
+    "TN-227Y"
+   ],
+   "impresoras": [
+    "Brother HL-L3210CW",
+    "Brother HL-L3230CDW",
+    "Brother HL-L3270CDW",
+    "Brother HL-L3290CDW",
+    "Brother MFC-L3710CW",
+    "Brother MFC-L3750CDW",
+    "Brother MFC-L3770CDW"
+   ],
+   "variantes": [
+    {
+     "codigo": "TN-227BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "TN-227C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "TN-227M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "TN-227Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-tn-760",
+   "tipo": "toner",
+   "marca": "Brother",
+   "titulo": "Tóner Brother TN-760",
+   "foto": "108088.jpg",
+   "colores": [],
+   "cartuchos": [
+    "TN-760"
+   ],
+   "impresoras": [
+    "Brother HL-L2350DW",
+    "Brother HL-L2379DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-TN-760",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-tn-820",
+   "tipo": "toner",
+   "marca": "Brother",
+   "titulo": "Tóner Brother TN-820",
+   "foto": "108937.jpg",
+   "colores": [],
+   "cartuchos": [
+    "TN-820"
+   ],
+   "impresoras": [
+    "Brother MFC-L5700DW",
+    "Brother MFC-L5705DW",
+    "Brother MFC-L5900DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-TN-820",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-tn-850",
+   "tipo": "toner",
+   "marca": "Brother",
+   "titulo": "Tóner Brother TN-850",
+   "foto": "108079.jpg",
+   "colores": [],
+   "cartuchos": [
+    "TN-850"
+   ],
+   "impresoras": [
+    "Brother MFC-L5700DW",
+    "Brother MFC-L5705DW",
+    "Brother MFC-L5900DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-TN-850",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-mlt-d101s",
+   "tipo": "toner",
+   "marca": "Samsung",
+   "titulo": "Tóner Samsung MLT-D101S",
+   "foto": "108070.jpg",
+   "colores": [],
+   "cartuchos": [
+    "MLT-D101S"
+   ],
+   "impresoras": [
+    "Samsung ML-2164",
+    "Samsung ML-2164W",
+    "Samsung SCX-3400",
+    "Samsung SCX-3401FH",
+    "Samsung SCX-3405",
+    "Samsung SCX-3406",
+    "Samsung SCX-3406F",
+    "Samsung SCX-3406FH",
+    "Samsung SCX-3406HW",
+    "Samsung SF-760P",
+    "Samsung SF-765P"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-MLT-D101S",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-mlt-d104s",
+   "tipo": "toner",
+   "marca": "Samsung",
+   "titulo": "Tóner Samsung MLT-D104S",
+   "foto": "108921.jpg",
+   "colores": [],
+   "cartuchos": [
+    "MLT-D104S"
+   ],
+   "impresoras": [
+    "Samsung ML1660",
+    "Samsung ML1665",
+    "Samsung ML1670",
+    "Samsung ML1673",
+    "Samsung ML1674",
+    "Samsung ML1675",
+    "Samsung ML1678",
+    "Samsung ML1860",
+    "Samsung ML1861",
+    "Samsung ML1865",
+    "Samsung SCX-3200",
+    "Samsung SCX-3205",
+    "Samsung SCX-3217"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-MLT-D104S",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-mlt-d105s",
+   "tipo": "toner",
+   "marca": "Samsung",
+   "titulo": "Tóner Samsung MLT-D105S",
+   "foto": "108922.jpg",
+   "colores": [],
+   "cartuchos": [
+    "MLT-D105S"
+   ],
+   "impresoras": [
+    "Samsung CF-650",
+    "Samsung CF-651",
+    "Samsung ML-1910",
+    "Samsung ML-1911",
+    "Samsung ML-1915",
+    "Samsung ML-1916",
+    "Samsung ML-2525",
+    "Samsung ML-2526",
+    "Samsung ML-2540",
+    "Samsung ML-2541",
+    "Samsung ML-2545",
+    "Samsung ML-2547",
+    "Samsung ML-2580",
+    "Samsung ML-2581",
+    "Samsung SCX-4600",
+    "Samsung SCX-4601",
+    "Samsung SCX-4605",
+    "Samsung SCX-4610",
+    "Samsung SCX-4622",
+    "Samsung SCX-4623"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-MLT-D105S",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-mlt-d111s",
+   "tipo": "toner",
+   "marca": "Samsung",
+   "titulo": "Tóner Samsung MLT-D111S",
+   "foto": "108124.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "MLT-D111S"
+   ],
+   "impresoras": [
+    "Samsung Xpress M2020",
+    "Samsung Xpress M2020W",
+    "Samsung Xpress M2022",
+    "Samsung Xpress M2022W",
+    "Samsung Xpress M2024",
+    "Samsung Xpress M2024W",
+    "Samsung Xpress M2026",
+    "Samsung Xpress M2026W",
+    "Samsung Xpress M2028",
+    "Samsung Xpress M2028W",
+    "Samsung Xpress M2060FH",
+    "Samsung Xpress M2070",
+    "Samsung Xpress M2070F",
+    "Samsung Xpress M2070FW",
+    "Samsung Xpress M2070W",
+    "Samsung Xpress M2074",
+    "Samsung Xpress M2074F",
+    "Samsung Xpress M2074FW",
+    "Samsung Xpress M2074W",
+    "Samsung Xpress M2078",
+    "Samsung Xpress M2078F",
+    "Samsung Xpress M2078FW",
+    "Samsung Xpress M2078W"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-MLT-D111S",
+     "color": "Negro",
+     "detalle": "con chip"
+    }
+   ]
+  },
+  {
+   "id": "a-gtbk",
+   "tipo": "tinta",
+   "marca": "HP",
+   "titulo": "Tinta HP GT (Smart Tank)",
+   "foto": "108081.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [],
+   "impresoras": [],
+   "variantes": [
+    {
+     "codigo": "A-GTBK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GTCYAN",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GTMAGENTA",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GTYELLOW",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "hp-gt51bk",
+   "tipo": "tinta",
+   "marca": "HP",
+   "titulo": "Tinta HP GT51 negra",
+   "foto": null,
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "GT51"
+   ],
+   "impresoras": [
+    "HP 415",
+    "HP Smart Tank 530",
+    "HP Smart Tank 750"
+   ],
+   "variantes": [
+    {
+     "codigo": "HP-GT51BK",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-gi-10y",
+   "tipo": "tinta",
+   "marca": "Canon",
+   "titulo": "Tinta Canon GI-10",
+   "foto": "112066.jpg",
+   "colores": [
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "GI-10"
+   ],
+   "impresoras": [],
+   "variantes": [
+    {
+     "codigo": "A-GI-10Y",
+     "color": "Amarillo",
+     "detalle": "70 ml"
+    }
+   ]
+  },
+  {
+   "id": "a-gi-11bk",
+   "tipo": "tinta",
+   "marca": "Canon",
+   "titulo": "Tinta Canon GI-11",
+   "foto": "108112.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "GI-11"
+   ],
+   "impresoras": [
+    "Canon G2170",
+    "Canon G3160",
+    "Canon G3170",
+    "Canon PIXMA G1130",
+    "Canon PIXMA G2160",
+    "Canon PIXMA G4170"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-GI-11BK",
+     "color": "Negro",
+     "detalle": "135 ml"
+    },
+    {
+     "codigo": "A-GI-11C",
+     "color": "Cian",
+     "detalle": "70 ml"
+    },
+    {
+     "codigo": "A-GI-11M",
+     "color": "Magenta",
+     "detalle": "70 ml"
+    },
+    {
+     "codigo": "A-GI-11Y",
+     "color": "Amarillo",
+     "detalle": "70 ml"
+    }
+   ]
+  },
+  {
+   "id": "a-gi-16-bk",
+   "tipo": "tinta",
+   "marca": "Canon",
+   "titulo": "Tinta Canon GI-16",
+   "foto": "108117.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "GI-16"
+   ],
+   "impresoras": [
+    "Canon MAXIFY GX3010",
+    "Canon MAXIFY GX4010",
+    "Canon MAXIFY GX5010",
+    "Canon MAXIFY GX5110",
+    "Canon MAXIFY GX6010",
+    "Canon MAXIFY GX6110",
+    "Canon MAXIFY GX7010",
+    "Canon MAXIFY GX7110"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-GI-16-BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GI-16-C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GI-16-M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-GI-16-Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-gi-190bk",
+   "tipo": "tinta",
+   "marca": "Canon",
+   "titulo": "Tinta Canon GI-190",
+   "foto": "108080.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "GI-190"
+   ],
+   "impresoras": [
+    "Canon PIXMA G1100",
+    "Canon PIXMA G1110",
+    "Canon PIXMA G2100",
+    "Canon PIXMA G2110",
+    "Canon PIXMA G3100",
+    "Canon PIXMA G3110",
+    "Canon PIXMA G4100",
+    "Canon PIXMA G4110"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-GI-190BK",
+     "color": "Negro",
+     "detalle": "100 ml"
+    },
+    {
+     "codigo": "A-GI-190C",
+     "color": "Cian",
+     "detalle": "100 ml"
+    },
+    {
+     "codigo": "A-GI-190M",
+     "color": "Magenta",
+     "detalle": "100 ml"
+    },
+    {
+     "codigo": "A-GI-190Y",
+     "color": "Amarillo",
+     "detalle": "100 ml"
+    }
+   ]
+  },
+  {
+   "id": "a-pfi-050-tc-20bk",
+   "tipo": "tinta",
+   "marca": "Canon",
+   "titulo": "Tinta Canon PFI-050",
+   "foto": "108926.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "PFI-050"
+   ],
+   "impresoras": [
+    "Canon TC-21M",
+    "Canon imagePROGRAF TC-20"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-PFI-050-TC-20BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-PFI-050-TC-20C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-PFI-050-TC-20M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-PFI-050-TC-20Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-t49m-bk",
+   "tipo": "tinta",
+   "marca": "Epson",
+   "titulo": "Tinta Epson T49",
+   "foto": "108074.jpg",
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "T49M"
+   ],
+   "impresoras": [
+    "Epson SureColor F170",
+    "Epson SureColor F570"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-T49M-BK",
+     "color": "Negro",
+     "detalle": "140 ml"
+    },
+    {
+     "codigo": "A-T49M-C",
+     "color": "Cian",
+     "detalle": "140 ml"
+    },
+    {
+     "codigo": "A-T49M-M",
+     "color": "Magenta",
+     "detalle": "140 ml"
+    },
+    {
+     "codigo": "A-T49M-Y",
+     "color": "Amarillo",
+     "detalle": "140 ml"
+    }
+   ]
+  },
+  {
+   "id": "a-544bk",
+   "tipo": "tinta",
+   "marca": "Epson",
+   "titulo": "Tinta Epson T544",
+   "foto": null,
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "T544"
+   ],
+   "impresoras": [
+    "Epson L1110",
+    "Epson L3110",
+    "Epson L3150",
+    "Epson L5190",
+    "Epson EcoTank L1250",
+    "Epson EcoTank L1350",
+    "Epson EcoTank L3250",
+    "Epson EcoTank L3350",
+    "Epson L5590",
+    "Epson EcoTank L3210",
+    "Epson EcoTank L1210",
+    "Epson EcoTank L3160",
+    "Epson EcoTank L3251",
+    "Epson EcoTank L3260",
+    "Epson EcoTank L3310",
+    "Epson EcoTank L3351",
+    "Epson EcoTank L3352",
+    "Epson EcoTank L5290",
+    "Epson EcoTank L3560"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-544BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-544C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-544M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-544Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-664bk",
+   "tipo": "tinta",
+   "marca": "Epson",
+   "titulo": "Tinta Epson T664",
+   "foto": null,
+   "colores": [
+    "Negro",
+    "Cian",
+    "Magenta",
+    "Amarillo"
+   ],
+   "cartuchos": [
+    "T664"
+   ],
+   "impresoras": [],
+   "variantes": [
+    {
+     "codigo": "A-664BK",
+     "color": "Negro",
+     "detalle": null
+    },
+    {
+     "codigo": "A-664C",
+     "color": "Cian",
+     "detalle": null
+    },
+    {
+     "codigo": "A-664M",
+     "color": "Magenta",
+     "detalle": null
+    },
+    {
+     "codigo": "A-664Y",
+     "color": "Amarillo",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-cf219a",
+   "tipo": "tambor",
+   "marca": "HP",
+   "titulo": "Tambor HP CF219A (19A)",
+   "foto": "108098.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF219A"
+   ],
+   "impresoras": [
+    "HP LaserJet Pro M104",
+    "HP MFP M132fw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CF219A",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "w1105a-105adrum",
+   "tipo": "tambor",
+   "marca": "HP",
+   "titulo": "Tambor OPC W1105A (105A)",
+   "foto": null,
+   "colores": [],
+   "cartuchos": [
+    "W1105A",
+    "105A"
+   ],
+   "impresoras": [
+    "HP 137FNW",
+    "HP 107W",
+    "HP 135W",
+    "HP Laser 107",
+    "HP Laser 108",
+    "HP Laser 135",
+    "HP Laser MFP 135a",
+    "HP Laser MFP 135ag",
+    "HP Laser MFP 135r",
+    "HP Laser 136",
+    "HP Laser 137",
+    "HP Laser 139"
+   ],
+   "variantes": [
+    {
+     "codigo": "W1105A-105ADRUM",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "crg-051-cf232a",
+   "tipo": "tambor",
+   "marca": "Canon",
+   "titulo": "Tambor OPC Canon 051 / HP CF232A",
+   "foto": "108972.jpg",
+   "colores": [],
+   "cartuchos": [
+    "CF232A",
+    "051"
+   ],
+   "impresoras": [
+    "Canon imageCLASS MF264DW",
+    "Canon MF267DW II",
+    "HP LaserJet Pro M203DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "CRG-051-CF232A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-dr-820",
+   "tipo": "tambor",
+   "marca": "Brother",
+   "titulo": "Tambor Brother DR-820",
+   "foto": "111776.jpg",
+   "colores": [],
+   "cartuchos": [
+    "DR-820"
+   ],
+   "impresoras": [
+    "Brother MFC-L5700DW",
+    "Brother MFC-L5705DW",
+    "Brother MFC-L5900DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-DR-820",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-pow285",
+   "tipo": "polvo",
+   "marca": "HP",
+   "titulo": "Polvo de tóner CB435A / CE278A / CE285A",
+   "foto": "108123.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CE278A"
+   ],
+   "impresoras": [
+    "HP P1566",
+    "HP P1606"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-POW285",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-pow226",
+   "tipo": "polvo",
+   "marca": "HP",
+   "titulo": "Polvo de tóner CF226A / CRG-052",
+   "foto": "108931.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "CF226A",
+    "052"
+   ],
+   "impresoras": [
+    "HP LaserJet Pro M402",
+    "HP LaserJet Pro MFP M426",
+    "HP LaserJet Pro M402dn",
+    "HP LaserJet Pro M402dw",
+    "HP LaserJet Pro M402n",
+    "HP LaserJet Pro MFP M426fdn",
+    "HP LaserJet Pro MFP M426fdw"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-POW226",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-pow2612",
+   "tipo": "polvo",
+   "marca": "HP",
+   "titulo": "Polvo de tóner Q2612A / CRG-104",
+   "foto": "108932.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [
+    "104"
+   ],
+   "impresoras": [
+    "Canon MF 4100",
+    "Canon MF 4600"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-POW2612",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-pow101",
+   "tipo": "polvo",
+   "marca": "Samsung",
+   "titulo": "Polvo de tóner MLT-D101S / Xerox 3020",
+   "foto": "108930.jpg",
+   "colores": [
+    "Negro"
+   ],
+   "cartuchos": [],
+   "impresoras": [],
+   "variantes": [
+    {
+     "codigo": "A-POW101",
+     "color": "Negro",
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-chip-w1105-105a",
+   "tipo": "chip",
+   "marca": "HP",
+   "titulo": "Chip W1105A (105A) · versión 3",
+   "foto": "109397.jpg",
+   "colores": [],
+   "cartuchos": [
+    "W1105A",
+    "W1105"
+   ],
+   "impresoras": [
+    "HP 137FNW",
+    "HP 107W",
+    "HP 135W",
+    "HP Laser 107",
+    "HP Laser 108",
+    "HP Laser 135",
+    "HP Laser MFP 135a",
+    "HP Laser MFP 135ag",
+    "HP Laser MFP 135r",
+    "HP Laser 136",
+    "HP Laser 137",
+    "HP Laser 139"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CHIP-W1105-105A",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  },
+  {
+   "id": "a-crg-057h-recycle-chip",
+   "tipo": "chip",
+   "marca": "Canon",
+   "titulo": "Chip CRG-057H reciclado",
+   "foto": "109405.jpg",
+   "colores": [],
+   "cartuchos": [
+    "057H"
+   ],
+   "impresoras": [
+    "Canon MF455DW"
+   ],
+   "variantes": [
+    {
+     "codigo": "A-CRG.057H-RECYCLE.CHIP",
+     "color": null,
+     "detalle": null
+    }
+   ]
+  }
+ ]
+}

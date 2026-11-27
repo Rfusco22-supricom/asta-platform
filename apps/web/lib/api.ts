@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import {
+  catalogoAstaSchema,
+  type CatalogoAsta,
   portfolioRowSchema,
   portfolioMetaSchema,
   actividadCarteraRespuestaSchema,
@@ -854,3 +856,8 @@ export async function getCalculadora(accessToken: string, cliente?: number | nul
   return (await request(rutaCliente('/calculadora', cliente), calculadoraRespuestaSchema, accessToken)).data;
 }
 
+
+/** El catálogo ASTA con los precios de la tarifa de Valencia (solo el personal). */
+export async function getCatalogoAsta(accessToken: string): Promise<CatalogoAsta> {
+  return (await request('/api/v1/salesperson/catalogo', z.object({ data: catalogoAstaSchema }), accessToken)).data;
+}
