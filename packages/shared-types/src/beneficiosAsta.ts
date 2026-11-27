@@ -3,7 +3,7 @@ import { ESCALERA, NIVEL_MAXIMO, nivelBloqueado } from './programaAsta.js';
 
 /**
  * Lo que gana el cliente en cada nivel del programa ASTA (aprobado por
- * Supricom el 2026-11-10). Cada nivel conserva los de los de abajo; un
+ * Supricom el 2026-11-10; el fondo del 2 % pasó a ser mensual el 2026-11-27). Cada nivel conserva los de los de abajo; un
  * beneficio con la misma `clave` sustituye al de abajo (el crédito de 7 días
  * pasa a 15 en Plata, no se suman).
  *
@@ -40,7 +40,7 @@ const POR_NIVEL: Partial<Record<ClaveCategoria, readonly Beneficio[]>> = {
     { clave: 'credito', titulo: 'Crédito a 30 días', detalle: 'Las compras de ASTA, a pagar en 30 días.' },
     { clave: 'envio', titulo: 'Envío gratis', detalle: 'Los pedidos de ASTA, sin costo de envío.' },
     { clave: 'exhibidor', titulo: 'Exhibidor + tablet', detalle: 'Un exhibidor ASTA y una tablet con la aplicación en el mostrador.' },
-    { clave: 'fondo', titulo: 'Fondo del 2 %', detalle: 'El 2 % de lo comprado en el trimestre, para usar en la siguiente compra.' },
+    { clave: 'fondo', titulo: 'Fondo del 2 %', detalle: 'El 2 % de lo comprado en el mes, para usar en la siguiente compra.' },
     { clave: 'eventos', titulo: 'Eventos patrocinados', detalle: 'Promotores y actividades en la tienda, patrocinados por ASTA.' },
   ],
 };
